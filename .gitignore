@@ -11,3 +11,8 @@ htmlcov/
 .venv/
 venv/
 *.log
+
+# Rapports générés
+*.html
+results*.json
+rapport*.html

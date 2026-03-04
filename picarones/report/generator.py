@@ -69,7 +69,7 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
     engines_summary = []
     for report in benchmark.engine_reports:
         agg = report.aggregated_metrics
-        engines_summary.append({
+        entry: dict = {
             "name": report.engine_name,
             "version": report.engine_version,
             "cer":  _safe(agg.get("cer", {}).get("mean")),
@@ -87,7 +87,11 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 for dr in report.document_results
                 if dr.metrics.error is None
             ],
-        })
+            # Champs pipeline OCR+LLM (vides pour les moteurs OCR seuls)
+            "is_pipeline": report.is_pipeline,
+            "pipeline_info": report.pipeline_info,
+        }
+        engines_summary.append(entry)
 
     # Documents (vue galerie + vue détail)
     # On collecte tous les doc_ids depuis le premier moteur
@@ -113,7 +117,7 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             gt = dr.ground_truth
             image_path = dr.image_path
             diff_ops = compute_word_diff(dr.ground_truth, dr.hypothesis)
-            engine_results.append({
+            er_entry: dict = {
                 "engine": engine_name,
                 "hypothesis": dr.hypothesis,
                 "cer": _safe(dr.metrics.cer),
@@ -121,7 +125,18 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 "duration": dr.duration_seconds,
                 "error": dr.engine_error,
                 "diff": diff_ops,
-            })
+            }
+            # Champs spécifiques aux pipelines OCR+LLM
+            if dr.ocr_intermediate is not None:
+                er_entry["ocr_intermediate"] = dr.ocr_intermediate
+                er_entry["ocr_diff"] = compute_word_diff(dr.ground_truth, dr.ocr_intermediate)
+                er_entry["llm_correction_diff"] = compute_word_diff(dr.ocr_intermediate, dr.hypothesis)
+            if dr.pipeline_metadata:
+                on = dr.pipeline_metadata.get("over_normalization")
+                if on is not None:
+                    er_entry["over_normalization"] = on
+                er_entry["pipeline_mode"] = dr.pipeline_metadata.get("pipeline_mode")
+            engine_results.append(er_entry)
 
         # CER moyen sur ce document (pour le badge galerie)
         cer_values = [er["cer"] for er in engine_results if er["error"] is None]
@@ -502,6 +517,42 @@ tbody tr:hover {{ background: #f8fafc; }}
 }}
 .chart-canvas-wrap {{ position: relative; height: 280px; }}
 
+/* ── Pipeline badges ──────────────────────────────────────────────── */
+.pipeline-tag {{
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .12rem .38rem;
+  border-radius: 4px; font-size: .67rem; font-weight: 700;
+  background: #ede9fe; color: #6d28d9;
+  letter-spacing: .02em; vertical-align: middle;
+}}
+.pipeline-tag .pipe-arrow {{ opacity: .7; }}
+.over-norm-badge {{
+  display: inline-block; padding: .12rem .38rem;
+  border-radius: 4px; font-size: .67rem; font-weight: 700;
+  background: #fef3c7; color: #b45309;
+}}
+.over-norm-badge.high {{ background: #fee2e2; color: #b91c1c; }}
+/* Vue triple-diff (pipeline) */
+.triple-diff-wrap {{
+  display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+  margin-top: .5rem;
+}}
+.triple-diff-section {{ background: var(--bg); border-radius: 6px; padding: .5rem; }}
+.triple-diff-section h5 {{
+  font-size: .73rem; font-weight: 700; color: var(--text-muted);
+  margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .04em;
+}}
+.pipeline-steps {{
+  display: flex; align-items: center; gap: .3rem; flex-wrap: wrap;
+  margin-top: .25rem;
+}}
+.step-chip {{
+  padding: .12rem .4rem; border-radius: 4px; font-size: .68rem; font-weight: 600;
+}}
+.step-chip.ocr  {{ background: #e0f2fe; color: #0369a1; }}
+.step-chip.llm  {{ background: #ede9fe; color: #6d28d9; }}
+.step-arrow {{ color: var(--text-muted); font-size: .8rem; }}
+
 /* ── Misc ─────────────────────────────────────────────────────────── */
 .badge {{
   display: inline-block; padding: .15rem .45rem;
@@ -570,7 +621,7 @@ footer {{
         <thead>
           <tr>
             <th data-col="rank" class="sortable sorted" data-dir="asc">#<i class="sort-icon">↑</i></th>
-            <th data-col="name" class="sortable">Moteur<i class="sort-icon">↕</i></th>
+            <th data-col="name" class="sortable">Concurrent<i class="sort-icon">↕</i></th>
             <th data-col="cer"  class="sortable">CER<i class="sort-icon">↕</i></th>
             <th data-col="wer"  class="sortable">WER<i class="sort-icon">↕</i></th>
             <th data-col="mer"  class="sortable">MER<i class="sort-icon">↕</i></th>
@@ -578,6 +629,7 @@ footer {{
             <th>CER médian</th>
             <th>CER min</th>
             <th>CER max</th>
+            <th title="Classe 10 — Sur-normalisation LLM : taux de mots corrects dégradés par le LLM">Sur-norm.</th>
             <th>Docs</th>
           </tr>
         </thead>
@@ -826,11 +878,41 @@ function renderRanking() {{
     const badgeClass = rank === 1 ? 'rank-badge rank-1' : 'rank-badge';
     const cerC = cerColor(e.cer); const cerB = cerBg(e.cer);
     const barW = Math.min(100, e.cer * 100 * 3);
+
+    // Badge pipeline
+    let pipelineBadge = '';
+    let pipelineStepsHtml = '';
+    if (e.is_pipeline && e.pipeline_info) {{
+      const pi = e.pipeline_info;
+      const modeLabel = {{text_only:'texte', text_and_image:'image+texte', zero_shot:'zero-shot'}}[pi.pipeline_mode] || pi.pipeline_mode || '';
+      pipelineBadge = `<span class="pipeline-tag" title="Pipeline OCR+LLM — mode ${{modeLabel}}">
+        ⛓ pipeline<span class="pipe-arrow">·${{modeLabel}}</span></span>`;
+      if (pi.pipeline_steps) {{
+        pipelineStepsHtml = `<div class="pipeline-steps">` +
+          pi.pipeline_steps.map(s => s.type === 'ocr'
+            ? `<span class="step-chip ocr">OCR: ${{esc(s.engine)}}</span>`
+            : `<span class="step-chip llm">LLM: ${{esc(s.model)}}</span>`
+          ).join(`<span class="step-arrow">→</span>`) +
+          `</div>`;
+      }}
+    }}
+
+    // Sur-normalisation (classe 10)
+    let overNormCell = '<td style="color:var(--text-muted)">—</td>';
+    if (e.is_pipeline && e.pipeline_info && e.pipeline_info.over_normalization) {{
+      const on = e.pipeline_info.over_normalization;
+      const onPct = (on.score * 100).toFixed(2);
+      const cls = on.score > 0.05 ? 'over-norm-badge high' : 'over-norm-badge';
+      overNormCell = `<td><span class="${{cls}}" title="Classe 10 — ${{on.over_normalized_count}} mots corrects dégradés sur ${{on.total_correct_ocr_words}}">${{onPct}} %</span></td>`;
+    }}
+
     return `<tr>
       <td><span class="${{badgeClass}}">${{rank}}</span></td>
       <td>
         <span class="engine-name">${{esc(e.name)}}</span>
+        ${{pipelineBadge}}
         <span class="engine-version">v${{esc(e.version)}}</span>
+        ${{pipelineStepsHtml}}
       </td>
       <td>
         <span class="bar" style="width:${{barW}}px;background:${{cerC}}"></span>
@@ -842,16 +924,20 @@ function renderRanking() {{
       <td style="color:var(--text-muted)">${{pct(e.cer_median)}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_min)}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_max)}}</td>
+      ${{overNormCell}}
       <td><span class="pill">${{e.doc_count}}</span></td>
     </tr>`;
   }}).join('');
 
   // Stats globales
+  const pipelineCount = DATA.engines.filter(e => e.is_pipeline).length;
   const stats = document.getElementById('ranking-stats');
   stats.innerHTML = `
     <div class="stat">Corpus <b>${{esc(DATA.meta.corpus_name)}}</b></div>
     <div class="stat">Documents <b>${{DATA.meta.document_count}}</b></div>
-    <div class="stat">Moteurs <b>${{DATA.engines.length}}</b></div>
+    <div class="stat">Concurrents <b>${{DATA.engines.length}}</b>
+      ${{pipelineCount ? `<span class="pipeline-tag" style="margin-left:.3rem">${{pipelineCount}} pipeline${{pipelineCount>1?'s':''}}</span>` : ''}}
+    </div>
   `;
 }}
 
@@ -920,8 +1006,10 @@ function renderGallery() {{
 
     const badges = doc.engine_results.map(er => {{
       const c = cerColor(er.cer); const bg = cerBg(er.cer);
+      const isPipe = er.ocr_intermediate !== undefined;
+      const label = isPipe ? '⛓' + er.engine.slice(0,8) : er.engine.slice(0,8);
       return `<span class="engine-cer-badge" style="color:${{c}};background:${{bg}}"
-        title="${{esc(er.engine)}}">${{esc(er.engine.slice(0,6))}} ${{pct(er.cer,1)}}</span>`;
+        title="${{esc(er.engine)}}${{isPipe?' (pipeline)':''}}">${{esc(label)}} ${{pct(er.cer,1)}}</span>`;
     }}).join('');
 
     return `<div class="gallery-card" onclick="openDocument('${{esc(doc.doc_id)}}')">
@@ -987,16 +1075,53 @@ function loadDocument(docId) {{
     const c = cerColor(er.cer); const bg = cerBg(er.cer);
     const diffHtml = renderDiff(er.diff);
     const errBadge = er.error ? `<span class="badge" style="background:#fee2e2;color:#dc2626">Erreur</span>` : '';
+
+    // Pipeline badge dans l'en-tête du panneau
+    const isPipeline = er.ocr_intermediate !== undefined;
+    const modeLabel = {{text_only:'texte seul', text_and_image:'image+texte', zero_shot:'zero-shot'}}[er.pipeline_mode] || '';
+    const pipeTagPanel = isPipeline
+      ? `<span class="pipeline-tag">⛓ ${{modeLabel || 'pipeline'}}</span>` : '';
+
+    // Sur-normalisation (classe 10)
+    let onBadge = '';
+    if (er.over_normalization) {{
+      const on = er.over_normalization;
+      const onPct = (on.score * 100).toFixed(2);
+      const cls = on.score > 0.05 ? 'over-norm-badge high' : 'over-norm-badge';
+      onBadge = `<span class="${{cls}}" title="Classe 10 — sur-normalisation LLM">Sur-norm. ${{onPct}}%</span>`;
+    }}
+
+    // Triple-diff (vue spécifique pipeline) : OCR brut / Correction LLM
+    let tripleDiffHtml = '';
+    if (isPipeline && er.ocr_intermediate) {{
+      const ocrDiffHtml   = renderDiff(er.ocr_diff);
+      const llmDiffHtml   = renderDiff(er.llm_correction_diff);
+      tripleDiffHtml = `
+        <div class="triple-diff-wrap">
+          <div class="triple-diff-section">
+            <h5>GT → OCR brut</h5>
+            ${{ocrDiffHtml || '<em style="color:var(--text-muted)">—</em>'}}
+          </div>
+          <div class="triple-diff-section">
+            <h5>OCR brut → Correction LLM</h5>
+            ${{llmDiffHtml || '<em style="color:var(--text-muted)">—</em>'}}
+          </div>
+        </div>`;
+    }}
+
     return `<div class="diff-panel">
       <div class="diff-panel-header">
         <span class="diff-panel-title">${{esc(er.engine)}}</span>
+        ${{pipeTagPanel}}
         <span class="diff-panel-metrics">
           <span class="cer-badge" style="color:${{c}};background:${{bg}}">${{pct(er.cer)}}</span>
           <span class="badge" style="background:#f1f5f9">WER ${{pct(er.wer)}}</span>
+          ${{onBadge}}
           ${{errBadge}}
         </span>
       </div>
       <div class="diff-panel-body">${{diffHtml || '<em style="color:var(--text-muted)">Aucune sortie</em>'}}</div>
+      ${{tripleDiffHtml}}
     </div>`;
   }}).join('');
 }}
