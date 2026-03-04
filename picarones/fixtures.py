@@ -24,18 +24,19 @@ from picarones.pipelines.over_normalization import detect_over_normalization
 # ---------------------------------------------------------------------------
 
 _GT_TEXTS = [
-    "Icy commence le prologue de maistre Jehan Froissart sus les croniques de France & d'Angleterre.",
-    "En l'an de grace mil trois cens soixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.",
-    "Item ledit jour furent menez en ladicte ville de Paris plusieurs prisonniers sarasins & mahommetans.",
-    "Le chancellier du roy manda à tous les baillifs & seneschaulx que on feist crier & publier par tous les carrefours.",
-    "Cy après sensuyt la copie des lettres patentes données par nostre seigneur le roy à ses très chiers & feaulx.",
-    "Nous Charles, par la grace de Dieu roy de France, à tous ceulx qui ces presentes lettres verront, salut.",
-    "Savoir faisons que pour considéracion des bons & aggreables services que nostre amé & feal conseillier.",
-    "Donné à Paris, le vingt & deuxième jour du mois de juillet, l'an de grace mil quatre cens & troys.",
-    "Les dessus ditz ambassadeurs respondirent que leur seigneur & maistre estoit très joyeulx de ceste aliance.",
-    "Après lesquelles choses ainsi faictes & passées, le dit traictié fut ratiffié & confirmé de toutes parties.",
-    "Item, en ladicte année, fut faicte grant assemblée de gens d'armes tant à cheval que à pied.",
-    "Et pour ce que la chose est notoire & manifeste, nous avons fait mettre nostre scel à ces presentes.",
+    # Textes avec graphies médiévales incluant ſ, &, u/v — pour démontrer le CER diplomatique
+    "Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre.",
+    "En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.",
+    "Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.",
+    "Le chancellier du roy manda à tous les baillifs & ſeneſchaulx que on feiſt crier & publier par tous les carrefours.",
+    "Cy après ſenſuyt la copie des lettres patentes données par noſtre ſeigneur le roy à ſes très chiers & feaulx.",
+    "Nous Charles, par la grace de Dieu roy de France, à tous ceulx qui ces preſentes lettres verront, ſalut.",
+    "Sauoir faiſons que pour conſidéracion des bons & aggreables ſeruices que noſtre amé & feal conſeillier.",
+    "Donné à Paris, le vingt & deuxième iour du mois de iuillet, l'an de grace mil quatre cens & troys.",
+    "Les deſſus ditz ambaſſadeurs reſpondirent que leur ſeigneur & maiſtre eſtoit très ioyeulx de ceſte aliance.",
+    "Après lesquelles choſes ainſi faictes & paſſées, le dit traictié fut ratiffié & confirmé de toutes parties.",
+    "Item, en ladicte année, fut faicte grant aſſemblée de gens d'armes tant à cheual que à pied.",
+    "Et pour ce que la choſe eſt notoire & manifeſte, nous auons fait mettre noſtre ſcel à ces preſentes.",
 ]
 
 # ---------------------------------------------------------------------------

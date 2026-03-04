@@ -69,6 +69,7 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
     engines_summary = []
     for report in benchmark.engine_reports:
         agg = report.aggregated_metrics
+        diplo_agg = agg.get("cer_diplomatic", {})
         entry: dict = {
             "name": report.engine_name,
             "version": report.engine_version,
@@ -81,11 +82,19 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "cer_max":    _safe(agg.get("cer", {}).get("max")),
             "doc_count":  agg.get("document_count", 0),
             "failed":     agg.get("failed_count", 0),
+            # CER diplomatique (après normalisation historique : ſ=s, u=v, i=j…)
+            "cer_diplomatic": _safe(diplo_agg.get("mean")) if diplo_agg else None,
+            "cer_diplomatic_profile": diplo_agg.get("profile"),
             # Distribution pour l'histogramme : liste des CER individuels
             "cer_values": [
                 _safe(dr.metrics.cer)
                 for dr in report.document_results
                 if dr.metrics.error is None
+            ],
+            "cer_diplomatic_values": [
+                _safe(dr.metrics.cer_diplomatic)
+                for dr in report.document_results
+                if dr.metrics.error is None and dr.metrics.cer_diplomatic is not None
             ],
             # Champs pipeline OCR+LLM (vides pour les moteurs OCR seuls)
             "is_pipeline": report.is_pipeline,
@@ -121,6 +130,7 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 "engine": engine_name,
                 "hypothesis": dr.hypothesis,
                 "cer": _safe(dr.metrics.cer),
+                "cer_diplomatic": _safe(dr.metrics.cer_diplomatic) if dr.metrics.cer_diplomatic is not None else None,
                 "wer": _safe(dr.metrics.wer),
                 "duration": dr.duration_seconds,
                 "error": dr.engine_error,
@@ -622,7 +632,8 @@ footer {{
           <tr>
             <th data-col="rank" class="sortable sorted" data-dir="asc">#<i class="sort-icon">↑</i></th>
             <th data-col="name" class="sortable">Concurrent<i class="sort-icon">↕</i></th>
-            <th data-col="cer"  class="sortable">CER<i class="sort-icon">↕</i></th>
+            <th data-col="cer"  class="sortable">CER exact<i class="sort-icon">↕</i></th>
+            <th data-col="cer_diplomatic" class="sortable" title="CER après normalisation diplomatique (ſ=s, u=v, i=j…) — mesure les erreurs substantielles en ignorant les variantes graphiques codifiées">CER diplo.<i class="sort-icon">↕</i></th>
             <th data-col="wer"  class="sortable">WER<i class="sort-icon">↕</i></th>
             <th data-col="mer"  class="sortable">MER<i class="sort-icon">↕</i></th>
             <th data-col="wil"  class="sortable">WIL<i class="sort-icon">↕</i></th>
@@ -906,6 +917,18 @@ function renderRanking() {{
       overNormCell = `<td><span class="${{cls}}" title="Classe 10 — ${{on.over_normalized_count}} mots corrects dégradés sur ${{on.total_correct_ocr_words}}">${{onPct}} %</span></td>`;
     }}
 
+    // CER diplomatique
+    let diploCerCell = '<td style="color:var(--text-muted)">—</td>';
+    if (e.cer_diplomatic !== null && e.cer_diplomatic !== undefined) {{
+      const dipC = cerColor(e.cer_diplomatic); const dipB = cerBg(e.cer_diplomatic);
+      const delta = e.cer - e.cer_diplomatic;
+      const deltaStr = delta > 0.001 ? ` <span style="font-size:.65rem;color:#059669">-${{(delta*100).toFixed(1)}}%</span>` : '';
+      const profileHint = e.cer_diplomatic_profile ? ` title="Profil : ${{esc(e.cer_diplomatic_profile)}}"` : '';
+      diploCerCell = `<td${{profileHint}}>
+        <span class="cer-badge" style="color:${{dipC}};background:${{dipB}}">${{pct(e.cer_diplomatic)}}</span>${{deltaStr}}
+      </td>`;
+    }}
+
     return `<tr>
       <td><span class="${{badgeClass}}">${{rank}}</span></td>
       <td>
@@ -918,6 +941,7 @@ function renderRanking() {{
         <span class="bar" style="width:${{barW}}px;background:${{cerC}}"></span>
         <span class="cer-badge" style="color:${{cerC}};background:${{cerB}}">${{pct(e.cer)}}</span>
       </td>
+      ${{diploCerCell}}
       <td>${{pct(e.wer)}}</td>
       <td>${{pct(e.mer)}}</td>
       <td>${{pct(e.wil)}}</td>
@@ -1109,12 +1133,23 @@ function loadDocument(docId) {{
         </div>`;
     }}
 
+    // CER diplomatique par document
+    let diplomaBadge = '';
+    if (er.cer_diplomatic !== null && er.cer_diplomatic !== undefined) {{
+      const dipC = cerColor(er.cer_diplomatic); const dipB = cerBg(er.cer_diplomatic);
+      const delta = er.cer - er.cer_diplomatic;
+      const deltaHint = delta > 0.001 ? ` (−${{(delta*100).toFixed(1)}}% avec normalisation)` : '';
+      diplomaBadge = `<span class="cer-badge" style="color:${{dipC}};background:${{dipB}};opacity:.85"
+        title="CER diplomatique (ſ=s, u=v, i=j…)${{deltaHint}}">diplo. ${{pct(er.cer_diplomatic)}}</span>`;
+    }}
+
     return `<div class="diff-panel">
       <div class="diff-panel-header">
         <span class="diff-panel-title">${{esc(er.engine)}}</span>
         ${{pipeTagPanel}}
         <span class="diff-panel-metrics">
           <span class="cer-badge" style="color:${{c}};background:${{bg}}">${{pct(er.cer)}}</span>
+          ${{diplomaBadge}}
           <span class="badge" style="background:#f1f5f9">WER ${{pct(er.wer)}}</span>
           ${{onBadge}}
           ${{errBadge}}
