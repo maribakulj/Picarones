@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "picarones"
+version = "0.1.0"
+description = "Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Bibliothèque nationale de France — Département numérique" }]
+keywords = ["ocr", "htr", "patrimoine", "benchmark", "cer", "wer"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "click>=8.1.0",
+    "jiwer>=3.0.0",
+    "Pillow>=10.0.0",
+    "pyyaml>=6.0.0",
+    "pytesseract>=0.3.10",
+    "tqdm>=4.66.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4.0", "pytest-cov>=4.1.0"]
+pero = ["pero-ocr>=0.1.0"]
+
+[project.scripts]
+picarones = "picarones.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["picarones*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
