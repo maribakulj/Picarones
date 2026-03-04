@@ -30,9 +30,14 @@ class DocumentResult:
     metrics: MetricsResult
     duration_seconds: float
     engine_error: Optional[str] = None
+    # Champs spécifiques aux pipelines OCR+LLM
+    ocr_intermediate: Optional[str] = None
+    """Sortie OCR brute avant correction LLM (None pour les moteurs OCR seuls)."""
+    pipeline_metadata: dict = field(default_factory=dict)
+    """Métadonnées du pipeline : mode, prompt, over-normalization…"""
 
     def as_dict(self) -> dict:
-        return {
+        d = {
             "doc_id": self.doc_id,
             "image_path": self.image_path,
             "ground_truth": self.ground_truth,
@@ -41,17 +46,27 @@ class DocumentResult:
             "duration_seconds": self.duration_seconds,
             "engine_error": self.engine_error,
         }
+        if self.ocr_intermediate is not None:
+            d["ocr_intermediate"] = self.ocr_intermediate
+        if self.pipeline_metadata:
+            d["pipeline_metadata"] = self.pipeline_metadata
+        return d
 
 
 @dataclass
 class EngineReport:
-    """Rapport complet d'un moteur sur l'ensemble du corpus."""
+    """Rapport complet d'un moteur (ou pipeline) sur l'ensemble du corpus."""
 
     engine_name: str
     engine_version: str
     engine_config: dict
     document_results: list[DocumentResult]
     aggregated_metrics: dict = field(default_factory=dict)
+    pipeline_info: dict = field(default_factory=dict)
+    """Métadonnées du pipeline OCR+LLM (vide pour les moteurs OCR seuls).
+    Clés typiques : mode, prompt_file, llm_model, llm_provider, pipeline_steps,
+    over_normalization (score agrégé, classe 10 de la taxonomie).
+    """
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -69,14 +84,22 @@ class EngineReport:
         wer_stats = self.aggregated_metrics.get("wer", {})
         return wer_stats.get("mean")
 
+    @property
+    def is_pipeline(self) -> bool:
+        """Vrai si ce rapport correspond à un pipeline OCR+LLM."""
+        return bool(self.pipeline_info)
+
     def as_dict(self) -> dict:
-        return {
+        d = {
             "engine_name": self.engine_name,
             "engine_version": self.engine_version,
             "engine_config": self.engine_config,
             "aggregated_metrics": self.aggregated_metrics,
             "document_results": [dr.as_dict() for dr in self.document_results],
         }
+        if self.pipeline_info:
+            d["pipeline_info"] = self.pipeline_info
+        return d
 
 
 @dataclass

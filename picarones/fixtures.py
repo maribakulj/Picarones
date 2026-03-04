@@ -17,6 +17,7 @@ from typing import Optional
 
 from picarones.core.metrics import MetricsResult, aggregate_metrics
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
+from picarones.pipelines.over_normalization import detect_over_normalization
 
 # ---------------------------------------------------------------------------
 # Textes GT réalistes (documents patrimoniaux BnF)
@@ -73,6 +74,38 @@ def _pero_errors(text: str, rng: random.Random) -> str:
     ]
     for src, tgt in rng.sample(replacements, k=rng.randint(0, 3)):
         text = text.replace(src, tgt, 1)
+    return text
+
+
+def _llm_correction(text: str, rng: random.Random) -> str:
+    """Simule la correction GPT-4o sur la sortie Tesseract.
+
+    Le LLM corrige la majorité des erreurs OCR mais introduit parfois
+    de la sur-normalisation (classe 10) : il modernise des graphies médiévales
+    légitimes (nostre → notre, maistre → maître, faict → fait).
+    """
+    # Corrections typiques que le LLM réussit (erreurs OCR fréquentes)
+    good_corrections = [
+        ("noltre", "nostre"), ("inaistre", "maistre"),
+        ("faictcs", "faictes"), ("conlcillier", "conseillie"),
+        ("confideration", "consideracion"), ("Froiflart", "Froissart"),
+        ("8", "&"), ("oe", "œ"),
+    ]
+    for src, tgt in good_corrections:
+        text = text.replace(src, tgt)
+
+    # Sur-normalisation : le LLM modernise parfois à tort (classe 10)
+    # Ces remplacements s'appliquent sur le texte (partiellement corrigé ci-dessus)
+    over_normalizations = [
+        ("nostre", "notre"), ("maistre", "maître"),
+        ("faictes", "faites"), ("Donné", "donné"),
+        ("conseillier", "conseiller"), ("consideracion", "considération"),
+    ]
+    # ~45% de chance de sur-normaliser sur chaque document
+    if rng.random() < 0.45:
+        for src, tgt in rng.sample(over_normalizations, k=rng.randint(1, 2)):
+            text = text.replace(src, tgt, 1)
+
     return text
 
 
@@ -182,16 +215,44 @@ def generate_sample_benchmark(
     n_docs = min(n_docs, len(_GT_TEXTS))
     gt_texts = _GT_TEXTS[:n_docs]
 
+    # (name, version, config, error_fn, is_pipeline, pipeline_info)
     engines_config = [
-        ("pero_ocr", "0.7.2", {"config": "/models/pero_printed.ini"}, _pero_errors),
-        ("tesseract", "5.3.3", {"lang": "fra", "psm": 6}, _tesseract_errors),
-        ("ancien_moteur", "2.1.0", {"lang": "fra"}, _bad_engine_errors),
+        ("pero_ocr", "0.7.2", {"config": "/models/pero_printed.ini"}, _pero_errors, False, {}),
+        ("tesseract", "5.3.3", {"lang": "fra", "psm": 6}, _tesseract_errors, False, {}),
+        ("ancien_moteur", "2.1.0", {"lang": "fra"}, _bad_engine_errors, False, {}),
+        # Pipeline fictif : tesseract → gpt-4o (post-correction image+texte)
+        (
+            "tesseract → gpt-4o",
+            "ocr=5.3.3; llm=gpt-4o",
+            {"lang": "fra", "psm": 6},
+            _llm_correction,  # appliqué sur la sortie tesseract
+            True,
+            {
+                "pipeline_mode": "text_and_image",
+                "prompt_file": "correction_medieval_french.txt",
+                "llm_model": "gpt-4o",
+                "llm_provider": "openai",
+                "pipeline_steps": [
+                    {"type": "ocr", "engine": "tesseract", "version": "5.3.3"},
+                    {
+                        "type": "llm",
+                        "model": "gpt-4o",
+                        "provider": "openai",
+                        "mode": "text_and_image",
+                        "prompt_file": "correction_medieval_french.txt",
+                    },
+                ],
+            },
+        ),
     ]
 
     engine_reports: list[EngineReport] = []
     image_b64_cache: dict[str, str] = {}
 
-    for engine_name, engine_version, engine_cfg, error_fn in engines_config:
+    # Pré-calculer les sorties tesseract pour le pipeline
+    tess_outputs: dict[str, str] = {}
+
+    for engine_name, engine_version, engine_cfg, error_fn, is_pipeline, pipeline_info in engines_config:
         doc_results: list[DocumentResult] = []
 
         for i, gt in enumerate(gt_texts):
@@ -203,8 +264,28 @@ def generate_sample_benchmark(
                 png = _make_placeholder_png(320, 220, gt[:20])
                 image_b64_cache[doc_id] = _png_to_data_uri(png)
 
-            # Générer la sortie OCR avec erreurs
-            hypothesis = error_fn(gt, rng)
+            if is_pipeline:
+                # Pour le pipeline : appliquer tesseract d'abord, puis LLM correction
+                ocr_intermediate = tess_outputs.get(doc_id) or _tesseract_errors(gt, random.Random(rng.randint(0, 9999)))
+                hypothesis = _llm_correction(ocr_intermediate, rng)
+                # Calcul de la sur-normalisation (classe 10)
+                over_norm = detect_over_normalization(gt, ocr_intermediate, hypothesis)
+                pipeline_meta = {
+                    "pipeline_mode": pipeline_info.get("pipeline_mode"),
+                    "prompt_file": pipeline_info.get("prompt_file"),
+                    "llm_model": pipeline_info.get("llm_model"),
+                    "llm_provider": pipeline_info.get("llm_provider"),
+                    "over_normalization": over_norm.as_dict(),
+                }
+                duration = round(rng.uniform(2.5, 12.0), 3)  # plus lent qu'un OCR seul
+            else:
+                ocr_intermediate = None
+                hypothesis = error_fn(gt, rng)
+                pipeline_meta = {}
+                duration = round(rng.uniform(0.3, 4.5), 3)
+                # Mémoriser la sortie tesseract pour le pipeline
+                if engine_name == "tesseract":
+                    tess_outputs[doc_id] = hypothesis
 
             metrics = _make_metrics(gt, hypothesis)
 
@@ -215,15 +296,36 @@ def generate_sample_benchmark(
                     ground_truth=gt,
                     hypothesis=hypothesis,
                     metrics=metrics,
-                    duration_seconds=round(rng.uniform(0.3, 4.5), 3),
+                    duration_seconds=duration,
+                    ocr_intermediate=ocr_intermediate,
+                    pipeline_metadata=pipeline_meta,
                 )
             )
+
+        # Agréger les stats de sur-normalisation pour le pipeline
+        effective_pipeline_info = dict(pipeline_info)
+        if is_pipeline:
+            over_norms = [
+                dr.pipeline_metadata.get("over_normalization")
+                for dr in doc_results
+                if dr.pipeline_metadata.get("over_normalization")
+            ]
+            if over_norms:
+                total_correct = sum(r["total_correct_ocr_words"] for r in over_norms)
+                total_over = sum(r["over_normalized_count"] for r in over_norms)
+                effective_pipeline_info["over_normalization"] = {
+                    "score": round(total_over / total_correct, 4) if total_correct > 0 else 0.0,
+                    "total_correct_ocr_words": total_correct,
+                    "over_normalized_count": total_over,
+                    "document_count": len(over_norms),
+                }
 
         report = EngineReport(
             engine_name=engine_name,
             engine_version=engine_version,
             engine_config=engine_cfg,
             document_results=doc_results,
+            pipeline_info=effective_pipeline_info,
         )
         engine_reports.append(report)
 

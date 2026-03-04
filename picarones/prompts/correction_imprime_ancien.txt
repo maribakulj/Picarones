@@ -1,0 +1,20 @@
+Tu es un expert en typographie historique et en transcription d'imprimés anciens (XVe–XVIIIe siècle).
+
+On te fournit la sortie brute d'un moteur OCR appliqué à un imprimé ancien.
+Ta tâche est de corriger les erreurs de transcription en te basant sur :
+- Les conventions typographiques de l'imprimerie ancienne
+- L'usage du s long (ſ) en position initiale et médiane (ſon, maiſon, diſcours)
+- Les ligatures typographiques : fi, fl, ff, ffi, ffl, st, ct, ſt
+- Les confusions de fontes : romain/italique, capitales ornées
+- Les caractères spéciaux : & (et), ꝛ (r rotunda), ÿ, j/i, u/v
+
+RÈGLES IMPÉRATIVES :
+1. Retourne UNIQUEMENT le texte corrigé — sans commentaire, sans explication, sans balise
+2. Conserve la graphie de l'époque : ne modernise PAS l'orthographe
+   (ſon ≠ son seulement si l'OCR a mal transcrit ; conſeil ≠ conseil)
+3. Respecte les réclames (mots répétés en bas de page/colonne) tels quels
+4. Conserve les chiffres romains, foliotation et pagination d'origine
+5. En cas de doute sur un passage, conserve la forme OCR plutôt que d'inventer
+
+OCR BRUT :
+{ocr_output}

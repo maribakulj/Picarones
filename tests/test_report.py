@@ -32,7 +32,8 @@ class TestGenerateSampleBenchmark:
         assert isinstance(sample_benchmark, BenchmarkResult)
 
     def test_correct_engine_count(self, sample_benchmark):
-        assert len(sample_benchmark.engine_reports) == 3
+        # 3 moteurs OCR + 1 pipeline tesseract → gpt-4o
+        assert len(sample_benchmark.engine_reports) == 4
 
     def test_correct_doc_count(self, sample_benchmark):
         assert sample_benchmark.document_count == 3
@@ -88,7 +89,8 @@ class TestBuildReportData:
 
     def test_engines_count(self, sample_benchmark):
         data = _build_report_data(sample_benchmark, {})
-        assert len(data["engines"]) == 3
+        # 3 moteurs OCR + 1 pipeline tesseract → gpt-4o
+        assert len(data["engines"]) == 4
 
     def test_engine_fields(self, sample_benchmark):
         data = _build_report_data(sample_benchmark, {})
@@ -219,7 +221,7 @@ class TestReportGenerator:
         data = json.loads(match.group(1))
         assert "engines" in data
         assert "documents" in data
-        assert len(data["engines"]) == 3
+        assert len(data["engines"]) == 4  # 3 OCR + 1 pipeline
 
 
 # ---------------------------------------------------------------------------
