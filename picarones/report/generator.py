@@ -1,0 +1,1358 @@
+"""Générateur du rapport HTML interactif auto-contenu.
+
+Le rapport produit est un fichier HTML unique embarquant :
+- Toutes les données (JSON inline)
+- Chart.js et diff2html (depuis cdnjs)
+- CSS et JavaScript de l'application
+
+Vues disponibles
+----------------
+1. Classement  — tableau triable par colonne (CER, WER, MER, WIL)
+2. Galerie     — grille d'images avec badge CER coloré
+3. Document    — image zoomable + diff coloré GT / OCR par moteur
+4. Analyses    — histogramme CER + graphique radar
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+from typing import Optional
+
+from picarones.core.results import BenchmarkResult
+from picarones.report.diff_utils import compute_word_diff
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _cer_color(cer: float) -> str:
+    """Retourne une couleur CSS pour un score CER donné (0→vert, 1→rouge)."""
+    if cer < 0.05:
+        return "#16a34a"   # vert
+    if cer < 0.15:
+        return "#ca8a04"   # jaune-orangé
+    if cer < 0.30:
+        return "#ea580c"   # orange
+    return "#dc2626"       # rouge
+
+
+def _cer_bg(cer: float) -> str:
+    if cer < 0.05:
+        return "#dcfce7"
+    if cer < 0.15:
+        return "#fef9c3"
+    if cer < 0.30:
+        return "#ffedd5"
+    return "#fee2e2"
+
+
+def _pct(v: Optional[float], decimals: int = 2) -> str:
+    if v is None:
+        return "—"
+    return f"{v * 100:.{decimals}f} %"
+
+
+def _safe(v: Optional[float], decimals: int = 4) -> float:
+    return round(v or 0.0, decimals)
+
+
+# ---------------------------------------------------------------------------
+# Préparation des données
+# ---------------------------------------------------------------------------
+
+def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -> dict:
+    """Transforme un BenchmarkResult en dict JSON pour le rapport HTML."""
+
+    engines_summary = []
+    for report in benchmark.engine_reports:
+        agg = report.aggregated_metrics
+        engines_summary.append({
+            "name": report.engine_name,
+            "version": report.engine_version,
+            "cer":  _safe(agg.get("cer", {}).get("mean")),
+            "wer":  _safe(agg.get("wer", {}).get("mean")),
+            "mer":  _safe(agg.get("mer", {}).get("mean")),
+            "wil":  _safe(agg.get("wil", {}).get("mean")),
+            "cer_median": _safe(agg.get("cer", {}).get("median")),
+            "cer_min":    _safe(agg.get("cer", {}).get("min")),
+            "cer_max":    _safe(agg.get("cer", {}).get("max")),
+            "doc_count":  agg.get("document_count", 0),
+            "failed":     agg.get("failed_count", 0),
+            # Distribution pour l'histogramme : liste des CER individuels
+            "cer_values": [
+                _safe(dr.metrics.cer)
+                for dr in report.document_results
+                if dr.metrics.error is None
+            ],
+        })
+
+    # Documents (vue galerie + vue détail)
+    # On collecte tous les doc_ids depuis le premier moteur
+    doc_ids_ordered = []
+    if benchmark.engine_reports:
+        doc_ids_ordered = [dr.doc_id for dr in benchmark.engine_reports[0].document_results]
+
+    # Index croisé : doc_id → {engine_name → DocumentResult}
+    doc_engine_map: dict[str, dict] = {did: {} for did in doc_ids_ordered}
+    for report in benchmark.engine_reports:
+        for dr in report.document_results:
+            doc_engine_map[dr.doc_id][report.engine_name] = dr
+
+    documents = []
+    for doc_id in doc_ids_ordered:
+        engine_results = []
+        gt = ""
+        image_path = ""
+        for engine_name in [r.engine_name for r in benchmark.engine_reports]:
+            dr = doc_engine_map[doc_id].get(engine_name)
+            if dr is None:
+                continue
+            gt = dr.ground_truth
+            image_path = dr.image_path
+            diff_ops = compute_word_diff(dr.ground_truth, dr.hypothesis)
+            engine_results.append({
+                "engine": engine_name,
+                "hypothesis": dr.hypothesis,
+                "cer": _safe(dr.metrics.cer),
+                "wer": _safe(dr.metrics.wer),
+                "duration": dr.duration_seconds,
+                "error": dr.engine_error,
+                "diff": diff_ops,
+            })
+
+        # CER moyen sur ce document (pour le badge galerie)
+        cer_values = [er["cer"] for er in engine_results if er["error"] is None]
+        mean_cer = sum(cer_values) / len(cer_values) if cer_values else 1.0
+        best_engine = min(engine_results, key=lambda x: x["cer"], default=None)
+
+        documents.append({
+            "doc_id": doc_id,
+            "image_path": image_path,
+            "image_b64": images_b64.get(doc_id, ""),
+            "ground_truth": gt,
+            "mean_cer": _safe(mean_cer),
+            "best_engine": best_engine["engine"] if best_engine else "",
+            "engine_results": engine_results,
+        })
+
+    return {
+        "meta": {
+            "corpus_name": benchmark.corpus_name,
+            "corpus_source": benchmark.corpus_source,
+            "document_count": benchmark.document_count,
+            "run_date": benchmark.run_date,
+            "picarones_version": benchmark.picarones_version,
+            "metadata": benchmark.metadata,
+        },
+        "ranking": benchmark.ranking(),
+        "engines": engines_summary,
+        "documents": documents,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Template HTML
+# ---------------------------------------------------------------------------
+
+_HTML_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picarones — {corpus_name}</title>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+  integrity="sha512-CQBWl4fJHWbryGE+Pc3UJWW1h3Q8IkkvNnPTozals+S49OTEQPoQj/m1LZRM28Wr/7bJCMlpYS3/Zp4hHuWQ=="
+  crossorigin="anonymous"></script>
+
+<!-- diff2html -->
+<link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.47/diff2html.min.css"
+  crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.47/diff2html.min.js"
+  crossorigin="anonymous"></script>
+
+<style>
+/* ── Reset & base ─────────────────────────────────────────────────── */
+*, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+:root {{
+  --bg:         #f1f5f9;
+  --surface:    #ffffff;
+  --border:     #e2e8f0;
+  --primary:    #1e40af;
+  --primary-lt: #dbeafe;
+  --text:       #1e293b;
+  --text-muted: #64748b;
+  --ins:        #16a34a;
+  --ins-bg:     #dcfce7;
+  --del:        #dc2626;
+  --del-bg:     #fee2e2;
+  --rep:        #c2410c;
+  --rep-bg:     #ffedd5;
+  --radius:     8px;
+  --shadow:     0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --nav-h:      56px;
+}}
+html {{ font-size: 14px; scroll-behavior: smooth; }}
+body {{
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}}
+
+/* ── Navigation ───────────────────────────────────────────────────── */
+nav {{
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-h);
+  background: var(--primary);
+  display: flex; align-items: center;
+  padding: 0 1.5rem;
+  gap: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}}
+nav .brand {{
+  color: #fff; font-weight: 700; font-size: 1.1rem;
+  letter-spacing: -.3px; white-space: nowrap;
+  display: flex; align-items: center; gap: .4rem;
+}}
+nav .brand span {{ opacity: .7; font-weight: 400; font-size: .85rem; }}
+nav .tabs {{
+  display: flex; gap: .25rem; flex: 1;
+}}
+.tab-btn {{
+  background: transparent; border: none; cursor: pointer;
+  color: rgba(255,255,255,.7);
+  padding: .4rem .9rem; border-radius: 6px;
+  font-size: .9rem; font-weight: 500;
+  transition: background .15s, color .15s;
+}}
+.tab-btn:hover  {{ background: rgba(255,255,255,.12); color: #fff; }}
+.tab-btn.active {{ background: rgba(255,255,255,.18); color: #fff; }}
+nav .meta {{
+  color: rgba(255,255,255,.6); font-size: .78rem;
+  white-space: nowrap; margin-left: auto;
+}}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+main {{
+  margin-top: var(--nav-h);
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin-left: auto; margin-right: auto;
+}}
+.view {{ display: none; }}
+.view.active {{ display: block; }}
+.card {{
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}}
+h2 {{
+  font-size: 1rem; font-weight: 700;
+  color: var(--text); margin-bottom: .75rem;
+  border-bottom: 2px solid var(--primary-lt);
+  padding-bottom: .4rem;
+}}
+h3 {{ font-size: .9rem; font-weight: 600; margin-bottom: .5rem; }}
+
+/* ── Ranking table ────────────────────────────────────────────────── */
+.table-wrap {{ overflow-x: auto; }}
+table {{
+  width: 100%; border-collapse: collapse;
+  font-size: .88rem;
+}}
+thead tr {{ background: var(--bg); }}
+th {{
+  text-align: left; padding: .6rem .75rem;
+  border-bottom: 2px solid var(--border);
+  cursor: pointer; white-space: nowrap;
+  color: var(--text-muted); font-weight: 600; font-size: .8rem;
+  text-transform: uppercase; letter-spacing: .04em;
+  user-select: none;
+}}
+th.sortable:hover {{ color: var(--primary); }}
+th .sort-icon {{ opacity: .4; margin-left: .25rem; font-style: normal; }}
+th.sorted .sort-icon {{ opacity: 1; color: var(--primary); }}
+td {{
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}}
+tr:last-child td {{ border-bottom: none; }}
+tbody tr:hover {{ background: #f8fafc; }}
+.rank-badge {{
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  font-weight: 700; font-size: .75rem;
+  background: var(--primary-lt); color: var(--primary);
+}}
+.rank-badge.rank-1 {{ background: #fef3c7; color: #92400e; }}
+.engine-name {{ font-weight: 600; }}
+.engine-version {{ color: var(--text-muted); font-size: .78rem; margin-left: .3rem; }}
+.cer-badge {{
+  display: inline-block;
+  padding: .15rem .5rem; border-radius: 4px;
+  font-weight: 600; font-size: .82rem;
+}}
+.bar {{
+  display: inline-block; height: 8px; border-radius: 4px;
+  vertical-align: middle; margin-right: .4rem;
+}}
+
+/* ── Gallery ──────────────────────────────────────────────────────── */
+.gallery-controls {{
+  display: flex; align-items: center; gap: .75rem;
+  margin-bottom: 1rem; flex-wrap: wrap;
+}}
+.gallery-controls label {{ font-size: .82rem; color: var(--text-muted); }}
+.gallery-controls input[type=range] {{ width: 120px; }}
+.gallery-grid {{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}}
+.gallery-card {{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}}
+.gallery-card:hover {{
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  border-color: var(--primary);
+}}
+.gallery-card img, .gallery-card .img-placeholder {{
+  width: 100%; aspect-ratio: 4/3; object-fit: cover;
+  display: block; background: #e8e0d4;
+}}
+.img-placeholder {{
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; color: #94a3b8;
+}}
+.gallery-card-body {{
+  padding: .6rem .75rem;
+}}
+.gallery-card-title {{
+  font-size: .8rem; font-weight: 600; margin-bottom: .35rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}}
+.gallery-card-badges {{
+  display: flex; gap: .3rem; flex-wrap: wrap;
+}}
+.engine-cer-badge {{
+  font-size: .7rem; font-weight: 700;
+  padding: .1rem .35rem; border-radius: 3px;
+}}
+
+/* ── Document detail ──────────────────────────────────────────────── */
+.doc-layout {{
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1rem;
+  align-items: start;
+}}
+@media (max-width: 768px) {{
+  .doc-layout {{ grid-template-columns: 1fr; }}
+}}
+.doc-sidebar {{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: calc(100vh - var(--nav-h) - 3rem);
+  overflow-y: auto;
+  position: sticky;
+  top: calc(var(--nav-h) + 1.5rem);
+}}
+.doc-sidebar-header {{
+  padding: .6rem .75rem;
+  font-size: .8rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface);
+}}
+.doc-list-item {{
+  padding: .5rem .75rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem;
+  transition: background .1s;
+}}
+.doc-list-item:last-child {{ border-bottom: none; }}
+.doc-list-item:hover {{ background: var(--bg); }}
+.doc-list-item.active {{ background: var(--primary-lt); }}
+.doc-list-label {{ font-size: .82rem; font-weight: 500; }}
+.doc-list-cer {{
+  font-size: .72rem; font-weight: 700;
+  padding: .1rem .3rem; border-radius: 3px;
+  flex-shrink: 0;
+}}
+
+/* Image zone */
+.doc-image-wrap {{
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: #e8e0d4; cursor: zoom-in;
+  aspect-ratio: 4/3;
+}}
+.doc-image-wrap img {{
+  width: 100%; height: 100%; object-fit: contain;
+  transform-origin: center center;
+  transition: transform .2s;
+  user-select: none;
+}}
+.doc-image-placeholder {{
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: .5rem; color: #94a3b8;
+  font-size: .9rem;
+}}
+.zoom-controls {{
+  position: absolute; bottom: .5rem; right: .5rem;
+  display: flex; gap: .3rem;
+}}
+.zoom-btn {{
+  background: rgba(0,0,0,.5); color: #fff;
+  border: none; border-radius: 4px; cursor: pointer;
+  width: 28px; height: 28px; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s;
+}}
+.zoom-btn:hover {{ background: rgba(0,0,0,.75); }}
+
+/* Diff panels */
+.diff-panels {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: .75rem;
+  margin-top: .75rem;
+}}
+.diff-panel {{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}}
+.diff-panel-header {{
+  padding: .5rem .75rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}}
+.diff-panel-title {{ font-size: .83rem; font-weight: 700; }}
+.diff-panel-metrics {{
+  display: flex; gap: .4rem;
+  font-size: .72rem;
+}}
+.diff-panel-body {{
+  padding: .75rem; font-size: .82rem; line-height: 1.7;
+  font-family: 'Georgia', serif;
+  max-height: 260px; overflow-y: auto;
+}}
+/* Diff spans */
+.d-eq {{ color: var(--text); }}
+.d-ins {{ color: var(--ins); background: var(--ins-bg); border-radius: 2px; padding: 0 1px; }}
+.d-del {{ color: var(--del); background: var(--del-bg); border-radius: 2px; padding: 0 1px; text-decoration: line-through; }}
+.d-rep-old {{ color: var(--del); background: var(--del-bg); border-radius: 2px 0 0 2px; padding: 0 1px; text-decoration: line-through; }}
+.d-rep-new {{ color: var(--rep); background: var(--rep-bg); border-radius: 0 2px 2px 0; padding: 0 1px; }}
+
+/* GT panel */
+.gt-panel {{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}}
+.gt-panel-header {{
+  padding: .5rem .75rem;
+  background: #f0fdf4;
+  border-bottom: 1px solid #bbf7d0;
+  font-size: .83rem; font-weight: 700; color: #15803d;
+}}
+.gt-panel-body {{
+  padding: .75rem; font-size: .82rem; line-height: 1.7;
+  font-family: 'Georgia', serif;
+  max-height: 260px; overflow-y: auto;
+  color: var(--text);
+}}
+
+/* ── Analyses ─────────────────────────────────────────────────────── */
+.charts-grid {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 1rem;
+}}
+.chart-card {{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}}
+.chart-canvas-wrap {{ position: relative; height: 280px; }}
+
+/* ── Misc ─────────────────────────────────────────────────────────── */
+.badge {{
+  display: inline-block; padding: .15rem .45rem;
+  border-radius: 4px; font-size: .72rem; font-weight: 700;
+}}
+.pill {{
+  display: inline-block; padding: .1rem .4rem;
+  border-radius: 12px; font-size: .72rem;
+  background: var(--primary-lt); color: var(--primary);
+}}
+.empty-state {{
+  text-align: center; padding: 3rem 1rem;
+  color: var(--text-muted); font-size: .9rem;
+}}
+.legend-dot {{
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: .3rem;
+}}
+.legend-row {{
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .78rem; color: var(--text-muted);
+}}
+footer {{
+  text-align: center; padding: 1.5rem;
+  color: var(--text-muted); font-size: .75rem;
+  border-top: 1px solid var(--border); margin-top: 2rem;
+}}
+.stat-row {{
+  display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: .75rem;
+}}
+.stat {{
+  background: var(--bg); border-radius: 6px; padding: .4rem .75rem;
+  font-size: .8rem;
+}}
+.stat b {{ color: var(--primary); }}
+</style>
+</head>
+
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────────── -->
+<nav>
+  <div class="brand">
+    Picarones
+    <span>| rapport OCR</span>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showView('ranking')">Classement</button>
+    <button class="tab-btn" onclick="showView('gallery')">Galerie</button>
+    <button class="tab-btn" onclick="showView('document')">Document</button>
+    <button class="tab-btn" onclick="showView('analyses')">Analyses</button>
+  </div>
+  <div class="meta" id="nav-meta">—</div>
+</nav>
+
+<!-- ── Main ───────────────────────────────────────────────────────── -->
+<main>
+
+<!-- ════ Vue 1 : Classement ════════════════════════════════════════ -->
+<div id="view-ranking" class="view active">
+  <div class="card">
+    <h2>Classement des moteurs</h2>
+    <div class="stat-row" id="ranking-stats"></div>
+    <div class="table-wrap">
+      <table id="ranking-table">
+        <thead>
+          <tr>
+            <th data-col="rank" class="sortable sorted" data-dir="asc">#<i class="sort-icon">↑</i></th>
+            <th data-col="name" class="sortable">Moteur<i class="sort-icon">↕</i></th>
+            <th data-col="cer"  class="sortable">CER<i class="sort-icon">↕</i></th>
+            <th data-col="wer"  class="sortable">WER<i class="sort-icon">↕</i></th>
+            <th data-col="mer"  class="sortable">MER<i class="sort-icon">↕</i></th>
+            <th data-col="wil"  class="sortable">WIL<i class="sort-icon">↕</i></th>
+            <th>CER médian</th>
+            <th>CER min</th>
+            <th>CER max</th>
+            <th>Docs</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-tbody"></tbody>
+      </table>
+    </div>
+    <div class="stat-row" style="margin-top:.75rem">
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#16a34a"></span>CER &lt; 5 %
+      </div>
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#ca8a04"></span>5–15 %
+      </div>
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#ea580c"></span>15–30 %
+      </div>
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#dc2626"></span>&gt; 30 %
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ Vue 2 : Galerie ═══════════════════════════════════════════ -->
+<div id="view-gallery" class="view">
+  <div class="card">
+    <h2>Galerie des documents</h2>
+    <div class="gallery-controls">
+      <label>Trier par :
+        <select id="gallery-sort" onchange="renderGallery()">
+          <option value="doc_id">Identifiant</option>
+          <option value="mean_cer">CER moyen</option>
+          <option value="best_engine">Meilleur moteur</option>
+        </select>
+      </label>
+      <label>Filtrer CER &gt;
+        <input type="number" id="gallery-filter-cer" min="0" max="100" value="0" step="1"
+          style="width:60px" onchange="renderGallery()"> %
+      </label>
+      <label>Moteur :
+        <select id="gallery-engine-select" onchange="renderGallery()">
+          <option value="">Tous</option>
+        </select>
+      </label>
+    </div>
+    <div id="gallery-grid" class="gallery-grid"></div>
+    <div id="gallery-empty" class="empty-state" style="display:none">
+      Aucun document ne correspond aux filtres.
+    </div>
+  </div>
+</div>
+
+<!-- ════ Vue 3 : Document ══════════════════════════════════════════ -->
+<div id="view-document" class="view">
+  <div class="doc-layout">
+    <!-- Sidebar -->
+    <aside class="doc-sidebar">
+      <div class="doc-sidebar-header">Documents</div>
+      <div id="doc-list"></div>
+    </aside>
+
+    <!-- Contenu principal -->
+    <div>
+      <div class="card" id="doc-detail-header">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:.5rem">
+          <h2 id="doc-detail-title">Sélectionner un document</h2>
+          <div class="stat-row" id="doc-detail-metrics"></div>
+        </div>
+      </div>
+
+      <!-- Image zoomable -->
+      <div class="card">
+        <h3>Image originale</h3>
+        <div class="doc-image-wrap" id="doc-image-wrap"
+          onwheel="handleZoom(event)"
+          onmousedown="startDrag(event)"
+          onmousemove="doDrag(event)"
+          onmouseup="endDrag()"
+          onmouseleave="endDrag()">
+          <div class="doc-image-placeholder" id="doc-image-placeholder">
+            <span style="font-size:2rem">🖼</span>
+            <span>Sélectionnez un document</span>
+          </div>
+          <img id="doc-image" src="" alt="Image du document" style="display:none">
+          <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoom(1.25)" title="Zoom +">+</button>
+            <button class="zoom-btn" onclick="zoom(0.8)"  title="Zoom −">−</button>
+            <button class="zoom-btn" onclick="resetZoom()" title="Réinitialiser">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vérité terrain -->
+      <div class="card">
+        <h3>Vérité terrain (GT)</h3>
+        <div class="gt-panel">
+          <div class="gt-panel-header">✓ Ground Truth</div>
+          <div class="gt-panel-body" id="doc-gt-text">—</div>
+        </div>
+      </div>
+
+      <!-- Diffs par moteur -->
+      <div class="card">
+        <h3>Sorties OCR — diff par moteur</h3>
+        <div class="diff-panels" id="doc-diff-panels"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ Vue 4 : Analyses ══════════════════════════════════════════ -->
+<div id="view-analyses" class="view">
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <h3>Distribution du CER par moteur</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-cer-hist"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Profil des moteurs (radar)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-radar"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem">
+        Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>CER par document (tous moteurs)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-cer-doc"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Temps d'exécution moyen (secondes/document)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-duration"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+
+<footer>
+  Généré par <strong>Picarones</strong> v{picarones_version}
+  — BnF, Département numérique
+  — <span id="footer-date"></span>
+</footer>
+
+<!-- ── Données embarquées ──────────────────────────────────────────── -->
+<script>
+const DATA = {report_data_json};
+</script>
+
+<!-- ── Application ────────────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ── Palette couleurs par moteur ──────────────────────────────────
+const PALETTE = [
+  '#2563eb','#dc2626','#16a34a','#ca8a04','#7c3aed',
+  '#0891b2','#c2410c','#0f766e','#9333ea','#b45309',
+];
+function engineColor(idx) {{ return PALETTE[idx % PALETTE.length]; }}
+
+// ── Navigation ──────────────────────────────────────────────────
+let currentView = 'ranking';
+function showView(name) {{
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {{
+    if (b.textContent.toLowerCase().startsWith(
+        {{ranking:'c',gallery:'g',document:'d',analyses:'a'}}[name]
+    )) b.classList.add('active');
+  }});
+  currentView = name;
+  if (name === 'analyses' && !chartsBuilt) buildCharts();
+}}
+
+// ── Formatage ───────────────────────────────────────────────────
+function pct(v, d=2) {{
+  if (v === null || v === undefined) return '—';
+  return (v * 100).toFixed(d) + ' %';
+}}
+function cerColor(v) {{
+  if (v < 0.05) return '#16a34a';
+  if (v < 0.15) return '#ca8a04';
+  if (v < 0.30) return '#ea580c';
+  return '#dc2626';
+}}
+function cerBg(v) {{
+  if (v < 0.05) return '#dcfce7';
+  if (v < 0.15) return '#fef9c3';
+  if (v < 0.30) return '#ffedd5';
+  return '#fee2e2';
+}}
+function esc(s) {{
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}}
+
+// ── Diff renderer ──────────────────────────────────────────────
+function renderDiff(ops) {{
+  if (!ops || !ops.length) return '<em style="color:var(--text-muted)">— aucune sortie —</em>';
+  return ops.map(op => {{
+    if (op.op === 'equal')
+      return '<span class="d-eq">' + esc(op.text) + '</span>';
+    if (op.op === 'insert')
+      return '<span class="d-ins" title="Insertion OCR">' + esc(op.text) + '</span>';
+    if (op.op === 'delete')
+      return '<span class="d-del" title="Suppression (présent GT)">' + esc(op.text) + '</span>';
+    if (op.op === 'replace')
+      return '<span class="d-rep-old" title="Remplacement">' + esc(op.old) + '</span>'
+           + '<span class="d-rep-new">' + esc(op.new) + '</span>';
+    return '';
+  }}).join(' ');
+}}
+
+// ── Vue Classement ──────────────────────────────────────────────
+let rankingSort = {{ col: 'cer', dir: 'asc' }};
+
+function renderRanking() {{
+  const engines = [...DATA.engines];
+  // Trier
+  engines.sort((a, b) => {{
+    let va = a[rankingSort.col], vb = b[rankingSort.col];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va === null) va = Infinity;
+    if (vb === null) vb = Infinity;
+    return rankingSort.dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+  }});
+
+  const tbody = document.getElementById('ranking-tbody');
+  tbody.innerHTML = engines.map((e, i) => {{
+    const rank = i + 1;
+    const badgeClass = rank === 1 ? 'rank-badge rank-1' : 'rank-badge';
+    const cerC = cerColor(e.cer); const cerB = cerBg(e.cer);
+    const barW = Math.min(100, e.cer * 100 * 3);
+    return `<tr>
+      <td><span class="${{badgeClass}}">${{rank}}</span></td>
+      <td>
+        <span class="engine-name">${{esc(e.name)}}</span>
+        <span class="engine-version">v${{esc(e.version)}}</span>
+      </td>
+      <td>
+        <span class="bar" style="width:${{barW}}px;background:${{cerC}}"></span>
+        <span class="cer-badge" style="color:${{cerC}};background:${{cerB}}">${{pct(e.cer)}}</span>
+      </td>
+      <td>${{pct(e.wer)}}</td>
+      <td>${{pct(e.mer)}}</td>
+      <td>${{pct(e.wil)}}</td>
+      <td style="color:var(--text-muted)">${{pct(e.cer_median)}}</td>
+      <td style="color:var(--text-muted)">${{pct(e.cer_min)}}</td>
+      <td style="color:var(--text-muted)">${{pct(e.cer_max)}}</td>
+      <td><span class="pill">${{e.doc_count}}</span></td>
+    </tr>`;
+  }}).join('');
+
+  // Stats globales
+  const stats = document.getElementById('ranking-stats');
+  stats.innerHTML = `
+    <div class="stat">Corpus <b>${{esc(DATA.meta.corpus_name)}}</b></div>
+    <div class="stat">Documents <b>${{DATA.meta.document_count}}</b></div>
+    <div class="stat">Moteurs <b>${{DATA.engines.length}}</b></div>
+  `;
+}}
+
+// Tri au clic sur en-tête
+document.querySelectorAll('#ranking-table th.sortable').forEach(th => {{
+  th.addEventListener('click', () => {{
+    const col = th.dataset.col;
+    if (rankingSort.col === col) {{
+      rankingSort.dir = rankingSort.dir === 'asc' ? 'desc' : 'asc';
+    }} else {{
+      rankingSort.col = col;
+      rankingSort.dir = 'asc';
+    }}
+    document.querySelectorAll('#ranking-table th').forEach(t => {{
+      t.classList.remove('sorted');
+      const icon = t.querySelector('.sort-icon');
+      if (icon) icon.textContent = '↕';
+    }});
+    th.classList.add('sorted');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = rankingSort.dir === 'asc' ? '↑' : '↓';
+    renderRanking();
+  }});
+}});
+
+// ── Vue Galerie ─────────────────────────────────────────────────
+function renderGallery() {{
+  const sortKey  = document.getElementById('gallery-sort').value;
+  const filterCer = parseFloat(document.getElementById('gallery-filter-cer').value) / 100 || 0;
+  const filterEngine = document.getElementById('gallery-engine-select').value;
+
+  let docs = [...DATA.documents];
+
+  // Filtre CER
+  if (filterCer > 0) {{
+    docs = docs.filter(d => {{
+      if (filterEngine) {{
+        const er = d.engine_results.find(r => r.engine === filterEngine);
+        return er && er.cer >= filterCer;
+      }}
+      return d.mean_cer >= filterCer;
+    }});
+  }}
+
+  // Tri
+  docs.sort((a, b) => {{
+    if (sortKey === 'mean_cer') return a.mean_cer - b.mean_cer;
+    if (sortKey === 'best_engine') return a.best_engine.localeCompare(b.best_engine);
+    return a.doc_id.localeCompare(b.doc_id);
+  }});
+
+  const grid = document.getElementById('gallery-grid');
+  const empty = document.getElementById('gallery-empty');
+
+  if (!docs.length) {{
+    grid.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }}
+  empty.style.display = 'none';
+
+  grid.innerHTML = docs.map(doc => {{
+    const imgTag = doc.image_b64
+      ? `<img src="${{doc.image_b64}}" alt="${{esc(doc.doc_id)}}" loading="lazy">`
+      : `<div class="img-placeholder">🖹</div>`;
+
+    const badges = doc.engine_results.map(er => {{
+      const c = cerColor(er.cer); const bg = cerBg(er.cer);
+      return `<span class="engine-cer-badge" style="color:${{c}};background:${{bg}}"
+        title="${{esc(er.engine)}}">${{esc(er.engine.slice(0,6))}} ${{pct(er.cer,1)}}</span>`;
+    }}).join('');
+
+    return `<div class="gallery-card" onclick="openDocument('${{esc(doc.doc_id)}}')">
+      ${{imgTag}}
+      <div class="gallery-card-body">
+        <div class="gallery-card-title">${{esc(doc.doc_id)}}</div>
+        <div class="gallery-card-badges">${{badges}}</div>
+      </div>
+    </div>`;
+  }}).join('');
+}}
+
+// ── Vue Document ────────────────────────────────────────────────
+let currentDocId = null;
+let zoomLevel = 1;
+let dragStart = null;
+let imgOffset = {{ x: 0, y: 0 }};
+
+function openDocument(docId) {{
+  showView('document');
+  loadDocument(docId);
+}}
+
+function loadDocument(docId) {{
+  const doc = DATA.documents.find(d => d.doc_id === docId);
+  if (!doc) return;
+  currentDocId = docId;
+
+  // Sidebar : highlight
+  document.querySelectorAll('.doc-list-item').forEach(el => {{
+    el.classList.toggle('active', el.dataset.docId === docId);
+  }});
+
+  // Titre
+  document.getElementById('doc-detail-title').textContent = doc.doc_id;
+
+  // Métriques
+  const metricsDiv = document.getElementById('doc-detail-metrics');
+  const cer = doc.mean_cer;
+  metricsDiv.innerHTML = `<div class="stat">CER moyen <b style="color:${{cerColor(cer)}}">${{pct(cer)}}</b></div>
+    <div class="stat">Meilleur moteur <b>${{esc(doc.best_engine)}}</b></div>`;
+
+  // Image
+  resetZoom();
+  const img = document.getElementById('doc-image');
+  const placeholder = document.getElementById('doc-image-placeholder');
+  if (doc.image_b64) {{
+    img.src = doc.image_b64;
+    img.style.display = '';
+    placeholder.style.display = 'none';
+  }} else {{
+    img.style.display = 'none';
+    placeholder.style.display = '';
+    placeholder.innerHTML = `<span style="font-size:2rem">🖹</span><span>${{esc(doc.image_path)}}</span>`;
+  }}
+
+  // GT
+  document.getElementById('doc-gt-text').textContent = doc.ground_truth;
+
+  // Diffs
+  const panels = document.getElementById('doc-diff-panels');
+  panels.innerHTML = doc.engine_results.map((er, i) => {{
+    const c = cerColor(er.cer); const bg = cerBg(er.cer);
+    const diffHtml = renderDiff(er.diff);
+    const errBadge = er.error ? `<span class="badge" style="background:#fee2e2;color:#dc2626">Erreur</span>` : '';
+    return `<div class="diff-panel">
+      <div class="diff-panel-header">
+        <span class="diff-panel-title">${{esc(er.engine)}}</span>
+        <span class="diff-panel-metrics">
+          <span class="cer-badge" style="color:${{c}};background:${{bg}}">${{pct(er.cer)}}</span>
+          <span class="badge" style="background:#f1f5f9">WER ${{pct(er.wer)}}</span>
+          ${{errBadge}}
+        </span>
+      </div>
+      <div class="diff-panel-body">${{diffHtml || '<em style="color:var(--text-muted)">Aucune sortie</em>'}}</div>
+    </div>`;
+  }}).join('');
+}}
+
+function buildDocList() {{
+  const list = document.getElementById('doc-list');
+  list.innerHTML = DATA.documents.map(doc => {{
+    const c = cerColor(doc.mean_cer); const bg = cerBg(doc.mean_cer);
+    return `<div class="doc-list-item" data-doc-id="${{esc(doc.doc_id)}}"
+        onclick="loadDocument('${{esc(doc.doc_id)}}')">
+      <span class="doc-list-label">${{esc(doc.doc_id)}}</span>
+      <span class="doc-list-cer" style="color:${{c}};background:${{bg}}">${{pct(doc.mean_cer,1)}}</span>
+    </div>`;
+  }}).join('');
+  if (DATA.documents.length) loadDocument(DATA.documents[0].doc_id);
+}}
+
+// Zoom
+function handleZoom(e) {{
+  e.preventDefault();
+  zoom(e.deltaY < 0 ? 1.15 : 0.87);
+}}
+function zoom(factor) {{
+  zoomLevel = Math.max(0.5, Math.min(5, zoomLevel * factor));
+  applyZoom();
+}}
+function resetZoom() {{
+  zoomLevel = 1; imgOffset = {{ x: 0, y: 0 }};
+  applyZoom();
+}}
+function applyZoom() {{
+  const img = document.getElementById('doc-image');
+  img.style.transform = `scale(${{zoomLevel}}) translate(${{imgOffset.x}}px, ${{imgOffset.y}}px)`;
+}}
+function startDrag(e) {{
+  if (zoomLevel <= 1) return;
+  dragStart = {{ x: e.clientX - imgOffset.x * zoomLevel, y: e.clientY - imgOffset.y * zoomLevel }};
+  document.getElementById('doc-image-wrap').style.cursor = 'grabbing';
+}}
+function doDrag(e) {{
+  if (!dragStart) return;
+  imgOffset.x = (e.clientX - dragStart.x) / zoomLevel;
+  imgOffset.y = (e.clientY - dragStart.y) / zoomLevel;
+  applyZoom();
+}}
+function endDrag() {{
+  dragStart = null;
+  document.getElementById('doc-image-wrap').style.cursor = zoomLevel > 1 ? 'grab' : 'zoom-in';
+}}
+
+// ── Graphiques ──────────────────────────────────────────────────
+let chartsBuilt = false;
+let chartInstances = {{}};
+
+function destroyChart(id) {{
+  if (chartInstances[id]) {{ chartInstances[id].destroy(); delete chartInstances[id]; }}
+}}
+
+function buildCharts() {{
+  if (chartsBuilt) return;
+  chartsBuilt = true;
+  buildCerHistogram();
+  buildRadar();
+  buildCerPerDoc();
+  buildDurationChart();
+}}
+
+function buildCerHistogram() {{
+  destroyChart('cer-hist');
+  const ctx = document.getElementById('chart-cer-hist').getContext('2d');
+  // Construire histogramme à bins fixes [0-5, 5-10, 10-20, 20-30, 30-50, 50+]
+  const bins    = [0, 0.05, 0.10, 0.20, 0.30, 0.50, 1.01];
+  const labels  = ['0–5%', '5–10%', '10–20%', '20–30%', '30–50%', '>50%'];
+  const colors  = ['#16a34a','#65a30d','#ca8a04','#ea580c','#dc2626','#9f1239'];
+
+  const datasets = DATA.engines.map((e, ei) => {{
+    const counts = new Array(labels.length).fill(0);
+    e.cer_values.forEach(v => {{
+      for (let i = 0; i < bins.length - 1; i++) {{
+        if (v >= bins[i] && v < bins[i+1]) {{ counts[i]++; break; }}
+      }}
+    }});
+    return {{
+      label: e.name, data: counts,
+      backgroundColor: engineColor(ei) + 'aa',
+      borderColor: engineColor(ei),
+      borderWidth: 1,
+    }};
+  }});
+
+  chartInstances['cer-hist'] = new Chart(ctx, {{
+    type: 'bar',
+    data: {{ labels, datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{ legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }} }},
+      scales: {{
+        x: {{ title: {{ display: true, text: 'Plage CER', font: {{ size: 11 }} }} }},
+        y: {{ title: {{ display: true, text: 'Nombre de documents', font: {{ size: 11 }} }},
+               ticks: {{ stepSize: 1 }} }},
+      }},
+    }},
+  }});
+}}
+
+function buildRadar() {{
+  destroyChart('radar');
+  const ctx = document.getElementById('chart-radar').getContext('2d');
+  // Axes : CER, WER, MER, WIL inversés (1 - valeur → plus c'est élevé, mieux c'est)
+  const metrics = ['CER', 'WER', 'MER', 'WIL'];
+  const keys    = ['cer', 'wer', 'mer', 'wil'];
+  const datasets = DATA.engines.map((e, i) => {{
+    const data = keys.map(k => Math.max(0, (1 - (e[k] || 0)) * 100));
+    return {{
+      label: e.name, data,
+      backgroundColor: engineColor(i) + '33',
+      borderColor: engineColor(i),
+      borderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }};
+  }});
+
+  chartInstances['radar'] = new Chart(ctx, {{
+    type: 'radar',
+    data: {{ labels: metrics, datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{ legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }} }},
+      scales: {{
+        r: {{
+          min: 0, max: 100,
+          ticks: {{ stepSize: 20, font: {{ size: 10 }} }},
+          pointLabels: {{ font: {{ size: 12, weight: 'bold' }} }},
+        }},
+      }},
+    }},
+  }});
+}}
+
+function buildCerPerDoc() {{
+  destroyChart('cer-doc');
+  const ctx = document.getElementById('chart-cer-doc').getContext('2d');
+  const labels = DATA.documents.map(d => d.doc_id);
+  const datasets = DATA.engines.map((e, ei) => {{
+    const data = DATA.documents.map(doc => {{
+      const er = doc.engine_results.find(r => r.engine === e.name);
+      return er ? er.cer * 100 : null;
+    }});
+    return {{
+      label: e.name, data,
+      borderColor: engineColor(ei),
+      backgroundColor: engineColor(ei) + '22',
+      tension: 0.3, fill: false,
+      pointRadius: 3, pointHoverRadius: 5,
+    }};
+  }});
+
+  chartInstances['cer-doc'] = new Chart(ctx, {{
+    type: 'line',
+    data: {{ labels, datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{ legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }} }},
+      scales: {{
+        x: {{ ticks: {{ maxRotation: 45, font: {{ size: 10 }} }} }},
+        y: {{ title: {{ display: true, text: 'CER (%)', font: {{ size: 11 }} }}, min: 0 }},
+      }},
+    }},
+  }});
+}}
+
+function buildDurationChart() {{
+  destroyChart('duration');
+  const ctx = document.getElementById('chart-duration').getContext('2d');
+
+  const labels = DATA.engines.map(e => e.name);
+  const data   = DATA.engines.map(e => {{
+    const docs = DATA.documents;
+    const durs = docs.flatMap(d => d.engine_results
+      .filter(r => r.engine === e.name)
+      .map(r => r.duration));
+    const mean = durs.length ? durs.reduce((a,b) => a+b, 0) / durs.length : 0;
+    return parseFloat(mean.toFixed(3));
+  }});
+
+  chartInstances['duration'] = new Chart(ctx, {{
+    type: 'bar',
+    data: {{
+      labels,
+      datasets: [{{
+        label: 'Durée moy. (s)',
+        data,
+        backgroundColor: DATA.engines.map((_, i) => engineColor(i) + 'aa'),
+        borderColor:     DATA.engines.map((_, i) => engineColor(i)),
+        borderWidth: 1,
+      }}],
+    }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{ legend: {{ display: false }} }},
+      scales: {{
+        y: {{ title: {{ display: true, text: 'Secondes', font: {{ size: 11 }} }}, min: 0 }},
+      }},
+    }},
+  }});
+}}
+
+// ── Init ────────────────────────────────────────────────────────
+function init() {{
+  // Méta nav
+  const d = new Date(DATA.meta.run_date);
+  const fmt = d.toLocaleDateString('fr-FR', {{ year:'numeric', month:'short', day:'numeric' }});
+  document.getElementById('nav-meta').textContent =
+    DATA.meta.corpus_name + ' · ' + fmt;
+  document.getElementById('footer-date').textContent =
+    'Rapport généré le ' + fmt;
+
+  // Sélecteur moteur galerie
+  const sel = document.getElementById('gallery-engine-select');
+  DATA.engines.forEach(e => {{
+    const opt = document.createElement('option');
+    opt.value = e.name; opt.textContent = e.name;
+    sel.appendChild(opt);
+  }});
+
+  renderRanking();
+  renderGallery();
+  buildDocList();
+}}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
+"""
+
+
+# ---------------------------------------------------------------------------
+# Classe principale
+# ---------------------------------------------------------------------------
+
+class ReportGenerator:
+    """Génère un rapport HTML interactif depuis un BenchmarkResult.
+
+    Usage
+    -----
+    >>> from picarones.report import ReportGenerator
+    >>> gen = ReportGenerator(benchmark_result)
+    >>> path = gen.generate("rapport.html")
+    """
+
+    def __init__(
+        self,
+        benchmark: BenchmarkResult,
+        images_b64: Optional[dict[str, str]] = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        benchmark:
+            Résultat de benchmark à visualiser.
+        images_b64:
+            Dictionnaire {doc_id: data-URI base64} des images.
+            Si None, le générateur cherche dans ``benchmark.metadata["_images_b64"]``.
+        """
+        self.benchmark = benchmark
+        self.images_b64: dict[str, str] = images_b64 or {}
+
+        # Récupérer les images embarquées dans les metadata (fixtures)
+        if not self.images_b64:
+            self.images_b64 = benchmark.metadata.get("_images_b64", {})  # type: ignore[assignment]
+
+    def generate(self, output_path: str | Path) -> Path:
+        """Génère le fichier HTML et le sauvegarde sur disque.
+
+        Parameters
+        ----------
+        output_path:
+            Chemin du fichier HTML à écrire.
+
+        Returns
+        -------
+        Path
+            Chemin absolu du fichier généré.
+        """
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        report_data = _build_report_data(self.benchmark, self.images_b64)
+        report_json = json.dumps(report_data, ensure_ascii=False, separators=(",", ":"))
+
+        html = _HTML_TEMPLATE.format(
+            corpus_name=self.benchmark.corpus_name,
+            picarones_version=self.benchmark.picarones_version,
+            report_data_json=report_json,
+        )
+
+        output_path.write_text(html, encoding="utf-8")
+        return output_path.resolve()
+
+    @classmethod
+    def from_json(cls, json_path: str | Path, **kwargs) -> "ReportGenerator":
+        """Crée un générateur depuis un fichier JSON de résultats.
+
+        Compatible avec les fichiers produits par ``BenchmarkResult.to_json()``.
+        Les images base64 doivent être passées via ``kwargs["images_b64"]``
+        si elles ne sont pas dans le JSON.
+        """
+        import json as _json
+
+        data = _json.loads(Path(json_path).read_text(encoding="utf-8"))
+
+        # Reconstruction minimale d'un BenchmarkResult depuis le dict
+        from picarones.core.metrics import MetricsResult
+        from picarones.core.results import DocumentResult, EngineReport
+
+        engine_reports = []
+        for er_data in data.get("engine_reports", []):
+            doc_results = []
+            for dr_data in er_data.get("document_results", []):
+                m = dr_data["metrics"]
+                metrics = MetricsResult(
+                    cer=m["cer"], cer_nfc=m["cer_nfc"], cer_caseless=m["cer_caseless"],
+                    wer=m["wer"], wer_normalized=m["wer_normalized"],
+                    mer=m["mer"], wil=m["wil"],
+                    reference_length=m["reference_length"],
+                    hypothesis_length=m["hypothesis_length"],
+                    error=m.get("error"),
+                )
+                doc_results.append(DocumentResult(
+                    doc_id=dr_data["doc_id"],
+                    image_path=dr_data["image_path"],
+                    ground_truth=dr_data["ground_truth"],
+                    hypothesis=dr_data["hypothesis"],
+                    metrics=metrics,
+                    duration_seconds=dr_data.get("duration_seconds", 0.0),
+                    engine_error=dr_data.get("engine_error"),
+                ))
+            engine_reports.append(EngineReport(
+                engine_name=er_data["engine_name"],
+                engine_version=er_data.get("engine_version", "unknown"),
+                engine_config=er_data.get("engine_config", {}),
+                document_results=doc_results,
+            ))
+
+        corpus_info = data.get("corpus", {})
+        bm = BenchmarkResult(
+            corpus_name=corpus_info.get("name", "Corpus"),
+            corpus_source=corpus_info.get("source"),
+            document_count=corpus_info.get("document_count", 0),
+            engine_reports=engine_reports,
+            run_date=data.get("run_date", ""),
+            picarones_version=data.get("picarones_version", ""),
+            metadata=data.get("metadata", {}),
+        )
+
+        images_b64 = kwargs.pop("images_b64", {})
+        return cls(bm, images_b64=images_b64, **kwargs)

@@ -3,6 +3,8 @@
 Commandes disponibles
 ---------------------
 picarones run      — Lance un benchmark complet
+picarones report   — Génère le rapport HTML depuis un JSON de résultats
+picarones demo     — Génère un rapport de démonstration avec données fictives
 picarones metrics  — Calcule CER/WER entre deux fichiers texte
 picarones engines  — Liste les moteurs disponibles
 picarones info     — Informations de version
@@ -289,6 +291,94 @@ def info_cmd() -> None:
         except ImportError:
             status = click.style("non installé", fg="red")
         click.echo(f"  {name:<15} {status}")
+
+
+# ---------------------------------------------------------------------------
+# picarones report
+# ---------------------------------------------------------------------------
+
+@cli.command("report")
+@click.option(
+    "--results", "-r",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    help="Fichier JSON de résultats produit par 'picarones run'",
+)
+@click.option(
+    "--output", "-o",
+    default="rapport.html",
+    show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Fichier HTML de sortie",
+)
+@click.option("--verbose", "-v", is_flag=True, default=False, help="Mode verbeux")
+def report_cmd(results: str, output: str, verbose: bool) -> None:
+    """Génère le rapport HTML interactif depuis un fichier JSON de résultats.
+
+    Le rapport est un fichier HTML auto-contenu, lisible hors-ligne,
+    avec tableau de classement, galerie, vue document et graphiques.
+    """
+    _setup_logging(verbose)
+
+    from picarones.report.generator import ReportGenerator
+
+    click.echo(f"Chargement des résultats : {results}")
+    try:
+        gen = ReportGenerator.from_json(results)
+    except Exception as exc:
+        click.echo(f"Erreur lors du chargement : {exc}", err=True)
+        sys.exit(1)
+
+    click.echo(f"Génération du rapport HTML…")
+    path = gen.generate(output)
+    click.echo(f"Rapport généré : {path}")
+    click.echo(f"Ouvrez-le dans un navigateur : file://{path}")
+
+
+# ---------------------------------------------------------------------------
+# picarones demo
+# ---------------------------------------------------------------------------
+
+@cli.command("demo")
+@click.option(
+    "--output", "-o",
+    default="rapport_demo.html",
+    show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Fichier HTML de sortie",
+)
+@click.option(
+    "--docs", "-n",
+    default=12,
+    show_default=True,
+    type=click.IntRange(1, 12),
+    help="Nombre de documents fictifs (1–12)",
+)
+@click.option(
+    "--json-output", "-j",
+    default=None,
+    type=click.Path(resolve_path=True),
+    help="Exporte aussi les résultats JSON",
+)
+def demo_cmd(output: str, docs: int, json_output: str | None) -> None:
+    """Génère un rapport de démonstration avec des données fictives réalistes.
+
+    Utile pour tester le rendu HTML sans installer Tesseract ni Pero OCR.
+    """
+    from picarones.fixtures import generate_sample_benchmark
+    from picarones.report.generator import ReportGenerator
+
+    click.echo(f"Génération des données fictives ({docs} documents, 3 moteurs)…")
+    benchmark = generate_sample_benchmark(n_docs=docs)
+
+    if json_output:
+        bm_path = benchmark.to_json(json_output)
+        click.echo(f"Résultats JSON : {bm_path}")
+
+    gen = ReportGenerator(benchmark)
+    path = gen.generate(output)
+    click.echo(f"Rapport de démonstration : {path}")
+    click.echo(f"Ouvrez-le dans un navigateur : file://{path}")
 
 
 if __name__ == "__main__":
