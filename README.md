@@ -1,7 +1,7 @@
 # Picarones
 
 > **Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux**
-> BnF — Département numérique · Apache 2.0
+Apache 2.0
 
 Picarones permet d'évaluer et de comparer rigoureusement des moteurs OCR (Tesseract, Pero OCR, Kraken, APIs cloud…) ainsi que des pipelines OCR+LLM sur des corpus de documents historiques — manuscrits, imprimés anciens, archives.
 
