@@ -1,0 +1,19 @@
+# Core
+click>=8.1.0
+jiwer>=3.0.0
+Pillow>=10.0.0
+pyyaml>=6.0.0
+
+# OCR engines
+pytesseract>=0.3.10
+
+# pero-ocr (optional, install separately if needed)
+# pero-ocr>=0.1.0
+
+# Utilities
+tqdm>=4.66.0
+numpy>=1.24.0
+
+# Development / testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
