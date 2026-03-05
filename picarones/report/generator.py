@@ -22,6 +22,15 @@ from typing import Optional
 
 from picarones.core.results import BenchmarkResult
 from picarones.report.diff_utils import compute_word_diff
+from picarones.core.statistics import (
+    compute_pairwise_stats,
+    compute_reliability_curve,
+    compute_correlation_matrix,
+    compute_venn_data,
+    cluster_errors,
+    bootstrap_ci,
+)
+from picarones.core.difficulty import compute_all_difficulties, difficulty_label, difficulty_color
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +179,14 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         mean_cer = sum(cer_values) / len(cer_values) if cer_values else 1.0
         best_engine = min(engine_results, key=lambda x: x["cer"], default=None)
 
+        # Script type (depuis metadata par document si disponible)
+        script_type = ""
+        first_dr = doc_engine_map[doc_id].get(
+            benchmark.engine_reports[0].engine_name if benchmark.engine_reports else None
+        )
+        if first_dr and first_dr.image_quality:
+            script_type = first_dr.image_quality.get("script_type", "")
+
         documents.append({
             "doc_id": doc_id,
             "image_path": image_path,
@@ -178,7 +195,118 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "mean_cer": _safe(mean_cer),
             "best_engine": best_engine["engine"] if best_engine else "",
             "engine_results": engine_results,
+            "script_type": script_type,
         })
+
+    # ── Sprint 7 — Score de difficulté intrinsèque ───────────────────────
+    gt_map = {d["doc_id"]: d["ground_truth"] for d in documents}
+    cer_map: dict[str, dict[str, float]] = {d["doc_id"]: {} for d in documents}
+    iq_map: dict[str, float] = {}
+    for report in benchmark.engine_reports:
+        for dr in report.document_results:
+            cer_map.setdefault(dr.doc_id, {})[report.engine_name] = _safe(dr.metrics.cer)
+            if dr.image_quality and "quality_score" in dr.image_quality:
+                iq_map[dr.doc_id] = dr.image_quality["quality_score"]
+    difficulty_scores = compute_all_difficulties(
+        doc_ids=doc_ids_ordered,
+        ground_truths=gt_map,
+        cer_map=cer_map,
+        image_quality_map=iq_map or None,
+    )
+    # Ajouter difficulty_score à chaque document
+    for doc in documents:
+        ds = difficulty_scores.get(doc["doc_id"])
+        if ds:
+            doc["difficulty_score"] = _safe(ds.score)
+            doc["difficulty_label"] = difficulty_label(ds.score)
+        else:
+            doc["difficulty_score"] = 0.5
+            doc["difficulty_label"] = "Modéré"
+
+    # ── Sprint 7 — Tests statistiques (Wilcoxon pairwise + bootstrap CI) ─
+    engine_cer_map_stats: dict[str, list[float]] = {}
+    for report in benchmark.engine_reports:
+        vals = [_safe(dr.metrics.cer) for dr in report.document_results if dr.metrics.error is None]
+        if vals:
+            engine_cer_map_stats[report.engine_name] = vals
+
+    pairwise_stats = compute_pairwise_stats(engine_cer_map_stats)
+
+    bootstrap_cis: list[dict] = []
+    for engine_name, vals in engine_cer_map_stats.items():
+        lo, hi = bootstrap_ci(vals)
+        mean_v = sum(vals) / len(vals) if vals else 0.0
+        bootstrap_cis.append({
+            "engine": engine_name,
+            "mean": _safe(mean_v),
+            "ci_lower": _safe(lo),
+            "ci_upper": _safe(hi),
+        })
+
+    # ── Sprint 7 — Courbes de fiabilité ──────────────────────────────────
+    reliability_curves: list[dict] = []
+    for report in benchmark.engine_reports:
+        vals = [_safe(dr.metrics.cer) for dr in report.document_results if dr.metrics.error is None]
+        curve = compute_reliability_curve(vals)
+        reliability_curves.append({
+            "engine": report.engine_name,
+            "points": curve,
+        })
+
+    # ── Sprint 7 — Venn des erreurs communes / exclusives ────────────────
+    # Construire les ensembles d'erreurs par moteur : {engine → set(doc_id:gt_tok:hyp_tok)}
+    venn_error_sets: dict[str, set[str]] = {}
+    for report in benchmark.engine_reports:
+        error_set: set[str] = set()
+        for dr in report.document_results:
+            ops = compute_word_diff(dr.ground_truth, dr.hypothesis)
+            for op in ops:
+                if op["op"] in ("replace", "delete", "insert"):
+                    key = f"{dr.doc_id}:{op.get('old', op.get('text',''))}:{op.get('new', op.get('text',''))}"
+                    error_set.add(key)
+        venn_error_sets[report.engine_name] = error_set
+
+    venn_data = compute_venn_data(venn_error_sets)
+
+    # ── Sprint 7 — Clustering des patterns d'erreurs ─────────────────────
+    error_data_all: list[dict] = []
+    for report in benchmark.engine_reports:
+        for dr in report.document_results:
+            error_data_all.append({
+                "engine": report.engine_name,
+                "gt": dr.ground_truth,
+                "hypothesis": dr.hypothesis,
+            })
+    error_clusters_raw = cluster_errors(error_data_all, max_clusters=8)
+    error_clusters = [c.as_dict() for c in error_clusters_raw]
+
+    # ── Sprint 7 — Matrice de corrélation ────────────────────────────────
+    # Pour chaque moteur : une liste de dicts métriques par document
+    correlation_per_engine: list[dict] = []
+    for report in benchmark.engine_reports:
+        metrics_list = []
+        for dr in report.document_results:
+            if dr.metrics.error is not None:
+                continue
+            entry: dict[str, float] = {
+                "cer": _safe(dr.metrics.cer),
+                "wer": _safe(dr.metrics.wer),
+                "mer": _safe(dr.metrics.mer),
+                "wil": _safe(dr.metrics.wil),
+            }
+            if dr.image_quality:
+                entry["quality_score"] = _safe(dr.image_quality.get("quality_score", 0.5))
+                entry["sharpness"] = _safe(dr.image_quality.get("sharpness_score", 0.5))
+            if dr.char_scores:
+                entry["ligature"] = _safe(dr.char_scores.get("ligature", {}).get("score", 0.5))
+                entry["diacritic"] = _safe(dr.char_scores.get("diacritic", {}).get("score", 0.5))
+            metrics_list.append(entry)
+        if metrics_list:
+            corr = compute_correlation_matrix(metrics_list)
+            correlation_per_engine.append({
+                "engine": report.engine_name,
+                **corr,
+            })
 
     return {
         "meta": {
@@ -192,6 +320,15 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         "ranking": benchmark.ranking(),
         "engines": engines_summary,
         "documents": documents,
+        # Sprint 7
+        "statistics": {
+            "pairwise_wilcoxon": pairwise_stats,
+            "bootstrap_cis": bootstrap_cis,
+        },
+        "reliability_curves": reliability_curves,
+        "venn_data": venn_data,
+        "error_clusters": error_clusters,
+        "correlation_per_engine": correlation_per_engine,
     }
 
 
@@ -615,6 +752,72 @@ footer {{
   font-size: .8rem;
 }}
 .stat b {{ color: var(--primary); }}
+
+/* ── Difficulty badge ─────────────────────────────────────────── */
+.diff-badge {{
+  display: inline-flex; align-items: center; gap: .2rem;
+  padding: .1rem .4rem; border-radius: 4px;
+  font-size: .7rem; font-weight: 700;
+}}
+
+/* ── Presentation mode ────────────────────────────────────────── */
+.btn-present {{
+  background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; padding: .3rem .7rem; border-radius: 6px;
+  font-size: .8rem; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+}}
+.btn-present:hover {{ background: rgba(255,255,255,.28); }}
+.btn-present.active {{ background: rgba(255,255,255,.35); }}
+.btn-export-csv {{
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  color: rgba(255,255,255,.85); padding: .3rem .7rem; border-radius: 6px;
+  font-size: .8rem; font-weight: 600; cursor: pointer;
+  transition: background .15s; white-space: nowrap;
+}}
+.btn-export-csv:hover {{ background: rgba(255,255,255,.22); color:#fff; }}
+body.present-mode .technical {{ display: none !important; }}
+body.present-mode .chart-card {{ page-break-inside: avoid; }}
+body.present-mode nav .meta {{ display: none; }}
+
+/* ── Cluster cards ─────────────────────────────────────────────── */
+.cluster-grid {{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: .75rem; margin-top: .75rem;
+}}
+.cluster-card {{
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .75rem;
+}}
+.cluster-label {{ font-weight: 700; font-size: .88rem; color: var(--primary); margin-bottom: .3rem; }}
+.cluster-count {{ font-size: .75rem; color: var(--text-muted); margin-bottom: .5rem; }}
+.cluster-examples {{
+  display: flex; flex-direction: column; gap: .2rem;
+}}
+.cluster-ex {{
+  font-family: monospace; font-size: .78rem;
+  background: var(--surface); border-radius: 3px; padding: .15rem .35rem;
+  display: flex; align-items: center; gap: .35rem; color: var(--text-muted);
+}}
+.cluster-ex .ex-old {{ color: var(--del); background: var(--del-bg); border-radius: 2px; padding: 0 3px; }}
+.cluster-ex .ex-new {{ color: var(--rep); background: var(--rep-bg); border-radius: 2px; padding: 0 3px; }}
+
+/* ── Statistical tests table ─────────────────────────────────────*/
+.stat-sig {{ color: #dc2626; font-weight: 700; }}
+.stat-ns  {{ color: #64748b; }}
+
+/* ── Venn diagram ────────────────────────────────────────────────*/
+.venn-wrap {{ display: flex; justify-content: center; padding: 1rem; }}
+
+/* ── Correlation matrix ──────────────────────────────────────────*/
+.corr-table {{ border-collapse: collapse; font-size: .8rem; margin: .5rem auto; }}
+.corr-table th, .corr-table td {{
+  padding: .35rem .5rem; text-align: center; border: 1px solid var(--border);
+  min-width: 60px;
+}}
+.corr-table th {{ background: var(--bg); font-weight: 600; font-size: .75rem; }}
 </style>
 </head>
 
@@ -634,6 +837,8 @@ footer {{
     <button class="tab-btn" onclick="showView('analyses')">Analyses</button>
   </div>
   <div class="meta" id="nav-meta">—</div>
+  <button class="btn-export-csv" onclick="exportCSV()" title="Télécharger toutes les métriques en CSV">⬇ CSV</button>
+  <button class="btn-present" id="btn-present" onclick="togglePresentMode()" title="Masquer les détails techniques">⊞ Présentation</button>
 </nav>
 
 <!-- ── Main ───────────────────────────────────────────────────────── -->
@@ -693,6 +898,7 @@ footer {{
         <select id="gallery-sort" onchange="renderGallery()">
           <option value="doc_id">Identifiant</option>
           <option value="mean_cer">CER moyen</option>
+          <option value="difficulty_score">Difficulté</option>
           <option value="best_engine">Meilleur moteur</option>
         </select>
       </label>
@@ -823,6 +1029,70 @@ footer {{
       </div>
       <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
         Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Courbe de fiabilité -->
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3>Courbes de fiabilité</h3>
+      <div class="chart-canvas-wrap" style="max-height:300px">
+        <canvas id="chart-reliability"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ?
+        Une courbe basse = moteur performant même sur les documents faciles.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Intervalles de confiance -->
+    <div class="chart-card">
+      <h3>Intervalles de confiance à 95 % (bootstrap)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-bootstrap-ci"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Diagramme de Venn -->
+    <div class="chart-card">
+      <h3>Erreurs communes / exclusives (Venn)</h3>
+      <div id="venn-container" style="min-height:260px;display:flex;align-items:center;justify-content:center"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical">
+        Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents.
+        Erreurs communes = segments partagés.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Tests de Wilcoxon -->
+    <div class="chart-card technical">
+      <h3>Tests de Wilcoxon — comparaisons par paires</h3>
+      <div id="wilcoxon-table-container" style="overflow-x:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Clustering des erreurs -->
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3>Clustering des patterns d'erreurs</h3>
+      <div id="error-clusters-container"></div>
+    </div>
+
+    <!-- Sprint 7 — Matrice de corrélation -->
+    <div class="chart-card technical" style="grid-column:1/-1">
+      <h3>Matrice de corrélation entre métriques</h3>
+      <div style="margin-bottom:.5rem">
+        <label style="font-size:.82rem;font-weight:600">Moteur :
+          <select id="corr-engine-select" onchange="renderCorrelationMatrix()"
+            style="padding:.25rem .5rem;border-radius:6px;border:1px solid var(--border);margin-left:.25rem"></select>
+        </label>
+      </div>
+      <div id="corr-matrix-container" style="overflow-x:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques.
+        Vert = corrélation positive, Rouge = corrélation négative.
       </div>
     </div>
 
@@ -1095,6 +1365,7 @@ function renderGallery() {{
   // Tri
   docs.sort((a, b) => {{
     if (sortKey === 'mean_cer') return a.mean_cer - b.mean_cer;
+    if (sortKey === 'difficulty_score') return (b.difficulty_score||0) - (a.difficulty_score||0);
     if (sortKey === 'best_engine') return a.best_engine.localeCompare(b.best_engine);
     return a.doc_id.localeCompare(b.doc_id);
   }});
@@ -1122,10 +1393,20 @@ function renderGallery() {{
         title="${{esc(er.engine)}}${{isPipe?' (pipeline)':''}}">${{esc(label)}} ${{pct(er.cer,1)}}</span>`;
     }}).join('');
 
+    // Difficulty badge
+    let diffBadge = '';
+    if (doc.difficulty_score !== undefined) {{
+      const dScore = doc.difficulty_score;
+      const dColor = dScore < 0.25 ? '#16a34a' : dScore < 0.5 ? '#ca8a04' : dScore < 0.75 ? '#ea580c' : '#dc2626';
+      const dBg    = dScore < 0.25 ? '#f0fdf4' : dScore < 0.5 ? '#fefce8' : dScore < 0.75 ? '#fff7ed' : '#fef2f2';
+      diffBadge = `<span class="diff-badge" style="color:${{dColor}};background:${{dBg}};margin-left:.3rem"
+        title="Difficulté intrinsèque : ${{doc.difficulty_label}}">⚡ ${{doc.difficulty_label}}</span>`;
+    }}
+
     return `<div class="gallery-card" onclick="openDocument('${{esc(doc.doc_id)}}')">
       ${{imgTag}}
       <div class="gallery-card-body">
-        <div class="gallery-card-title">${{esc(doc.doc_id)}}</div>
+        <div class="gallery-card-title">${{esc(doc.doc_id)}}${{diffBadge}}</div>
         <div class="gallery-card-badges">${{badges}}</div>
       </div>
     </div>`;
@@ -1139,7 +1420,8 @@ let dragStart = null;
 let imgOffset = {{ x: 0, y: 0 }};
 
 function openDocument(docId) {{
-  showView('document');
+  _origShowView('document');
+  updateURL('document', {{ doc: docId }});
   loadDocument(docId);
 }}
 
@@ -1159,8 +1441,12 @@ function loadDocument(docId) {{
   // Métriques
   const metricsDiv = document.getElementById('doc-detail-metrics');
   const cer = doc.mean_cer;
+  const dScore = doc.difficulty_score;
+  const dColor = dScore < 0.25 ? '#16a34a' : dScore < 0.5 ? '#ca8a04' : dScore < 0.75 ? '#ea580c' : '#dc2626';
+  const dLabel = doc.difficulty_label || '';
   metricsDiv.innerHTML = `<div class="stat">CER moyen <b style="color:${{cerColor(cer)}}">${{pct(cer)}}</b></div>
-    <div class="stat">Meilleur moteur <b>${{esc(doc.best_engine)}}</b></div>`;
+    <div class="stat">Meilleur moteur <b>${{esc(doc.best_engine)}}</b></div>
+    ${{dScore !== undefined ? `<div class="stat">Difficulté <b style="color:${{dColor}}">${{dLabel}} (${{(dScore*100).toFixed(0)}}%)</b></div>` : ''}}`;
 
   // Image
   resetZoom();
@@ -1310,6 +1596,13 @@ function buildCharts() {{
   buildDurationChart();
   buildQualityCerScatter();
   buildTaxonomyChart();
+  // Sprint 7
+  buildReliabilityCurves();
+  buildBootstrapCIChart();
+  buildVennDiagram();
+  buildWilcoxonTable();
+  buildErrorClusters();
+  initCorrelationMatrix();
 }}
 
 function buildCerHistogram() {{
@@ -1522,6 +1815,347 @@ function buildTaxonomyChart() {{
       }},
     }},
   }});
+}}
+
+// ── Sprint 7 — Courbes de fiabilité ─────────────────────────────
+function buildReliabilityCurves() {{
+  const ctx = document.getElementById('chart-reliability');
+  if (!ctx) return;
+  const curves = DATA.reliability_curves || [];
+  if (!curves.length) {{ ctx.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données insuffisantes.</p>'; return; }}
+  const datasets = curves.map((c, i) => {{
+    const points = (c.points || []).map(p => ({{ x: p.pct_docs, y: p.mean_cer * 100 }}));
+    return {{
+      label: c.engine, data: points,
+      borderColor: engineColor(i), backgroundColor: engineColor(i) + '22',
+      tension: 0.3, fill: false, pointRadius: 2, pointHoverRadius: 5,
+    }};
+  }});
+  destroyChart('reliability');
+  chartInstances['reliability'] = new Chart(ctx.getContext('2d'), {{
+    type: 'line',
+    data: {{ datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      parsing: {{ xAxisKey: 'x', yAxisKey: 'y' }},
+      plugins: {{
+        legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }},
+        tooltip: {{ callbacks: {{
+          title: ([item]) => `${{item.parsed.x.toFixed(0)}}% docs les plus faciles`,
+          label: item => `${{item.dataset.label}}: CER moy = ${{item.parsed.y.toFixed(2)}}%`,
+        }} }},
+      }},
+      scales: {{
+        x: {{ type:'linear', min:0, max:100,
+          title: {{ display:true, text:'% documents (triés par CER croissant)', font:{{ size:11 }} }} }},
+        y: {{ min:0, title: {{ display:true, text:'CER moyen (%)', font:{{ size:11 }} }} }},
+      }},
+    }},
+  }});
+}}
+
+// ── Sprint 7 — Bootstrap CI ──────────────────────────────────────
+function buildBootstrapCIChart() {{
+  const ctx = document.getElementById('chart-bootstrap-ci');
+  if (!ctx) return;
+  const cis = DATA.statistics && DATA.statistics.bootstrap_cis || [];
+  if (!cis.length) {{ ctx.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données insuffisantes.</p>'; return; }}
+
+  const labels = cis.map(c => c.engine);
+  const means  = cis.map(c => (c.mean * 100));
+  const lowers = cis.map(c => (c.mean - c.ci_lower) * 100);
+  const uppers = cis.map(c => (c.ci_upper - c.mean) * 100);
+
+  destroyChart('bootstrap-ci');
+  chartInstances['bootstrap-ci'] = new Chart(ctx.getContext('2d'), {{
+    type: 'bar',
+    data: {{
+      labels,
+      datasets: [{{
+        label: 'CER moyen (%)',
+        data: means,
+        backgroundColor: cis.map((_, i) => engineColor(i) + 'aa'),
+        borderColor:     cis.map((_, i) => engineColor(i)),
+        borderWidth: 1,
+        errorBars: {{ symmetric: false }},
+      }}],
+    }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{
+        legend: {{ display: false }},
+        tooltip: {{
+          callbacks: {{
+            afterLabel: (ctx) => {{
+              const ci = cis[ctx.dataIndex];
+              return `IC 95% : [${{(ci.ci_lower*100).toFixed(2)}}%, ${{(ci.ci_upper*100).toFixed(2)}}%]`;
+            }},
+          }},
+        }},
+      }},
+      scales: {{ y: {{ min: 0, title: {{ display:true, text:'CER (%)', font:{{size:11}} }} }} }},
+    }},
+    plugins: [{{
+      id: 'errorBars',
+      afterDatasetsDraw(chart) {{
+        const {{ ctx: c, data, scales: {{ x, y }} }} = chart;
+        chart.data.datasets[0].data.forEach((val, i) => {{
+          const ci = cis[i];
+          if (!ci) return;
+          const xPos = x.getPixelForValue(i);
+          const yTop = y.getPixelForValue(ci.ci_upper * 100);
+          const yBot = y.getPixelForValue(ci.ci_lower * 100);
+          c.save();
+          c.strokeStyle = '#374151'; c.lineWidth = 2;
+          c.beginPath(); c.moveTo(xPos, yTop); c.lineTo(xPos, yBot); c.stroke();
+          c.beginPath(); c.moveTo(xPos-6, yTop); c.lineTo(xPos+6, yTop); c.stroke();
+          c.beginPath(); c.moveTo(xPos-6, yBot); c.lineTo(xPos+6, yBot); c.stroke();
+          c.restore();
+        }});
+      }},
+    }}],
+  }});
+}}
+
+// ── Sprint 7 — Diagramme de Venn ────────────────────────────────
+function buildVennDiagram() {{
+  const container = document.getElementById('venn-container');
+  if (!container) return;
+  const venn = DATA.venn_data;
+  if (!venn || !venn.type) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Données insuffisantes pour le diagramme de Venn.</p>';
+    return;
+  }}
+
+  if (venn.type === 'venn2') {{
+    const total = (venn.only_a || 0) + (venn.both || 0) + (venn.only_b || 0);
+    const maxR = 80;
+    const rA = Math.sqrt((venn.only_a + venn.both) / (total || 1)) * maxR + 30;
+    const rB = Math.sqrt((venn.only_b + venn.both) / (total || 1)) * maxR + 30;
+    const overlap = venn.both > 0 ? Math.min(rA, rB) * 0.6 : 0;
+    const cxA = 140, cxB = cxA + rA + rB - overlap, cy = 130;
+    const w = cxB + rB + 20, h = 260;
+    container.innerHTML = `
+      <div style="text-align:center">
+        <svg width="${{w}}" height="${{h}}" viewBox="0 0 ${{w}} ${{h}}" style="max-width:100%">
+          <circle cx="${{cxA}}" cy="${{cy}}" r="${{rA}}" fill="#2563eb" fill-opacity="0.25" stroke="#2563eb" stroke-width="2"/>
+          <circle cx="${{cxB}}" cy="${{cy}}" r="${{rB}}" fill="#dc2626" fill-opacity="0.25" stroke="#dc2626" stroke-width="2"/>
+          <text x="${{cxA - rA*0.5}}" y="${{cy}}" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">${{venn.only_a}}</text>
+          <text x="${{(cxA + cxB)/2}}" y="${{cy}}" text-anchor="middle" font-size="13" font-weight="bold" fill="#374151">${{venn.both}}</text>
+          <text x="${{cxB + rB*0.5}}" y="${{cy}}" text-anchor="middle" font-size="13" font-weight="bold" fill="#b91c1c">${{venn.only_b}}</text>
+          <text x="${{cxA - rA*0.5}}" y="${{cy + rA + 14}}" text-anchor="middle" font-size="11" fill="#2563eb">${{esc(venn.label_a)}}</text>
+          <text x="${{cxB + rB*0.5}}" y="${{cy + rB + 14}}" text-anchor="middle" font-size="11" fill="#dc2626">${{esc(venn.label_b)}}</text>
+          <text x="${{(cxA+cxB)/2}}" y="${{cy + Math.min(rA,rB) + 14}}" text-anchor="middle" font-size="10" fill="#64748b">commun</text>
+        </svg>
+        <p style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem">
+          Erreurs exclusives ${{esc(venn.label_a)}} : ${{venn.only_a}} ·
+          Communes : ${{venn.both}} ·
+          Exclusives ${{esc(venn.label_b)}} : ${{venn.only_b}}
+        </p>
+      </div>
+    `;
+  }} else if (venn.type === 'venn3') {{
+    // Venn 3 cercles simplifié
+    const total = (venn.only_a||0)+(venn.only_b||0)+(venn.only_c||0)+(venn.ab||0)+(venn.ac||0)+(venn.bc||0)+(venn.abc||0) || 1;
+    container.innerHTML = `
+      <div style="text-align:center">
+        <svg width="300" height="280" viewBox="0 0 300 280" style="max-width:100%">
+          <circle cx="130" cy="110" r="80" fill="#2563eb" fill-opacity="0.2" stroke="#2563eb" stroke-width="1.5"/>
+          <circle cx="170" cy="110" r="80" fill="#dc2626" fill-opacity="0.2" stroke="#dc2626" stroke-width="1.5"/>
+          <circle cx="150" cy="155" r="80" fill="#16a34a" fill-opacity="0.2" stroke="#16a34a" stroke-width="1.5"/>
+          <text x="95" y="95" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e40af">${{venn.only_a}}</text>
+          <text x="205" y="95" text-anchor="middle" font-size="12" font-weight="bold" fill="#b91c1c">${{venn.only_b}}</text>
+          <text x="150" y="230" text-anchor="middle" font-size="12" font-weight="bold" fill="#15803d">${{venn.only_c}}</text>
+          <text x="148" y="108" text-anchor="middle" font-size="11" fill="#374151">${{venn.ab}}</text>
+          <text x="120" y="160" text-anchor="middle" font-size="11" fill="#374151">${{venn.ac}}</text>
+          <text x="180" y="160" text-anchor="middle" font-size="11" fill="#374151">${{venn.bc}}</text>
+          <text x="150" y="145" text-anchor="middle" font-size="11" font-weight="bold" fill="#374151">${{venn.abc}}</text>
+          <text x="95" y="127" text-anchor="middle" font-size="9" fill="#2563eb">${{esc((venn.label_a||'').slice(0,10))}}</text>
+          <text x="205" y="127" text-anchor="middle" font-size="9" fill="#dc2626">${{esc((venn.label_b||'').slice(0,10))}}</text>
+          <text x="150" y="248" text-anchor="middle" font-size="9" fill="#16a34a">${{esc((venn.label_c||'').slice(0,10))}}</text>
+        </svg>
+      </div>
+    `;
+  }}
+}}
+
+// ── Sprint 7 — Table de Wilcoxon ─────────────────────────────────
+function buildWilcoxonTable() {{
+  const container = document.getElementById('wilcoxon-table-container');
+  if (!container) return;
+  const stats = DATA.statistics && DATA.statistics.pairwise_wilcoxon || [];
+  if (!stats.length) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Pas assez de données pour les tests statistiques (min 2 concurrents).</p>';
+    return;
+  }}
+  const rows = stats.map(s => {{
+    const sigClass = s.significant ? 'stat-sig' : 'stat-ns';
+    const sigLabel = s.significant ? '✓ Significative' : '○ Non significative';
+    return `<tr>
+      <td style="padding:.4rem .6rem;font-weight:600">${{esc(s.engine_a)}}</td>
+      <td style="padding:.4rem .3rem;color:var(--text-muted)">vs</td>
+      <td style="padding:.4rem .6rem;font-weight:600">${{esc(s.engine_b)}}</td>
+      <td style="padding:.4rem .6rem;text-align:right;font-variant-numeric:tabular-nums">${{s.n_pairs}}</td>
+      <td style="padding:.4rem .6rem;text-align:right;font-variant-numeric:tabular-nums">${{s.statistic}}</td>
+      <td style="padding:.4rem .6rem;text-align:right;font-variant-numeric:tabular-nums">${{s.p_value}}</td>
+      <td style="padding:.4rem .75rem"><span class="${{sigClass}}">${{sigLabel}}</span></td>
+      <td style="padding:.4rem .75rem;font-size:.78rem;color:var(--text-muted);max-width:280px">${{esc(s.interpretation)}}</td>
+    </tr>`;
+  }}).join('');
+  container.innerHTML = `
+    <table style="border-collapse:collapse;font-size:.84rem;width:100%">
+      <thead><tr style="background:var(--bg)">
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em">Concurrent A</th>
+        <th></th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em">Concurrent B</th>
+        <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem">N paires</th>
+        <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem">W</th>
+        <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem">p-value</th>
+        <th style="padding:.4rem .75rem;text-align:left;font-size:.75rem">Verdict</th>
+        <th style="padding:.4rem .75rem;text-align:left;font-size:.75rem">Interprétation</th>
+      </tr></thead>
+      <tbody>${{rows}}</tbody>
+    </table>
+  `;
+}}
+
+// ── Sprint 7 — Clustering des erreurs ───────────────────────────
+function buildErrorClusters() {{
+  const container = document.getElementById('error-clusters-container');
+  if (!container) return;
+  const clusters = DATA.error_clusters || [];
+  if (!clusters.length) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Aucun cluster d\'erreur détecté.</p>';
+    return;
+  }}
+  const cards = clusters.map(cl => {{
+    const examplesHtml = (cl.examples || []).slice(0, 3).map(ex => {{
+      const oldStr = ex.gt_fragment || '';
+      const newStr = ex.ocr_fragment || '';
+      return `<div class="cluster-ex">
+        <span class="ex-old">${{esc(oldStr || '∅')}}</span>
+        <span style="color:var(--text-muted)">→</span>
+        <span class="ex-new">${{esc(newStr || '∅')}}</span>
+        <span style="color:var(--text-muted);font-size:.72rem">(${{esc(ex.engine || '')}})</span>
+      </div>`;
+    }}).join('');
+    return `<div class="cluster-card">
+      <div class="cluster-label">Cluster #${{cl.cluster_id}} : ${{esc(cl.label)}}</div>
+      <div class="cluster-count">${{cl.count}} cas détectés</div>
+      <div class="cluster-examples">${{examplesHtml}}</div>
+    </div>`;
+  }}).join('');
+  container.innerHTML = `<div class="cluster-grid">${{cards}}</div>`;
+}}
+
+// ── Sprint 7 — Matrice de corrélation ───────────────────────────
+function initCorrelationMatrix() {{
+  const sel = document.getElementById('corr-engine-select');
+  if (!sel) return;
+  const corrs = DATA.correlation_per_engine || [];
+  sel.innerHTML = '';
+  corrs.forEach(c => {{
+    const opt = document.createElement('option');
+    opt.value = c.engine; opt.textContent = c.engine;
+    sel.appendChild(opt);
+  }});
+  renderCorrelationMatrix();
+}}
+
+function renderCorrelationMatrix() {{
+  const container = document.getElementById('corr-matrix-container');
+  if (!container) return;
+  const sel = document.getElementById('corr-engine-select');
+  const engineName = sel && sel.value;
+  const corrs = DATA.correlation_per_engine || [];
+  const entry = corrs.find(c => c.engine === engineName) || corrs[0];
+  if (!entry || !entry.labels || !entry.matrix) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Données insuffisantes.</p>';
+    return;
+  }}
+  const labels = entry.labels;
+  const matrix = entry.matrix;
+  const n = labels.length;
+
+  const labelNames = {{
+    cer: 'CER', wer: 'WER', mer: 'MER', wil: 'WIL',
+    quality_score: 'Qualité img', sharpness: 'Netteté',
+    ligature: 'Ligatures', diacritic: 'Diacritiques',
+  }};
+  function corrColor(r) {{
+    if (r >= 0.7)  return 'background:#dcfce7;color:#14532d';
+    if (r >= 0.3)  return 'background:#f0fdf4;color:#166534';
+    if (r >= -0.3) return 'background:#f8fafc;color:#374151';
+    if (r >= -0.7) return 'background:#fef2f2;color:#991b1b';
+    return 'background:#fee2e2;color:#7f1d1d';
+  }}
+
+  const headerRow = '<tr><th></th>' + labels.map(l =>
+    `<th>${{esc(labelNames[l] || l)}}</th>`).join('') + '</tr>';
+  const dataRows = matrix.map((row, i) =>
+    '<tr><th style="text-align:right">' + esc(labelNames[labels[i]] || labels[i]) + '</th>' +
+    row.map((v, j) => {{
+      const style = corrColor(v);
+      const display = i === j ? '1.00' : v.toFixed(2);
+      return `<td style="${{style}}">${{display}}</td>`;
+    }}).join('') + '</tr>'
+  ).join('');
+
+  container.innerHTML = `<table class="corr-table"><thead>${{headerRow}}</thead><tbody>${{dataRows}}</tbody></table>`;
+}}
+
+// ── Sprint 7 — URL stateful ──────────────────────────────────────
+function updateURL(view, params) {{
+  const hash = '#' + view + (params ? '?' + new URLSearchParams(params).toString() : '');
+  history.replaceState(null, '', hash);
+}}
+
+function readURLState() {{
+  const hash = location.hash.slice(1);
+  const [view, query] = hash.split('?');
+  const params = query ? Object.fromEntries(new URLSearchParams(query)) : {{}};
+  return {{ view: view || 'ranking', params }};
+}}
+
+// ── Sprint 7 — Mode présentation ────────────────────────────────
+let presentMode = false;
+function togglePresentMode() {{
+  presentMode = !presentMode;
+  document.body.classList.toggle('present-mode', presentMode);
+  const btn = document.getElementById('btn-present');
+  if (btn) {{
+    btn.classList.toggle('active', presentMode);
+    btn.textContent = presentMode ? '⊡ Normal' : '⊞ Présentation';
+  }}
+}}
+
+// ── Sprint 7 — Export CSV ────────────────────────────────────────
+function exportCSV() {{
+  const rows = [['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score']];
+  DATA.documents.forEach(doc => {{
+    doc.engine_results.forEach(er => {{
+      rows.push([
+        doc.doc_id,
+        er.engine,
+        er.cer !== null ? (er.cer * 100).toFixed(4) : '',
+        er.wer !== null ? (er.wer * 100).toFixed(4) : '',
+        er.mer !== null ? (er.mer * 100).toFixed(4) : '',
+        er.wil !== null ? (er.wil * 100).toFixed(4) : '',
+        er.duration !== null ? er.duration : '',
+        er.ligature_score !== null ? er.ligature_score : '',
+        er.diacritic_score !== null ? er.diacritic_score : '',
+        doc.difficulty_score !== undefined ? (doc.difficulty_score * 100).toFixed(2) : '',
+      ]);
+    }});
+  }});
+  const csv = rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], {{ type: 'text/csv;charset=utf-8' }});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'picarones_metrics_' + DATA.meta.corpus_name.replace(/\s+/g,'-') + '.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => {{ document.body.removeChild(a); URL.revokeObjectURL(url); }}, 100);
 }}
 
 // ── Vue Caractères ───────────────────────────────────────────────
@@ -1763,6 +2397,13 @@ function renderTaxonomyDetail(eng) {{
 }}
 
 // ── Init ────────────────────────────────────────────────────────
+// Override showView pour mettre à jour l'URL
+const _origShowView = showView;
+function showView(name) {{
+  _origShowView(name);
+  updateURL(name);
+}}
+
 function init() {{
   // Méta nav
   const d = new Date(DATA.meta.run_date);
@@ -1783,6 +2424,22 @@ function init() {{
   renderRanking();
   renderGallery();
   buildDocList();
+
+  // Restaurer l'état depuis l'URL
+  const {{ view, params }} = readURLState();
+  if (view && view !== 'ranking') {{
+    _origShowView(view);  // appel direct pour ne pas écraser l'URL
+    if (view === 'document' && params.doc) {{
+      loadDocument(params.doc);
+    }}
+  }}
+
+  // Gérer le bouton retour
+  window.addEventListener('popstate', () => {{
+    const {{ view: v, params: p }} = readURLState();
+    _origShowView(v || 'ranking');
+    if ((v === 'document') && p.doc) loadDocument(p.doc);
+  }});
 }}
 
 document.addEventListener('DOMContentLoaded', init);
