@@ -21,6 +21,7 @@ def run_benchmark(
     engines: list[BaseOCREngine],
     output_json: Optional[str | Path] = None,
     show_progress: bool = True,
+    progress_callback: Optional[callable] = None,
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -62,7 +63,12 @@ def run_benchmark(
             disable=not show_progress,
         )
 
-        for doc in iterator:
+        for doc_idx, doc in enumerate(iterator):
+            if progress_callback is not None:
+                try:
+                    progress_callback(engine.name, doc_idx, doc.doc_id)
+                except Exception:
+                    pass
             ocr_result = engine.run(doc.image_path)
 
             if ocr_result.success:
