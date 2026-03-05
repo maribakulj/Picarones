@@ -2,17 +2,21 @@
 
 Commandes disponibles
 ---------------------
-picarones run      — Lance un benchmark complet
-picarones report   — Génère le rapport HTML depuis un JSON de résultats
-picarones demo     — Génère un rapport de démonstration avec données fictives
-picarones metrics  — Calcule CER/WER entre deux fichiers texte
-picarones engines  — Liste les moteurs disponibles
-picarones info     — Informations de version
+picarones run         — Lance un benchmark complet
+picarones report      — Génère le rapport HTML depuis un JSON de résultats
+picarones demo        — Génère un rapport de démonstration avec données fictives
+picarones metrics     — Calcule CER/WER entre deux fichiers texte
+picarones engines     — Liste les moteurs disponibles
+picarones info        — Informations de version
+picarones history     — Consulte l'historique des benchmarks (suivi longitudinal)
+picarones robustness  — Lance une analyse de robustesse sur un corpus
 
 Exemples d'usage
 ----------------
     picarones run --corpus ./corpus/ --engines tesseract --output results.json
     picarones metrics --reference gt.txt --hypothesis ocr.txt
+    picarones history --engine tesseract
+    picarones robustness --corpus ./gt/ --engine tesseract
     picarones engines
 """
 
@@ -360,10 +364,35 @@ def report_cmd(results: str, output: str, verbose: bool) -> None:
     type=click.Path(resolve_path=True),
     help="Exporte aussi les résultats JSON",
 )
-def demo_cmd(output: str, docs: int, json_output: str | None) -> None:
+@click.option(
+    "--with-history",
+    is_flag=True,
+    default=False,
+    help="Inclut une démonstration du suivi longitudinal (8 runs fictifs)",
+)
+@click.option(
+    "--with-robustness",
+    is_flag=True,
+    default=False,
+    help="Inclut une démonstration de l'analyse de robustesse",
+)
+def demo_cmd(
+    output: str,
+    docs: int,
+    json_output: str | None,
+    with_history: bool,
+    with_robustness: bool,
+) -> None:
     """Génère un rapport de démonstration avec des données fictives réalistes.
 
     Utile pour tester le rendu HTML sans installer Tesseract ni Pero OCR.
+
+    \b
+    Exemples :
+        picarones demo
+        picarones demo --with-history
+        picarones demo --with-robustness
+        picarones demo --with-history --with-robustness --docs 8
     """
     from picarones.fixtures import generate_sample_benchmark
     from picarones.report.generator import ReportGenerator
@@ -379,6 +408,52 @@ def demo_cmd(output: str, docs: int, json_output: str | None) -> None:
     path = gen.generate(output)
     click.echo(f"Rapport de démonstration : {path}")
     click.echo(f"Ouvrez-le dans un navigateur : file://{path}")
+
+    # Suivi longitudinal
+    if with_history:
+        click.echo("\n── Démonstration suivi longitudinal ──────────────")
+        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        history = BenchmarkHistory(":memory:")
+        generate_demo_history(history, n_runs=8)
+        entries = history.query(engine="tesseract")
+        click.echo(f"  {history.count()} entrées générées (8 runs, 3 moteurs).")
+        click.echo("\n  Évolution du CER — tesseract :")
+        for e in entries:
+            cer_str = f"{e.cer_percent:.2f}%" if e.cer_percent is not None else "N/A"
+            bar = "█" * int((e.cer_percent or 0) * 2)
+            click.echo(f"    {e.timestamp[:10]}  {cer_str:<8}  {bar}")
+        regression = history.detect_regression("tesseract", threshold=0.01)
+        if regression and regression.is_regression:
+            click.echo(
+                click.style(
+                    f"\n  RÉGRESSION détectée ! delta CER = +{regression.delta_cer * 100:.2f}%",
+                    fg="red",
+                )
+            )
+        else:
+            click.echo(click.style("\n  Aucune régression détectée.", fg="green"))
+
+    # Analyse de robustesse
+    if with_robustness:
+        click.echo("\n── Démonstration analyse de robustesse ───────────")
+        from picarones.core.robustness import generate_demo_robustness_report
+        report = generate_demo_robustness_report(
+            engine_names=["tesseract", "pero_ocr"]
+        )
+        for curve in report.curves:
+            if curve.degradation_type == "noise":
+                click.echo(f"\n  {curve.engine_name} / bruit gaussien :")
+                for label, cer in zip(curve.labels, curve.cer_values):
+                    cer_pct = f"{(cer or 0) * 100:.1f}%"
+                    bar = "█" * int((cer or 0) * 40)
+                    click.echo(f"    {label:<12} {cer_pct:<8} {bar}")
+                if curve.critical_threshold_level is not None:
+                    click.echo(
+                        click.style(
+                            f"    Niveau critique (CER>20%) : σ={curve.critical_threshold_level}",
+                            fg="yellow",
+                        )
+                    )
 
 
 # ---------------------------------------------------------------------------
@@ -544,6 +619,342 @@ def serve_cmd(host: str, port: int, reload: bool, verbose: bool) -> None:
         reload=reload,
         log_level=log_level,
     )
+
+
+# ---------------------------------------------------------------------------
+# picarones history
+# ---------------------------------------------------------------------------
+
+@cli.command("history")
+@click.option(
+    "--db",
+    default="~/.picarones/history.db",
+    show_default=True,
+    type=click.Path(resolve_path=False),
+    help="Chemin vers la base SQLite d'historique",
+)
+@click.option(
+    "--engine", "-e",
+    default=None,
+    help="Filtre sur le nom du moteur",
+)
+@click.option(
+    "--corpus", "-c",
+    default=None,
+    help="Filtre sur le nom du corpus",
+)
+@click.option(
+    "--since",
+    default=None,
+    metavar="DATE",
+    help="Date minimale ISO 8601 (ex: 2025-01-01)",
+)
+@click.option(
+    "--limit", "-n",
+    default=50,
+    show_default=True,
+    type=click.IntRange(1, 10000),
+    help="Nombre maximum d'entrées à afficher",
+)
+@click.option(
+    "--regression",
+    is_flag=True,
+    default=False,
+    help="Détecter automatiquement les régressions (compare au run précédent)",
+)
+@click.option(
+    "--regression-threshold",
+    default=0.01,
+    show_default=True,
+    type=float,
+    metavar="DELTA",
+    help="Seuil de régression en points de CER absolus (ex: 0.01 = 1%)",
+)
+@click.option(
+    "--export-json",
+    default=None,
+    type=click.Path(resolve_path=True),
+    help="Exporte l'historique complet en JSON",
+)
+@click.option(
+    "--demo",
+    is_flag=True,
+    default=False,
+    help="Pré-remplir la base avec des données fictives de démonstration",
+)
+@click.option("--verbose", "-v", is_flag=True, default=False, help="Mode verbeux")
+def history_cmd(
+    db: str,
+    engine: str | None,
+    corpus: str | None,
+    since: str | None,
+    limit: int,
+    regression: bool,
+    regression_threshold: float,
+    export_json: str | None,
+    demo: bool,
+    verbose: bool,
+) -> None:
+    """Consulte l'historique des benchmarks (suivi longitudinal).
+
+    Affiche l'évolution du CER dans le temps pour chaque moteur et corpus.
+    Permet de détecter automatiquement les régressions entre deux runs.
+
+    \b
+    Exemples :
+        picarones history
+        picarones history --engine tesseract --corpus "Chroniques BnF"
+        picarones history --regression --regression-threshold 0.02
+        picarones history --demo   # données fictives de démonstration
+        picarones history --export-json historique.json
+    """
+    _setup_logging(verbose)
+
+    from picarones.core.history import BenchmarkHistory, generate_demo_history
+
+    history = BenchmarkHistory(db)
+
+    if demo:
+        click.echo("Insertion de données fictives de démonstration dans l'historique…")
+        generate_demo_history(history, n_runs=8)
+        click.echo(f"  {history.count()} entrées insérées.")
+
+    if export_json:
+        path = history.export_json(export_json)
+        click.echo(f"Historique exporté : {path}")
+        return
+
+    entries = history.query(engine=engine, corpus=corpus, since=since, limit=limit)
+
+    if not entries:
+        click.echo("Aucun benchmark dans l'historique.")
+        click.echo(
+            "\nPour enregistrer automatiquement les runs, utilisez :\n"
+            "  picarones run --corpus ./gt/ --engines tesseract --save-history\n"
+            "\nOu pour tester avec des données fictives :\n"
+            "  picarones history --demo"
+        )
+        return
+
+    # Regrouper par moteur
+    by_engine: dict[str, list] = {}
+    for entry in entries:
+        by_engine.setdefault(entry.engine_name, []).append(entry)
+
+    click.echo(f"\n── Historique des benchmarks ({'filtré' if engine or corpus else 'tous'}) ──")
+    click.echo(f"  Base : {history.db_path}")
+    click.echo(f"  Total entrées : {len(entries)}\n")
+
+    for eng_name, eng_entries in by_engine.items():
+        click.echo(click.style(f"  Moteur : {eng_name}", bold=True))
+        for e in eng_entries:
+            cer_str = f"{e.cer_percent:.2f}%" if e.cer_percent is not None else "N/A"
+            wer_str = f"{e.wer_mean * 100:.2f}%" if e.wer_mean is not None else "N/A"
+            ts = e.timestamp[:10]  # date uniquement
+            click.echo(f"    {ts}  CER={cer_str:<8} WER={wer_str:<8} docs={e.doc_count}  corpus={e.corpus_name}")
+        click.echo()
+
+    # Détection de régression
+    if regression:
+        click.echo("── Détection de régressions ──────────────────────")
+        regressions = history.detect_all_regressions(threshold=regression_threshold)
+        if not regressions:
+            click.echo(
+                click.style(
+                    f"  Aucune régression détectée (seuil={regression_threshold*100:.1f}%)",
+                    fg="green",
+                )
+            )
+        else:
+            for r in regressions:
+                delta_str = f"+{r.delta_cer * 100:.2f}%" if r.delta_cer else "N/A"
+                click.echo(
+                    click.style(
+                        f"  RÉGRESSION {r.engine_name} / {r.corpus_name} : "
+                        f"delta CER={delta_str} "
+                        f"({r.baseline_timestamp[:10]} → {r.current_timestamp[:10]})",
+                        fg="red",
+                    )
+                )
+
+
+# ---------------------------------------------------------------------------
+# picarones robustness
+# ---------------------------------------------------------------------------
+
+@cli.command("robustness")
+@click.option(
+    "--corpus", "-c",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Dossier contenant les paires image / .gt.txt",
+)
+@click.option(
+    "--engine", "-e",
+    default="tesseract",
+    show_default=True,
+    help="Moteur OCR à tester (tesseract, pero_ocr…)",
+)
+@click.option(
+    "--degradations", "-d",
+    default="noise,blur,rotation,resolution,binarization",
+    show_default=True,
+    help="Types de dégradation séparés par des virgules",
+)
+@click.option(
+    "--cer-threshold",
+    default=0.20,
+    show_default=True,
+    type=float,
+    metavar="THRESHOLD",
+    help="Seuil CER pour définir le niveau critique (0-1)",
+)
+@click.option(
+    "--max-docs",
+    default=10,
+    show_default=True,
+    type=click.IntRange(1, 1000),
+    help="Nombre maximum de documents à traiter",
+)
+@click.option(
+    "--output-json", "-o",
+    default=None,
+    type=click.Path(resolve_path=True),
+    help="Exporte le rapport de robustesse en JSON",
+)
+@click.option(
+    "--lang", "-l",
+    default="fra",
+    show_default=True,
+    help="Code langue Tesseract",
+)
+@click.option("--no-progress", is_flag=True, default=False, help="Désactive la barre de progression")
+@click.option("--demo", is_flag=True, default=False, help="Mode démo avec données fictives (sans OCR réel)")
+@click.option("--verbose", "-v", is_flag=True, default=False, help="Mode verbeux")
+def robustness_cmd(
+    corpus: str,
+    engine: str,
+    degradations: str,
+    cer_threshold: float,
+    max_docs: int,
+    output_json: str | None,
+    lang: str,
+    no_progress: bool,
+    demo: bool,
+    verbose: bool,
+) -> None:
+    """Lance une analyse de robustesse d'un moteur OCR face aux dégradations d'image.
+
+    Génère des versions dégradées des images (bruit, flou, rotation,
+    réduction de résolution, binarisation) et mesure le CER à chaque niveau.
+
+    \b
+    Exemples :
+        picarones robustness --corpus ./gt/ --engine tesseract
+        picarones robustness --corpus ./gt/ --engine pero_ocr --degradations noise,blur
+        picarones robustness --corpus ./gt/ --engine tesseract --output-json robustness.json
+        picarones robustness --corpus ./gt/ --engine tesseract --demo
+    """
+    _setup_logging(verbose)
+
+    import json as _json
+
+    deg_types = [d.strip() for d in degradations.split(",") if d.strip()]
+
+    from picarones.core.robustness import (
+        RobustnessAnalyzer, ALL_DEGRADATION_TYPES, generate_demo_robustness_report
+    )
+
+    # Valider les types de dégradation
+    invalid = [d for d in deg_types if d not in ALL_DEGRADATION_TYPES]
+    if invalid:
+        click.echo(
+            f"Types de dégradation invalides : {', '.join(invalid)}\n"
+            f"Types valides : {', '.join(ALL_DEGRADATION_TYPES)}",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(f"Corpus       : {corpus}")
+    click.echo(f"Moteur       : {engine}")
+    click.echo(f"Dégradations : {', '.join(deg_types)}")
+    click.echo(f"Seuil CER    : {cer_threshold * 100:.0f}%")
+
+    if demo:
+        click.echo("\nMode démo : génération d'un rapport fictif réaliste…")
+        report = generate_demo_robustness_report(engine_names=[engine])
+    else:
+        # Charger le corpus
+        from picarones.core.corpus import load_corpus_from_directory
+        try:
+            corp = load_corpus_from_directory(corpus)
+        except (FileNotFoundError, ValueError) as exc:
+            click.echo(f"Erreur corpus : {exc}", err=True)
+            sys.exit(1)
+
+        click.echo(f"\n{len(corp)} documents chargés. Début de l'analyse…\n")
+
+        # Instancier le moteur
+        try:
+            ocr_engine = _engine_from_name(engine, lang=lang, psm=6)
+        except click.BadParameter as exc:
+            click.echo(f"Erreur moteur : {exc}", err=True)
+            sys.exit(1)
+
+        from picarones.core.robustness import RobustnessAnalyzer
+        analyzer = RobustnessAnalyzer(
+            engines=[ocr_engine],
+            degradation_types=deg_types,
+            cer_threshold=cer_threshold,
+        )
+        report = analyzer.analyze(
+            corpus=corp,
+            show_progress=not no_progress,
+            max_docs=max_docs,
+        )
+
+    # Affichage des résultats
+    click.echo("\n── Résultats de robustesse ──────────────────────────")
+    for curve in report.curves:
+        click.echo(f"\n  {curve.engine_name} / {curve.degradation_type}")
+        for label, cer in zip(curve.labels, curve.cer_values):
+            if cer is not None:
+                bar_len = int(cer * 40)
+                bar = "█" * bar_len
+                cer_pct = f"{cer * 100:.1f}%"
+                threshold_marker = " ← CRITIQUE" if curve.critical_threshold_level is not None and \
+                    curve.levels[curve.labels.index(label)] == curve.critical_threshold_level else ""
+                click.echo(f"    {label:<12} {cer_pct:<8} {bar}{threshold_marker}")
+        if curve.critical_threshold_level is not None:
+            click.echo(
+                click.style(
+                    f"    Niveau critique (CER>{cer_threshold*100:.0f}%) : {curve.critical_threshold_level}",
+                    fg="yellow",
+                )
+            )
+        else:
+            click.echo(click.style(f"    Robuste jusqu'au niveau max.", fg="green"))
+
+    # Résumé
+    click.echo("\n── Résumé ──────────────────────────────────────────")
+    for key, val in report.summary.items():
+        if key.startswith("most_robust_"):
+            deg = key.replace("most_robust_", "")
+            click.echo(f"  Moteur le plus robuste ({deg}) : {val}")
+
+    # Export JSON
+    if output_json:
+        report_dict = report.as_dict()
+        Path(output_json).write_text(
+            _json.dumps(report_dict, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        click.echo(f"\nRapport JSON exporté : {output_json}")
+
+
+# ---------------------------------------------------------------------------
+# Mise à jour de picarones demo pour illustrer suivi longitudinal + robustesse
+# ---------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
