@@ -18,24 +18,32 @@ from typing import Optional
 from picarones.core.metrics import MetricsResult, aggregate_metrics
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
 from picarones.pipelines.over_normalization import detect_over_normalization
+# Sprint 5 — métriques avancées
+from picarones.core.confusion import build_confusion_matrix
+from picarones.core.char_scores import compute_ligature_score, compute_diacritic_score
+from picarones.core.taxonomy import classify_errors, aggregate_taxonomy
+from picarones.core.structure import analyze_structure, aggregate_structure
+from picarones.core.image_quality import generate_mock_quality_scores, aggregate_image_quality
+from picarones.core.char_scores import aggregate_ligature_scores, aggregate_diacritic_scores
 
 # ---------------------------------------------------------------------------
 # Textes GT réalistes (documents patrimoniaux BnF)
 # ---------------------------------------------------------------------------
 
 _GT_TEXTS = [
-    "Icy commence le prologue de maistre Jehan Froissart sus les croniques de France & d'Angleterre.",
-    "En l'an de grace mil trois cens soixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.",
-    "Item ledit jour furent menez en ladicte ville de Paris plusieurs prisonniers sarasins & mahommetans.",
-    "Le chancellier du roy manda à tous les baillifs & seneschaulx que on feist crier & publier par tous les carrefours.",
-    "Cy après sensuyt la copie des lettres patentes données par nostre seigneur le roy à ses très chiers & feaulx.",
-    "Nous Charles, par la grace de Dieu roy de France, à tous ceulx qui ces presentes lettres verront, salut.",
-    "Savoir faisons que pour considéracion des bons & aggreables services que nostre amé & feal conseillier.",
-    "Donné à Paris, le vingt & deuxième jour du mois de juillet, l'an de grace mil quatre cens & troys.",
-    "Les dessus ditz ambassadeurs respondirent que leur seigneur & maistre estoit très joyeulx de ceste aliance.",
-    "Après lesquelles choses ainsi faictes & passées, le dit traictié fut ratiffié & confirmé de toutes parties.",
-    "Item, en ladicte année, fut faicte grant assemblée de gens d'armes tant à cheval que à pied.",
-    "Et pour ce que la chose est notoire & manifeste, nous avons fait mettre nostre scel à ces presentes.",
+    # Textes avec graphies médiévales incluant ſ, &, u/v — pour démontrer le CER diplomatique
+    "Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre.",
+    "En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.",
+    "Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.",
+    "Le chancellier du roy manda à tous les baillifs & ſeneſchaulx que on feiſt crier & publier par tous les carrefours.",
+    "Cy après ſenſuyt la copie des lettres patentes données par noſtre ſeigneur le roy à ſes très chiers & feaulx.",
+    "Nous Charles, par la grace de Dieu roy de France, à tous ceulx qui ces preſentes lettres verront, ſalut.",
+    "Sauoir faiſons que pour conſidéracion des bons & aggreables ſeruices que noſtre amé & feal conſeillier.",
+    "Donné à Paris, le vingt & deuxième iour du mois de iuillet, l'an de grace mil quatre cens & troys.",
+    "Les deſſus ditz ambaſſadeurs reſpondirent que leur ſeigneur & maiſtre eſtoit très ioyeulx de ceſte aliance.",
+    "Après lesquelles choſes ainſi faictes & paſſées, le dit traictié fut ratiffié & confirmé de toutes parties.",
+    "Item, en ladicte année, fut faicte grant aſſemblée de gens d'armes tant à cheual que à pied.",
+    "Et pour ce que la choſe eſt notoire & manifeſte, nous auons fait mettre noſtre ſcel à ces preſentes.",
 ]
 
 # ---------------------------------------------------------------------------
@@ -289,6 +297,14 @@ def generate_sample_benchmark(
 
             metrics = _make_metrics(gt, hypothesis)
 
+            # Sprint 5 — métriques avancées patrimoniales
+            cm = build_confusion_matrix(gt, hypothesis)
+            lig_score = compute_ligature_score(gt, hypothesis)
+            diac_score = compute_diacritic_score(gt, hypothesis)
+            taxonomy_result = classify_errors(gt, hypothesis)
+            struct_result = analyze_structure(gt, hypothesis)
+            iq_result = generate_mock_quality_scores(doc_id, seed=rng.randint(0, 999999))
+
             doc_results.append(
                 DocumentResult(
                     doc_id=doc_id,
@@ -299,6 +315,14 @@ def generate_sample_benchmark(
                     duration_seconds=duration,
                     ocr_intermediate=ocr_intermediate,
                     pipeline_metadata=pipeline_meta,
+                    confusion_matrix=cm.as_dict(),
+                    char_scores={
+                        "ligature": lig_score.as_dict(),
+                        "diacritic": diac_score.as_dict(),
+                    },
+                    taxonomy=taxonomy_result.as_dict(),
+                    structure=struct_result.as_dict(),
+                    image_quality=iq_result.as_dict(),
                 )
             )
 
@@ -320,12 +344,54 @@ def generate_sample_benchmark(
                     "document_count": len(over_norms),
                 }
 
+        # Agrégation Sprint 5
+        from picarones.core.confusion import aggregate_confusion_matrices, ConfusionMatrix
+        from picarones.core.char_scores import LigatureScore, DiacriticScore
+        from picarones.core.taxonomy import TaxonomyResult
+        from picarones.core.structure import StructureResult
+        from picarones.core.image_quality import ImageQualityResult
+
+        agg_confusion = aggregate_confusion_matrices([
+            ConfusionMatrix(**dr.confusion_matrix)
+            for dr in doc_results if dr.confusion_matrix
+        ]).as_compact_dict(min_count=1)
+
+        agg_lig = aggregate_ligature_scores([
+            LigatureScore(**dr.char_scores["ligature"])
+            for dr in doc_results if dr.char_scores
+        ])
+        agg_diac = aggregate_diacritic_scores([
+            DiacriticScore(**dr.char_scores["diacritic"])
+            for dr in doc_results if dr.char_scores
+        ])
+        agg_char_scores = {"ligature": agg_lig, "diacritic": agg_diac}
+
+        agg_taxonomy = aggregate_taxonomy([
+            TaxonomyResult.from_dict(dr.taxonomy)
+            for dr in doc_results if dr.taxonomy
+        ])
+
+        agg_structure = aggregate_structure([
+            StructureResult.from_dict(dr.structure)
+            for dr in doc_results if dr.structure
+        ])
+
+        agg_iq = aggregate_image_quality([
+            ImageQualityResult.from_dict(dr.image_quality)
+            for dr in doc_results if dr.image_quality
+        ])
+
         report = EngineReport(
             engine_name=engine_name,
             engine_version=engine_version,
             engine_config=engine_cfg,
             document_results=doc_results,
             pipeline_info=effective_pipeline_info,
+            aggregated_confusion=agg_confusion,
+            aggregated_char_scores=agg_char_scores,
+            aggregated_taxonomy=agg_taxonomy,
+            aggregated_structure=agg_structure,
+            aggregated_image_quality=agg_iq,
         )
         engine_reports.append(report)
 

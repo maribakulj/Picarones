@@ -5,6 +5,8 @@ Métriques implémentées
 - CER brut                : distance d'édition caractère / longueur GT
 - CER normalisé NFC       : après normalisation Unicode NFC
 - CER sans casse          : insensible aux majuscules/minuscules
+- CER diplomatique        : après application d'une table de correspondances
+                            historiques (ſ=s, u=v, i=j…) — configurable
 - WER brut                : word error rate standard
 - WER normalisé           : après normalisation des espaces
 - MER                     : Match Error Rate (jiwer)
@@ -41,9 +43,6 @@ def _normalize_whitespace(text: str) -> str:
     return " ".join(text.split())
 
 
-# Transformations jiwer pour le CER (chaque char devient un "mot")
-_CHAR_TRANSFORM = jiwer.transforms.Compose([]) if _JIWER_AVAILABLE else None
-
 # Transformations jiwer pour le WER (normalisation légère des espaces)
 _WER_TRANSFORM = (
     jiwer.transforms.Compose(
@@ -62,7 +61,6 @@ def _cer_from_strings(reference: str, hypothesis: str) -> float:
     """CER brut : distance d'édition sur les caractères."""
     if not reference:
         return 0.0 if not hypothesis else 1.0
-    # jiwer.cer traite chaque caractère comme un token
     return jiwer.cer(reference, hypothesis)
 
 
@@ -84,9 +82,15 @@ class MetricsResult:
     reference_length: int
     hypothesis_length: int
     error: Optional[str] = None
+    cer_diplomatic: Optional[float] = None
+    """CER calculé après normalisation diplomatique (ſ=s, u=v, i=j…).
+    None si aucun profil diplomatique n'a été fourni à compute_metrics.
+    """
+    diplomatic_profile_name: Optional[str] = None
+    """Nom du profil de normalisation diplomatique utilisé."""
 
     def as_dict(self) -> dict:
-        return {
+        d = {
             "cer": round(self.cer, 6),
             "cer_nfc": round(self.cer_nfc, 6),
             "cer_caseless": round(self.cer_caseless, 6),
@@ -98,6 +102,10 @@ class MetricsResult:
             "hypothesis_length": self.hypothesis_length,
             "error": self.error,
         }
+        if self.cer_diplomatic is not None:
+            d["cer_diplomatic"] = round(self.cer_diplomatic, 6)
+            d["diplomatic_profile_name"] = self.diplomatic_profile_name
+        return d
 
     @property
     def cer_percent(self) -> float:
@@ -108,7 +116,11 @@ class MetricsResult:
         return round(self.wer * 100, 2)
 
 
-def compute_metrics(reference: str, hypothesis: str) -> MetricsResult:
+def compute_metrics(
+    reference: str,
+    hypothesis: str,
+    normalization_profile: "Optional[NormalizationProfile]" = None,  # noqa: F821
+) -> MetricsResult:
     """Calcule l'ensemble des métriques CER/WER pour une paire de textes.
 
     Parameters
@@ -117,6 +129,10 @@ def compute_metrics(reference: str, hypothesis: str) -> MetricsResult:
         Texte de vérité terrain (ground truth).
     hypothesis:
         Texte produit par le moteur OCR.
+    normalization_profile:
+        Profil de normalisation diplomatique optionnel.
+        Si fourni, calcule ``cer_diplomatic`` en plus des métriques standard.
+        Si None, utilise le profil medieval_french par défaut.
 
     Returns
     -------
@@ -151,6 +167,19 @@ def compute_metrics(reference: str, hypothesis: str) -> MetricsResult:
         mer = jiwer.mer(reference, hypothesis)
         wil = jiwer.wil(reference, hypothesis)
 
+        # CER diplomatique — utilise le profil fourni ou le profil médiéval par défaut
+        cer_diplomatic: Optional[float] = None
+        diplomatic_profile_name: Optional[str] = None
+        try:
+            from picarones.core.normalization import DEFAULT_DIPLOMATIC_PROFILE
+            profile = normalization_profile or DEFAULT_DIPLOMATIC_PROFILE
+            ref_diplo = profile.normalize(reference)
+            hyp_diplo = profile.normalize(hypothesis)
+            cer_diplomatic = _cer_from_strings(ref_diplo, hyp_diplo)
+            diplomatic_profile_name = profile.name
+        except Exception:  # noqa: BLE001
+            pass  # CER diplomatique non critique
+
         return MetricsResult(
             cer=cer_raw,
             cer_nfc=cer_nfc,
@@ -161,6 +190,8 @@ def compute_metrics(reference: str, hypothesis: str) -> MetricsResult:
             wil=wil,
             reference_length=len(reference),
             hypothesis_length=len(hypothesis),
+            cer_diplomatic=cer_diplomatic,
+            diplomatic_profile_name=diplomatic_profile_name,
         )
 
     except Exception as exc:  # noqa: BLE001
@@ -208,7 +239,28 @@ def aggregate_metrics(results: list[MetricsResult]) -> dict:
         values = [getattr(r, metric) for r in results if r.error is None]
         aggregated[metric] = _stats(values)
 
+    # CER diplomatique (optionnel — présent seulement si calculé)
+    diplo_values = [
+        r.cer_diplomatic for r in results
+        if r.error is None and r.cer_diplomatic is not None
+    ]
+    if diplo_values:
+        aggregated["cer_diplomatic"] = _stats(diplo_values)
+        # Nom du profil (même pour tous les docs d'un corpus)
+        profile_name = next(
+            (r.diplomatic_profile_name for r in results if r.diplomatic_profile_name),
+            None,
+        )
+        if profile_name:
+            aggregated["cer_diplomatic"]["profile"] = profile_name
+
     aggregated["document_count"] = len(results)
     aggregated["failed_count"] = sum(1 for r in results if r.error is not None)
 
     return aggregated
+
+
+# Import paresseux pour éviter les imports circulaires
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from picarones.core.normalization import NormalizationProfile
