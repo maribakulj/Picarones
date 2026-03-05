@@ -35,6 +35,17 @@ class DocumentResult:
     """Sortie OCR brute avant correction LLM (None pour les moteurs OCR seuls)."""
     pipeline_metadata: dict = field(default_factory=dict)
     """Métadonnées du pipeline : mode, prompt, over-normalization…"""
+    # Champs Sprint 5 — métriques avancées patrimoniales
+    confusion_matrix: Optional[dict] = None
+    """Matrice de confusion unicode sérialisée."""
+    char_scores: Optional[dict] = None
+    """Scores ligatures et diacritiques."""
+    taxonomy: Optional[dict] = None
+    """Classification taxonomique des erreurs (classes 1-9)."""
+    structure: Optional[dict] = None
+    """Analyse structurelle (segmentation lignes, ordre lecture)."""
+    image_quality: Optional[dict] = None
+    """Métriques de qualité image."""
 
     def as_dict(self) -> dict:
         d = {
@@ -50,6 +61,16 @@ class DocumentResult:
             d["ocr_intermediate"] = self.ocr_intermediate
         if self.pipeline_metadata:
             d["pipeline_metadata"] = self.pipeline_metadata
+        if self.confusion_matrix is not None:
+            d["confusion_matrix"] = self.confusion_matrix
+        if self.char_scores is not None:
+            d["char_scores"] = self.char_scores
+        if self.taxonomy is not None:
+            d["taxonomy"] = self.taxonomy
+        if self.structure is not None:
+            d["structure"] = self.structure
+        if self.image_quality is not None:
+            d["image_quality"] = self.image_quality
         return d
 
 
@@ -67,6 +88,17 @@ class EngineReport:
     Clés typiques : mode, prompt_file, llm_model, llm_provider, pipeline_steps,
     over_normalization (score agrégé, classe 10 de la taxonomie).
     """
+    # Métriques agrégées Sprint 5
+    aggregated_confusion: Optional[dict] = None
+    """Matrice de confusion unicode agrégée sur le corpus."""
+    aggregated_char_scores: Optional[dict] = None
+    """Scores ligatures/diacritiques agrégés."""
+    aggregated_taxonomy: Optional[dict] = None
+    """Distribution taxonomique des erreurs agrégée."""
+    aggregated_structure: Optional[dict] = None
+    """Métriques structurelles agrégées."""
+    aggregated_image_quality: Optional[dict] = None
+    """Métriques de qualité image agrégées."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -85,6 +117,20 @@ class EngineReport:
         return wer_stats.get("mean")
 
     @property
+    def ligature_score(self) -> Optional[float]:
+        """Score de ligatures agrégé (None si non calculé)."""
+        if self.aggregated_char_scores:
+            return self.aggregated_char_scores.get("ligature", {}).get("score")
+        return None
+
+    @property
+    def diacritic_score(self) -> Optional[float]:
+        """Score diacritique agrégé (None si non calculé)."""
+        if self.aggregated_char_scores:
+            return self.aggregated_char_scores.get("diacritic", {}).get("score")
+        return None
+
+    @property
     def is_pipeline(self) -> bool:
         """Vrai si ce rapport correspond à un pipeline OCR+LLM."""
         return bool(self.pipeline_info)
@@ -99,6 +145,16 @@ class EngineReport:
         }
         if self.pipeline_info:
             d["pipeline_info"] = self.pipeline_info
+        if self.aggregated_confusion is not None:
+            d["aggregated_confusion"] = self.aggregated_confusion
+        if self.aggregated_char_scores is not None:
+            d["aggregated_char_scores"] = self.aggregated_char_scores
+        if self.aggregated_taxonomy is not None:
+            d["aggregated_taxonomy"] = self.aggregated_taxonomy
+        if self.aggregated_structure is not None:
+            d["aggregated_structure"] = self.aggregated_structure
+        if self.aggregated_image_quality is not None:
+            d["aggregated_image_quality"] = self.aggregated_image_quality
         return d
 
 

@@ -18,6 +18,13 @@ from typing import Optional
 from picarones.core.metrics import MetricsResult, aggregate_metrics
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
 from picarones.pipelines.over_normalization import detect_over_normalization
+# Sprint 5 — métriques avancées
+from picarones.core.confusion import build_confusion_matrix
+from picarones.core.char_scores import compute_ligature_score, compute_diacritic_score
+from picarones.core.taxonomy import classify_errors, aggregate_taxonomy
+from picarones.core.structure import analyze_structure, aggregate_structure
+from picarones.core.image_quality import generate_mock_quality_scores, aggregate_image_quality
+from picarones.core.char_scores import aggregate_ligature_scores, aggregate_diacritic_scores
 
 # ---------------------------------------------------------------------------
 # Textes GT réalistes (documents patrimoniaux BnF)
@@ -290,6 +297,14 @@ def generate_sample_benchmark(
 
             metrics = _make_metrics(gt, hypothesis)
 
+            # Sprint 5 — métriques avancées patrimoniales
+            cm = build_confusion_matrix(gt, hypothesis)
+            lig_score = compute_ligature_score(gt, hypothesis)
+            diac_score = compute_diacritic_score(gt, hypothesis)
+            taxonomy_result = classify_errors(gt, hypothesis)
+            struct_result = analyze_structure(gt, hypothesis)
+            iq_result = generate_mock_quality_scores(doc_id, seed=rng.randint(0, 999999))
+
             doc_results.append(
                 DocumentResult(
                     doc_id=doc_id,
@@ -300,6 +315,14 @@ def generate_sample_benchmark(
                     duration_seconds=duration,
                     ocr_intermediate=ocr_intermediate,
                     pipeline_metadata=pipeline_meta,
+                    confusion_matrix=cm.as_dict(),
+                    char_scores={
+                        "ligature": lig_score.as_dict(),
+                        "diacritic": diac_score.as_dict(),
+                    },
+                    taxonomy=taxonomy_result.as_dict(),
+                    structure=struct_result.as_dict(),
+                    image_quality=iq_result.as_dict(),
                 )
             )
 
@@ -321,12 +344,54 @@ def generate_sample_benchmark(
                     "document_count": len(over_norms),
                 }
 
+        # Agrégation Sprint 5
+        from picarones.core.confusion import aggregate_confusion_matrices, ConfusionMatrix
+        from picarones.core.char_scores import LigatureScore, DiacriticScore
+        from picarones.core.taxonomy import TaxonomyResult
+        from picarones.core.structure import StructureResult
+        from picarones.core.image_quality import ImageQualityResult
+
+        agg_confusion = aggregate_confusion_matrices([
+            ConfusionMatrix(**dr.confusion_matrix)
+            for dr in doc_results if dr.confusion_matrix
+        ]).as_compact_dict(min_count=1)
+
+        agg_lig = aggregate_ligature_scores([
+            LigatureScore(**dr.char_scores["ligature"])
+            for dr in doc_results if dr.char_scores
+        ])
+        agg_diac = aggregate_diacritic_scores([
+            DiacriticScore(**dr.char_scores["diacritic"])
+            for dr in doc_results if dr.char_scores
+        ])
+        agg_char_scores = {"ligature": agg_lig, "diacritic": agg_diac}
+
+        agg_taxonomy = aggregate_taxonomy([
+            TaxonomyResult.from_dict(dr.taxonomy)
+            for dr in doc_results if dr.taxonomy
+        ])
+
+        agg_structure = aggregate_structure([
+            StructureResult.from_dict(dr.structure)
+            for dr in doc_results if dr.structure
+        ])
+
+        agg_iq = aggregate_image_quality([
+            ImageQualityResult.from_dict(dr.image_quality)
+            for dr in doc_results if dr.image_quality
+        ])
+
         report = EngineReport(
             engine_name=engine_name,
             engine_version=engine_version,
             engine_config=engine_cfg,
             document_results=doc_results,
             pipeline_info=effective_pipeline_info,
+            aggregated_confusion=agg_confusion,
+            aggregated_char_scores=agg_char_scores,
+            aggregated_taxonomy=agg_taxonomy,
+            aggregated_structure=agg_structure,
+            aggregated_image_quality=agg_iq,
         )
         engine_reports.append(report)
 

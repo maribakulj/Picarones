@@ -99,6 +99,13 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             # Champs pipeline OCR+LLM (vides pour les moteurs OCR seuls)
             "is_pipeline": report.is_pipeline,
             "pipeline_info": report.pipeline_info,
+            # Sprint 5 — métriques avancées patrimoniales
+            "ligature_score": _safe(report.ligature_score) if report.ligature_score is not None else None,
+            "diacritic_score": _safe(report.diacritic_score) if report.diacritic_score is not None else None,
+            "aggregated_confusion": report.aggregated_confusion,
+            "aggregated_taxonomy": report.aggregated_taxonomy,
+            "aggregated_structure": report.aggregated_structure,
+            "aggregated_image_quality": report.aggregated_image_quality,
         }
         engines_summary.append(entry)
 
@@ -146,6 +153,16 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 if on is not None:
                     er_entry["over_normalization"] = on
                 er_entry["pipeline_mode"] = dr.pipeline_metadata.get("pipeline_mode")
+            # Sprint 5 — métriques avancées par document
+            if dr.char_scores is not None:
+                er_entry["ligature_score"] = _safe(dr.char_scores.get("ligature", {}).get("score"))
+                er_entry["diacritic_score"] = _safe(dr.char_scores.get("diacritic", {}).get("score"))
+            if dr.taxonomy is not None:
+                er_entry["taxonomy"] = dr.taxonomy
+            if dr.structure is not None:
+                er_entry["structure"] = dr.structure
+            if dr.image_quality is not None:
+                er_entry["image_quality"] = dr.image_quality
             engine_results.append(er_entry)
 
         # CER moyen sur ce document (pour le badge galerie)
@@ -613,6 +630,7 @@ footer {{
     <button class="tab-btn active" onclick="showView('ranking')">Classement</button>
     <button class="tab-btn" onclick="showView('gallery')">Galerie</button>
     <button class="tab-btn" onclick="showView('document')">Document</button>
+    <button class="tab-btn" onclick="showView('characters')">Caractères</button>
     <button class="tab-btn" onclick="showView('analyses')">Analyses</button>
   </div>
   <div class="meta" id="nav-meta">—</div>
@@ -637,6 +655,8 @@ footer {{
             <th data-col="wer"  class="sortable">WER<i class="sort-icon">↕</i></th>
             <th data-col="mer"  class="sortable">MER<i class="sort-icon">↕</i></th>
             <th data-col="wil"  class="sortable">WIL<i class="sort-icon">↕</i></th>
+            <th data-col="ligature_score" class="sortable" title="Taux de reconnaissance des ligatures (ﬁ, ﬂ, œ, æ, ﬀ…)">Ligatures<i class="sort-icon">↕</i></th>
+            <th data-col="diacritic_score" class="sortable" title="Taux de conservation des diacritiques (accents, cédilles, trémas…)">Diacritiques<i class="sort-icon">↕</i></th>
             <th>CER médian</th>
             <th>CER min</th>
             <th>CER max</th>
@@ -786,6 +806,59 @@ footer {{
       </div>
     </div>
 
+    <div class="chart-card">
+      <h3>Qualité image ↔ CER (scatter plot)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-quality-cer"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.
+      </div>
+    </div>
+
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3>Taxonomie des erreurs par moteur</h3>
+      <div class="chart-canvas-wrap" style="max-height:300px">
+        <canvas id="chart-taxonomy"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════ Vue 5 : Caractères ════════════════════════════════════════ -->
+<div id="view-characters" class="view">
+  <div class="card">
+    <h2>Analyse des caractères</h2>
+
+    <!-- Sélecteur de moteur -->
+    <div class="stat-row" style="margin-bottom:1rem">
+      <label for="char-engine-select" style="font-weight:600;margin-right:.5rem">Moteur :</label>
+      <select id="char-engine-select" onchange="renderCharView()"
+        style="padding:.35rem .7rem;border-radius:6px;border:1px solid var(--border)"></select>
+    </div>
+
+    <!-- Scores ligatures / diacritiques -->
+    <div class="stat-row" id="char-scores-row" style="gap:1.5rem;margin-bottom:1.5rem"></div>
+
+    <!-- Matrice de confusion unicode -->
+    <h3 style="margin-bottom:.75rem">Matrice de confusion unicode
+      <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">
+        — substitutions les plus fréquentes (caractère GT → caractère OCR)
+      </span>
+    </h3>
+    <div id="confusion-heatmap" style="overflow-x:auto;margin-bottom:1.5rem"></div>
+
+    <!-- Détail ligatures par type -->
+    <h3 style="margin-bottom:.75rem">Reconnaissance des ligatures</h3>
+    <div id="ligature-detail" style="margin-bottom:1.5rem"></div>
+
+    <!-- Taxonomie détaillée -->
+    <h3 style="margin-bottom:.75rem">Distribution taxonomique des erreurs</h3>
+    <div id="taxonomy-detail"></div>
   </div>
 </div>
 
@@ -819,13 +892,15 @@ function showView(name) {{
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
+  // Activer le bon onglet nav
+  const tabMap = {{ranking:'classement',gallery:'galerie',document:'document',characters:'caract',analyses:'analyses'}};
+  const prefix = tabMap[name] || name;
   document.querySelectorAll('.tab-btn').forEach(b => {{
-    if (b.textContent.toLowerCase().startsWith(
-        {{ranking:'c',gallery:'g',document:'d',analyses:'a'}}[name]
-    )) b.classList.add('active');
+    if (b.textContent.toLowerCase().startsWith(prefix.toLowerCase())) b.classList.add('active');
   }});
   currentView = name;
   if (name === 'analyses' && !chartsBuilt) buildCharts();
+  if (name === 'characters' && !charViewBuilt) initCharView();
 }}
 
 // ── Formatage ───────────────────────────────────────────────────
@@ -866,6 +941,15 @@ function renderDiff(ops) {{
            + '<span class="d-rep-new">' + esc(op.new) + '</span>';
     return '';
   }}).join(' ');
+}}
+
+// ── Score badge (ligatures / diacritiques) ───────────────────────
+function _scoreBadge(v, label) {{
+  if (v === null || v === undefined) return '<span style="color:var(--text-muted)">—</span>';
+  const pctVal = (v * 100).toFixed(1);
+  const color = v >= 0.9 ? '#16a34a' : v >= 0.7 ? '#ca8a04' : '#dc2626';
+  const bg = v >= 0.9 ? '#f0fdf4' : v >= 0.7 ? '#fefce8' : '#fef2f2';
+  return `<span class="cer-badge" style="color:${{color}};background:${{bg}}" title="${{label}} : ${{pctVal}}%">${{pctVal}}%</span>`;
 }}
 
 // ── Vue Classement ──────────────────────────────────────────────
@@ -945,6 +1029,8 @@ function renderRanking() {{
       <td>${{pct(e.wer)}}</td>
       <td>${{pct(e.mer)}}</td>
       <td>${{pct(e.wil)}}</td>
+      <td>${{_scoreBadge(e.ligature_score, 'Ligatures')}}</td>
+      <td>${{_scoreBadge(e.diacritic_score, 'Diacritiques')}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_median)}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_min)}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_max)}}</td>
@@ -1222,6 +1308,8 @@ function buildCharts() {{
   buildRadar();
   buildCerPerDoc();
   buildDurationChart();
+  buildQualityCerScatter();
+  buildTaxonomyChart();
 }}
 
 function buildCerHistogram() {{
@@ -1363,6 +1451,315 @@ function buildDurationChart() {{
       }},
     }},
   }});
+}}
+
+function buildQualityCerScatter() {{
+  const ctx = document.getElementById('chart-quality-cer');
+  if (!ctx) return;
+  // Construire les points : un par document, un dataset par moteur
+  const datasets = DATA.engines.map((e, ei) => {{
+    const points = DATA.documents.flatMap(doc => {{
+      const er = doc.engine_results.find(r => r.engine === e.name);
+      if (!er || er.error || !er.image_quality) return [];
+      return [{{ x: er.image_quality.quality_score, y: er.cer * 100 }}];
+    }});
+    return {{
+      label: e.name, data: points,
+      backgroundColor: engineColor(ei) + 'bb',
+      borderColor: engineColor(ei),
+      borderWidth: 1, pointRadius: 5, pointHoverRadius: 7,
+    }};
+  }}).filter(d => d.data.length > 0);
+
+  if (!datasets.length) {{ ctx.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Aucune donnée de qualité image disponible.</p>'; return; }}
+
+  chartInstances['quality-cer'] = new Chart(ctx.getContext('2d'), {{
+    type: 'scatter',
+    data: {{ datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{
+        legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }},
+        tooltip: {{ callbacks: {{
+          label: ctx => `${{ctx.dataset.label}}: qualité=${{ctx.parsed.x.toFixed(2)}}, CER=${{ctx.parsed.y.toFixed(1)}}%`,
+        }} }},
+      }},
+      scales: {{
+        x: {{ min: 0, max: 1, title: {{ display: true, text: 'Score qualité image [0–1]', font: {{ size: 11 }} }} }},
+        y: {{ min: 0, title: {{ display: true, text: 'CER (%)', font: {{ size: 11 }} }} }},
+      }},
+    }},
+  }});
+}}
+
+function buildTaxonomyChart() {{
+  const ctx = document.getElementById('chart-taxonomy');
+  if (!ctx) return;
+  const taxLabels = ['Confusion visuelle','Diacritique','Casse','Ligature','Abréviation','Hapax','Segmentation','Hors-vocab.','Lacune'];
+  const taxKeys = ['visual_confusion','diacritic_error','case_error','ligature_error','abbreviation_error','hapax','segmentation_error','oov_character','lacuna'];
+  const taxColors = ['#6366f1','#f59e0b','#ec4899','#14b8a6','#8b5cf6','#64748b','#f97316','#06b6d4','#ef4444'];
+
+  const datasets = DATA.engines.map((e, ei) => {{
+    const tax = e.aggregated_taxonomy;
+    const data = taxKeys.map(k => tax && tax.counts ? (tax.counts[k] || 0) : 0);
+    return {{
+      label: e.name, data,
+      backgroundColor: engineColor(ei) + '99',
+      borderColor: engineColor(ei),
+      borderWidth: 1,
+    }};
+  }});
+
+  chartInstances['taxonomy'] = new Chart(ctx.getContext('2d'), {{
+    type: 'bar',
+    data: {{ labels: taxLabels, datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{ legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }} }},
+      scales: {{
+        x: {{ ticks: {{ font: {{ size: 10 }} }} }},
+        y: {{ title: {{ display: true, text: "Nb d'erreurs", font: {{ size: 11 }} }}, min: 0, ticks: {{ stepSize: 1 }} }},
+      }},
+    }},
+  }});
+}}
+
+// ── Vue Caractères ───────────────────────────────────────────────
+let charViewBuilt = false;
+
+function initCharView() {{
+  charViewBuilt = true;
+  // Remplir le sélecteur de moteur
+  const sel = document.getElementById('char-engine-select');
+  sel.innerHTML = '';
+  DATA.engines.forEach(e => {{
+    const opt = document.createElement('option');
+    opt.value = e.name; opt.textContent = e.name;
+    sel.appendChild(opt);
+  }});
+  renderCharView();
+}}
+
+function renderCharView() {{
+  const engineName = document.getElementById('char-engine-select').value;
+  const eng = DATA.engines.find(e => e.name === engineName);
+  if (!eng) return;
+
+  // Scores ligatures / diacritiques
+  const scoresRow = document.getElementById('char-scores-row');
+  const ligScore = eng.ligature_score;
+  const diacScore = eng.diacritic_score;
+  scoresRow.innerHTML = `
+    <div class="stat">Ligatures <b>${{_scoreBadge(ligScore, 'Ligatures')}}</b></div>
+    <div class="stat">Diacritiques <b>${{_scoreBadge(diacScore, 'Diacritiques')}}</b></div>
+    ${{eng.aggregated_structure ? `
+    <div class="stat">Précision lignes <b>${{_scoreBadge(eng.aggregated_structure.mean_line_accuracy, 'Précision nb lignes')}}</b></div>
+    <div class="stat">Ordre lecture <b>${{_scoreBadge(eng.aggregated_structure.mean_reading_order_score, 'Score ordre de lecture')}}</b></div>
+    ` : ''}}
+    ${{eng.aggregated_image_quality ? `
+    <div class="stat">Qualité image moy. <b>${{_scoreBadge(eng.aggregated_image_quality.mean_quality_score, 'Qualité image moyenne')}}</b></div>
+    ` : ''}}
+  `;
+
+  // Matrice de confusion heatmap
+  renderConfusionHeatmap(eng);
+
+  // Détail ligatures
+  renderLigatureDetail(eng);
+
+  // Taxonomie détaillée
+  renderTaxonomyDetail(eng);
+}}
+
+function renderConfusionHeatmap(eng) {{
+  const container = document.getElementById('confusion-heatmap');
+  const cm = eng.aggregated_confusion;
+  if (!cm || !cm.matrix) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Aucune donnée de confusion disponible.</p>';
+    return;
+  }}
+
+  // Collecter les top confusions (substitutions uniquement, hors ∅)
+  const pairs = [];
+  for (const [gt, ocrs] of Object.entries(cm.matrix)) {{
+    if (gt === '∅') continue;
+    for (const [ocr, cnt] of Object.entries(ocrs)) {{
+      if (ocr !== gt && ocr !== '∅' && cnt > 0) {{
+        pairs.push({{ gt, ocr, cnt }});
+      }}
+    }}
+  }}
+  pairs.sort((a,b) => b.cnt - a.cnt);
+  const top = pairs.slice(0, 30);
+
+  if (!top.length) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Aucune substitution détectée.</p>';
+    return;
+  }}
+
+  // Heatmap sous forme de tableau compact
+  const maxCnt = top[0].cnt;
+  const rows = top.map(p => {{
+    const intensity = Math.round((p.cnt / maxCnt) * 200 + 55);  // 55–255
+    const bg = `rgb(${{intensity}},50,50)`;
+    const fg = intensity > 150 ? '#fff' : '#222';
+    return `<tr onclick="showConfusionExamples('${{esc(p.gt)}}','${{esc(p.ocr)}}')" style="cursor:pointer" title="GT='${{esc(p.gt)}}' → OCR='${{esc(p.ocr)}}' : ${{p.cnt}} fois">
+      <td style="font-family:monospace;font-size:1.1rem;padding:.3rem .6rem;text-align:center">${{esc(p.gt)}}</td>
+      <td style="padding:.1rem .3rem;color:var(--text-muted)">→</td>
+      <td style="font-family:monospace;font-size:1.1rem;padding:.3rem .6rem;text-align:center">${{esc(p.ocr)}}</td>
+      <td style="padding:.3rem 1rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div style="width:${{Math.round(p.cnt/maxCnt*120)}}px;height:12px;border-radius:3px;background:${{bg}}"></div>
+          <span style="font-size:.8rem;color:var(--text-muted)">${{p.cnt}}×</span>
+        </div>
+      </td>
+    </tr>`;
+  }}).join('');
+
+  container.innerHTML = `
+    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.5rem">
+      Cliquer sur une ligne pour voir les exemples dans la vue Document.
+      Total substitutions : <b>${{cm.total_substitutions}}</b>
+      · Insertions : <b>${{cm.total_insertions}}</b>
+      · Suppressions : <b>${{cm.total_deletions}}</b>
+    </p>
+    <table style="border-collapse:collapse;font-size:.85rem">
+      <thead><tr>
+        <th style="padding:.3rem .6rem;text-align:left">GT</th>
+        <th></th>
+        <th style="padding:.3rem .6rem;text-align:left">OCR</th>
+        <th style="padding:.3rem 1rem;text-align:left">Fréquence</th>
+      </tr></thead>
+      <tbody>${{rows}}</tbody>
+    </table>
+  `;
+}}
+
+function showConfusionExamples(gtChar, ocrChar) {{
+  // Naviguer vers la vue Document en cherchant un exemple de cette confusion
+  showView('document');
+  const docWithConfusion = DATA.documents.find(doc =>
+    doc.engine_results.some(er => {{
+      const h = er.hypothesis || '';
+      const g = doc.ground_truth || '';
+      return g.includes(gtChar) && h.includes(ocrChar);
+    }})
+  );
+  if (docWithConfusion) loadDocument(docWithConfusion.doc_id);
+}}
+
+function renderLigatureDetail(eng) {{
+  const container = document.getElementById('ligature-detail');
+  // Agrégation sur tous les documents pour ce moteur
+  const ligData = {{}};
+  DATA.documents.forEach(doc => {{
+    const er = doc.engine_results.find(r => r.engine === eng.name);
+    if (!er || !er.ligature_score) return;
+    // On n'a que le score global par doc; pour le détail, utiliser aggregated_char_scores
+  }});
+
+  const agg = eng.aggregated_char_scores;
+  if (!agg || !agg.ligature || !agg.ligature.per_ligature) {{
+    const overallScore = eng.ligature_score;
+    if (overallScore !== null && overallScore !== undefined) {{
+      container.innerHTML = `<div class="stat">Score global ligatures : ${{_scoreBadge(overallScore, 'Ligatures')}}</div>`;
+    }} else {{
+      container.innerHTML = '<p style="color:var(--text-muted)">Aucune donnée ligature disponible (pas de ligatures dans le corpus).</p>';
+    }}
+    return;
+  }}
+
+  const perLig = agg.ligature.per_ligature;
+  if (!Object.keys(perLig).length) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Aucune ligature trouvée dans le corpus GT.</p>';
+    return;
+  }}
+
+  const rows = Object.entries(perLig)
+    .sort((a,b) => b[1].gt_count - a[1].gt_count)
+    .map(([lig, d]) => {{
+      const sc = d.score;
+      const color = sc >= 0.9 ? '#16a34a' : sc >= 0.7 ? '#ca8a04' : '#dc2626';
+      const barW = Math.round(sc * 120);
+      return `<tr>
+        <td style="font-family:monospace;font-size:1.2rem;padding:.3rem .6rem">${{esc(lig)}}</td>
+        <td style="padding:.3rem .6rem;font-size:.8rem;color:var(--text-muted)">${{esc(lig.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'))}}</td>
+        <td style="padding:.3rem .6rem">${{d.gt_count}} GT</td>
+        <td style="padding:.3rem .6rem">${{d.ocr_correct}} corrects</td>
+        <td style="padding:.3rem 1rem">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <div style="width:${{barW}}px;height:10px;border-radius:3px;background:${{color}}"></div>
+            <span style="color:${{color}};font-weight:600">${{(sc*100).toFixed(0)}}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }}).join('');
+
+  container.innerHTML = `
+    <table style="border-collapse:collapse;font-size:.85rem">
+      <thead><tr>
+        <th style="padding:.3rem .6rem;text-align:left">Ligature</th>
+        <th style="padding:.3rem .6rem;text-align:left">Unicode</th>
+        <th style="padding:.3rem .6rem">GT</th>
+        <th style="padding:.3rem .6rem">Corrects</th>
+        <th style="padding:.3rem 1rem;text-align:left">Score</th>
+      </tr></thead>
+      <tbody>${{rows}}</tbody>
+    </table>
+  `;
+}}
+
+function renderTaxonomyDetail(eng) {{
+  const container = document.getElementById('taxonomy-detail');
+  const tax = eng.aggregated_taxonomy;
+  if (!tax || !tax.counts) {{
+    container.innerHTML = '<p style="color:var(--text-muted)">Aucune donnée taxonomique disponible.</p>';
+    return;
+  }}
+
+  const classNames = {{
+    visual_confusion: '1 — Confusion visuelle',
+    diacritic_error: '2 — Erreur diacritique',
+    case_error: '3 — Erreur de casse',
+    ligature_error: '4 — Ligature',
+    abbreviation_error: '5 — Abréviation',
+    hapax: '6 — Hapax',
+    segmentation_error: '7 — Segmentation',
+    oov_character: '8 — Hors-vocabulaire',
+    lacuna: '9 — Lacune',
+  }};
+  const total = tax.total_errors || 1;
+  const maxCnt = Math.max(...Object.values(tax.counts));
+
+  const rows = Object.entries(tax.counts)
+    .filter(([, cnt]) => cnt > 0)
+    .sort((a,b) => b[1]-a[1])
+    .map(([cls, cnt]) => {{
+      const pctVal = (cnt / total * 100).toFixed(1);
+      const barW = maxCnt > 0 ? Math.round(cnt/maxCnt * 200) : 0;
+      return `<tr>
+        <td style="padding:.3rem .6rem;font-size:.85rem">${{esc(classNames[cls] || cls)}}</td>
+        <td style="padding:.3rem .6rem;text-align:right;font-variant-numeric:tabular-nums">${{cnt}}</td>
+        <td style="padding:.3rem 1rem">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <div style="width:${{barW}}px;height:10px;border-radius:3px;background:#6366f1"></div>
+            <span style="color:var(--text-muted);font-size:.8rem">${{pctVal}}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }}).join('');
+
+  container.innerHTML = `
+    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.5rem">Total : <b>${{tax.total_errors}}</b> erreurs classifiées.</p>
+    <table style="border-collapse:collapse;font-size:.85rem;min-width:400px">
+      <thead><tr>
+        <th style="padding:.3rem .6rem;text-align:left">Classe</th>
+        <th style="padding:.3rem .6rem;text-align:right">N</th>
+        <th style="padding:.3rem 1rem;text-align:left">Proportion</th>
+      </tr></thead>
+      <tbody>${{rows}}</tbody>
+    </table>
+  `;
 }}
 
 // ── Init ────────────────────────────────────────────────────────
