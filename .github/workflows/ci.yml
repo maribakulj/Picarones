@@ -1,0 +1,222 @@
+# .github/workflows/ci.yml — Picarones CI/CD
+#
+# Pipeline GitHub Actions :
+#   - Tests sur Python 3.11 et 3.12
+#   - Linux, macOS, Windows
+#   - Rapport de couverture (Codecov)
+#   - Build de la distribution Python
+#   - Vérification de l'exécutable demo
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**", "sprint/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:  # Déclenchement manuel
+
+permissions:
+  contents: read
+
+# ──────────────────────────────────────────────────────────────────
+# Job 1 : Tests unitaires et d'intégration
+# ──────────────────────────────────────────────────────────────────
+jobs:
+  tests:
+    name: Tests Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # ── Tesseract ──────────────────────────────────────────────
+      - name: Install Tesseract (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-fra tesseract-ocr-lat
+
+      - name: Install Tesseract (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install tesseract tesseract-lang
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+
+      - name: Install Tesseract (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install tesseract --version=5.3.3 -y
+          echo "C:\Program Files\Tesseract-OCR" >> $env:GITHUB_PATH
+        shell: pwsh
+
+      # ── Dépendances Python ──────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # ── Tests ───────────────────────────────────────────────────
+      - name: Run tests
+        run: |
+          pytest tests/ -q --tb=short --no-header \
+            --cov=picarones --cov-report=xml --cov-report=term-missing
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
+
+      # ── Couverture ──────────────────────────────────────────────
+      - name: Upload coverage to Codecov
+        if: runner.os == 'Linux' && matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: unittests
+          name: picarones-coverage
+          fail_ci_if_error: false
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 2 : Vérification du rapport demo
+  # ──────────────────────────────────────────────────────────────────
+  demo:
+    name: Demo end-to-end
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Tesseract
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-fra
+
+      - name: Install Picarones
+        run: pip install -e .
+
+      - name: Run demo
+        run: |
+          picarones demo --docs 12 --output rapport_demo_ci.html \
+            --with-history --with-robustness
+          ls -lh rapport_demo_ci.html
+          # Vérifier que le fichier est valide et contient les sections attendues
+          python -c "
+          content = open('rapport_demo_ci.html').read()
+          assert 'Picarones' in content, 'Picarones non trouvé dans le rapport'
+          assert 'CER' in content, 'CER non trouvé dans le rapport'
+          assert len(content) > 50000, f'Rapport trop petit : {len(content)} octets'
+          print(f'Rapport OK : {len(content):,} octets')
+          "
+
+      - name: Upload demo report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-demo
+          path: rapport_demo_ci.html
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 3 : Build de la distribution Python
+  # ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build tools
+        run: pip install --upgrade build twine
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      - name: Check distribution
+        run: twine check dist/*
+
+      - name: Upload distribution as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 4 : Vérification de la qualité du code (optionnel)
+  # ──────────────────────────────────────────────────────────────────
+  lint:
+    name: Code quality
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Ne bloque pas le CI si le lint échoue
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: |
+          ruff check picarones/ --select=E,W,F --ignore=E501,W503 || true
+          ruff check tests/ --select=E,W,F --ignore=E501,W503 || true
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 5 : CI/CD — Détection de régression CER (optionnel)
+  # Commenté par défaut — activer si vous avez un corpus de référence
+  # ──────────────────────────────────────────────────────────────────
+  # regression-check:
+  #   name: Regression check
+  #   runs-on: ubuntu-latest
+  #   needs: tests
+  #   if: github.event_name == 'pull_request'
+  #
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Install
+  #       run: pip install -e .
+  #
+  #     - name: Run benchmark on reference corpus
+  #       run: |
+  #         picarones run \
+  #           --corpus ./tests/fixtures/reference_corpus/ \
+  #           --engines tesseract \
+  #           --output results_pr.json \
+  #           --fail-if-cer-above 15.0
