@@ -16,3 +16,6 @@ venv/
 *.html
 results*.json
 rapport*.html
+rapports/
+corpus_*/
+corpus/
