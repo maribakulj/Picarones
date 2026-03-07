@@ -1,8 +1,7 @@
 # Picarones
 
-> **Plateforme de comparaison et d'évaluation de moteurs OCR/HTR pour documents patrimoniaux**
->
-> BnF — Département numérique · [Apache 2.0](LICENSE)
+> **Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux**
+Apache 2.0
 
 [![CI](https://github.com/bnf/picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/bnf/picarones/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
