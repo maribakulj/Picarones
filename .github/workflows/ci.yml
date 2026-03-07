@@ -11,7 +11,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, "feature/**", "sprint/**"]
+    branches: [main, develop, "feature/**", "sprint/**", "claude/**"]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:  # Déclenchement manuel
