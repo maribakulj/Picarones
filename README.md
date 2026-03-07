@@ -231,7 +231,7 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour ajouter un moteur OCR, un adaptateu
 
 ## Licence
 
-Apache License 2.0 — © BnF — Département numérique
+Apache License 2.0 
 
 ---
 
@@ -281,4 +281,4 @@ Google Vision · AWS Textract · Azure Document Intelligence · Ollama (local LL
 
 ### License
 
-Apache License 2.0 — © BnF — Département numérique
+Apache License 2.0
