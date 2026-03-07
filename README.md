@@ -9,9 +9,9 @@ Apache 2.0
 
 ---
 
-**Picarones** est un outil open-source conçu pour comparer rigoureusement des moteurs OCR et HTR
+**Picarones** est un outil open-source conçu pour comparer des moteurs OCR et HTR
 (Tesseract, Pero OCR, Kraken, APIs cloud…) ainsi que des pipelines OCR+LLM sur des corpus de
-documents historiques — manuscrits, imprimés anciens, archives.
+documents historiques (manuscrits, imprimés anciens, archives).
 
 ---
 
@@ -49,7 +49,7 @@ documents historiques — manuscrits, imprimés anciens, archives.
 
 - Chaînes composables : `tesseract → gpt-4o`, `pero_ocr → claude-sonnet`, LLM zero-shot…
 - Modes : texte seul, image+texte, zero-shot
-- Détection de **sur-normalisation LLM** : le LLM modernise-t-il à tort la graphie médiévale ?
+- Détection de **sur-normalisation LLM** : le LLM modernise-t-il à tort les graphies anciennes ?
 - Bibliothèque de prompts pour manuscrits médiévaux, imprimés anciens, latin…
 
 ### Import de corpus
