@@ -72,6 +72,7 @@ jobs:
 
       # ── Tests ───────────────────────────────────────────────────
       - name: Run tests
+        shell: bash
         run: |
           pytest tests/ -q --tb=short --no-header \
             --cov=picarones --cov-report=xml --cov-report=term-missing
