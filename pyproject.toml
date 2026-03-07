@@ -4,19 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "picarones"
-version = "0.1.0"
-description = "Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
+version = "1.0.0"
+description = "Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Bibliothèque nationale de France — Département numérique" }]
-keywords = ["ocr", "htr", "patrimoine", "benchmark", "cer", "wer"]
+keywords = ["ocr", "htr", "patrimoine", "benchmark", "cer", "wer", "gallica", "escriptorium", "iiif"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: French",
 ]
 dependencies = [
     "click>=8.1.0",
@@ -28,11 +32,38 @@ dependencies = [
     "numpy>=1.24.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/bnf/picarones"
+Documentation = "https://github.com/bnf/picarones/blob/main/INSTALL.md"
+Repository = "https://github.com/bnf/picarones"
+Changelog = "https://github.com/bnf/picarones/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/bnf/picarones/issues"
+
 [project.optional-dependencies]
+# Développement et tests
 dev = ["pytest>=7.4.0", "pytest-cov>=4.1.0", "httpx>=0.27.0"]
-pero = ["pero-ocr>=0.1.0"]
+# Interface web FastAPI
 web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0"]
+# Import HuggingFace Datasets
 hf = ["datasets>=2.19.0"]
+# Moteurs OCR optionnels
+pero = ["pero-ocr>=0.1.0"]
+kraken = ["kraken>=4.0.0"]
+# Adaptateurs LLM
+llm = [
+    "openai>=1.0.0",
+    "anthropic>=0.20.0",
+]
+# OCR cloud APIs
+ocr-cloud = [
+    "google-cloud-vision>=3.0.0",
+    "boto3>=1.34.0",
+    "azure-ai-formrecognizer>=3.3.0",
+]
+# Installation complète (tous les extras sauf les OCR cloud)
+all = [
+    "picarones[web,hf,llm,dev]",
+]
 
 [project.scripts]
 picarones = "picarones.cli:cli"

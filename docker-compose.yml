@@ -1,0 +1,111 @@
+# docker-compose.yml — Picarones
+#
+# Services disponibles :
+#   - picarones   : interface web + benchmarks (port 8000)
+#   - ollama      : LLMs locaux (port 11434, profil optionnel)
+#
+# Usage :
+#   docker compose up -d                          # Picarones seul
+#   docker compose --profile ollama up -d         # Picarones + Ollama
+#   docker compose down
+#
+# Variables d'environnement :
+#   Créer un fichier .env à la racine (voir .env.example)
+
+services:
+
+  # ────────────────────────────────────────────────
+  # Service principal : Picarones
+  # ────────────────────────────────────────────────
+  picarones:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: picarones:latest
+    container_name: picarones
+    restart: unless-stopped
+    ports:
+      - "${PICARONES_PORT:-8000}:8000"
+    volumes:
+      # Corpus à benchmarker (lecture seule)
+      - "${CORPUS_DIR:-./corpus}:/app/corpus:ro"
+      # Rapports générés (lecture/écriture)
+      - "${RAPPORTS_DIR:-./rapports}:/app/rapports:rw"
+      # Historique SQLite (persistant)
+      - picarones_history:/home/picarones/.picarones
+    environment:
+      # LLM APIs
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      # OCR cloud APIs
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-west-1}
+      - AZURE_DOC_INTEL_ENDPOINT=${AZURE_DOC_INTEL_ENDPOINT:-}
+      - AZURE_DOC_INTEL_KEY=${AZURE_DOC_INTEL_KEY:-}
+      # Ollama (si le service ollama est actif)
+      - OLLAMA_BASE_URL=http://ollama:11434
+      # Python
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=utf-8
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - picarones_net
+
+  # ────────────────────────────────────────────────
+  # Service optionnel : Ollama (LLMs locaux)
+  # Activer avec : docker compose --profile ollama up
+  # ────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: picarones_ollama
+    restart: unless-stopped
+    profiles:
+      - ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - picarones_net
+
+# ────────────────────────────────────────────────
+# Volumes persistants
+# ────────────────────────────────────────────────
+volumes:
+  picarones_history:
+    driver: local
+  ollama_models:
+    driver: local
+
+# ────────────────────────────────────────────────
+# Réseau interne
+# ────────────────────────────────────────────────
+networks:
+  picarones_net:
+    driver: bridge

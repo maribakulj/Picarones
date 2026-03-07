@@ -304,6 +304,9 @@ def generate_sample_benchmark(
             taxonomy_result = classify_errors(gt, hypothesis)
             struct_result = analyze_structure(gt, hypothesis)
             iq_result = generate_mock_quality_scores(doc_id, seed=rng.randint(0, 999999))
+            # Sprint 7 — script_type par document (pour scatter plot coloré)
+            _script_types = ["gothique textura", "humanistique", "cursive administrative", "imprimé ancien"]
+            _script_type = _script_types[i % len(_script_types)]
 
             doc_results.append(
                 DocumentResult(
@@ -322,7 +325,7 @@ def generate_sample_benchmark(
                     },
                     taxonomy=taxonomy_result.as_dict(),
                     structure=struct_result.as_dict(),
-                    image_quality=iq_result.as_dict(),
+                    image_quality={**iq_result.as_dict(), "script_type": _script_type},
                 )
             )
 
