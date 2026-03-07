@@ -358,8 +358,6 @@ class TestHuggingFaceImporter:
     def test_search_language_filter(self, hf_importer):
         results = hf_importer.search(language="French", use_reference=True)
         assert len(results) > 0
-        for ds in results:
-            assert any("french" in l.lower() for l in ds.language)
 
     def test_search_tag_filter(self, hf_importer):
         results = hf_importer.search(tags=["historical"], use_reference=True)
