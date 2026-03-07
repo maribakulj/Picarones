@@ -556,7 +556,7 @@ class TestCLIHistory:
     def test_history_empty_db(self):
         from click.testing import CliRunner
         from picarones.cli import cli
-        import tempfile, os
+        import gc, tempfile, os
         runner = CliRunner()
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -565,7 +565,11 @@ class TestCLIHistory:
             assert result.exit_code == 0
             assert "Aucun" in result.output or "Aucun benchmark" in result.output
         finally:
-            os.unlink(db_path)
+            gc.collect()  # force SQLite connections to close before unlink (Windows)
+            try:
+                os.unlink(db_path)
+            except OSError:
+                pass
 
     def test_history_with_regression_flag(self):
         from click.testing import CliRunner
