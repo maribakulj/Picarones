@@ -2153,7 +2153,7 @@ function exportCSV() {{
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'picarones_metrics_' + DATA.meta.corpus_name.replace(/\s+/g,'-') + '.csv';
+  a.download = 'picarones_metrics_' + DATA.meta.corpus_name.replace(/\\s+/g,'-') + '.csv';
   document.body.appendChild(a); a.click();
   setTimeout(() => {{ document.body.removeChild(a); URL.revokeObjectURL(url); }}, 100);
 }}
