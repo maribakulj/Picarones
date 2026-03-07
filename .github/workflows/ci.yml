@@ -60,7 +60,7 @@ jobs:
       - name: Install Tesseract (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install tesseract --version=5.3.3 -y
+          choco install tesseract -y
           echo "C:\Program Files\Tesseract-OCR" >> $env:GITHUB_PATH
         shell: pwsh
 
