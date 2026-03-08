@@ -82,6 +82,56 @@ DIPLOMATIC_MINIMAL: dict[str, str] = {
     "ſ": "s",
 }
 
+#: Anglais moderne / imprimés anciens (XVIe–XVIIIe siècle)
+#: Orthographe «early modern»  : ſ=s, u/v, i/j, vv=w, þ=th, ð=th, ȝ=y
+DIPLOMATIC_EN_EARLY_MODERN: dict[str, str] = {
+    "ſ": "s",     # s long → s
+    "u": "v",     # u/v interchangeables (vpon → upon)
+    "i": "j",     # i/j interchangeables (ioy → joy)
+    "vv": "w",    # vv → w (vvhich → which)
+    "þ": "th",    # thorn → th
+    "ð": "th",    # eth → th
+    "ȝ": "y",     # yogh → y
+    "æ": "ae",    # ligature æ
+    "œ": "oe",    # ligature œ
+    "\u0026": "and",  # & → and
+}
+
+#: Anglais médiéval (XIIe–XVe siècle) — abréviations manuscrites incluses
+DIPLOMATIC_EN_MEDIEVAL: dict[str, str] = {
+    "ſ": "s",
+    "u": "v",
+    "i": "j",
+    "vv": "w",
+    "þ": "th",
+    "ð": "th",
+    "ȝ": "y",
+    "æ": "ae",
+    "œ": "oe",
+    "\u0026": "and",
+    # Abréviations courantes dans les manuscrits anglais médiévaux
+    "ꝑ": "per",   # p barré → per/par
+    "ꝓ": "pro",   # p crocheté → pro
+    "ꝗ": "que",   # q barré → que
+    "\ua75b": "r", # lettre r rotunda → r
+}
+
+#: Écriture secrétaire (XVIe–XVIIe siècle) — secretary hand
+#: Confusions visuelles propres à l'écriture cursive anglaise
+DIPLOMATIC_EN_SECRETARY: dict[str, str] = {
+    "ſ": "s",
+    "u": "v",
+    "i": "j",
+    "vv": "w",
+    "þ": "th",
+    "ð": "th",
+    "ȝ": "y",
+    "\u0026": "and",
+    # Confusions visuelles typiques : e/c, n/u, m/w en secrétaire
+    # Note : ne pas normaliser e/c automatiquement (trop agressif) ;
+    # on se limite aux substituts graphiques historiquement documentés
+}
+
 
 # ---------------------------------------------------------------------------
 # Profil de normalisation
@@ -187,12 +237,15 @@ def get_builtin_profile(name: str) -> NormalizationProfile:
 
     Identifiants disponibles
     ------------------------
-    - ``"medieval_french"``    : français médiéval XIIe–XVe (ſ=s, u=v, i=j, æ=ae, œ=oe…)
-    - ``"early_modern_french"`` : imprimés anciens XVIe–XVIIIe (ſ=s, œ=oe, æ=ae…)
-    - ``"medieval_latin"``     : latin médiéval (ſ=s, u=v, i=j, ꝑ=per, ꝓ=pro…)
-    - ``"minimal"``            : uniquement NFC + s long
-    - ``"nfc"``                : NFC seul (sans table diplomatique)
-    - ``"caseless"``           : NFC + pliage de casse
+    - ``"medieval_french"``      : français médiéval XIIe–XVe (ſ=s, u=v, i=j, æ=ae, œ=oe…)
+    - ``"early_modern_french"``  : imprimés anciens XVIe–XVIIIe (ſ=s, œ=oe, æ=ae…)
+    - ``"medieval_latin"``       : latin médiéval (ſ=s, u=v, i=j, ꝑ=per, ꝓ=pro…)
+    - ``"early_modern_english"`` : anglais imprimé XVIe–XVIIIe (ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y)
+    - ``"medieval_english"``     : anglais manuscrit XIIe–XVe (+ abréviations ꝑ, ꝓ…)
+    - ``"secretary_hand"``       : écriture secrétaire anglaise XVIe–XVIIe (cursive administrative)
+    - ``"minimal"``              : uniquement NFC + s long
+    - ``"nfc"``                  : NFC seul (sans table diplomatique)
+    - ``"caseless"``             : NFC + pliage de casse
 
     Raises
     ------
@@ -241,6 +294,27 @@ def get_builtin_profile(name: str) -> NormalizationProfile:
             caseless=True,
             diplomatic_table={},
             description="NFC + insensible à la casse",
+        ),
+        "early_modern_english": NormalizationProfile(
+            name="early_modern_english",
+            nfc=True,
+            caseless=False,
+            diplomatic_table=DIPLOMATIC_EN_EARLY_MODERN,
+            description="Early Modern English (XVIth–XVIIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
+        ),
+        "medieval_english": NormalizationProfile(
+            name="medieval_english",
+            nfc=True,
+            caseless=False,
+            diplomatic_table=DIPLOMATIC_EN_MEDIEVAL,
+            description="Medieval English (XIIth–XVth c.): ſ=s, u=v, i=j, þ=th, ȝ=y, ꝑ=per, ꝓ=pro",
+        ),
+        "secretary_hand": NormalizationProfile(
+            name="secretary_hand",
+            nfc=True,
+            caseless=False,
+            diplomatic_table=DIPLOMATIC_EN_SECRETARY,
+            description="Secretary hand (XVIth–XVIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
         ),
     }
     if name not in profiles:

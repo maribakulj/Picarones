@@ -383,7 +383,7 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
 
 _HTML_TEMPLATE = """\
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{html_lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -924,18 +924,18 @@ body.present-mode nav .meta {{ display: none; }}
 <nav>
   <div class="brand">
     Picarones
-    <span>| rapport OCR</span>
+    <span data-i18n="nav_report">| rapport OCR</span>
   </div>
   <div class="tabs">
-    <button class="tab-btn active" onclick="showView('ranking')">Classement</button>
-    <button class="tab-btn" onclick="showView('gallery')">Galerie</button>
-    <button class="tab-btn" onclick="showView('document')">Document</button>
-    <button class="tab-btn" onclick="showView('characters')">Caractères</button>
-    <button class="tab-btn" onclick="showView('analyses')">Analyses</button>
+    <button class="tab-btn active" onclick="showView('ranking')" data-i18n="tab_ranking">Classement</button>
+    <button class="tab-btn" onclick="showView('gallery')" data-i18n="tab_gallery">Galerie</button>
+    <button class="tab-btn" onclick="showView('document')" data-i18n="tab_document">Document</button>
+    <button class="tab-btn" onclick="showView('characters')" data-i18n="tab_characters">Caractères</button>
+    <button class="tab-btn" onclick="showView('analyses')" data-i18n="tab_analyses">Analyses</button>
   </div>
   <div class="meta" id="nav-meta">—</div>
-  <button class="btn-export-csv" onclick="exportCSV()" title="Télécharger toutes les métriques en CSV">⬇ CSV</button>
-  <button class="btn-present" id="btn-present" onclick="togglePresentMode()" title="Masquer les détails techniques">⊞ Présentation</button>
+  <button class="btn-export-csv" onclick="exportCSV()" title="⬇ CSV">⬇ CSV</button>
+  <button class="btn-present" id="btn-present" onclick="togglePresentMode()" data-i18n="btn_present">⊞ Présentation</button>
 </nav>
 
 <!-- ── Main ───────────────────────────────────────────────────────── -->
@@ -944,28 +944,28 @@ body.present-mode nav .meta {{ display: none; }}
 <!-- ════ Vue 1 : Classement ════════════════════════════════════════ -->
 <div id="view-ranking" class="view active">
   <div class="card">
-    <h2>Classement des moteurs</h2>
+    <h2 data-i18n="h_ranking">Classement des moteurs</h2>
     <div class="stat-row" id="ranking-stats"></div>
     <div class="table-wrap">
       <table id="ranking-table">
         <thead>
           <tr>
-            <th data-col="rank" class="sortable sorted" data-dir="asc">#<i class="sort-icon">↑</i></th>
-            <th data-col="name" class="sortable">Concurrent<i class="sort-icon">↕</i></th>
-            <th data-col="cer"  class="sortable">CER exact<i class="sort-icon">↕</i></th>
-            <th data-col="cer_diplomatic" class="sortable" title="CER après normalisation diplomatique (ſ=s, u=v, i=j…) — mesure les erreurs substantielles en ignorant les variantes graphiques codifiées">CER diplo.<i class="sort-icon">↕</i></th>
-            <th data-col="wer"  class="sortable">WER<i class="sort-icon">↕</i></th>
-            <th data-col="mer"  class="sortable">MER<i class="sort-icon">↕</i></th>
-            <th data-col="wil"  class="sortable">WIL<i class="sort-icon">↕</i></th>
-            <th data-col="ligature_score" class="sortable" title="Taux de reconnaissance des ligatures (ﬁ, ﬂ, œ, æ, ﬀ…)">Ligatures<i class="sort-icon">↕</i></th>
-            <th data-col="diacritic_score" class="sortable" title="Taux de conservation des diacritiques (accents, cédilles, trémas…)">Diacritiques<i class="sort-icon">↕</i></th>
-            <th data-col="gini" class="sortable" title="Coefficient de Gini des erreurs CER par ligne — 0 = erreurs uniformes, 1 = erreurs concentrées. Un bon moteur a CER bas ET Gini bas.">Gini<i class="sort-icon">↕</i></th>
-            <th data-col="anchor_score" class="sortable" title="Score d'ancrage : proportion des trigrammes de la sortie trouvant un ancrage dans le GT — faible score = hallucinations probables (LLM/VLM)">Ancrage<i class="sort-icon">↕</i></th>
-            <th>CER médian</th>
-            <th>CER min</th>
-            <th>CER max</th>
-            <th title="Classe 10 — Sur-normalisation LLM : taux de mots corrects dégradés par le LLM">Sur-norm.</th>
-            <th>Docs</th>
+            <th data-col="rank" class="sortable sorted" data-dir="asc" data-i18n="col_rank">#<i class="sort-icon">↑</i></th>
+            <th data-col="name" class="sortable" data-i18n="col_engine">Concurrent<i class="sort-icon">↕</i></th>
+            <th data-col="cer"  class="sortable" data-i18n="col_cer">CER exact<i class="sort-icon">↕</i></th>
+            <th data-col="cer_diplomatic" class="sortable" id="th-cer-diplo" data-i18n="col_cer_diplo">CER diplo.<i class="sort-icon">↕</i></th>
+            <th data-col="wer"  class="sortable" data-i18n="col_wer">WER<i class="sort-icon">↕</i></th>
+            <th data-col="mer"  class="sortable" data-i18n="col_mer">MER<i class="sort-icon">↕</i></th>
+            <th data-col="wil"  class="sortable" data-i18n="col_wil">WIL<i class="sort-icon">↕</i></th>
+            <th data-col="ligature_score" class="sortable" id="th-ligatures" data-i18n="col_ligatures">Ligatures<i class="sort-icon">↕</i></th>
+            <th data-col="diacritic_score" class="sortable" id="th-diacritics" data-i18n="col_diacritics">Diacritiques<i class="sort-icon">↕</i></th>
+            <th data-col="gini" class="sortable" id="th-gini" data-i18n="col_gini">Gini<i class="sort-icon">↕</i></th>
+            <th data-col="anchor_score" class="sortable" id="th-anchor" data-i18n="col_anchor">Ancrage<i class="sort-icon">↕</i></th>
+            <th data-i18n="col_cer_median">CER médian</th>
+            <th data-i18n="col_cer_min">CER min</th>
+            <th data-i18n="col_cer_max">CER max</th>
+            <th id="th-overnorm" data-i18n="col_overnorm">Sur-norm.</th>
+            <th data-i18n="col_docs">Docs</th>
           </tr>
         </thead>
         <tbody id="ranking-tbody"></tbody>
@@ -991,28 +991,28 @@ body.present-mode nav .meta {{ display: none; }}
 <!-- ════ Vue 2 : Galerie ═══════════════════════════════════════════ -->
 <div id="view-gallery" class="view">
   <div class="card">
-    <h2>Galerie des documents</h2>
+    <h2 data-i18n="h_gallery">Galerie des documents</h2>
     <div class="gallery-controls">
-      <label>Trier par :
+      <label><span data-i18n="gallery_sort_label">Trier par :</span>
         <select id="gallery-sort" onchange="renderGallery()">
-          <option value="doc_id">Identifiant</option>
-          <option value="mean_cer">CER moyen</option>
-          <option value="difficulty_score">Difficulté</option>
-          <option value="best_engine">Meilleur moteur</option>
+          <option value="doc_id" data-i18n-opt="gallery_sort_id">Identifiant</option>
+          <option value="mean_cer" data-i18n-opt="gallery_sort_cer">CER moyen</option>
+          <option value="difficulty_score" data-i18n-opt="gallery_sort_difficulty">Difficulté</option>
+          <option value="best_engine" data-i18n-opt="gallery_sort_best">Meilleur moteur</option>
         </select>
       </label>
-      <label>Filtrer CER &gt;
+      <label><span data-i18n="gallery_filter_cer_label">Filtrer CER &gt;</span>
         <input type="number" id="gallery-filter-cer" min="0" max="100" value="0" step="1"
           style="width:60px" onchange="renderGallery()"> %
       </label>
-      <label>Moteur :
+      <label><span data-i18n="gallery_filter_engine_label">Moteur :</span>
         <select id="gallery-engine-select" onchange="renderGallery()">
-          <option value="">Tous</option>
+          <option value="" data-i18n-opt="gallery_filter_all">Tous</option>
         </select>
       </label>
     </div>
     <div id="gallery-grid" class="gallery-grid"></div>
-    <div id="gallery-empty" class="empty-state" style="display:none">
+    <div id="gallery-empty" class="empty-state" style="display:none" data-i18n="gallery_empty">
       Aucun document ne correspond aux filtres.
     </div>
   </div>
@@ -1023,7 +1023,7 @@ body.present-mode nav .meta {{ display: none; }}
   <div class="doc-layout">
     <!-- Sidebar -->
     <aside class="doc-sidebar">
-      <div class="doc-sidebar-header">Documents</div>
+      <div class="doc-sidebar-header" data-i18n="doc_sidebar_header">Documents</div>
       <div id="doc-list"></div>
     </aside>
 
@@ -1031,14 +1031,14 @@ body.present-mode nav .meta {{ display: none; }}
     <div>
       <div class="card" id="doc-detail-header">
         <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:.5rem">
-          <h2 id="doc-detail-title">Sélectionner un document</h2>
+          <h2 id="doc-detail-title" data-i18n="doc_title_default">Sélectionner un document</h2>
           <div class="stat-row" id="doc-detail-metrics"></div>
         </div>
       </div>
 
       <!-- Image zoomable -->
       <div class="card">
-        <h3>Image originale</h3>
+        <h3 data-i18n="h_image">Image originale</h3>
         <div class="doc-image-wrap" id="doc-image-wrap"
           onwheel="handleZoom(event)"
           onmousedown="startDrag(event)"
@@ -1060,7 +1060,7 @@ body.present-mode nav .meta {{ display: none; }}
 
       <!-- Vérité terrain -->
       <div class="card">
-        <h3>Vérité terrain (GT)</h3>
+        <h3 data-i18n="h_gt">Vérité terrain (GT)</h3>
         <div class="gt-panel">
           <div class="gt-panel-header">✓ Ground Truth</div>
           <div class="gt-panel-body" id="doc-gt-text">—</div>
@@ -1069,19 +1069,19 @@ body.present-mode nav .meta {{ display: none; }}
 
       <!-- Diffs par moteur -->
       <div class="card">
-        <h3>Sorties OCR — diff par moteur</h3>
+        <h3 data-i18n="h_diff">Sorties OCR — diff par moteur</h3>
         <div class="diff-panels" id="doc-diff-panels"></div>
       </div>
 
       <!-- Sprint 10 — Distribution CER par ligne -->
       <div class="card" id="doc-line-metrics-card" style="display:none">
-        <h3>Distribution des erreurs par ligne</h3>
+        <h3 data-i18n="h_line_metrics">Distribution des erreurs par ligne</h3>
         <div id="doc-line-metrics-content"></div>
       </div>
 
       <!-- Sprint 10 — Hallucinations détectées -->
       <div class="card" id="doc-hallucination-card" style="display:none">
-        <h3>Analyse des hallucinations</h3>
+        <h3 data-i18n="h_hallucination">Analyse des hallucinations</h3>
         <div id="doc-hallucination-content"></div>
       </div>
     </div>
@@ -1093,63 +1093,63 @@ body.present-mode nav .meta {{ display: none; }}
   <div class="charts-grid">
 
     <div class="chart-card">
-      <h3>Distribution du CER par moteur</h3>
+      <h3 data-i18n="h_cer_dist">Distribution du CER par moteur</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-cer-hist"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>Profil des moteurs (radar)</h3>
+      <h3 data-i18n="h_radar">Profil des moteurs (radar)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-radar"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem" data-i18n="radar_note">
         Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>CER par document (tous moteurs)</h3>
+      <h3 data-i18n="h_cer_doc">CER par document (tous moteurs)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-cer-doc"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>Temps d'exécution moyen (secondes/document)</h3>
+      <h3 data-i18n="h_duration">Temps d'exécution moyen (secondes/document)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-duration"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>Qualité image ↔ CER (scatter plot)</h3>
+      <h3 data-i18n="h_quality_cer">Qualité image ↔ CER (scatter plot)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-quality-cer"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="quality_cer_note">
         Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.
       </div>
     </div>
 
     <div class="chart-card" style="grid-column:1/-1">
-      <h3>Taxonomie des erreurs par moteur</h3>
+      <h3 data-i18n="h_taxonomy">Taxonomie des erreurs par moteur</h3>
       <div class="chart-canvas-wrap" style="max-height:300px">
         <canvas id="chart-taxonomy"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="taxonomy_note">
         Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).
       </div>
     </div>
 
     <!-- Sprint 7 — Courbe de fiabilité -->
     <div class="chart-card" style="grid-column:1/-1">
-      <h3>Courbes de fiabilité</h3>
+      <h3 data-i18n="h_reliability">Courbes de fiabilité</h3>
       <div class="chart-canvas-wrap" style="max-height:300px">
         <canvas id="chart-reliability"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="reliability_note">
         Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ?
         Une courbe basse = moteur performant même sur les documents faciles.
       </div>
@@ -1157,20 +1157,20 @@ body.present-mode nav .meta {{ display: none; }}
 
     <!-- Sprint 7 — Intervalles de confiance -->
     <div class="chart-card">
-      <h3>Intervalles de confiance à 95 % (bootstrap)</h3>
+      <h3 data-i18n="h_bootstrap">Intervalles de confiance à 95 % (bootstrap)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-bootstrap-ci"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="bootstrap_note">
         IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).
       </div>
     </div>
 
     <!-- Sprint 7 — Diagramme de Venn -->
     <div class="chart-card">
-      <h3>Erreurs communes / exclusives (Venn)</h3>
+      <h3 data-i18n="h_venn">Erreurs communes / exclusives (Venn)</h3>
       <div id="venn-container" style="min-height:260px;display:flex;align-items:center;justify-content:center"></div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical" data-i18n="venn_note">
         Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents.
         Erreurs communes = segments partagés.
       </div>
@@ -1178,37 +1178,37 @@ body.present-mode nav .meta {{ display: none; }}
 
     <!-- Sprint 7 — Tests de Wilcoxon -->
     <div class="chart-card technical">
-      <h3>Tests de Wilcoxon — comparaisons par paires</h3>
+      <h3 data-i18n="h_pairwise">Tests de Wilcoxon — comparaisons par paires</h3>
       <div id="wilcoxon-table-container" style="overflow-x:auto"></div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="pairwise_note">
         Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.
       </div>
     </div>
 
     <!-- Sprint 7 — Clustering des erreurs -->
     <div class="chart-card" style="grid-column:1/-1">
-      <h3>Clustering des patterns d'erreurs</h3>
+      <h3 data-i18n="h_clusters">Clustering des patterns d'erreurs</h3>
       <div id="error-clusters-container"></div>
     </div>
 
     <!-- Sprint 10 — Scatter Gini vs CER moyen -->
     <div class="chart-card">
-      <h3>Gini vs CER moyen <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)">— idéal : bas-gauche</span></h3>
+      <h3 data-i18n="h_gini_cer">Gini vs CER moyen <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="gini_cer_ideal">— idéal : bas-gauche</span></h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-gini-cer"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="gini_cer_note">
         Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).
       </div>
     </div>
 
     <!-- Sprint 10 — Scatter ratio longueur vs ancrage -->
     <div class="chart-card">
-      <h3>Ratio longueur vs ancrage <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)">— hallucinations VLM</span></h3>
+      <h3 data-i18n="h_ratio_anchor">Ratio longueur vs ancrage <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="ratio_anchor_subtitle">— hallucinations VLM</span></h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-ratio-anchor"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="ratio_anchor_note">
         Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT.
         Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.
       </div>
@@ -1216,15 +1216,15 @@ body.present-mode nav .meta {{ display: none; }}
 
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
-      <h3>Matrice de corrélation entre métriques</h3>
+      <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>
       <div style="margin-bottom:.5rem">
-        <label style="font-size:.82rem;font-weight:600">Moteur :
+        <label style="font-size:.82rem;font-weight:600"><span data-i18n="corr_engine_label">Moteur :</span>
           <select id="corr-engine-select" onchange="renderCorrelationMatrix()"
             style="padding:.25rem .5rem;border-radius:6px;border:1px solid var(--border);margin-left:.25rem"></select>
         </label>
       </div>
       <div id="corr-matrix-container" style="overflow-x:auto"></div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="corr_note">
         Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques.
         Vert = corrélation positive, Rouge = corrélation négative.
       </div>
@@ -1236,11 +1236,11 @@ body.present-mode nav .meta {{ display: none; }}
 <!-- ════ Vue 5 : Caractères ════════════════════════════════════════ -->
 <div id="view-characters" class="view">
   <div class="card">
-    <h2>Analyse des caractères</h2>
+    <h2 data-i18n="h_characters">Analyse des caractères</h2>
 
     <!-- Sélecteur de moteur -->
     <div class="stat-row" style="margin-bottom:1rem">
-      <label for="char-engine-select" style="font-weight:600;margin-right:.5rem">Moteur :</label>
+      <label for="char-engine-select" style="font-weight:600;margin-right:.5rem" data-i18n="char_engine_label">Moteur :</label>
       <select id="char-engine-select" onchange="renderCharView()"
         style="padding:.35rem .7rem;border-radius:6px;border:1px solid var(--border)"></select>
     </div>
@@ -1269,7 +1269,7 @@ body.present-mode nav .meta {{ display: none; }}
 </main>
 
 <footer>
-  Généré par <strong>Picarones</strong> v{picarones_version}
+  <span data-i18n="footer_by">par Picarones</span> v{picarones_version}
   — BnF, Département numérique
   — <span id="footer-date"></span>
 </footer>
@@ -1277,6 +1277,7 @@ body.present-mode nav .meta {{ display: none; }}
 <!-- ── Données embarquées ──────────────────────────────────────────── -->
 <script>
 const DATA = {report_data_json};
+const I18N = {i18n_json};
 </script>
 
 <!-- ── Application ────────────────────────────────────────────────── -->
@@ -1733,7 +1734,7 @@ function renderLineMetrics(engineResults) {{
           return `<div class="heatmap-bar" style="height:${{h}}px;background:${{heatmapColors(v)}}"
             title="Tranche ${{i+1}}/${{heatmap.length}} — CER=${{(v*100).toFixed(1)}}%"></div>`;
         }}).join('') +
-        `</div><div class="heatmap-labels"><span>Début</span><span>Milieu</span><span>Fin</span></div>`
+        `</div><div class="heatmap-labels"><span>${{I18N.heatmap_start||'Début'}}</span><span>${{I18N.heatmap_mid||'Milieu'}}</span><span>${{I18N.heatmap_end||'Fin'}}</span></div>`
       : '<em style="color:var(--text-muted)">—</em>';
 
     // Percentiles
@@ -1767,43 +1768,43 @@ function renderLineMetrics(engineResults) {{
         <strong>${{esc(er.engine)}}</strong>
         <span class="cer-badge" style="color:${{c}};background:${{bg}}">${{pct(er.cer)}}</span>
         <span class="stat">Gini <b style="color:${{giniColor}}">${{gini}}</b></span>
-        <span class="stat">${{lm.line_count}} lignes</span>
+        <span class="stat">${{lm.line_count}} ${{I18N.lines||'lignes'}}</span>
         ${{crRows}}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
         <div>
-          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">CARTE THERMIQUE (position)</div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">${{I18N.heatmap_title||'CARTE THERMIQUE (position)'}}</div>
           ${{heatmapHtml}}
         </div>
         <div>
-          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">PERCENTILES CER</div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">${{I18N.percentile_title||'PERCENTILES CER'}}</div>
           <div class="pct-bars">${{pctBars}}</div>
         </div>
       </div>
     </div>`;
-  }}).join('') || '<em style="color:var(--text-muted)">Aucune métrique de ligne disponible.</em>';
+  }}).join('') || `<em style="color:var(--text-muted)">${{I18N.no_line_metrics||'Aucune métrique de ligne disponible.'}}</em>`;
 }}
 
 // ── Sprint 10 : rendu panneau hallucinations ─────────────────────
 function renderHallucinationPanel(engineResults) {{
   const withHall = engineResults.filter(er => er.hallucination_metrics);
-  if (!withHall.length) return '<em style="color:var(--text-muted)">Aucune métrique d\'hallucination disponible.</em>';
+  if (!withHall.length) return `<em style="color:var(--text-muted)">${{I18N.no_hall_metrics||"Aucune métrique d'hallucination disponible."}}</em>`;
 
   return withHall.map(er => {{
     const hm = er.hallucination_metrics;
     const isHall = hm.is_hallucinating;
     const badgeClass = isHall ? 'hallucination-badge' : 'hallucination-badge ok';
-    const badgeLabel = isHall ? '⚠️ Hallucinations détectées' : '✓ Ancrage satisfaisant';
+    const badgeLabel = isHall ? (I18N.hall_detected||'⚠️ Hallucinations détectées') : (I18N.hall_ok||'✓ Ancrage satisfaisant');
 
     const blocksHtml = hm.hallucinated_blocks && hm.hallucinated_blocks.length > 0
       ? hm.hallucinated_blocks.slice(0, 5).map(b =>
           `<div class="halluc-block">
-            <div class="halluc-block-meta">Bloc halluciné — ${{b.length}} mots (tokens ${{b.start_token}}–${{b.end_token}})</div>
+            <div class="halluc-block-meta">${{I18N.hall_block_label||'Bloc halluciné'}} — ${{b.length}} mots (tokens ${{b.start_token}}–${{b.end_token}})</div>
             ${{esc(b.text)}}
           </div>`
         ).join('') +
-        (hm.hallucinated_blocks.length > 5 ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">… ${{hm.hallucinated_blocks.length - 5}} bloc(s) supplémentaire(s)</div>` : '')
-      : '<em style="color:var(--text-muted);font-size:.8rem">Aucun bloc halluciné détecté.</em>';
+        (hm.hallucinated_blocks.length > 5 ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">… ${{hm.hallucinated_blocks.length - 5}} ${{I18N.hall_more_blocks||'bloc(s) supplémentaire(s)'}}</div>` : '')
+      : `<em style="color:var(--text-muted);font-size:.8rem">${{I18N.no_hall_blocks||'Aucun bloc halluciné détecté.'}}</em>`;
 
     return `<div style="margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
@@ -1814,7 +1815,7 @@ function renderHallucinationPanel(engineResults) {{
         <span class="stat">Insertion nette <b>${{(hm.net_insertion_rate*100).toFixed(1)}}%</b></span>
         <span class="stat">${{hm.gt_word_count}} mots GT / ${{hm.hyp_word_count}} mots sortie</span>
       </div>
-      ${{isHall ? `<div style="margin-bottom:.5rem;font-size:.82rem;font-weight:600;color:#9d174d">Blocs sans ancrage dans le GT :</div>` : ''}}
+      ${{isHall ? `<div style="margin-bottom:.5rem;font-size:.82rem;font-weight:600;color:#9d174d">${{I18N.hall_blocks_title||'Blocs sans ancrage dans le GT :'}}</div>` : ''}}
       ${{isHall ? blocksHtml : ''}}
     </div>`;
   }}).join('');
@@ -1826,7 +1827,7 @@ function buildGiniCerScatter() {{
   if (!canvas) return;
   const pts = DATA.gini_vs_cer || [];
   if (!pts.length) {{
-    canvas.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données Gini non disponibles.</p>';
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${{I18N.no_gini||'Données Gini non disponibles.'}}</p>`;
     return;
   }}
   const datasets = pts.map((p, i) => ({{
@@ -2799,14 +2800,44 @@ function showView(name) {{
   updateURL(name);
 }}
 
+function applyI18n() {{
+  // Applique les traductions aux éléments avec data-i18n (textContent)
+  document.querySelectorAll('[data-i18n]').forEach(el => {{
+    const key = el.getAttribute('data-i18n');
+    if (I18N[key] !== undefined) el.textContent = I18N[key];
+  }});
+  // Options de select avec data-i18n-opt
+  document.querySelectorAll('[data-i18n-opt]').forEach(el => {{
+    const key = el.getAttribute('data-i18n-opt');
+    if (I18N[key] !== undefined) el.textContent = I18N[key];
+  }});
+  // Tooltips des th via id
+  const thMap = {{
+    'th-cer-diplo':  'col_cer_diplo_title',
+    'th-ligatures':  'col_ligatures_title',
+    'th-diacritics': 'col_diacritics_title',
+    'th-gini':       'col_gini_title',
+    'th-anchor':     'col_anchor_title',
+    'th-overnorm':   'col_overnorm_title',
+  }};
+  Object.entries(thMap).forEach(([id, key]) => {{
+    const el = document.getElementById(id);
+    if (el && I18N[key]) el.title = I18N[key];
+  }});
+}}
+
 function init() {{
+  // i18n
+  applyI18n();
+
   // Méta nav
   const d = new Date(DATA.meta.run_date);
-  const fmt = d.toLocaleDateString('fr-FR', {{ year:'numeric', month:'short', day:'numeric' }});
+  const locale = I18N.date_locale || 'fr-FR';
+  const fmt = d.toLocaleDateString(locale, {{ year:'numeric', month:'short', day:'numeric' }});
   document.getElementById('nav-meta').textContent =
     DATA.meta.corpus_name + ' · ' + fmt;
   document.getElementById('footer-date').textContent =
-    'Rapport généré le ' + fmt;
+    (I18N.footer_generated || 'Rapport généré le') + ' ' + fmt;
 
   // Sélecteur moteur galerie
   const sel = document.getElementById('gallery-engine-select');
@@ -2856,12 +2887,16 @@ class ReportGenerator:
     >>> from picarones.report import ReportGenerator
     >>> gen = ReportGenerator(benchmark_result)
     >>> path = gen.generate("rapport.html")
+    >>> # Rapport en anglais :
+    >>> gen_en = ReportGenerator(benchmark_result, lang="en")
+    >>> path_en = gen_en.generate("report.html")
     """
 
     def __init__(
         self,
         benchmark: BenchmarkResult,
         images_b64: Optional[dict[str, str]] = None,
+        lang: str = "fr",
     ) -> None:
         """
         Parameters
@@ -2871,9 +2906,12 @@ class ReportGenerator:
         images_b64:
             Dictionnaire {doc_id: data-URI base64} des images.
             Si None, le générateur cherche dans ``benchmark.metadata["_images_b64"]``.
+        lang:
+            Code langue du rapport : ``"fr"`` (défaut) ou ``"en"``.
         """
         self.benchmark = benchmark
         self.images_b64: dict[str, str] = images_b64 or {}
+        self.lang = lang
 
         # Récupérer les images embarquées dans les metadata (fixtures)
         if not self.images_b64:
@@ -2892,16 +2930,22 @@ class ReportGenerator:
         Path
             Chemin absolu du fichier généré.
         """
+        from picarones.i18n import get_labels
+
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        labels = get_labels(self.lang)
         report_data = _build_report_data(self.benchmark, self.images_b64)
         report_json = json.dumps(report_data, ensure_ascii=False, separators=(",", ":"))
+        i18n_json = json.dumps(labels, ensure_ascii=False, separators=(",", ":"))
 
         html = _HTML_TEMPLATE.format(
             corpus_name=self.benchmark.corpus_name,
             picarones_version=self.benchmark.picarones_version,
             report_data_json=report_json,
+            i18n_json=i18n_json,
+            html_lang=labels.get("html_lang", "fr"),
         )
 
         output_path.write_text(html, encoding="utf-8")
