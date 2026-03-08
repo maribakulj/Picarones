@@ -376,12 +376,20 @@ def report_cmd(results: str, output: str, verbose: bool) -> None:
     default=False,
     help="Inclut une démonstration de l'analyse de robustesse",
 )
+@click.option(
+    "--lang",
+    default="fr",
+    show_default=True,
+    type=click.Choice(["fr", "en"], case_sensitive=False),
+    help="Langue du rapport HTML généré (fr = français, en = anglais patrimonial)",
+)
 def demo_cmd(
     output: str,
     docs: int,
     json_output: str | None,
     with_history: bool,
     with_robustness: bool,
+    lang: str,
 ) -> None:
     """Génère un rapport de démonstration avec des données fictives réalistes.
 
@@ -390,6 +398,7 @@ def demo_cmd(
     \b
     Exemples :
         picarones demo
+        picarones demo --lang en
         picarones demo --with-history
         picarones demo --with-robustness
         picarones demo --with-history --with-robustness --docs 8
@@ -404,7 +413,7 @@ def demo_cmd(
         bm_path = benchmark.to_json(json_output)
         click.echo(f"Résultats JSON : {bm_path}")
 
-    gen = ReportGenerator(benchmark)
+    gen = ReportGenerator(benchmark, lang=lang)
     path = gen.generate(output)
     click.echo(f"Rapport de démonstration : {path}")
     click.echo(f"Ouvrez-le dans un navigateur : file://{path}")

@@ -1,0 +1,253 @@
+"""Labels i18n pour le rapport HTML et l'interface Picarones.
+
+Langues supportées
+------------------
+- ``"fr"`` : français (défaut)
+- ``"en"`` : anglais patrimonial (heritage English)
+"""
+
+from __future__ import annotations
+
+TRANSLATIONS: dict[str, dict[str, str]] = {
+    "fr": {
+        # ── HTML méta ──────────────────────────────────────────────────────
+        "html_lang": "fr",
+        "date_locale": "fr-FR",
+        # ── Navigation ─────────────────────────────────────────────────────
+        "nav_report": "rapport OCR",
+        "tab_ranking": "Classement",
+        "tab_gallery": "Galerie",
+        "tab_document": "Document",
+        "tab_characters": "Caractères",
+        "tab_analyses": "Analyses",
+        "btn_present": "⊞ Présentation",
+        # ── Classement ─────────────────────────────────────────────────────
+        "h_ranking": "Classement des moteurs",
+        "col_rank": "#",
+        "col_engine": "Concurrent",
+        "col_cer": "CER exact",
+        "col_cer_diplo": "CER diplo.",
+        "col_cer_diplo_title": "CER après normalisation diplomatique (ſ=s, u=v, i=j…) — mesure les erreurs substantielles en ignorant les variantes graphiques codifiées",
+        "col_wer": "WER",
+        "col_mer": "MER",
+        "col_wil": "WIL",
+        "col_ligatures": "Ligatures",
+        "col_ligatures_title": "Taux de reconnaissance des ligatures (ﬁ, ﬂ, œ, æ, ﬀ…)",
+        "col_diacritics": "Diacritiques",
+        "col_diacritics_title": "Taux de conservation des diacritiques (accents, cédilles, trémas…)",
+        "col_gini": "Gini",
+        "col_gini_title": "Coefficient de Gini des erreurs CER par ligne — 0 = erreurs uniformes, 1 = erreurs concentrées. Un bon moteur a CER bas ET Gini bas.",
+        "col_anchor": "Ancrage",
+        "col_anchor_title": "Score d'ancrage : proportion des trigrammes de la sortie trouvant un ancrage dans le GT — faible score = hallucinations probables (LLM/VLM)",
+        "col_cer_median": "CER médian",
+        "col_cer_min": "CER min",
+        "col_cer_max": "CER max",
+        "col_overnorm": "Sur-norm.",
+        "col_overnorm_title": "Classe 10 — Sur-normalisation LLM : taux de mots corrects dégradés par le LLM",
+        "col_docs": "Docs",
+        # ── Galerie ────────────────────────────────────────────────────────
+        "h_gallery": "Galerie des documents",
+        "gallery_sort_label": "Trier par :",
+        "gallery_sort_id": "Identifiant",
+        "gallery_sort_cer": "CER moyen",
+        "gallery_sort_difficulty": "Difficulté",
+        "gallery_sort_best": "Meilleur moteur",
+        "gallery_filter_cer_label": "Filtrer CER >",
+        "gallery_filter_engine_label": "Moteur :",
+        "gallery_filter_all": "Tous",
+        "gallery_empty": "Aucun document ne correspond aux filtres.",
+        # ── Document ───────────────────────────────────────────────────────
+        "doc_sidebar_header": "Documents",
+        "doc_title_default": "Sélectionner un document",
+        "h_image": "Image originale",
+        "h_gt": "Vérité terrain (GT)",
+        "h_diff": "Sorties OCR — diff par moteur",
+        "h_line_metrics": "Distribution des erreurs par ligne",
+        "h_hallucination": "Analyse des hallucinations",
+        # ── Analyses ───────────────────────────────────────────────────────
+        "h_characters": "Analyse des caractères",
+        "char_engine_label": "Moteur :",
+        "h_cer_dist": "Distribution du CER par moteur",
+        "h_radar": "Profil des moteurs (radar)",
+        "radar_note": "Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).",
+        "h_cer_doc": "CER par document (tous moteurs)",
+        "h_duration": "Temps d'exécution moyen (secondes/document)",
+        "h_quality_cer": "Qualité image ↔ CER (scatter plot)",
+        "quality_cer_note": "Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.",
+        "h_taxonomy": "Taxonomie des erreurs par moteur",
+        "taxonomy_note": "Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).",
+        "h_reliability": "Courbes de fiabilité",
+        "reliability_note": "Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ? Une courbe basse = moteur performant même sur les documents faciles.",
+        "h_bootstrap": "Intervalles de confiance à 95 % (bootstrap)",
+        "bootstrap_note": "IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).",
+        "h_venn": "Erreurs communes / exclusives (Venn)",
+        "venn_note": "Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents. Erreurs communes = segments partagés.",
+        "h_pairwise": "Tests de Wilcoxon — comparaisons par paires",
+        "pairwise_note": "Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.",
+        "h_clusters": "Clustering des patterns d'erreurs",
+        "h_gini_cer": "Gini vs CER moyen",
+        "gini_cer_ideal": "— idéal : bas-gauche",
+        "gini_cer_note": "Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).",
+        "h_ratio_anchor": "Ratio longueur vs ancrage",
+        "ratio_anchor_subtitle": "— hallucinations VLM",
+        "ratio_anchor_note": "Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT. Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.",
+        "h_correlation": "Matrice de corrélation entre métriques",
+        "corr_engine_label": "Moteur :",
+        "corr_note": "Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques. Vert = corrélation positive, Rouge = corrélation négative.",
+        # ── Footer ────────────────────────────────────────────────────────
+        "footer_generated": "Rapport généré le",
+        "footer_by": "par Picarones",
+        # ── JS strings dynamiques ─────────────────────────────────────────
+        "heatmap_start": "Début",
+        "heatmap_mid": "Milieu",
+        "heatmap_end": "Fin",
+        "heatmap_title": "CARTE THERMIQUE (position)",
+        "percentile_title": "PERCENTILES CER",
+        "lines": "lignes",
+        "no_line_metrics": "Aucune métrique de ligne disponible.",
+        "no_hall_metrics": "Aucune métrique d'hallucination disponible.",
+        "no_hall_blocks": "Aucun bloc halluciné détecté.",
+        "hall_detected": "⚠️ Hallucinations détectées",
+        "hall_ok": "✓ Ancrage satisfaisant",
+        "hall_blocks_title": "Blocs sans ancrage dans le GT :",
+        "hall_block_label": "Bloc halluciné",
+        "hall_more_blocks": "bloc(s) supplémentaire(s)",
+        "no_gini": "Données Gini non disponibles.",
+        "no_scatter": "Données non disponibles.",
+        "total_errors": "Total :",
+        "errors_classified": "erreurs classifiées.",
+        "class_col": "Classe",
+        "proportion_col": "Proportion",
+        "taxonomy_engine_label": "Moteur :",
+    },
+    "en": {
+        # ── HTML méta ──────────────────────────────────────────────────────
+        "html_lang": "en",
+        "date_locale": "en-GB",
+        # ── Navigation ─────────────────────────────────────────────────────
+        "nav_report": "OCR report",
+        "tab_ranking": "Ranking",
+        "tab_gallery": "Gallery",
+        "tab_document": "Document",
+        "tab_characters": "Characters",
+        "tab_analyses": "Analyses",
+        "btn_present": "⊞ Presentation",
+        # ── Ranking ────────────────────────────────────────────────────────
+        "h_ranking": "Engine Ranking",
+        "col_rank": "#",
+        "col_engine": "Engine",
+        "col_cer": "Exact CER",
+        "col_cer_diplo": "Diplo. CER",
+        "col_cer_diplo_title": "CER after diplomatic normalisation (ſ=s, u=v, i=j…) — measures substantial errors ignoring codified graphical variants",
+        "col_wer": "WER",
+        "col_mer": "MER",
+        "col_wil": "WIL",
+        "col_ligatures": "Ligatures",
+        "col_ligatures_title": "Ligature recognition rate (ﬁ, ﬂ, œ, æ, ﬀ…)",
+        "col_diacritics": "Diacritics",
+        "col_diacritics_title": "Diacritic preservation rate (accents, cedillas, umlauts…)",
+        "col_gini": "Gini",
+        "col_gini_title": "Gini coefficient of per-line CER errors — 0 = uniform errors, 1 = concentrated errors. A good engine has low CER AND low Gini.",
+        "col_anchor": "Anchor",
+        "col_anchor_title": "Anchor score: proportion of output trigrams found in the GT — low score = probable hallucinations (LLM/VLM)",
+        "col_cer_median": "Median CER",
+        "col_cer_min": "Min CER",
+        "col_cer_max": "Max CER",
+        "col_overnorm": "Over-norm.",
+        "col_overnorm_title": "Class 10 — LLM over-normalisation: rate of correct words degraded by the LLM",
+        "col_docs": "Docs",
+        # ── Gallery ────────────────────────────────────────────────────────
+        "h_gallery": "Document Gallery",
+        "gallery_sort_label": "Sort by:",
+        "gallery_sort_id": "Identifier",
+        "gallery_sort_cer": "Mean CER",
+        "gallery_sort_difficulty": "Difficulty",
+        "gallery_sort_best": "Best engine",
+        "gallery_filter_cer_label": "Filter CER >",
+        "gallery_filter_engine_label": "Engine:",
+        "gallery_filter_all": "All",
+        "gallery_empty": "No documents match the filters.",
+        # ── Document ───────────────────────────────────────────────────────
+        "doc_sidebar_header": "Documents",
+        "doc_title_default": "Select a document",
+        "h_image": "Original Image",
+        "h_gt": "Ground Truth (GT)",
+        "h_diff": "OCR Output — diff by engine",
+        "h_line_metrics": "Error Distribution by Line",
+        "h_hallucination": "Hallucination Analysis",
+        # ── Analyses ───────────────────────────────────────────────────────
+        "h_characters": "Character Analysis",
+        "char_engine_label": "Engine:",
+        "h_cer_dist": "CER Distribution by Engine",
+        "h_radar": "Engine Profile (radar)",
+        "radar_note": "Radar axes: CER, WER, MER, WIL — inverted values (higher = better engine).",
+        "h_cer_doc": "CER by Document (all engines)",
+        "h_duration": "Average Execution Time (seconds/document)",
+        "h_quality_cer": "Image Quality ↔ CER (scatter plot)",
+        "quality_cer_note": "Each point = one document. X-axis = image quality score [0–1]. Y-axis = CER. Negative correlation expected.",
+        "h_taxonomy": "Error Taxonomy by Engine",
+        "taxonomy_note": "Distribution of error classes (classes 1–9 of the Picarones taxonomy).",
+        "h_reliability": "Reliability Curves",
+        "reliability_note": "For the X% easiest documents (sorted by ascending CER), what is the cumulative mean CER? A low curve = engine performing well even on easy documents.",
+        "h_bootstrap": "95% Bootstrap Confidence Intervals",
+        "bootstrap_note": "95% CI on mean CER per engine (1000 bootstrap iterations).",
+        "h_venn": "Shared / Exclusive Errors (Venn)",
+        "venn_note": "Intersection of error sets between the 2 or 3 top engines. Shared errors = overlapping segments.",
+        "h_pairwise": "Wilcoxon Tests — pairwise comparisons",
+        "pairwise_note": "Wilcoxon signed-rank test (non-parametric). Threshold α = 0.05.",
+        "h_clusters": "Frequent Error Clusters",
+        "h_gini_cer": "Gini vs Mean CER",
+        "gini_cer_ideal": "— ideal: bottom-left",
+        "gini_cer_note": "X-axis = mean CER, Y-axis = Gini coefficient. An ideal engine has low CER AND low Gini (rare, uniform errors).",
+        "h_ratio_anchor": "Length Ratio vs Anchor Score",
+        "ratio_anchor_subtitle": "— VLM hallucinations",
+        "ratio_anchor_note": "X-axis = trigram anchor score [0–1]. Y-axis = output/GT length ratio. ⚠️ Zone: anchor &lt; 0.5 or ratio &gt; 1.2 → probable hallucinations.",
+        "h_correlation": "Metric Correlation Matrix",
+        "corr_engine_label": "Engine:",
+        "corr_note": "Pearson coefficient between CER, WER, image quality, ligatures, diacritics. Green = positive correlation, Red = negative.",
+        # ── Footer ────────────────────────────────────────────────────────
+        "footer_generated": "Report generated on",
+        "footer_by": "by Picarones",
+        # ── JS strings dynamiques ─────────────────────────────────────────
+        "heatmap_start": "Start",
+        "heatmap_mid": "Middle",
+        "heatmap_end": "End",
+        "heatmap_title": "HEATMAP (position)",
+        "percentile_title": "CER PERCENTILES",
+        "lines": "lines",
+        "no_line_metrics": "No line metrics available.",
+        "no_hall_metrics": "No hallucination metrics available.",
+        "no_hall_blocks": "No hallucinated blocks detected.",
+        "hall_detected": "⚠️ Hallucinations detected",
+        "hall_ok": "✓ Satisfactory anchoring",
+        "hall_blocks_title": "Blocks with no anchor in GT:",
+        "hall_block_label": "Hallucinated block",
+        "hall_more_blocks": "additional block(s)",
+        "no_gini": "Gini data not available.",
+        "no_scatter": "Data not available.",
+        "total_errors": "Total:",
+        "errors_classified": "classified errors.",
+        "class_col": "Class",
+        "proportion_col": "Proportion",
+        "taxonomy_engine_label": "Engine:",
+    },
+}
+
+
+def get_labels(lang: str = "fr") -> dict[str, str]:
+    """Retourne le dictionnaire de labels pour la langue donnée.
+
+    Parameters
+    ----------
+    lang:
+        Code langue : ``"fr"`` (défaut) ou ``"en"``.
+
+    Returns
+    -------
+    dict
+        Labels traduits. Toujours valide : bascule sur ``"fr"`` si lang inconnu.
+    """
+    return TRANSLATIONS.get(lang, TRANSLATIONS["fr"])
+
+
+SUPPORTED_LANGS: list[str] = list(TRANSLATIONS.keys())

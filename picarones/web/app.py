@@ -37,8 +37,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi import Cookie, FastAPI, HTTPException, Query, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from picarones import __version__
@@ -122,6 +122,7 @@ class BenchmarkRequest(BaseModel):
     output_dir: str = "./rapports/"
     report_name: str = ""
     lang: str = "fra"
+    report_lang: str = "fr"   # langue du rapport HTML : "fr" ou "en"
 
 class HTRUnitedImportRequest(BaseModel):
     entry_id: str
@@ -147,6 +148,44 @@ async def api_status() -> dict:
         "status": "ok",
         "timestamp": _iso_now(),
     }
+
+
+# ---------------------------------------------------------------------------
+# API — langue / i18n
+# ---------------------------------------------------------------------------
+
+_SUPPORTED_LANGS = ("fr", "en")
+_LANG_COOKIE = "picarones_lang"
+
+
+@app.get("/api/lang")
+async def api_get_lang(
+    picarones_lang: str = Cookie(default="fr"),
+) -> dict:
+    """Retourne la langue courante de l'interface (lue depuis le cookie de session)."""
+    lang = picarones_lang if picarones_lang in _SUPPORTED_LANGS else "fr"
+    return {"lang": lang, "supported": list(_SUPPORTED_LANGS)}
+
+
+@app.post("/api/lang/{lang_code}")
+async def api_set_lang(lang_code: str, response: Response) -> dict:
+    """Définit la langue de l'interface et la persiste dans un cookie de session.
+
+    Langues supportées : ``fr`` (français), ``en`` (anglais patrimonial).
+    """
+    if lang_code not in _SUPPORTED_LANGS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Langue non supportée : '{lang_code}'. Disponibles : {', '.join(_SUPPORTED_LANGS)}",
+        )
+    response.set_cookie(
+        key=_LANG_COOKIE,
+        value=lang_code,
+        max_age=60 * 60 * 24 * 365,  # 1 an
+        httponly=False,
+        samesite="lax",
+    )
+    return {"lang": lang_code, "message": f"Langue définie : {lang_code}"}
 
 
 # ---------------------------------------------------------------------------
@@ -641,7 +680,8 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         # Générer le rapport HTML
         job.add_event("log", {"message": "Génération du rapport HTML…"})
         from picarones.report.generator import ReportGenerator
-        gen = ReportGenerator(result)
+        report_lang = getattr(req, "report_lang", "fr")
+        gen = ReportGenerator(result, lang=report_lang)
         gen.generate(output_html)
 
         job.output_path = output_html
@@ -670,8 +710,15 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
 # ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
-async def index() -> HTMLResponse:
-    return HTMLResponse(content=_HTML_TEMPLATE)
+async def index(picarones_lang: str = Cookie(default="fr")) -> HTMLResponse:
+    lang = picarones_lang if picarones_lang in _SUPPORTED_LANGS else "fr"
+    # Injecte le code langue dans la SPA via une balise meta
+    page = _HTML_TEMPLATE.replace(
+        "<head>",
+        f'<head>\n<meta name="picarones-lang" content="{lang}">',
+        1,
+    )
+    return HTMLResponse(content=page)
 
 
 # ---------------------------------------------------------------------------
