@@ -479,6 +479,58 @@ body.present-mode nav .meta { display: none; }
   min-width: 60px;
 }
 .corr-table th { background: var(--bg); font-weight: 600; font-size: .75rem; }
+
+/* ── Sprint 10 — heatmap erreurs ─────────────────────────────────*/
+.heatmap-wrap {
+  display: flex; gap: 3px; align-items: flex-end;
+  height: 60px; margin: .5rem 0;
+}
+.heatmap-bar {
+  flex: 1; border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  transition: opacity .15s;
+}
+.heatmap-bar:hover { opacity: .75; }
+.heatmap-labels {
+  display: flex; justify-content: space-between;
+  font-size: .65rem; color: var(--text-muted); margin-top: .15rem;
+}
+
+/* ── Sprint 10 — hallucination badge ─────────────────────────────*/
+.hallucination-badge {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .15rem .45rem; border-radius: 4px;
+  font-size: .72rem; font-weight: 700;
+  background: #fce7f3; color: #9d174d;
+  border: 1px solid #fbcfe8;
+}
+.hallucination-badge.ok {
+  background: #f0fdf4; color: #15803d;
+  border-color: #bbf7d0;
+}
+
+/* ── Sprint 10 — bloc halluciné ──────────────────────────────────*/
+.halluc-block {
+  background: #fce7f3; border: 1px solid #f9a8d4;
+  border-radius: 4px; padding: .35rem .6rem;
+  margin: .25rem 0; font-size: .78rem;
+  font-family: 'Georgia', serif; color: #9d174d;
+}
+.halluc-block-meta {
+  font-size: .65rem; color: #be185d; font-family: system-ui, sans-serif;
+  margin-bottom: .15rem; font-weight: 600;
+}
+
+/* ── Sprint 10 — percentile bars ─────────────────────────────────*/
+.pct-bars { display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0; }
+.pct-bar-row { display: flex; align-items: center; gap: .4rem; font-size: .72rem; }
+.pct-bar-label { width: 2.5rem; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+.pct-bar-track {
+  flex: 1; height: 8px; background: var(--bg);
+  border-radius: 4px; overflow: hidden;
+}
+.pct-bar-fill { height: 100%; border-radius: 4px; }
+.pct-bar-val { width: 3rem; color: var(--text); font-weight: 600; }
 </style>
 </head>
 
@@ -488,18 +540,18 @@ body.present-mode nav .meta { display: none; }
 <nav>
   <div class="brand">
     Picarones
-    <span>| rapport OCR</span>
+    <span data-i18n="nav_report">| rapport OCR</span>
   </div>
   <div class="tabs">
-    <button class="tab-btn active" onclick="showView('ranking')">Classement</button>
-    <button class="tab-btn" onclick="showView('gallery')">Galerie</button>
-    <button class="tab-btn" onclick="showView('document')">Document</button>
-    <button class="tab-btn" onclick="showView('characters')">Caractères</button>
-    <button class="tab-btn" onclick="showView('analyses')">Analyses</button>
+    <button class="tab-btn active" onclick="showView('ranking')" data-i18n="tab_ranking">Classement</button>
+    <button class="tab-btn" onclick="showView('gallery')" data-i18n="tab_gallery">Galerie</button>
+    <button class="tab-btn" onclick="showView('document')" data-i18n="tab_document">Document</button>
+    <button class="tab-btn" onclick="showView('characters')" data-i18n="tab_characters">Caractères</button>
+    <button class="tab-btn" onclick="showView('analyses')" data-i18n="tab_analyses">Analyses</button>
   </div>
   <div class="meta" id="nav-meta">—</div>
-  <button class="btn-export-csv" onclick="exportCSV()" title="Télécharger toutes les métriques en CSV">⬇ CSV</button>
-  <button class="btn-present" id="btn-present" onclick="togglePresentMode()" title="Masquer les détails techniques">⊞ Présentation</button>
+  <button class="btn-export-csv" onclick="exportCSV()" title="⬇ CSV">⬇ CSV</button>
+  <button class="btn-present" id="btn-present" onclick="togglePresentMode()" data-i18n="btn_present">⊞ Présentation</button>
 </nav>
 
 <!-- ── Main ───────────────────────────────────────────────────────── -->
@@ -508,26 +560,28 @@ body.present-mode nav .meta { display: none; }
 <!-- ════ Vue 1 : Classement ════════════════════════════════════════ -->
 <div id="view-ranking" class="view active">
   <div class="card">
-    <h2>Classement des moteurs</h2>
+    <h2 data-i18n="h_ranking">Classement des moteurs</h2>
     <div class="stat-row" id="ranking-stats"></div>
     <div class="table-wrap">
       <table id="ranking-table">
         <thead>
           <tr>
-            <th data-col="rank" class="sortable sorted" data-dir="asc">#<i class="sort-icon">↑</i></th>
-            <th data-col="name" class="sortable">Concurrent<i class="sort-icon">↕</i></th>
-            <th data-col="cer"  class="sortable">CER exact<i class="sort-icon">↕</i></th>
-            <th data-col="cer_diplomatic" class="sortable" title="CER après normalisation diplomatique (ſ=s, u=v, i=j…) — mesure les erreurs substantielles en ignorant les variantes graphiques codifiées">CER diplo.<i class="sort-icon">↕</i></th>
-            <th data-col="wer"  class="sortable">WER<i class="sort-icon">↕</i></th>
-            <th data-col="mer"  class="sortable">MER<i class="sort-icon">↕</i></th>
-            <th data-col="wil"  class="sortable">WIL<i class="sort-icon">↕</i></th>
-            <th data-col="ligature_score" class="sortable" title="Taux de reconnaissance des ligatures (ﬁ, ﬂ, œ, æ, ﬀ…)">Ligatures<i class="sort-icon">↕</i></th>
-            <th data-col="diacritic_score" class="sortable" title="Taux de conservation des diacritiques (accents, cédilles, trémas…)">Diacritiques<i class="sort-icon">↕</i></th>
-            <th>CER médian</th>
-            <th>CER min</th>
-            <th>CER max</th>
-            <th title="Classe 10 — Sur-normalisation LLM : taux de mots corrects dégradés par le LLM">Sur-norm.</th>
-            <th>Docs</th>
+            <th data-col="rank" class="sortable sorted" data-dir="asc" data-i18n="col_rank">#<i class="sort-icon">↑</i></th>
+            <th data-col="name" class="sortable" data-i18n="col_engine">Concurrent<i class="sort-icon">↕</i></th>
+            <th data-col="cer"  class="sortable" data-i18n="col_cer">CER exact<i class="sort-icon">↕</i></th>
+            <th data-col="cer_diplomatic" class="sortable" id="th-cer-diplo" data-i18n="col_cer_diplo">CER diplo.<i class="sort-icon">↕</i></th>
+            <th data-col="wer"  class="sortable" data-i18n="col_wer">WER<i class="sort-icon">↕</i></th>
+            <th data-col="mer"  class="sortable" data-i18n="col_mer">MER<i class="sort-icon">↕</i></th>
+            <th data-col="wil"  class="sortable" data-i18n="col_wil">WIL<i class="sort-icon">↕</i></th>
+            <th data-col="ligature_score" class="sortable" id="th-ligatures" data-i18n="col_ligatures">Ligatures<i class="sort-icon">↕</i></th>
+            <th data-col="diacritic_score" class="sortable" id="th-diacritics" data-i18n="col_diacritics">Diacritiques<i class="sort-icon">↕</i></th>
+            <th data-col="gini" class="sortable" id="th-gini" data-i18n="col_gini">Gini<i class="sort-icon">↕</i></th>
+            <th data-col="anchor_score" class="sortable" id="th-anchor" data-i18n="col_anchor">Ancrage<i class="sort-icon">↕</i></th>
+            <th data-i18n="col_cer_median">CER médian</th>
+            <th data-i18n="col_cer_min">CER min</th>
+            <th data-i18n="col_cer_max">CER max</th>
+            <th id="th-overnorm" data-i18n="col_overnorm">Sur-norm.</th>
+            <th data-i18n="col_docs">Docs</th>
           </tr>
         </thead>
         <tbody id="ranking-tbody"></tbody>
@@ -553,28 +607,28 @@ body.present-mode nav .meta { display: none; }
 <!-- ════ Vue 2 : Galerie ═══════════════════════════════════════════ -->
 <div id="view-gallery" class="view">
   <div class="card">
-    <h2>Galerie des documents</h2>
+    <h2 data-i18n="h_gallery">Galerie des documents</h2>
     <div class="gallery-controls">
-      <label>Trier par :
+      <label><span data-i18n="gallery_sort_label">Trier par :</span>
         <select id="gallery-sort" onchange="renderGallery()">
-          <option value="doc_id">Identifiant</option>
-          <option value="mean_cer">CER moyen</option>
-          <option value="difficulty_score">Difficulté</option>
-          <option value="best_engine">Meilleur moteur</option>
+          <option value="doc_id" data-i18n-opt="gallery_sort_id">Identifiant</option>
+          <option value="mean_cer" data-i18n-opt="gallery_sort_cer">CER moyen</option>
+          <option value="difficulty_score" data-i18n-opt="gallery_sort_difficulty">Difficulté</option>
+          <option value="best_engine" data-i18n-opt="gallery_sort_best">Meilleur moteur</option>
         </select>
       </label>
-      <label>Filtrer CER &gt;
+      <label><span data-i18n="gallery_filter_cer_label">Filtrer CER &gt;</span>
         <input type="number" id="gallery-filter-cer" min="0" max="100" value="0" step="1"
           style="width:60px" onchange="renderGallery()"> %
       </label>
-      <label>Moteur :
+      <label><span data-i18n="gallery_filter_engine_label">Moteur :</span>
         <select id="gallery-engine-select" onchange="renderGallery()">
-          <option value="">Tous</option>
+          <option value="" data-i18n-opt="gallery_filter_all">Tous</option>
         </select>
       </label>
     </div>
     <div id="gallery-grid" class="gallery-grid"></div>
-    <div id="gallery-empty" class="empty-state" style="display:none">
+    <div id="gallery-empty" class="empty-state" style="display:none" data-i18n="gallery_empty">
       Aucun document ne correspond aux filtres.
     </div>
   </div>
@@ -585,7 +639,7 @@ body.present-mode nav .meta { display: none; }
   <div class="doc-layout">
     <!-- Sidebar -->
     <aside class="doc-sidebar">
-      <div class="doc-sidebar-header">Documents</div>
+      <div class="doc-sidebar-header" data-i18n="doc_sidebar_header">Documents</div>
       <div id="doc-list"></div>
     </aside>
 
@@ -593,14 +647,14 @@ body.present-mode nav .meta { display: none; }
     <div>
       <div class="card" id="doc-detail-header">
         <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:.5rem">
-          <h2 id="doc-detail-title">Sélectionner un document</h2>
+          <h2 id="doc-detail-title" data-i18n="doc_title_default">Sélectionner un document</h2>
           <div class="stat-row" id="doc-detail-metrics"></div>
         </div>
       </div>
 
       <!-- Image zoomable -->
       <div class="card">
-        <h3>Image originale</h3>
+        <h3 data-i18n="h_image">Image originale</h3>
         <div class="doc-image-wrap" id="doc-image-wrap"
           onwheel="handleZoom(event)"
           onmousedown="startDrag(event)"
@@ -622,7 +676,7 @@ body.present-mode nav .meta { display: none; }
 
       <!-- Vérité terrain -->
       <div class="card">
-        <h3>Vérité terrain (GT)</h3>
+        <h3 data-i18n="h_gt">Vérité terrain (GT)</h3>
         <div class="gt-panel">
           <div class="gt-panel-header">✓ Ground Truth</div>
           <div class="gt-panel-body" id="doc-gt-text">—</div>
@@ -631,8 +685,20 @@ body.present-mode nav .meta { display: none; }
 
       <!-- Diffs par moteur -->
       <div class="card">
-        <h3>Sorties OCR — diff par moteur</h3>
+        <h3 data-i18n="h_diff">Sorties OCR — diff par moteur</h3>
         <div class="diff-panels" id="doc-diff-panels"></div>
+      </div>
+
+      <!-- Sprint 10 — Distribution CER par ligne -->
+      <div class="card" id="doc-line-metrics-card" style="display:none">
+        <h3 data-i18n="h_line_metrics">Distribution des erreurs par ligne</h3>
+        <div id="doc-line-metrics-content"></div>
+      </div>
+
+      <!-- Sprint 10 — Hallucinations détectées -->
+      <div class="card" id="doc-hallucination-card" style="display:none">
+        <h3 data-i18n="h_hallucination">Analyse des hallucinations</h3>
+        <div id="doc-hallucination-content"></div>
       </div>
     </div>
   </div>
@@ -643,63 +709,63 @@ body.present-mode nav .meta { display: none; }
   <div class="charts-grid">
 
     <div class="chart-card">
-      <h3>Distribution du CER par moteur</h3>
+      <h3 data-i18n="h_cer_dist">Distribution du CER par moteur</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-cer-hist"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>Profil des moteurs (radar)</h3>
+      <h3 data-i18n="h_radar">Profil des moteurs (radar)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-radar"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem" data-i18n="radar_note">
         Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>CER par document (tous moteurs)</h3>
+      <h3 data-i18n="h_cer_doc">CER par document (tous moteurs)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-cer-doc"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>Temps d'exécution moyen (secondes/document)</h3>
+      <h3 data-i18n="h_duration">Temps d'exécution moyen (secondes/document)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-duration"></canvas>
       </div>
     </div>
 
     <div class="chart-card">
-      <h3>Qualité image ↔ CER (scatter plot)</h3>
+      <h3 data-i18n="h_quality_cer">Qualité image ↔ CER (scatter plot)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-quality-cer"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="quality_cer_note">
         Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.
       </div>
     </div>
 
     <div class="chart-card" style="grid-column:1/-1">
-      <h3>Taxonomie des erreurs par moteur</h3>
+      <h3 data-i18n="h_taxonomy">Taxonomie des erreurs par moteur</h3>
       <div class="chart-canvas-wrap" style="max-height:300px">
         <canvas id="chart-taxonomy"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="taxonomy_note">
         Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).
       </div>
     </div>
 
     <!-- Sprint 7 — Courbe de fiabilité -->
     <div class="chart-card" style="grid-column:1/-1">
-      <h3>Courbes de fiabilité</h3>
+      <h3 data-i18n="h_reliability">Courbes de fiabilité</h3>
       <div class="chart-canvas-wrap" style="max-height:300px">
         <canvas id="chart-reliability"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="reliability_note">
         Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ?
         Une courbe basse = moteur performant même sur les documents faciles.
       </div>
@@ -707,20 +773,20 @@ body.present-mode nav .meta { display: none; }
 
     <!-- Sprint 7 — Intervalles de confiance -->
     <div class="chart-card">
-      <h3>Intervalles de confiance à 95 % (bootstrap)</h3>
+      <h3 data-i18n="h_bootstrap">Intervalles de confiance à 95 % (bootstrap)</h3>
       <div class="chart-canvas-wrap">
         <canvas id="chart-bootstrap-ci"></canvas>
       </div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="bootstrap_note">
         IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).
       </div>
     </div>
 
     <!-- Sprint 7 — Diagramme de Venn -->
     <div class="chart-card">
-      <h3>Erreurs communes / exclusives (Venn)</h3>
+      <h3 data-i18n="h_venn">Erreurs communes / exclusives (Venn)</h3>
       <div id="venn-container" style="min-height:260px;display:flex;align-items:center;justify-content:center"></div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical" data-i18n="venn_note">
         Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents.
         Erreurs communes = segments partagés.
       </div>
@@ -728,30 +794,53 @@ body.present-mode nav .meta { display: none; }
 
     <!-- Sprint 7 — Tests de Wilcoxon -->
     <div class="chart-card technical">
-      <h3>Tests de Wilcoxon — comparaisons par paires</h3>
+      <h3 data-i18n="h_pairwise">Tests de Wilcoxon — comparaisons par paires</h3>
       <div id="wilcoxon-table-container" style="overflow-x:auto"></div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="pairwise_note">
         Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.
       </div>
     </div>
 
     <!-- Sprint 7 — Clustering des erreurs -->
     <div class="chart-card" style="grid-column:1/-1">
-      <h3>Clustering des patterns d'erreurs</h3>
+      <h3 data-i18n="h_clusters">Clustering des patterns d'erreurs</h3>
       <div id="error-clusters-container"></div>
+    </div>
+
+    <!-- Sprint 10 — Scatter Gini vs CER moyen -->
+    <div class="chart-card">
+      <h3 data-i18n="h_gini_cer">Gini vs CER moyen <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="gini_cer_ideal">— idéal : bas-gauche</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-gini-cer"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="gini_cer_note">
+        Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).
+      </div>
+    </div>
+
+    <!-- Sprint 10 — Scatter ratio longueur vs ancrage -->
+    <div class="chart-card">
+      <h3 data-i18n="h_ratio_anchor">Ratio longueur vs ancrage <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="ratio_anchor_subtitle">— hallucinations VLM</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-ratio-anchor"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="ratio_anchor_note">
+        Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT.
+        Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.
+      </div>
     </div>
 
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
-      <h3>Matrice de corrélation entre métriques</h3>
+      <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>
       <div style="margin-bottom:.5rem">
-        <label style="font-size:.82rem;font-weight:600">Moteur :
+        <label style="font-size:.82rem;font-weight:600"><span data-i18n="corr_engine_label">Moteur :</span>
           <select id="corr-engine-select" onchange="renderCorrelationMatrix()"
             style="padding:.25rem .5rem;border-radius:6px;border:1px solid var(--border);margin-left:.25rem"></select>
         </label>
       </div>
       <div id="corr-matrix-container" style="overflow-x:auto"></div>
-      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="corr_note">
         Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques.
         Vert = corrélation positive, Rouge = corrélation négative.
       </div>
@@ -763,11 +852,11 @@ body.present-mode nav .meta { display: none; }
 <!-- ════ Vue 5 : Caractères ════════════════════════════════════════ -->
 <div id="view-characters" class="view">
   <div class="card">
-    <h2>Analyse des caractères</h2>
+    <h2 data-i18n="h_characters">Analyse des caractères</h2>
 
     <!-- Sélecteur de moteur -->
     <div class="stat-row" style="margin-bottom:1rem">
-      <label for="char-engine-select" style="font-weight:600;margin-right:.5rem">Moteur :</label>
+      <label for="char-engine-select" style="font-weight:600;margin-right:.5rem" data-i18n="char_engine_label">Moteur :</label>
       <select id="char-engine-select" onchange="renderCharView()"
         style="padding:.35rem .7rem;border-radius:6px;border:1px solid var(--border)"></select>
     </div>
@@ -796,14 +885,15 @@ body.present-mode nav .meta { display: none; }
 </main>
 
 <footer>
-  Généré par <strong>Picarones</strong> v1.0.0
+  <span data-i18n="footer_by">par Picarones</span> v1.0.0
   — BnF, Département numérique
   — <span id="footer-date"></span>
 </footer>
 
 <!-- ── Données embarquées ──────────────────────────────────────────── -->
 <script>
-const DATA = {"meta":{"corpus_name":"Corpus de test — Chroniques médiévales BnF","corpus_source":"/corpus/chroniques/","document_count":3,"run_date":"2026-03-07T15:19:36.428479+00:00","picarones_version":"1.0.0","metadata":{"description":"Données de démonstration générées par picarones.fixtures","script":"gothique textura","langue":"Français médiéval (XIVe-XVe siècle)","institution":"BnF — Département des manuscrits","_images_b64":{"folio_001":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","folio_002":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","folio_003":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg=="}}},"ranking":[{"engine":"tesseract → gpt-4o","mean_cer":0.038091,"mean_wer":0.038095,"documents":3,"failed":0},{"engine":"tesseract","mean_cer":0.044933,"mean_wer":0.08254,"documents":3,"failed":0},{"engine":"ancien_moteur","mean_cer":0.179834,"mean_wer":0.288889,"documents":3,"failed":0},{"engine":"pero_ocr","mean_cer":0.0,"mean_wer":0.0,"documents":3,"failed":0}],"engines":[{"name":"pero_ocr","version":"0.7.2","cer":0.0,"wer":0.0,"mer":0.0,"wil":0.0,"cer_median":0.0,"cer_min":0.0,"cer_max":0.0,"doc_count":3,"failed":0,"cer_diplomatic":0.0,"cer_diplomatic_profile":"medieval_french","cer_values":[0.0,0.0,0.0],"cer_diplomatic_values":[0.0,0.0,0.0],"is_pipeline":false,"pipeline_info":{},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{},"total_substitutions":0,"total_insertions":0,"total_deletions":0},"aggregated_taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":1.0,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.732,"mean_sharpness":0.614,"mean_noise_level":0.2979,"quality_distribution":{"good":2,"medium":1,"poor":0},"document_count":3,"scores":[0.5875,0.7747,0.8339]}},{"name":"tesseract","version":"5.3.3","cer":0.0449,"wer":0.0825,"mer":0.0825,"wil":0.139,"cer_median":0.01,"cer_min":0.009,"cer_max":0.1158,"doc_count":3,"failed":0,"cer_diplomatic":0.0513,"cer_diplomatic_profile":"medieval_french","cer_values":[0.1158,0.009,0.01],"cer_diplomatic_values":[0.125,0.009,0.0198],"is_pipeline":false,"pipeline_info":{},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"c":{"∅":1},"r":{"∅":1},"o":{"∅":1},"n":{"∅":1},"i":{"∅":1},"q":{"∅":1},"u":{"∅":1},"e":{"∅":1},"s":{"∅":1},"&":{"8":2},"ſ":{"f":1}},"total_substitutions":3,"total_insertions":0,"total_deletions":9},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":2,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":4,"class_distribution":{"visual_confusion":0.25,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.5,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.25}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.9274,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.7363,"mean_sharpness":0.7263,"mean_noise_level":0.2437,"quality_distribution":{"good":2,"medium":1,"poor":0},"document_count":3,"scores":[0.5284,0.8648,0.8158]}},{"name":"ancien_moteur","version":"2.1.0","cer":0.1798,"wer":0.2889,"mer":0.2889,"wil":0.3963,"cer_median":0.09,"cer_min":0.0811,"cer_max":0.3684,"doc_count":3,"failed":0,"cer_diplomatic":0.1783,"cer_diplomatic_profile":"medieval_french","cer_values":[0.3684,0.0811,0.09],"cer_diplomatic_values":[0.3646,0.0811,0.0891],"is_pipeline":false,"pipeline_info":{},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"p":{"∅":1},"r":{"∅":5,"z":1},"o":{"∅":3},"l":{"∅":1},"g":{"∅":1},"u":{"∅":1},"e":{"∅":5},"m":{"∅":2},"a":{"∅":3,"f":1,"w":1},"i":{"∅":2},"ſ":{"∅":3},"t":{"∅":3},"F":{"∅":2},"s":{"t":1},"n":{"∅":2},"c":{"∅":1},"E":{"∅":1},"x":{"f":1},"b":{"y":1},"J":{"z":1},"y":{"w":1},"I":{"∅":1},"d":{"∅":1}},"total_substitutions":8,"total_insertions":0,"total_deletions":38},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":5,"segmentation_error":2,"oov_character":0,"lacuna":5},"total_errors":13,"class_distribution":{"visual_confusion":0.0769,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.3846,"segmentation_error":0.1538,"oov_character":0.0,"lacuna":0.3846}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.7697,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.4803,"mean_sharpness":0.4196,"mean_noise_level":0.4834,"quality_distribution":{"good":1,"medium":0,"poor":2},"document_count":3,"scores":[0.2888,0.388,0.7641]}},{"name":"tesseract → gpt-4o","version":"ocr=5.3.3; llm=gpt-4o","cer":0.0381,"wer":0.0381,"mer":0.0381,"wil":0.0532,"cer_median":0.009,"cer_min":0.0,"cer_max":0.1053,"doc_count":3,"failed":0,"cer_diplomatic":0.0377,"cer_diplomatic_profile":"medieval_french","cer_values":[0.1053,0.009,0.0],"cer_diplomatic_values":[0.1042,0.009,0.0],"is_pipeline":true,"pipeline_info":{"pipeline_mode":"text_and_image","prompt_file":"correction_medieval_french.txt","llm_model":"gpt-4o","llm_provider":"openai","pipeline_steps":[{"type":"ocr","engine":"tesseract","version":"5.3.3"},{"type":"llm","model":"gpt-4o","provider":"openai","mode":"text_and_image","prompt_file":"correction_medieval_french.txt"}],"over_normalization":{"score":0.0,"total_correct_ocr_words":44,"over_normalized_count":0,"document_count":3}},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"c":{"∅":1},"r":{"∅":1},"o":{"∅":1},"n":{"∅":1},"i":{"∅":1},"q":{"∅":1},"u":{"∅":1},"e":{"∅":1},"s":{"∅":1},"ſ":{"f":1}},"total_substitutions":1,"total_insertions":0,"total_deletions":9},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":2,"class_distribution":{"visual_confusion":0.5,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.5}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.9726,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.6755,"mean_sharpness":0.7034,"mean_noise_level":0.2303,"quality_distribution":{"good":1,"medium":2,"poor":0},"document_count":3,"scores":[0.6047,0.6787,0.7431]}}],"documents":[{"doc_id":"folio_001","image_path":"/corpus/images/folio_001.jpg","image_b64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","ground_truth":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre.","mean_cer":0.1474,"best_engine":"pero_ocr","engine_results":[{"engine":"pero_ocr","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":0.405,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.5031,"noise_level":0.4962,"rotation_degrees":0.05,"contrast_score":0.6198,"quality_score":0.5875,"quality_tier":"medium","analysis_method":"mock","script_type":"gothique textura"}},{"engine":"tesseract","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France 8 d'Angleterre.","cer":0.1158,"cer_diplomatic":0.125,"wer":0.1333,"duration":0.411,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"d'Angleterre."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":1,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":2,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.5,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.5},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[{"gt":"&","ocr":"8"}],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"croniques","ocr":"","position":10}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.8966,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6518,"noise_level":0.495,"rotation_degrees":-1.34,"contrast_score":0.2668,"quality_score":0.5284,"quality_tier":"medium","analysis_method":"mock","script_type":"gothique textura"}},{"engine":"ancien_moteur","hypothesis":"Icy commence le de Jehan ſut les croniques de & d'Angleterre.","cer":0.3684,"cer_diplomatic":0.3646,"wer":0.3333,"duration":3.892,"error":null,"diff":[{"op":"equal","text":"Icy commence le"},{"op":"delete","text":"prologue"},{"op":"equal","text":"de"},{"op":"delete","text":"maiſtre"},{"op":"equal","text":"Jehan"},{"op":"replace","old":"Froiſſart ſus","new":"ſut"},{"op":"equal","text":"les croniques de"},{"op":"delete","text":"France"},{"op":"equal","text":"& d'Angleterre."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":1,"oov_character":0,"lacuna":3},"total_errors":4,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.25,"oov_character":0.0,"lacuna":0.75},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[{"gt":"Froiſſart ſus","ocr":"ſut","position":7}],"oov_character":[],"lacuna":[{"gt":"prologue","ocr":"","position":3},{"gt":"maiſtre","ocr":"","position":5},{"gt":"France","ocr":"","position":12}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.7692,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.1537,"noise_level":0.5589,"rotation_degrees":-2.09,"contrast_score":0.2,"quality_score":0.2888,"quality_tier":"poor","analysis_method":"mock","script_type":"gothique textura"}},{"engine":"tesseract → gpt-4o","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France & d'Angleterre.","cer":0.1053,"cer_diplomatic":0.1042,"wer":0.0667,"duration":11.725,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France & d'Angleterre."}],"ocr_intermediate":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France 8 d'Angleterre.","ocr_diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"d'Angleterre."}],"llm_correction_diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France"},{"op":"replace","old":"8","new":"&"},{"op":"equal","text":"d'Angleterre."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":10,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"text_and_image","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":1,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":1.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"croniques","ocr":"","position":10}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9655,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6971,"noise_level":0.3585,"rotation_degrees":2.94,"contrast_score":0.4231,"quality_score":0.6047,"quality_tier":"medium","analysis_method":"mock","script_type":"gothique textura"}}],"script_type":"gothique textura","difficulty_score":0.2072,"difficulty_label":"Facile"},{"doc_id":"folio_002","image_path":"/corpus/images/folio_002.jpg","image_b64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","ground_truth":"En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","mean_cer":0.0248,"best_engine":"pero_ocr","engine_results":[{"engine":"pero_ocr","hypothesis":"En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":0.886,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6798,"noise_level":0.2595,"rotation_degrees":1.37,"contrast_score":0.8946,"quality_score":0.7747,"quality_tier":"good","analysis_method":"mock","script_type":"humanistique"}},{"engine":"tesseract","hypothesis":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.009,"cer_diplomatic":0.009,"wer":0.0476,"duration":0.971,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":1.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[{"gt":"ſoixante,","ocr":"foixante,"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9524,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.7507,"noise_level":0.0967,"rotation_degrees":0.68,"contrast_score":0.969,"quality_score":0.8648,"quality_tier":"good","analysis_method":"mock","script_type":"humanistique"}},{"engine":"ancien_moteur","hypothesis":"l'fn de grwce mil trois cens ſoifante, regnoit en France le noyle roy zehan, filz du row Phelippe de Valois.","cer":0.0811,"cer_diplomatic":0.0811,"wer":0.3333,"duration":2.227,"error":null,"diff":[{"op":"replace","old":"En l'an","new":"l'fn"},{"op":"equal","text":"de"},{"op":"replace","old":"grace","new":"grwce"},{"op":"equal","text":"mil trois cens"},{"op":"replace","old":"ſoixante,","new":"ſoifante,"},{"op":"equal","text":"regnoit en France le"},{"op":"replace","old":"noble","new":"noyle"},{"op":"equal","text":"roy"},{"op":"replace","old":"Jehan,","new":"zehan,"},{"op":"equal","text":"filz du"},{"op":"replace","old":"roy","new":"row"},{"op":"equal","text":"Phelippe de Valois."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":5,"segmentation_error":1,"oov_character":0,"lacuna":0},"total_errors":6,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.8333,"segmentation_error":0.1667,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[{"gt":"grace","ocr":"grwce"},{"gt":"ſoixante,","ocr":"ſoifante,"},{"gt":"noble","ocr":"noyle"}],"segmentation_error":[{"gt":"En l'an","ocr":"l'fn","position":0}],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.6829,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.1939,"noise_level":0.5855,"rotation_degrees":-0.28,"contrast_score":0.4345,"quality_score":0.388,"quality_tier":"poor","analysis_method":"mock","script_type":"humanistique"}},{"engine":"tesseract → gpt-4o","hypothesis":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.009,"cer_diplomatic":0.009,"wer":0.0476,"duration":8.963,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ocr_intermediate":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","ocr_diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"llm_correction_diff":[{"op":"equal","text":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":20,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"text_and_image","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":1.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[{"gt":"ſoixante,","ocr":"foixante,"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9524,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.7141,"noise_level":0.3019,"rotation_degrees":0.75,"contrast_score":0.5365,"quality_score":0.6787,"quality_tier":"medium","analysis_method":"mock","script_type":"humanistique"}}],"script_type":"humanistique","difficulty_score":0.1209,"difficulty_label":"Facile"},{"doc_id":"folio_003","image_path":"/corpus/images/folio_003.jpg","image_b64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","ground_truth":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","mean_cer":0.025,"best_engine":"pero_ocr","engine_results":[{"engine":"pero_ocr","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":2.78,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6592,"noise_level":0.138,"rotation_degrees":-0.22,"contrast_score":1.0,"quality_score":0.8339,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"}},{"engine":"tesseract","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins 8 mahommetans.","cer":0.01,"cer_diplomatic":0.0198,"wer":0.0667,"duration":0.69,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"mahommetans."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":1,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":1.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[{"gt":"&","ocr":"8"}],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9333,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.7764,"noise_level":0.1395,"rotation_degrees":-0.69,"contrast_score":0.8002,"quality_score":0.8158,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"}},{"engine":"ancien_moteur","hypothesis":"ledit iour furent menez en ladicte ville Paris pluſieurs priſonniers ſazaſins & mahommetans.","cer":0.09,"cer_diplomatic":0.0891,"wer":0.2,"duration":2.803,"error":null,"diff":[{"op":"delete","text":"Item"},{"op":"equal","text":"ledit iour furent menez en ladicte ville"},{"op":"delete","text":"de"},{"op":"equal","text":"Paris pluſieurs priſonniers"},{"op":"replace","old":"ſaraſins","new":"ſazaſins"},{"op":"equal","text":"& mahommetans."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":2},"total_errors":3,"class_distribution":{"visual_confusion":0.3333,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.6667},"examples":{"visual_confusion":[{"gt":"ſaraſins","ocr":"ſazaſins"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"Item","ocr":"","position":0},{"gt":"de","ocr":"","position":8}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.8571,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.9112,"noise_level":0.3059,"rotation_degrees":1.1,"contrast_score":0.5727,"quality_score":0.7641,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"}},{"engine":"tesseract → gpt-4o","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":7.601,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans."}],"ocr_intermediate":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins 8 mahommetans.","ocr_diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"mahommetans."}],"llm_correction_diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"8","new":"&"},{"op":"equal","text":"mahommetans."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":14,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"text_and_image","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6989,"noise_level":0.0306,"rotation_degrees":2.4,"contrast_score":0.6456,"quality_score":0.7431,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"}}],"script_type":"cursive administrative","difficulty_score":0.1297,"difficulty_label":"Facile"}],"statistics":{"pairwise_wilcoxon":[{"engine_a":"pero_ocr","engine_b":"tesseract","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":0,"W_minus":6.0},{"engine_a":"pero_ocr","engine_b":"ancien_moteur","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":0,"W_minus":6.0},{"engine_a":"pero_ocr","engine_b":"tesseract → gpt-4o","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":2,"W_plus":0,"W_minus":3.0},{"engine_a":"tesseract","engine_b":"ancien_moteur","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":0,"W_minus":6.0},{"engine_a":"tesseract","engine_b":"tesseract → gpt-4o","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le second concurrent obtient de meilleurs scores.","n_pairs":2,"W_plus":3.0,"W_minus":0},{"engine_a":"ancien_moteur","engine_b":"tesseract → gpt-4o","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le second concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":6.0,"W_minus":0}],"bootstrap_cis":[{"engine":"pero_ocr","mean":0.0,"ci_lower":0.0,"ci_upper":0.0},{"engine":"tesseract","mean":0.0449,"ci_lower":0.009,"ci_upper":0.1158},{"engine":"ancien_moteur","mean":0.1798,"ci_lower":0.0811,"ci_upper":0.3684},{"engine":"tesseract → gpt-4o","mean":0.0381,"ci_lower":0.0,"ci_upper":0.1053}]},"reliability_curves":[{"engine":"pero_ocr","points":[{"pct_docs":5.0,"mean_cer":0.0},{"pct_docs":10.0,"mean_cer":0.0},{"pct_docs":15.0,"mean_cer":0.0},{"pct_docs":20.0,"mean_cer":0.0},{"pct_docs":25.0,"mean_cer":0.0},{"pct_docs":30.0,"mean_cer":0.0},{"pct_docs":35.0,"mean_cer":0.0},{"pct_docs":40.0,"mean_cer":0.0},{"pct_docs":45.0,"mean_cer":0.0},{"pct_docs":50.0,"mean_cer":0.0},{"pct_docs":55.0,"mean_cer":0.0},{"pct_docs":60.0,"mean_cer":0.0},{"pct_docs":65.0,"mean_cer":0.0},{"pct_docs":70.0,"mean_cer":0.0},{"pct_docs":75.0,"mean_cer":0.0},{"pct_docs":80.0,"mean_cer":0.0},{"pct_docs":85.0,"mean_cer":0.0},{"pct_docs":90.0,"mean_cer":0.0},{"pct_docs":95.0,"mean_cer":0.0},{"pct_docs":100.0,"mean_cer":0.0}]},{"engine":"tesseract","points":[{"pct_docs":5.0,"mean_cer":0.009},{"pct_docs":10.0,"mean_cer":0.009},{"pct_docs":15.0,"mean_cer":0.009},{"pct_docs":20.0,"mean_cer":0.009},{"pct_docs":25.0,"mean_cer":0.009},{"pct_docs":30.0,"mean_cer":0.009},{"pct_docs":35.0,"mean_cer":0.009},{"pct_docs":40.0,"mean_cer":0.009},{"pct_docs":45.0,"mean_cer":0.009},{"pct_docs":50.0,"mean_cer":0.009},{"pct_docs":55.0,"mean_cer":0.009},{"pct_docs":60.0,"mean_cer":0.009},{"pct_docs":65.0,"mean_cer":0.009},{"pct_docs":70.0,"mean_cer":0.0095},{"pct_docs":75.0,"mean_cer":0.0095},{"pct_docs":80.0,"mean_cer":0.0095},{"pct_docs":85.0,"mean_cer":0.0095},{"pct_docs":90.0,"mean_cer":0.0095},{"pct_docs":95.0,"mean_cer":0.0095},{"pct_docs":100.0,"mean_cer":0.044933}]},{"engine":"ancien_moteur","points":[{"pct_docs":5.0,"mean_cer":0.0811},{"pct_docs":10.0,"mean_cer":0.0811},{"pct_docs":15.0,"mean_cer":0.0811},{"pct_docs":20.0,"mean_cer":0.0811},{"pct_docs":25.0,"mean_cer":0.0811},{"pct_docs":30.0,"mean_cer":0.0811},{"pct_docs":35.0,"mean_cer":0.0811},{"pct_docs":40.0,"mean_cer":0.0811},{"pct_docs":45.0,"mean_cer":0.0811},{"pct_docs":50.0,"mean_cer":0.0811},{"pct_docs":55.0,"mean_cer":0.0811},{"pct_docs":60.0,"mean_cer":0.0811},{"pct_docs":65.0,"mean_cer":0.0811},{"pct_docs":70.0,"mean_cer":0.08555},{"pct_docs":75.0,"mean_cer":0.08555},{"pct_docs":80.0,"mean_cer":0.08555},{"pct_docs":85.0,"mean_cer":0.08555},{"pct_docs":90.0,"mean_cer":0.08555},{"pct_docs":95.0,"mean_cer":0.08555},{"pct_docs":100.0,"mean_cer":0.179833}]},{"engine":"tesseract → gpt-4o","points":[{"pct_docs":5.0,"mean_cer":0.0},{"pct_docs":10.0,"mean_cer":0.0},{"pct_docs":15.0,"mean_cer":0.0},{"pct_docs":20.0,"mean_cer":0.0},{"pct_docs":25.0,"mean_cer":0.0},{"pct_docs":30.0,"mean_cer":0.0},{"pct_docs":35.0,"mean_cer":0.0},{"pct_docs":40.0,"mean_cer":0.0},{"pct_docs":45.0,"mean_cer":0.0},{"pct_docs":50.0,"mean_cer":0.0},{"pct_docs":55.0,"mean_cer":0.0},{"pct_docs":60.0,"mean_cer":0.0},{"pct_docs":65.0,"mean_cer":0.0},{"pct_docs":70.0,"mean_cer":0.0045},{"pct_docs":75.0,"mean_cer":0.0045},{"pct_docs":80.0,"mean_cer":0.0045},{"pct_docs":85.0,"mean_cer":0.0045},{"pct_docs":90.0,"mean_cer":0.0045},{"pct_docs":95.0,"mean_cer":0.0045},{"pct_docs":100.0,"mean_cer":0.0381}]}],"venn_data":{"type":"venn3","label_a":"pero_ocr","label_b":"tesseract","label_c":"ancien_moteur","only_a":0,"only_b":4,"only_c":13,"ab":0,"ac":0,"bc":0,"abc":0},"error_clusters":[{"cluster_id":5,"label":"autres substitutions","count":13,"examples":[{"engine":"tesseract","gt_fragment":"croniques","ocr_fragment":""},{"engine":"tesseract","gt_fragment":"ſoixante,","ocr_fragment":"foixante,"},{"engine":"ancien_moteur","gt_fragment":"prologue","ocr_fragment":""},{"engine":"ancien_moteur","gt_fragment":"maiſtre","ocr_fragment":""},{"engine":"ancien_moteur","gt_fragment":"France","ocr_fragment":""}]},{"cluster_id":1,"label":"&→8","count":2,"examples":[{"engine":"tesseract","gt_fragment":"&","ocr_fragment":"8"},{"engine":"tesseract","gt_fragment":"&","ocr_fragment":"8"}]},{"cluster_id":2,"label":"confusion ſ/f/s","count":2,"examples":[{"engine":"ancien_moteur","gt_fragment":"Froiſſart ſus","ocr_fragment":"ſut"},{"engine":"ancien_moteur","gt_fragment":"ſaraſins","ocr_fragment":"ſazaſins"}]},{"cluster_id":3,"label":"roy→row","count":1,"examples":[{"engine":"ancien_moteur","gt_fragment":"roy","ocr_fragment":"row"}]},{"cluster_id":4,"label":"de→—","count":1,"examples":[{"engine":"ancien_moteur","gt_fragment":"de","ocr_fragment":""}]}],"correlation_per_engine":[{"engine":"pero_ocr","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,1.0,0.9431,0.0,0.0],[0.0,0.0,0.0,0.0,0.9431,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"tesseract","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.9789,0.9789,0.9409,-0.9919,-0.9791,0.0,0.0],[0.9789,1.0,1.0,0.9903,-0.9969,-0.9169,0.0,0.0],[0.9789,1.0,1.0,0.9903,-0.9969,-0.9169,0.0,0.0],[0.9409,0.9903,0.9903,1.0,-0.9763,-0.8525,0.0,0.0],[-0.9919,-0.9969,-0.9969,-0.9763,1.0,0.9455,0.0,0.0],[-0.9791,-0.9169,-0.9169,-0.8525,0.9455,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"ancien_moteur","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.4762,0.4762,-0.0421,-0.6408,-0.5172,0.0,0.0],[0.4762,1.0,1.0,0.8585,-0.9802,-0.9989,0.0,0.0],[0.4762,1.0,1.0,0.8585,-0.9802,-0.9989,0.0,0.0],[-0.0421,0.8585,0.8585,1.0,-0.7401,-0.8334,0.0,0.0],[-0.6408,-0.9802,-0.9802,-0.7401,1.0,0.9885,0.0,0.0],[-0.5172,-0.9989,-0.9989,-0.8334,0.9885,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"tesseract → gpt-4o","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.7723,0.7723,0.3173,-0.9185,-0.5167,0.0,0.0],[0.7723,1.0,1.0,0.8475,-0.9605,0.1448,0.0,0.0],[0.7723,1.0,1.0,0.8475,-0.9605,0.1448,0.0,0.0],[0.3173,0.8475,0.8475,1.0,-0.6664,0.648,0.0,0.0],[-0.9185,-0.9605,-0.9605,-0.6664,1.0,0.1361,0.0,0.0],[-0.5167,0.1448,0.1448,0.648,0.1361,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]}]};
+const DATA = {"meta":{"corpus_name":"Corpus de test — Chroniques médiévales BnF","corpus_source":"/corpus/chroniques/","document_count":3,"run_date":"2026-03-08T19:17:50.622881+00:00","picarones_version":"1.0.0","metadata":{"description":"Données de démonstration générées par picarones.fixtures","script":"gothique textura","langue":"Français médiéval (XIVe-XVe siècle)","institution":"BnF — Département des manuscrits","_images_b64":{"folio_001":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","folio_002":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","folio_003":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg=="}}},"ranking":[{"engine":"tesseract → gpt-4o","mean_cer":0.038091,"mean_wer":0.038095,"documents":3,"failed":0},{"engine":"gpt-4o-vision (zero-shot)","mean_cer":0.038091,"mean_wer":0.038095,"documents":3,"failed":0},{"engine":"tesseract","mean_cer":0.044933,"mean_wer":0.08254,"documents":3,"failed":0},{"engine":"ancien_moteur","mean_cer":0.179834,"mean_wer":0.288889,"documents":3,"failed":0},{"engine":"pero_ocr","mean_cer":0.0,"mean_wer":0.0,"documents":3,"failed":0}],"engines":[{"name":"pero_ocr","version":"0.7.2","cer":0.0,"wer":0.0,"mer":0.0,"wil":0.0,"cer_median":0.0,"cer_min":0.0,"cer_max":0.0,"doc_count":3,"failed":0,"cer_diplomatic":0.0,"cer_diplomatic_profile":"medieval_french","cer_values":[0.0,0.0,0.0],"cer_diplomatic_values":[0.0,0.0,0.0],"is_pipeline":false,"pipeline_info":{},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{},"total_substitutions":0,"total_insertions":0,"total_deletions":0},"aggregated_taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":1.0,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.732,"mean_sharpness":0.614,"mean_noise_level":0.2979,"quality_distribution":{"good":2,"medium":1,"poor":0},"document_count":3,"scores":[0.5875,0.7747,0.8339]},"gini":0.0,"cer_p90":0.0,"cer_p99":0.0,"catastrophic_rate_30":0.0,"aggregated_line_metrics":{"gini_mean":0.0,"gini_stdev":0.0,"mean_cer_mean":0.0,"percentiles":{"p50":0.0,"p75":0.0,"p90":0.0,"p95":0.0,"p99":0.0},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"document_count":3},"anchor_score":1.0,"length_ratio":1.0,"hallucinating_doc_rate":0.0,"aggregated_hallucination":{"anchor_score_mean":1.0,"anchor_score_min":1.0,"length_ratio_mean":1.0,"net_insertion_rate_mean":0.0,"hallucinating_doc_count":0,"hallucinating_doc_rate":0.0,"document_count":3},"is_vlm":false},{"name":"tesseract","version":"5.3.3","cer":0.0449,"wer":0.0825,"mer":0.0825,"wil":0.139,"cer_median":0.01,"cer_min":0.009,"cer_max":0.1158,"doc_count":3,"failed":0,"cer_diplomatic":0.0513,"cer_diplomatic_profile":"medieval_french","cer_values":[0.1158,0.009,0.01],"cer_diplomatic_values":[0.125,0.009,0.0198],"is_pipeline":false,"pipeline_info":{},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"c":{"∅":1},"r":{"∅":1},"o":{"∅":1},"n":{"∅":1},"i":{"∅":1},"q":{"∅":1},"u":{"∅":1},"e":{"∅":1},"s":{"∅":1},"&":{"8":2},"ſ":{"f":1}},"total_substitutions":3,"total_insertions":0,"total_deletions":9},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":2,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":4,"class_distribution":{"visual_confusion":0.25,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.5,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.25}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.9274,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.7363,"mean_sharpness":0.7263,"mean_noise_level":0.2437,"quality_distribution":{"good":2,"medium":1,"poor":0},"document_count":3,"scores":[0.5284,0.8648,0.8158]},"gini":0.692,"cer_p90":0.3025,"cer_p99":0.3506,"catastrophic_rate_30":0.1667,"aggregated_line_metrics":{"gini_mean":0.692029,"gini_stdev":0.100409,"mean_cer_mean":0.133429,"percentiles":{"p50":0.088889,"p75":0.222318,"p90":0.30249,"p95":0.329214,"p99":0.350594},"catastrophic_rate":{"0.3":0.166667,"0.5":0.166667,"1.0":0.0},"heatmap":[0.0,0.0,0.0,0.0,0.011494,0.0,0.0,0.188889,0.0,0.333333],"document_count":3},"anchor_score":0.785,"length_ratio":0.9649,"hallucinating_doc_rate":0.0,"aggregated_hallucination":{"anchor_score_mean":0.784975,"anchor_score_min":0.666667,"length_ratio_mean":0.964912,"net_insertion_rate_mean":0.061905,"hallucinating_doc_count":0,"hallucinating_doc_rate":0.0,"document_count":3},"is_vlm":false},{"name":"ancien_moteur","version":"2.1.0","cer":0.1798,"wer":0.2889,"mer":0.2889,"wil":0.3963,"cer_median":0.09,"cer_min":0.0811,"cer_max":0.3684,"doc_count":3,"failed":0,"cer_diplomatic":0.1783,"cer_diplomatic_profile":"medieval_french","cer_values":[0.3684,0.0811,0.09],"cer_diplomatic_values":[0.3646,0.0811,0.0891],"is_pipeline":false,"pipeline_info":{},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"p":{"∅":1},"r":{"∅":5,"z":1},"o":{"∅":3},"l":{"∅":1},"g":{"∅":1},"u":{"∅":1},"e":{"∅":5},"m":{"∅":2},"a":{"∅":3,"f":1,"w":1},"i":{"∅":2},"ſ":{"∅":3},"t":{"∅":3},"F":{"∅":2},"s":{"t":1},"n":{"∅":2},"c":{"∅":1},"E":{"∅":1},"x":{"f":1},"b":{"y":1},"J":{"z":1},"y":{"w":1},"I":{"∅":1},"d":{"∅":1}},"total_substitutions":8,"total_insertions":0,"total_deletions":38},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":5,"segmentation_error":2,"oov_character":0,"lacuna":5},"total_errors":13,"class_distribution":{"visual_confusion":0.0769,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.3846,"segmentation_error":0.1538,"oov_character":0.0,"lacuna":0.3846}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.7697,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.4803,"mean_sharpness":0.4196,"mean_noise_level":0.4834,"quality_distribution":{"good":1,"medium":0,"poor":2},"document_count":3,"scores":[0.2888,0.388,0.7641]},"gini":0.132,"cer_p90":0.6656,"cer_p99":0.6866,"catastrophic_rate_30":0.6667,"aggregated_line_metrics":{"gini_mean":0.132039,"gini_stdev":0.026463,"mean_cer_mean":0.545813,"percentiles":{"p50":0.595594,"p75":0.630556,"p90":0.665556,"p95":0.677222,"p99":0.686556},"catastrophic_rate":{"0.3":0.666667,"0.5":0.5,"1.0":0.0},"heatmap":[0.0,0.0,0.344444,0.0,0.580076,0.0,0.0,0.611111,0.0,0.647619],"document_count":3},"anchor_score":0.33,"length_ratio":0.845,"hallucinating_doc_rate":0.6667,"aggregated_hallucination":{"anchor_score_mean":0.329966,"anchor_score_min":0.222222,"length_ratio_mean":0.845026,"net_insertion_rate_mean":0.155944,"hallucinating_doc_count":2,"hallucinating_doc_rate":0.666667,"document_count":3},"is_vlm":false},{"name":"tesseract → gpt-4o","version":"ocr=5.3.3; llm=gpt-4o","cer":0.0381,"wer":0.0381,"mer":0.0381,"wil":0.0532,"cer_median":0.009,"cer_min":0.0,"cer_max":0.1053,"doc_count":3,"failed":0,"cer_diplomatic":0.0377,"cer_diplomatic_profile":"medieval_french","cer_values":[0.1053,0.009,0.0],"cer_diplomatic_values":[0.1042,0.009,0.0],"is_pipeline":true,"pipeline_info":{"pipeline_mode":"text_and_image","prompt_file":"correction_medieval_french.txt","llm_model":"gpt-4o","llm_provider":"openai","pipeline_steps":[{"type":"ocr","engine":"tesseract","version":"5.3.3"},{"type":"llm","model":"gpt-4o","provider":"openai","mode":"text_and_image","prompt_file":"correction_medieval_french.txt"}],"over_normalization":{"score":0.0,"total_correct_ocr_words":44,"over_normalized_count":0,"document_count":3}},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"c":{"∅":1},"r":{"∅":1},"o":{"∅":1},"n":{"∅":1},"i":{"∅":1},"q":{"∅":1},"u":{"∅":1},"e":{"∅":1},"s":{"∅":1},"ſ":{"f":1}},"total_substitutions":1,"total_insertions":0,"total_deletions":9},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":2,"class_distribution":{"visual_confusion":0.5,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.5}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.9726,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.6755,"mean_sharpness":0.7034,"mean_noise_level":0.2303,"quality_distribution":{"good":1,"medium":2,"poor":0},"document_count":3,"scores":[0.6047,0.6787,0.7431]},"gini":0.4444,"cer_p90":0.2914,"cer_p99":0.3395,"catastrophic_rate_30":0.1667,"aggregated_line_metrics":{"gini_mean":0.444444,"gini_stdev":0.393818,"mean_cer_mean":0.127874,"percentiles":{"p50":0.083333,"p75":0.211207,"p90":0.291379,"p95":0.318103,"p99":0.339483},"catastrophic_rate":{"0.3":0.166667,"0.5":0.083333,"1.0":0.0},"heatmap":[0.0,0.0,0.0,0.0,0.011494,0.0,0.0,0.166667,0.0,0.333333],"document_count":3},"anchor_score":0.8918,"length_ratio":0.9649,"hallucinating_doc_rate":0.0,"aggregated_hallucination":{"anchor_score_mean":0.891813,"anchor_score_min":0.833333,"length_ratio_mean":0.964912,"net_insertion_rate_mean":0.015873,"hallucinating_doc_count":0,"hallucinating_doc_rate":0.0,"document_count":3},"is_vlm":false},{"name":"gpt-4o-vision (zero-shot)","version":"gpt-4o-2024-11-20","cer":0.0381,"wer":0.0381,"mer":0.0381,"wil":0.0532,"cer_median":0.009,"cer_min":0.0,"cer_max":0.1053,"doc_count":3,"failed":0,"cer_diplomatic":0.0377,"cer_diplomatic_profile":"medieval_french","cer_values":[0.1053,0.009,0.0],"cer_diplomatic_values":[0.1042,0.009,0.0],"is_pipeline":true,"pipeline_info":{"pipeline_mode":"zero_shot","prompt_file":"zero_shot_medieval_vlm.txt","llm_model":"gpt-4o-2024-11-20","llm_provider":"openai","pipeline_steps":[{"type":"llm","model":"gpt-4o-2024-11-20","provider":"openai","mode":"zero_shot","prompt_file":"zero_shot_medieval_vlm.txt"}],"is_vlm":true,"over_normalization":{"score":0.0,"total_correct_ocr_words":44,"over_normalized_count":0,"document_count":3}},"ligature_score":1.0,"diacritic_score":1.0,"aggregated_confusion":{"matrix":{"c":{"∅":1},"r":{"∅":1},"o":{"∅":1},"n":{"∅":1},"i":{"∅":1},"q":{"∅":1},"u":{"∅":1},"e":{"∅":1},"s":{"∅":1},"ſ":{"f":1}},"total_substitutions":1,"total_insertions":0,"total_deletions":9},"aggregated_taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":2,"class_distribution":{"visual_confusion":0.5,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.5}},"aggregated_structure":{"mean_line_fusion_rate":0.0,"mean_line_fragmentation_rate":0.0,"mean_reading_order_score":0.9726,"mean_paragraph_conservation":1.0,"mean_line_accuracy":1.0,"document_count":3},"aggregated_image_quality":{"mean_quality_score":0.7226,"mean_sharpness":0.7032,"mean_noise_level":0.2453,"quality_distribution":{"good":2,"medium":1,"poor":0},"document_count":3,"scores":[0.8262,0.7455,0.5961]},"gini":0.4444,"cer_p90":0.2914,"cer_p99":0.3395,"catastrophic_rate_30":0.1667,"aggregated_line_metrics":{"gini_mean":0.444444,"gini_stdev":0.393818,"mean_cer_mean":0.127874,"percentiles":{"p50":0.083333,"p75":0.211207,"p90":0.291379,"p95":0.318103,"p99":0.339483},"catastrophic_rate":{"0.3":0.166667,"0.5":0.083333,"1.0":0.0},"heatmap":[0.0,0.0,0.0,0.0,0.011494,0.0,0.0,0.166667,0.0,0.333333],"document_count":3},"anchor_score":0.8918,"length_ratio":0.9649,"hallucinating_doc_rate":0.0,"aggregated_hallucination":{"anchor_score_mean":0.891813,"anchor_score_min":0.833333,"length_ratio_mean":0.964912,"net_insertion_rate_mean":0.015873,"hallucinating_doc_count":0,"hallucinating_doc_rate":0.0,"document_count":3},"is_vlm":true}],"documents":[{"doc_id":"folio_001","image_path":"/corpus/images/folio_001.jpg","image_b64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","ground_truth":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre.","mean_cer":0.139,"best_engine":"pero_ocr","engine_results":[{"engine":"pero_ocr","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":0.405,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les croniques de France & d'Angleterre."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.5031,"noise_level":0.4962,"rotation_degrees":0.05,"contrast_score":0.6198,"quality_score":0.5875,"quality_tier":"medium","analysis_method":"mock","script_type":"gothique textura"},"line_metrics":{"cer_per_line":[0.0,0.0,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.0,"p90":0.0,"p95":0.0,"p99":0.0},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.0,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.0},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":1.0,"anchor_score":1.0,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":15,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"tesseract","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France 8 d'Angleterre.","cer":0.1158,"cer_diplomatic":0.125,"wer":0.1333,"duration":0.411,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"d'Angleterre."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":1,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":2,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.5,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.5},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[{"gt":"&","ocr":"8"}],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"croniques","ocr":"","position":10}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.8966,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6518,"noise_level":0.495,"rotation_degrees":-1.34,"contrast_score":0.2668,"quality_score":0.5284,"quality_tier":"medium","analysis_method":"mock","script_type":"gothique textura"},"line_metrics":{"cer_per_line":[0.0,0.0,0.533333,1.0],"percentiles":{"p50":0.266667,"p75":0.65,"p90":0.86,"p95":0.93,"p99":0.986},"catastrophic_rate":{"0.3":0.5,"0.5":0.5,"1.0":0.0},"gini":0.576087,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.533333,0.0,1.0],"line_count":4,"mean_cer":0.383333},"hallucination_metrics":{"net_insertion_rate":0.071429,"length_ratio":0.894737,"anchor_score":0.666667,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":14,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"ancien_moteur","hypothesis":"Icy commence le de Jehan ſut les croniques de & d'Angleterre.","cer":0.3684,"cer_diplomatic":0.3646,"wer":0.3333,"duration":3.892,"error":null,"diff":[{"op":"equal","text":"Icy commence le"},{"op":"delete","text":"prologue"},{"op":"equal","text":"de"},{"op":"delete","text":"maiſtre"},{"op":"equal","text":"Jehan"},{"op":"replace","old":"Froiſſart ſus","new":"ſut"},{"op":"equal","text":"les croniques de"},{"op":"delete","text":"France"},{"op":"equal","text":"& d'Angleterre."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":1,"oov_character":0,"lacuna":3},"total_errors":4,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.25,"oov_character":0.0,"lacuna":0.75},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[{"gt":"Froiſſart ſus","ocr":"ſut","position":7}],"oov_character":[],"lacuna":[{"gt":"prologue","ocr":"","position":3},{"gt":"maiſtre","ocr":"","position":5},{"gt":"France","ocr":"","position":12}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.7692,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.1537,"noise_level":0.5589,"rotation_degrees":-2.09,"contrast_score":0.2,"quality_score":0.2888,"quality_tier":"poor","analysis_method":"mock","script_type":"gothique textura"},"line_metrics":{"cer_per_line":[0.433333,0.965517,1.0,1.0],"percentiles":{"p50":0.982759,"p75":1.0,"p90":1.0,"p95":1.0,"p99":1.0},"catastrophic_rate":{"0.3":1.0,"0.5":0.75,"1.0":0.0},"gini":0.127579,"heatmap":[0.0,0.0,0.433333,0.0,0.965517,0.0,0.0,1.0,0.0,1.0],"line_count":4,"mean_cer":0.849713},"hallucination_metrics":{"net_insertion_rate":0.090909,"length_ratio":0.642105,"anchor_score":0.222222,"hallucinated_blocks":[],"is_hallucinating":true,"gt_word_count":15,"hyp_word_count":11,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"tesseract → gpt-4o","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France & d'Angleterre.","cer":0.1053,"cer_diplomatic":0.1042,"wer":0.0667,"duration":11.725,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France & d'Angleterre."}],"ocr_intermediate":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France 8 d'Angleterre.","ocr_diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"d'Angleterre."}],"llm_correction_diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France"},{"op":"replace","old":"8","new":"&"},{"op":"equal","text":"d'Angleterre."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":10,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"text_and_image","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":1,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":1.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"croniques","ocr":"","position":10}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9655,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6971,"noise_level":0.3585,"rotation_degrees":2.94,"contrast_score":0.4231,"quality_score":0.6047,"quality_tier":"medium","analysis_method":"mock","script_type":"gothique textura"},"line_metrics":{"cer_per_line":[0.0,0.0,0.5,1.0],"percentiles":{"p50":0.25,"p75":0.625,"p90":0.85,"p95":0.925,"p99":0.985},"catastrophic_rate":{"0.3":0.5,"0.5":0.25,"1.0":0.0},"gini":0.583333,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0],"line_count":4,"mean_cer":0.375},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":0.894737,"anchor_score":0.833333,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":14,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"gpt-4o-vision (zero-shot)","hypothesis":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France & d'Angleterre.","cer":0.1053,"cer_diplomatic":0.1042,"wer":0.0667,"duration":5.732,"error":null,"diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France & d'Angleterre."}],"ocr_intermediate":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France 8 d'Angleterre.","ocr_diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les"},{"op":"delete","text":"croniques"},{"op":"equal","text":"de France"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"d'Angleterre."}],"llm_correction_diff":[{"op":"equal","text":"Icy commence le prologue de maiſtre Jehan Froiſſart ſus les de France"},{"op":"replace","old":"8","new":"&"},{"op":"equal","text":"d'Angleterre."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":10,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"zero_shot","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":1},"total_errors":1,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":1.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"croniques","ocr":"","position":10}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9655,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.8573,"noise_level":0.2091,"rotation_degrees":-2.96,"contrast_score":0.8492,"quality_score":0.8262,"quality_tier":"good","analysis_method":"mock","script_type":"gothique textura"},"line_metrics":{"cer_per_line":[0.0,0.0,0.5,1.0],"percentiles":{"p50":0.25,"p75":0.625,"p90":0.85,"p95":0.925,"p99":0.985},"catastrophic_rate":{"0.3":0.5,"0.5":0.25,"1.0":0.0},"gini":0.583333,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.5,0.0,1.0],"line_count":4,"mean_cer":0.375},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":0.894737,"anchor_score":0.833333,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":14,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}}],"script_type":"gothique textura","difficulty_score":0.1242,"difficulty_label":"Facile"},{"doc_id":"folio_002","image_path":"/corpus/images/folio_002.jpg","image_b64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","ground_truth":"En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","mean_cer":0.0216,"best_engine":"pero_ocr","engine_results":[{"engine":"pero_ocr","hypothesis":"En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":0.886,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens ſoixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6798,"noise_level":0.2595,"rotation_degrees":1.37,"contrast_score":0.8946,"quality_score":0.7747,"quality_tier":"good","analysis_method":"mock","script_type":"humanistique"},"line_metrics":{"cer_per_line":[0.0,0.0,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.0,"p90":0.0,"p95":0.0,"p99":0.0},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.0,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.0},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":1.0,"anchor_score":1.0,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":21,"hyp_word_count":21,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"tesseract","hypothesis":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.009,"cer_diplomatic":0.009,"wer":0.0476,"duration":0.971,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":1.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[{"gt":"ſoixante,","ocr":"foixante,"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9524,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.7507,"noise_level":0.0967,"rotation_degrees":0.68,"contrast_score":0.969,"quality_score":0.8648,"quality_tier":"good","analysis_method":"mock","script_type":"humanistique"},"line_metrics":{"cer_per_line":[0.0,0.034483,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.008621,"p90":0.024138,"p95":0.02931,"p99":0.033448},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.75,"heatmap":[0.0,0.0,0.0,0.0,0.034483,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.008621},"hallucination_metrics":{"net_insertion_rate":0.047619,"length_ratio":1.0,"anchor_score":0.842105,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":21,"hyp_word_count":21,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"ancien_moteur","hypothesis":"l'fn de grwce mil trois cens ſoifante, regnoit en France le noyle roy zehan, filz du row Phelippe de Valois.","cer":0.0811,"cer_diplomatic":0.0811,"wer":0.3333,"duration":2.227,"error":null,"diff":[{"op":"replace","old":"En l'an","new":"l'fn"},{"op":"equal","text":"de"},{"op":"replace","old":"grace","new":"grwce"},{"op":"equal","text":"mil trois cens"},{"op":"replace","old":"ſoixante,","new":"ſoifante,"},{"op":"equal","text":"regnoit en France le"},{"op":"replace","old":"noble","new":"noyle"},{"op":"equal","text":"roy"},{"op":"replace","old":"Jehan,","new":"zehan,"},{"op":"equal","text":"filz du"},{"op":"replace","old":"roy","new":"row"},{"op":"equal","text":"Phelippe de Valois."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":5,"segmentation_error":1,"oov_character":0,"lacuna":0},"total_errors":6,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.8333,"segmentation_error":0.1667,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[{"gt":"grace","ocr":"grwce"},{"gt":"ſoixante,","ocr":"ſoifante,"},{"gt":"noble","ocr":"noyle"}],"segmentation_error":[{"gt":"En l'an","ocr":"l'fn","position":0}],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.6829,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.1939,"noise_level":0.5855,"rotation_degrees":-0.28,"contrast_score":0.4345,"quality_score":0.388,"quality_tier":"poor","analysis_method":"mock","script_type":"humanistique"},"line_metrics":{"cer_per_line":[0.266667,0.241379,0.266667,0.142857],"percentiles":{"p50":0.254023,"p75":0.266667,"p90":0.266667,"p95":0.266667,"p99":0.266667},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.108089,"heatmap":[0.0,0.0,0.266667,0.0,0.241379,0.0,0.0,0.266667,0.0,0.142857],"line_count":4,"mean_cer":0.229392},"hallucination_metrics":{"net_insertion_rate":0.3,"length_ratio":0.972973,"anchor_score":0.222222,"hallucinated_blocks":[{"start_token":11,"end_token":16,"text":"noyle roy zehan, filz du row","length":6}],"is_hallucinating":true,"gt_word_count":21,"hyp_word_count":20,"net_inserted_words":6,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"tesseract → gpt-4o","hypothesis":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.009,"cer_diplomatic":0.009,"wer":0.0476,"duration":8.963,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ocr_intermediate":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","ocr_diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"llm_correction_diff":[{"op":"equal","text":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":20,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"text_and_image","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":1.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[{"gt":"ſoixante,","ocr":"foixante,"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9524,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.7141,"noise_level":0.3019,"rotation_degrees":0.75,"contrast_score":0.5365,"quality_score":0.6787,"quality_tier":"medium","analysis_method":"mock","script_type":"humanistique"},"line_metrics":{"cer_per_line":[0.0,0.034483,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.008621,"p90":0.024138,"p95":0.02931,"p99":0.033448},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.75,"heatmap":[0.0,0.0,0.0,0.0,0.034483,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.008621},"hallucination_metrics":{"net_insertion_rate":0.047619,"length_ratio":1.0,"anchor_score":0.842105,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":21,"hyp_word_count":21,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"gpt-4o-vision (zero-shot)","hypothesis":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","cer":0.009,"cer_diplomatic":0.009,"wer":0.0476,"duration":11.733,"error":null,"diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"ocr_intermediate":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois.","ocr_diff":[{"op":"equal","text":"En l'an de grace mil trois cens"},{"op":"replace","old":"ſoixante,","new":"foixante,"},{"op":"equal","text":"regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"llm_correction_diff":[{"op":"equal","text":"En l'an de grace mil trois cens foixante, regnoit en France le noble roy Jehan, filz du roy Phelippe de Valois."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":20,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"zero_shot","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":1.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[{"gt":"ſoixante,","ocr":"foixante,"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9524,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.8097,"noise_level":0.0704,"rotation_degrees":-0.49,"contrast_score":0.4687,"quality_score":0.7455,"quality_tier":"good","analysis_method":"mock","script_type":"humanistique"},"line_metrics":{"cer_per_line":[0.0,0.034483,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.008621,"p90":0.024138,"p95":0.02931,"p99":0.033448},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.75,"heatmap":[0.0,0.0,0.0,0.0,0.034483,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.008621},"hallucination_metrics":{"net_insertion_rate":0.047619,"length_ratio":1.0,"anchor_score":0.842105,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":21,"hyp_word_count":21,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}}],"script_type":"humanistique","difficulty_score":0.0973,"difficulty_label":"Facile"},{"doc_id":"folio_003","image_path":"/corpus/images/folio_003.jpg","image_b64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAADcCAIAAACOIe9xAAAC4ElEQVR4nO3bsVFDUQxFQZf4y6EIiqAIiiJ0Qu7QCRFg6Z2ZvbMFKDmhbp8f70DUbf0C4NcEDGHPgL/vX0CCgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhbCjgy8yuS8Bm4QnYLLxqwMArCBjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjDPDGZzE7BZeAI2C68aMPAKAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIezfAn4zs79tM2BgnoAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjAP/WanTMBm4W0GDMwTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQ5qHf7JQJ2Cy8zYCBeQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMI89JudMgGbhbcZMDBPwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYQKGMAFDmId+s1MmYLPwNgMG5gkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCFMwBAmYAjz0G92ygRsFt5mwMA8AUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhAkYwgQMYR76zU6ZgM3C2wwYmCdgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwAUOYgCHMQ7/ZKROwWXibAQPzBAxhAoYwAUOYgCFMwBAmYAgTMIQJGMIEDGEChjABQ5iAIUzAECZgCBMwhHnoNztlAjYLbzNgYJ6AIUzAECZgCBMwhAkYwgQMYQKGMAFDmIAhTMAQJmAIEzCECRjCBAxhAoYwD/1mp0zAZuFtBgzMEzCECRjCfggYyBEwhAkYwh59L5rsdXrQDgAAAABJRU5ErkJggg==","ground_truth":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","mean_cer":0.02,"best_engine":"pero_ocr","engine_results":[{"engine":"pero_ocr","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":2.78,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6592,"noise_level":0.138,"rotation_degrees":-0.22,"contrast_score":1.0,"quality_score":0.8339,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"},"line_metrics":{"cer_per_line":[0.0,0.0,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.0,"p90":0.0,"p95":0.0,"p99":0.0},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.0,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.0},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":1.0,"anchor_score":1.0,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":15,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"tesseract","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins 8 mahommetans.","cer":0.01,"cer_diplomatic":0.0198,"wer":0.0667,"duration":0.69,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"mahommetans."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":1,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":1,"class_distribution":{"visual_confusion":0.0,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":1.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.0},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[{"gt":"&","ocr":"8"}],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.9333,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.7764,"noise_level":0.1395,"rotation_degrees":-0.69,"contrast_score":0.8002,"quality_score":0.8158,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"},"line_metrics":{"cer_per_line":[0.0,0.0,0.033333,0.0],"percentiles":{"p50":0.0,"p75":0.008333,"p90":0.023333,"p95":0.028333,"p99":0.032333},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.75,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.033333,0.0,0.0],"line_count":4,"mean_cer":0.008333},"hallucination_metrics":{"net_insertion_rate":0.066667,"length_ratio":1.0,"anchor_score":0.846154,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":15,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"ancien_moteur","hypothesis":"ledit iour furent menez en ladicte ville Paris pluſieurs priſonniers ſazaſins & mahommetans.","cer":0.09,"cer_diplomatic":0.0891,"wer":0.2,"duration":2.803,"error":null,"diff":[{"op":"delete","text":"Item"},{"op":"equal","text":"ledit iour furent menez en ladicte ville"},{"op":"delete","text":"de"},{"op":"equal","text":"Paris pluſieurs priſonniers"},{"op":"replace","old":"ſaraſins","new":"ſazaſins"},{"op":"equal","text":"& mahommetans."}],"ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":1,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":2},"total_errors":3,"class_distribution":{"visual_confusion":0.3333,"diacritic_error":0.0,"case_error":0.0,"ligature_error":0.0,"abbreviation_error":0.0,"hapax":0.0,"segmentation_error":0.0,"oov_character":0.0,"lacuna":0.6667},"examples":{"visual_confusion":[{"gt":"ſaraſins","ocr":"ſazaſins"}],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[{"gt":"Item","ocr":"","position":0},{"gt":"de","ocr":"","position":8}]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":0.8571,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.9112,"noise_level":0.3059,"rotation_degrees":1.1,"contrast_score":0.5727,"quality_score":0.7641,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"},"line_metrics":{"cer_per_line":[0.333333,0.533333,0.566667,0.8],"percentiles":{"p50":0.55,"p75":0.625,"p90":0.73,"p95":0.765,"p99":0.793},"catastrophic_rate":{"0.3":1.0,"0.5":0.75,"1.0":0.0},"gini":0.160448,"heatmap":[0.0,0.0,0.333333,0.0,0.533333,0.0,0.0,0.566667,0.0,0.8],"line_count":4,"mean_cer":0.558333},"hallucination_metrics":{"net_insertion_rate":0.076923,"length_ratio":0.92,"anchor_score":0.545455,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":13,"net_inserted_words":1,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"tesseract → gpt-4o","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":7.601,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans."}],"ocr_intermediate":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins 8 mahommetans.","ocr_diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"mahommetans."}],"llm_correction_diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"8","new":"&"},{"op":"equal","text":"mahommetans."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":14,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"text_and_image","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.6989,"noise_level":0.0306,"rotation_degrees":2.4,"contrast_score":0.6456,"quality_score":0.7431,"quality_tier":"good","analysis_method":"mock","script_type":"cursive administrative"},"line_metrics":{"cer_per_line":[0.0,0.0,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.0,"p90":0.0,"p95":0.0,"p99":0.0},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.0,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.0},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":1.0,"anchor_score":1.0,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":15,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}},{"engine":"gpt-4o-vision (zero-shot)","hypothesis":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans.","cer":0.0,"cer_diplomatic":0.0,"wer":0.0,"duration":5.335,"error":null,"diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins & mahommetans."}],"ocr_intermediate":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins 8 mahommetans.","ocr_diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"&","new":"8"},{"op":"equal","text":"mahommetans."}],"llm_correction_diff":[{"op":"equal","text":"Item ledit iour furent menez en ladicte ville de Paris pluſieurs priſonniers ſaraſins"},{"op":"replace","old":"8","new":"&"},{"op":"equal","text":"mahommetans."}],"over_normalization":{"score":0.0,"total_correct_ocr_words":14,"over_normalized_count":0,"over_normalized_passages":[]},"pipeline_mode":"zero_shot","ligature_score":1.0,"diacritic_score":1.0,"taxonomy":{"counts":{"visual_confusion":0,"diacritic_error":0,"case_error":0,"ligature_error":0,"abbreviation_error":0,"hapax":0,"segmentation_error":0,"oov_character":0,"lacuna":0},"total_errors":0,"class_distribution":{},"examples":{"visual_confusion":[],"diacritic_error":[],"case_error":[],"ligature_error":[],"abbreviation_error":[],"hapax":[],"segmentation_error":[],"oov_character":[],"lacuna":[]}},"structure":{"gt_line_count":1,"ocr_line_count":1,"line_fusion_count":0,"line_fragmentation_count":0,"line_fusion_rate":0.0,"line_fragmentation_rate":0.0,"line_accuracy":1.0,"reading_order_score":1.0,"paragraph_conservation_score":1.0},"image_quality":{"sharpness_score":0.4427,"noise_level":0.4565,"rotation_degrees":1.15,"contrast_score":0.7394,"quality_score":0.5961,"quality_tier":"medium","analysis_method":"mock","script_type":"cursive administrative"},"line_metrics":{"cer_per_line":[0.0,0.0,0.0,0.0],"percentiles":{"p50":0.0,"p75":0.0,"p90":0.0,"p95":0.0,"p99":0.0},"catastrophic_rate":{"0.3":0.0,"0.5":0.0,"1.0":0.0},"gini":0.0,"heatmap":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"line_count":4,"mean_cer":0.0},"hallucination_metrics":{"net_insertion_rate":0.0,"length_ratio":1.0,"anchor_score":1.0,"hallucinated_blocks":[],"is_hallucinating":false,"gt_word_count":15,"hyp_word_count":15,"net_inserted_words":0,"anchor_threshold_used":0.5,"length_ratio_threshold_used":1.2,"ngram_size_used":3}}],"script_type":"cursive administrative","difficulty_score":0.1808,"difficulty_label":"Facile"}],"statistics":{"pairwise_wilcoxon":[{"engine_a":"pero_ocr","engine_b":"tesseract","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":0,"W_minus":6.0},{"engine_a":"pero_ocr","engine_b":"ancien_moteur","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":0,"W_minus":6.0},{"engine_a":"pero_ocr","engine_b":"tesseract → gpt-4o","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":2,"W_plus":0,"W_minus":3.0},{"engine_a":"pero_ocr","engine_b":"gpt-4o-vision (zero-shot)","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":2,"W_plus":0,"W_minus":3.0},{"engine_a":"tesseract","engine_b":"ancien_moteur","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le premier concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":0,"W_minus":6.0},{"engine_a":"tesseract","engine_b":"tesseract → gpt-4o","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le second concurrent obtient de meilleurs scores.","n_pairs":2,"W_plus":3.0,"W_minus":0},{"engine_a":"tesseract","engine_b":"gpt-4o-vision (zero-shot)","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le second concurrent obtient de meilleurs scores.","n_pairs":2,"W_plus":3.0,"W_minus":0},{"engine_a":"ancien_moteur","engine_b":"tesseract → gpt-4o","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le second concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":6.0,"W_minus":0},{"engine_a":"ancien_moteur","engine_b":"gpt-4o-vision (zero-shot)","statistic":0,"p_value":0.04,"significant":true,"interpretation":"Différence statistiquement significative (p = 0.0400 < 0.05). Le second concurrent obtient de meilleurs scores.","n_pairs":3,"W_plus":6.0,"W_minus":0},{"engine_a":"tesseract → gpt-4o","engine_b":"gpt-4o-vision (zero-shot)","statistic":0.0,"p_value":1.0,"significant":false,"interpretation":"Aucune différence entre les deux concurrents.","n_pairs":0}],"bootstrap_cis":[{"engine":"pero_ocr","mean":0.0,"ci_lower":0.0,"ci_upper":0.0},{"engine":"tesseract","mean":0.0449,"ci_lower":0.009,"ci_upper":0.1158},{"engine":"ancien_moteur","mean":0.1798,"ci_lower":0.0811,"ci_upper":0.3684},{"engine":"tesseract → gpt-4o","mean":0.0381,"ci_lower":0.0,"ci_upper":0.1053},{"engine":"gpt-4o-vision (zero-shot)","mean":0.0381,"ci_lower":0.0,"ci_upper":0.1053}]},"reliability_curves":[{"engine":"pero_ocr","points":[{"pct_docs":5.0,"mean_cer":0.0},{"pct_docs":10.0,"mean_cer":0.0},{"pct_docs":15.0,"mean_cer":0.0},{"pct_docs":20.0,"mean_cer":0.0},{"pct_docs":25.0,"mean_cer":0.0},{"pct_docs":30.0,"mean_cer":0.0},{"pct_docs":35.0,"mean_cer":0.0},{"pct_docs":40.0,"mean_cer":0.0},{"pct_docs":45.0,"mean_cer":0.0},{"pct_docs":50.0,"mean_cer":0.0},{"pct_docs":55.0,"mean_cer":0.0},{"pct_docs":60.0,"mean_cer":0.0},{"pct_docs":65.0,"mean_cer":0.0},{"pct_docs":70.0,"mean_cer":0.0},{"pct_docs":75.0,"mean_cer":0.0},{"pct_docs":80.0,"mean_cer":0.0},{"pct_docs":85.0,"mean_cer":0.0},{"pct_docs":90.0,"mean_cer":0.0},{"pct_docs":95.0,"mean_cer":0.0},{"pct_docs":100.0,"mean_cer":0.0}]},{"engine":"tesseract","points":[{"pct_docs":5.0,"mean_cer":0.009},{"pct_docs":10.0,"mean_cer":0.009},{"pct_docs":15.0,"mean_cer":0.009},{"pct_docs":20.0,"mean_cer":0.009},{"pct_docs":25.0,"mean_cer":0.009},{"pct_docs":30.0,"mean_cer":0.009},{"pct_docs":35.0,"mean_cer":0.009},{"pct_docs":40.0,"mean_cer":0.009},{"pct_docs":45.0,"mean_cer":0.009},{"pct_docs":50.0,"mean_cer":0.009},{"pct_docs":55.0,"mean_cer":0.009},{"pct_docs":60.0,"mean_cer":0.009},{"pct_docs":65.0,"mean_cer":0.009},{"pct_docs":70.0,"mean_cer":0.0095},{"pct_docs":75.0,"mean_cer":0.0095},{"pct_docs":80.0,"mean_cer":0.0095},{"pct_docs":85.0,"mean_cer":0.0095},{"pct_docs":90.0,"mean_cer":0.0095},{"pct_docs":95.0,"mean_cer":0.0095},{"pct_docs":100.0,"mean_cer":0.044933}]},{"engine":"ancien_moteur","points":[{"pct_docs":5.0,"mean_cer":0.0811},{"pct_docs":10.0,"mean_cer":0.0811},{"pct_docs":15.0,"mean_cer":0.0811},{"pct_docs":20.0,"mean_cer":0.0811},{"pct_docs":25.0,"mean_cer":0.0811},{"pct_docs":30.0,"mean_cer":0.0811},{"pct_docs":35.0,"mean_cer":0.0811},{"pct_docs":40.0,"mean_cer":0.0811},{"pct_docs":45.0,"mean_cer":0.0811},{"pct_docs":50.0,"mean_cer":0.0811},{"pct_docs":55.0,"mean_cer":0.0811},{"pct_docs":60.0,"mean_cer":0.0811},{"pct_docs":65.0,"mean_cer":0.0811},{"pct_docs":70.0,"mean_cer":0.08555},{"pct_docs":75.0,"mean_cer":0.08555},{"pct_docs":80.0,"mean_cer":0.08555},{"pct_docs":85.0,"mean_cer":0.08555},{"pct_docs":90.0,"mean_cer":0.08555},{"pct_docs":95.0,"mean_cer":0.08555},{"pct_docs":100.0,"mean_cer":0.179833}]},{"engine":"tesseract → gpt-4o","points":[{"pct_docs":5.0,"mean_cer":0.0},{"pct_docs":10.0,"mean_cer":0.0},{"pct_docs":15.0,"mean_cer":0.0},{"pct_docs":20.0,"mean_cer":0.0},{"pct_docs":25.0,"mean_cer":0.0},{"pct_docs":30.0,"mean_cer":0.0},{"pct_docs":35.0,"mean_cer":0.0},{"pct_docs":40.0,"mean_cer":0.0},{"pct_docs":45.0,"mean_cer":0.0},{"pct_docs":50.0,"mean_cer":0.0},{"pct_docs":55.0,"mean_cer":0.0},{"pct_docs":60.0,"mean_cer":0.0},{"pct_docs":65.0,"mean_cer":0.0},{"pct_docs":70.0,"mean_cer":0.0045},{"pct_docs":75.0,"mean_cer":0.0045},{"pct_docs":80.0,"mean_cer":0.0045},{"pct_docs":85.0,"mean_cer":0.0045},{"pct_docs":90.0,"mean_cer":0.0045},{"pct_docs":95.0,"mean_cer":0.0045},{"pct_docs":100.0,"mean_cer":0.0381}]},{"engine":"gpt-4o-vision (zero-shot)","points":[{"pct_docs":5.0,"mean_cer":0.0},{"pct_docs":10.0,"mean_cer":0.0},{"pct_docs":15.0,"mean_cer":0.0},{"pct_docs":20.0,"mean_cer":0.0},{"pct_docs":25.0,"mean_cer":0.0},{"pct_docs":30.0,"mean_cer":0.0},{"pct_docs":35.0,"mean_cer":0.0},{"pct_docs":40.0,"mean_cer":0.0},{"pct_docs":45.0,"mean_cer":0.0},{"pct_docs":50.0,"mean_cer":0.0},{"pct_docs":55.0,"mean_cer":0.0},{"pct_docs":60.0,"mean_cer":0.0},{"pct_docs":65.0,"mean_cer":0.0},{"pct_docs":70.0,"mean_cer":0.0045},{"pct_docs":75.0,"mean_cer":0.0045},{"pct_docs":80.0,"mean_cer":0.0045},{"pct_docs":85.0,"mean_cer":0.0045},{"pct_docs":90.0,"mean_cer":0.0045},{"pct_docs":95.0,"mean_cer":0.0045},{"pct_docs":100.0,"mean_cer":0.0381}]}],"venn_data":{"type":"venn3","label_a":"pero_ocr","label_b":"tesseract","label_c":"ancien_moteur","only_a":0,"only_b":4,"only_c":13,"ab":0,"ac":0,"bc":0,"abc":0},"error_clusters":[{"cluster_id":5,"label":"autres substitutions","count":15,"examples":[{"engine":"tesseract","gt_fragment":"croniques","ocr_fragment":""},{"engine":"tesseract","gt_fragment":"ſoixante,","ocr_fragment":"foixante,"},{"engine":"ancien_moteur","gt_fragment":"prologue","ocr_fragment":""},{"engine":"ancien_moteur","gt_fragment":"maiſtre","ocr_fragment":""},{"engine":"ancien_moteur","gt_fragment":"France","ocr_fragment":""}]},{"cluster_id":1,"label":"&→8","count":2,"examples":[{"engine":"tesseract","gt_fragment":"&","ocr_fragment":"8"},{"engine":"tesseract","gt_fragment":"&","ocr_fragment":"8"}]},{"cluster_id":2,"label":"confusion ſ/f/s","count":2,"examples":[{"engine":"ancien_moteur","gt_fragment":"Froiſſart ſus","ocr_fragment":"ſut"},{"engine":"ancien_moteur","gt_fragment":"ſaraſins","ocr_fragment":"ſazaſins"}]},{"cluster_id":3,"label":"roy→row","count":1,"examples":[{"engine":"ancien_moteur","gt_fragment":"roy","ocr_fragment":"row"}]},{"cluster_id":4,"label":"de→—","count":1,"examples":[{"engine":"ancien_moteur","gt_fragment":"de","ocr_fragment":""}]}],"correlation_per_engine":[{"engine":"pero_ocr","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,1.0,0.9431,0.0,0.0],[0.0,0.0,0.0,0.0,0.9431,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"tesseract","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.9789,0.9789,0.9409,-0.9919,-0.9791,0.0,0.0],[0.9789,1.0,1.0,0.9903,-0.9969,-0.9169,0.0,0.0],[0.9789,1.0,1.0,0.9903,-0.9969,-0.9169,0.0,0.0],[0.9409,0.9903,0.9903,1.0,-0.9763,-0.8525,0.0,0.0],[-0.9919,-0.9969,-0.9969,-0.9763,1.0,0.9455,0.0,0.0],[-0.9791,-0.9169,-0.9169,-0.8525,0.9455,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"ancien_moteur","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.4762,0.4762,-0.0421,-0.6408,-0.5172,0.0,0.0],[0.4762,1.0,1.0,0.8585,-0.9802,-0.9989,0.0,0.0],[0.4762,1.0,1.0,0.8585,-0.9802,-0.9989,0.0,0.0],[-0.0421,0.8585,0.8585,1.0,-0.7401,-0.8334,0.0,0.0],[-0.6408,-0.9802,-0.9802,-0.7401,1.0,0.9885,0.0,0.0],[-0.5172,-0.9989,-0.9989,-0.8334,0.9885,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"tesseract → gpt-4o","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.7723,0.7723,0.3173,-0.9185,-0.5167,0.0,0.0],[0.7723,1.0,1.0,0.8475,-0.9605,0.1448,0.0,0.0],[0.7723,1.0,1.0,0.8475,-0.9605,0.1448,0.0,0.0],[0.3173,0.8475,0.8475,1.0,-0.6664,0.648,0.0,0.0],[-0.9185,-0.9605,-0.9605,-0.6664,1.0,0.1361,0.0,0.0],[-0.5167,0.1448,0.1448,0.648,0.1361,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]},{"engine":"gpt-4o-vision (zero-shot)","labels":["cer","wer","mer","wil","quality_score","sharpness","ligature","diacritic"],"matrix":[[1.0,0.7723,0.7723,0.3173,0.8155,0.6487,0.0,0.0],[0.7723,1.0,1.0,0.8475,0.9975,0.9844,0.0,0.0],[0.7723,1.0,1.0,0.8475,0.9975,0.9844,0.0,0.0],[0.3173,0.8475,0.8475,1.0,0.8076,0.9276,0.0,0.0],[0.8155,0.9975,0.9975,0.8076,1.0,0.9695,0.0,0.0],[0.6487,0.9844,0.9844,0.9276,0.9695,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]}],"gini_vs_cer":[{"engine":"pero_ocr","cer":0.0,"gini":0.0,"is_pipeline":false},{"engine":"tesseract","cer":0.0449,"gini":0.692,"is_pipeline":false},{"engine":"ancien_moteur","cer":0.1798,"gini":0.132,"is_pipeline":false},{"engine":"tesseract → gpt-4o","cer":0.0381,"gini":0.4444,"is_pipeline":true},{"engine":"gpt-4o-vision (zero-shot)","cer":0.0381,"gini":0.4444,"is_pipeline":true}],"ratio_vs_anchor":[{"engine":"pero_ocr","length_ratio":1.0,"anchor_score":1.0,"hallucinating_rate":0.0,"is_vlm":false},{"engine":"tesseract","length_ratio":0.9649,"anchor_score":0.785,"hallucinating_rate":0.0,"is_vlm":false},{"engine":"ancien_moteur","length_ratio":0.845,"anchor_score":0.33,"hallucinating_rate":0.6667,"is_vlm":false},{"engine":"tesseract → gpt-4o","length_ratio":0.9649,"anchor_score":0.8918,"hallucinating_rate":0.0,"is_vlm":false},{"engine":"gpt-4o-vision (zero-shot)","length_ratio":0.9649,"anchor_score":0.8918,"hallucinating_rate":0.0,"is_vlm":true}]};
+const I18N = {"html_lang":"fr","date_locale":"fr-FR","nav_report":"rapport OCR","tab_ranking":"Classement","tab_gallery":"Galerie","tab_document":"Document","tab_characters":"Caractères","tab_analyses":"Analyses","btn_present":"⊞ Présentation","h_ranking":"Classement des moteurs","col_rank":"#","col_engine":"Concurrent","col_cer":"CER exact","col_cer_diplo":"CER diplo.","col_cer_diplo_title":"CER après normalisation diplomatique (ſ=s, u=v, i=j…) — mesure les erreurs substantielles en ignorant les variantes graphiques codifiées","col_wer":"WER","col_mer":"MER","col_wil":"WIL","col_ligatures":"Ligatures","col_ligatures_title":"Taux de reconnaissance des ligatures (ﬁ, ﬂ, œ, æ, ﬀ…)","col_diacritics":"Diacritiques","col_diacritics_title":"Taux de conservation des diacritiques (accents, cédilles, trémas…)","col_gini":"Gini","col_gini_title":"Coefficient de Gini des erreurs CER par ligne — 0 = erreurs uniformes, 1 = erreurs concentrées. Un bon moteur a CER bas ET Gini bas.","col_anchor":"Ancrage","col_anchor_title":"Score d'ancrage : proportion des trigrammes de la sortie trouvant un ancrage dans le GT — faible score = hallucinations probables (LLM/VLM)","col_cer_median":"CER médian","col_cer_min":"CER min","col_cer_max":"CER max","col_overnorm":"Sur-norm.","col_overnorm_title":"Classe 10 — Sur-normalisation LLM : taux de mots corrects dégradés par le LLM","col_docs":"Docs","h_gallery":"Galerie des documents","gallery_sort_label":"Trier par :","gallery_sort_id":"Identifiant","gallery_sort_cer":"CER moyen","gallery_sort_difficulty":"Difficulté","gallery_sort_best":"Meilleur moteur","gallery_filter_cer_label":"Filtrer CER >","gallery_filter_engine_label":"Moteur :","gallery_filter_all":"Tous","gallery_empty":"Aucun document ne correspond aux filtres.","doc_sidebar_header":"Documents","doc_title_default":"Sélectionner un document","h_image":"Image originale","h_gt":"Vérité terrain (GT)","h_diff":"Sorties OCR — diff par moteur","h_line_metrics":"Distribution des erreurs par ligne","h_hallucination":"Analyse des hallucinations","h_characters":"Analyse des caractères","char_engine_label":"Moteur :","h_cer_dist":"Distribution du CER par moteur","h_radar":"Profil des moteurs (radar)","radar_note":"Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).","h_cer_doc":"CER par document (tous moteurs)","h_duration":"Temps d'exécution moyen (secondes/document)","h_quality_cer":"Qualité image ↔ CER (scatter plot)","quality_cer_note":"Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.","h_taxonomy":"Taxonomie des erreurs par moteur","taxonomy_note":"Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).","h_reliability":"Courbes de fiabilité","reliability_note":"Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ? Une courbe basse = moteur performant même sur les documents faciles.","h_bootstrap":"Intervalles de confiance à 95 % (bootstrap)","bootstrap_note":"IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).","h_venn":"Erreurs communes / exclusives (Venn)","venn_note":"Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents. Erreurs communes = segments partagés.","h_pairwise":"Tests de Wilcoxon — comparaisons par paires","pairwise_note":"Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.","h_clusters":"Clustering des patterns d'erreurs","h_gini_cer":"Gini vs CER moyen","gini_cer_ideal":"— idéal : bas-gauche","gini_cer_note":"Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).","h_ratio_anchor":"Ratio longueur vs ancrage","ratio_anchor_subtitle":"— hallucinations VLM","ratio_anchor_note":"Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT. Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.","h_correlation":"Matrice de corrélation entre métriques","corr_engine_label":"Moteur :","corr_note":"Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques. Vert = corrélation positive, Rouge = corrélation négative.","footer_generated":"Rapport généré le","footer_by":"par Picarones","heatmap_start":"Début","heatmap_mid":"Milieu","heatmap_end":"Fin","heatmap_title":"CARTE THERMIQUE (position)","percentile_title":"PERCENTILES CER","lines":"lignes","no_line_metrics":"Aucune métrique de ligne disponible.","no_hall_metrics":"Aucune métrique d'hallucination disponible.","no_hall_blocks":"Aucun bloc halluciné détecté.","hall_detected":"⚠️ Hallucinations détectées","hall_ok":"✓ Ancrage satisfaisant","hall_blocks_title":"Blocs sans ancrage dans le GT :","hall_block_label":"Bloc halluciné","hall_more_blocks":"bloc(s) supplémentaire(s)","no_gini":"Données Gini non disponibles.","no_scatter":"Données non disponibles.","total_errors":"Total :","errors_classified":"erreurs classifiées.","class_col":"Classe","proportion_col":"Proportion","taxonomy_engine_label":"Moteur :"};
 </script>
 
 <!-- ── Application ────────────────────────────────────────────────── -->
@@ -944,11 +1034,29 @@ function renderRanking() {
       </td>`;
     }
 
+    // ── Sprint 10 : Gini + Ancrage ─────────────────────────────────────
+    let giniCell = '<td style="color:var(--text-muted)">—</td>';
+    if (e.gini !== null && e.gini !== undefined) {
+      const gv = e.gini;
+      const gColor = gv < 0.3 ? '#16a34a' : gv < 0.5 ? '#ca8a04' : '#dc2626';
+      const gBg = gv < 0.3 ? '#f0fdf4' : gv < 0.5 ? '#fefce8' : '#fef2f2';
+      giniCell = `<td><span class="cer-badge" style="color:${gColor};background:${gBg}"
+        title="Gini=${gv.toFixed(3)} — 0=uniforme, 1=concentré">${gv.toFixed(3)}</span></td>`;
+    }
+    let anchorCell = '<td style="color:var(--text-muted)">—</td>';
+    if (e.anchor_score !== null && e.anchor_score !== undefined) {
+      const av = e.anchor_score;
+      const hallBadge = (e.hallucinating_doc_rate && e.hallucinating_doc_rate > 0.2)
+        ? ' <span title="Hallucinations détectées">⚠️</span>' : '';
+      anchorCell = `<td>${_scoreBadge(av, 'Ancrage trigrammes')}${hallBadge}</td>`;
+    }
+
     return `<tr>
       <td><span class="${badgeClass}">${rank}</span></td>
       <td>
         <span class="engine-name">${esc(e.name)}</span>
         ${pipelineBadge}
+        ${e.is_vlm ? '<span class="pipeline-tag" style="background:#fce7f3;color:#9d174d">👁 VLM</span>' : ''}
         <span class="engine-version">v${esc(e.version)}</span>
         ${pipelineStepsHtml}
       </td>
@@ -962,6 +1070,8 @@ function renderRanking() {
       <td>${pct(e.wil)}</td>
       <td>${_scoreBadge(e.ligature_score, 'Ligatures')}</td>
       <td>${_scoreBadge(e.diacritic_score, 'Diacritiques')}</td>
+      ${giniCell}
+      ${anchorCell}
       <td style="color:var(--text-muted)">${pct(e.cer_median)}</td>
       <td style="color:var(--text-muted)">${pct(e.cer_min)}</td>
       <td style="color:var(--text-muted)">${pct(e.cer_max)}</td>
@@ -1192,6 +1302,240 @@ function loadDocument(docId) {
       ${tripleDiffHtml}
     </div>`;
   }).join('');
+
+  // ── Sprint 10 : distribution CER par ligne ──────────────────────────
+  const lineCard = document.getElementById('doc-line-metrics-card');
+  const lineContent = document.getElementById('doc-line-metrics-content');
+  // Prendre le premier moteur ayant des line_metrics
+  const erWithLine = doc.engine_results.find(er => er.line_metrics);
+  if (erWithLine && erWithLine.line_metrics) {
+    lineCard.style.display = '';
+    lineContent.innerHTML = renderLineMetrics(doc.engine_results);
+  } else {
+    lineCard.style.display = 'none';
+  }
+
+  // ── Sprint 10 : hallucinations ──────────────────────────────────────
+  const hallCard = document.getElementById('doc-hallucination-card');
+  const hallContent = document.getElementById('doc-hallucination-content');
+  const erWithHall = doc.engine_results.find(er => er.hallucination_metrics && er.hallucination_metrics.is_hallucinating);
+  if (erWithHall || doc.engine_results.some(er => er.hallucination_metrics)) {
+    hallCard.style.display = '';
+    hallContent.innerHTML = renderHallucinationPanel(doc.engine_results);
+  } else {
+    hallCard.style.display = 'none';
+  }
+}
+
+// ── Sprint 10 : rendu distribution CER par ligne ────────────────
+function renderLineMetrics(engineResults) {
+  const heatmapColors = (v) => {
+    if (v < 0.05) return '#86efac';
+    if (v < 0.15) return '#fde68a';
+    if (v < 0.30) return '#fb923c';
+    return '#f87171';
+  };
+
+  return engineResults.filter(er => er.line_metrics).map(er => {
+    const lm = er.line_metrics;
+    const c = cerColor(er.cer); const bg = cerBg(er.cer);
+
+    // Heatmap de position
+    const heatmap = lm.heatmap || [];
+    const maxHeat = Math.max(...heatmap, 0.01);
+    const heatmapHtml = heatmap.length > 0
+      ? `<div class="heatmap-wrap">` +
+        heatmap.map((v, i) => {
+          const h = Math.max(4, Math.round(60 * v / maxHeat));
+          return `<div class="heatmap-bar" style="height:${h}px;background:${heatmapColors(v)}"
+            title="Tranche ${i+1}/${heatmap.length} — CER=${(v*100).toFixed(1)}%"></div>`;
+        }).join('') +
+        `</div><div class="heatmap-labels"><span>${I18N.heatmap_start||'Début'}</span><span>${I18N.heatmap_mid||'Milieu'}</span><span>${I18N.heatmap_end||'Fin'}</span></div>`
+      : '<em style="color:var(--text-muted)">—</em>';
+
+    // Percentiles
+    const p = lm.percentiles || {};
+    const pctBars = ['p50','p75','p90','p95','p99'].map(k => {
+      const v = p[k] || 0;
+      const w = Math.min(100, v * 100 * 2);
+      const fillColor = v < 0.15 ? '#86efac' : v < 0.30 ? '#fde68a' : '#f87171';
+      return `<div class="pct-bar-row">
+        <span class="pct-bar-label">${k}</span>
+        <div class="pct-bar-track"><div class="pct-bar-fill" style="width:${w}%;background:${fillColor}"></div></div>
+        <span class="pct-bar-val">${(v*100).toFixed(1)}%</span>
+      </div>`;
+    }).join('');
+
+    // Taux catastrophiques
+    const cr = lm.catastrophic_rate || {};
+    const crRows = Object.entries(cr).map(([t, rate]) => {
+      const tPct = (parseFloat(t)*100).toFixed(0);
+      const ratePct = (rate*100).toFixed(1);
+      const color = rate < 0.05 ? '#16a34a' : rate < 0.15 ? '#ca8a04' : '#dc2626';
+      return `<span class="stat"><b style="color:${color}">${ratePct}%</b> lignes CER&gt;${tPct}%</span>`;
+    }).join('');
+
+    // Gini
+    const gini = lm.gini !== undefined ? lm.gini.toFixed(3) : '—';
+    const giniColor = lm.gini < 0.3 ? '#16a34a' : lm.gini < 0.5 ? '#ca8a04' : '#dc2626';
+
+    return `<div style="margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+        <strong>${esc(er.engine)}</strong>
+        <span class="cer-badge" style="color:${c};background:${bg}">${pct(er.cer)}</span>
+        <span class="stat">Gini <b style="color:${giniColor}">${gini}</b></span>
+        <span class="stat">${lm.line_count} ${I18N.lines||'lignes'}</span>
+        ${crRows}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">${I18N.heatmap_title||'CARTE THERMIQUE (position)'}</div>
+          ${heatmapHtml}
+        </div>
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">${I18N.percentile_title||'PERCENTILES CER'}</div>
+          <div class="pct-bars">${pctBars}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') || `<em style="color:var(--text-muted)">${I18N.no_line_metrics||'Aucune métrique de ligne disponible.'}</em>`;
+}
+
+// ── Sprint 10 : rendu panneau hallucinations ─────────────────────
+function renderHallucinationPanel(engineResults) {
+  const withHall = engineResults.filter(er => er.hallucination_metrics);
+  if (!withHall.length) return `<em style="color:var(--text-muted)">${I18N.no_hall_metrics||"Aucune métrique d'hallucination disponible."}</em>`;
+
+  return withHall.map(er => {
+    const hm = er.hallucination_metrics;
+    const isHall = hm.is_hallucinating;
+    const badgeClass = isHall ? 'hallucination-badge' : 'hallucination-badge ok';
+    const badgeLabel = isHall ? (I18N.hall_detected||'⚠️ Hallucinations détectées') : (I18N.hall_ok||'✓ Ancrage satisfaisant');
+
+    const blocksHtml = hm.hallucinated_blocks && hm.hallucinated_blocks.length > 0
+      ? hm.hallucinated_blocks.slice(0, 5).map(b =>
+          `<div class="halluc-block">
+            <div class="halluc-block-meta">${I18N.hall_block_label||'Bloc halluciné'} — ${b.length} mots (tokens ${b.start_token}–${b.end_token})</div>
+            ${esc(b.text)}
+          </div>`
+        ).join('') +
+        (hm.hallucinated_blocks.length > 5 ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">… ${hm.hallucinated_blocks.length - 5} ${I18N.hall_more_blocks||'bloc(s) supplémentaire(s)'}</div>` : '')
+      : `<em style="color:var(--text-muted);font-size:.8rem">${I18N.no_hall_blocks||'Aucun bloc halluciné détecté.'}</em>`;
+
+    return `<div style="margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <strong>${esc(er.engine)}</strong>
+        <span class="${badgeClass}">${badgeLabel}</span>
+        <span class="stat">Ancrage <b>${(hm.anchor_score*100).toFixed(1)}%</b></span>
+        <span class="stat">Ratio longueur <b>${hm.length_ratio.toFixed(2)}</b></span>
+        <span class="stat">Insertion nette <b>${(hm.net_insertion_rate*100).toFixed(1)}%</b></span>
+        <span class="stat">${hm.gt_word_count} mots GT / ${hm.hyp_word_count} mots sortie</span>
+      </div>
+      ${isHall ? `<div style="margin-bottom:.5rem;font-size:.82rem;font-weight:600;color:#9d174d">${I18N.hall_blocks_title||'Blocs sans ancrage dans le GT :'}</div>` : ''}
+      ${isHall ? blocksHtml : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Sprint 10 — Scatter Gini vs CER moyen ──────────────────────
+function buildGiniCerScatter() {
+  const canvas = document.getElementById('chart-gini-cer');
+  if (!canvas) return;
+  const pts = DATA.gini_vs_cer || [];
+  if (!pts.length) {
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_gini||'Données Gini non disponibles.'}</p>`;
+    return;
+  }
+  const datasets = pts.map((p, i) => ({
+    label: p.engine,
+    data: [{ x: p.cer * 100, y: p.gini }],
+    backgroundColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)) + 'cc',
+    borderColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)),
+    borderWidth: p.is_pipeline ? 2 : 1,
+    pointRadius: p.is_pipeline ? 9 : 7,
+    pointStyle: p.is_pipeline ? 'triangle' : 'circle',
+  }));
+
+  chartInstances['gini-cer'] = new Chart(canvas.getContext('2d'), {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { callbacks: {
+          label: ctx => `${ctx.dataset.label}: CER=${ctx.parsed.x.toFixed(2)}%, Gini=${ctx.parsed.y.toFixed(3)}`,
+        } },
+      },
+      scales: {
+        x: { min: 0, title: { display: true, text: 'CER moyen (%)', font: { size: 11 } } },
+        y: { min: 0, max: 1, title: { display: true, text: 'Coefficient de Gini', font: { size: 11 } } },
+      },
+    },
+  });
+}
+
+// ── Sprint 10 — Scatter ratio longueur vs score d'ancrage ────────
+function buildRatioAnchorScatter() {
+  const canvas = document.getElementById('chart-ratio-anchor');
+  if (!canvas) return;
+  const pts = DATA.ratio_vs_anchor || [];
+  if (!pts.length) {
+    canvas.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données d'ancrage non disponibles.</p>';
+    return;
+  }
+
+  // Zone de danger (ancrage < 0.5 OU ratio > 1.2) dessinée via plugin
+  const datasets = pts.map((p, i) => ({
+    label: p.engine + (p.is_vlm ? ' 👁' : ''),
+    data: [{ x: p.anchor_score, y: p.length_ratio }],
+    backgroundColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)) + 'cc',
+    borderColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)),
+    borderWidth: p.is_vlm ? 3 : 1,
+    pointRadius: p.is_vlm ? 10 : 7,
+    pointStyle: p.is_vlm ? 'star' : 'circle',
+  }));
+
+  chartInstances['ratio-anchor'] = new Chart(canvas.getContext('2d'), {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: { callbacks: {
+          label: ctx => `${ctx.dataset.label}: ancrage=${(ctx.parsed.x*100).toFixed(1)}%, ratio=${ctx.parsed.y.toFixed(2)}`,
+        } },
+      },
+      scales: {
+        x: { min: 0, max: 1, title: { display: true, text: 'Score d'ancrage [0–1]', font: { size: 11 } } },
+        y: { min: 0, title: { display: true, text: 'Ratio longueur (sortie/GT)', font: { size: 11 } } },
+      },
+    },
+    plugins: [{
+      id: 'danger-zones',
+      beforeDraw(chart) {
+        const { ctx: c, chartArea: { left, top, right, bottom }, scales: { x, y } } = chart;
+        c.save();
+        // Ancrage < 0.5 (gauche)
+        const xHalf = x.getPixelForValue(0.5);
+        c.fillStyle = 'rgba(239,68,68,0.07)';
+        c.fillRect(left, top, xHalf - left, bottom - top);
+        // Ratio > 1.2 (haut)
+        const y12 = y.getPixelForValue(1.2);
+        if (y12 > top) {
+          c.fillRect(left, top, right - left, y12 - top);
+        }
+        // Lignes de seuil
+        c.strokeStyle = 'rgba(239,68,68,0.35)'; c.lineWidth = 1; c.setLineDash([4,4]);
+        c.beginPath(); c.moveTo(xHalf, top); c.lineTo(xHalf, bottom); c.stroke();
+        if (y12 > top) {
+          c.beginPath(); c.moveTo(left, y12); c.lineTo(right, y12); c.stroke();
+        }
+        c.restore();
+      },
+    }],
+  });
 }
 
 function buildDocList() {
@@ -1264,6 +1608,9 @@ function buildCharts() {
   buildWilcoxonTable();
   buildErrorClusters();
   initCorrelationMatrix();
+  // Sprint 10
+  buildGiniCerScatter();
+  buildRatioAnchorScatter();
 }
 
 function buildCerHistogram() {
@@ -1792,7 +2139,7 @@ function togglePresentMode() {
 
 // ── Sprint 7 — Export CSV ────────────────────────────────────────
 function exportCSV() {
-  const rows = [['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score']];
+  const rows = [['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score','gini','anchor_score','length_ratio','is_hallucinating']];
   DATA.documents.forEach(doc => {
     doc.engine_results.forEach(er => {
       rows.push([
@@ -1806,6 +2153,10 @@ function exportCSV() {
         er.ligature_score !== null ? er.ligature_score : '',
         er.diacritic_score !== null ? er.diacritic_score : '',
         doc.difficulty_score !== undefined ? (doc.difficulty_score * 100).toFixed(2) : '',
+        er.line_metrics ? er.line_metrics.gini.toFixed(6) : '',
+        er.hallucination_metrics ? er.hallucination_metrics.anchor_score.toFixed(6) : '',
+        er.hallucination_metrics ? er.hallucination_metrics.length_ratio.toFixed(4) : '',
+        er.hallucination_metrics ? (er.hallucination_metrics.is_hallucinating ? '1' : '0') : '',
       ]);
     });
   });
@@ -2066,14 +2417,44 @@ function showView(name) {
   updateURL(name);
 }
 
+function applyI18n() {
+  // Applique les traductions aux éléments avec data-i18n (textContent)
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (I18N[key] !== undefined) el.textContent = I18N[key];
+  });
+  // Options de select avec data-i18n-opt
+  document.querySelectorAll('[data-i18n-opt]').forEach(el => {
+    const key = el.getAttribute('data-i18n-opt');
+    if (I18N[key] !== undefined) el.textContent = I18N[key];
+  });
+  // Tooltips des th via id
+  const thMap = {
+    'th-cer-diplo':  'col_cer_diplo_title',
+    'th-ligatures':  'col_ligatures_title',
+    'th-diacritics': 'col_diacritics_title',
+    'th-gini':       'col_gini_title',
+    'th-anchor':     'col_anchor_title',
+    'th-overnorm':   'col_overnorm_title',
+  };
+  Object.entries(thMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el && I18N[key]) el.title = I18N[key];
+  });
+}
+
 function init() {
+  // i18n
+  applyI18n();
+
   // Méta nav
   const d = new Date(DATA.meta.run_date);
-  const fmt = d.toLocaleDateString('fr-FR', { year:'numeric', month:'short', day:'numeric' });
+  const locale = I18N.date_locale || 'fr-FR';
+  const fmt = d.toLocaleDateString(locale, { year:'numeric', month:'short', day:'numeric' });
   document.getElementById('nav-meta').textContent =
     DATA.meta.corpus_name + ' · ' + fmt;
   document.getElementById('footer-date').textContent =
-    'Rapport généré le ' + fmt;
+    (I18N.footer_generated || 'Rapport généré le') + ' ' + fmt;
 
   // Sélecteur moteur galerie
   const sel = document.getElementById('gallery-engine-select');
