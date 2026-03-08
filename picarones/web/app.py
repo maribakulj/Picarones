@@ -410,13 +410,16 @@ async def api_reports(reports_dir: str = Query(default=".", description="Dossier
     return {"reports": reports}
 
 
-@app.get("/reports/{filename}")
-async def serve_report(filename: str) -> FileResponse:
+@app.get("/reports/{filename}", response_class=HTMLResponse)
+async def serve_report(filename: str) -> HTMLResponse:
     # Cherche dans le répertoire courant et ./rapports/
+    # Lecture directe + renvoi en text/html pour fonctionner depuis un Codespace
+    # ou tout reverse-proxy distant (pas de redirect vers fichier statique).
     for d in [Path("."), Path("./rapports")]:
         f = d / filename
         if f.exists() and f.suffix == ".html":
-            return FileResponse(str(f.resolve()), media_type="text/html")
+            content = f.read_text(encoding="utf-8")
+            return HTMLResponse(content=content)
     raise HTTPException(status_code=404, detail=f"Rapport non trouvé : {filename}")
 
 
