@@ -115,6 +115,17 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "aggregated_taxonomy": report.aggregated_taxonomy,
             "aggregated_structure": report.aggregated_structure,
             "aggregated_image_quality": report.aggregated_image_quality,
+            # Sprint 10 — distribution des erreurs + hallucinations VLM
+            "gini": _safe(report.aggregated_line_metrics.get("gini_mean")) if report.aggregated_line_metrics else None,
+            "cer_p90": _safe(report.aggregated_line_metrics.get("percentiles", {}).get("p90")) if report.aggregated_line_metrics else None,
+            "cer_p99": _safe(report.aggregated_line_metrics.get("percentiles", {}).get("p99")) if report.aggregated_line_metrics else None,
+            "catastrophic_rate_30": _safe(report.aggregated_line_metrics.get("catastrophic_rate", {}).get("0.3")) if report.aggregated_line_metrics else None,
+            "aggregated_line_metrics": report.aggregated_line_metrics,
+            "anchor_score": _safe(report.aggregated_hallucination.get("anchor_score_mean")) if report.aggregated_hallucination else None,
+            "length_ratio": _safe(report.aggregated_hallucination.get("length_ratio_mean")) if report.aggregated_hallucination else None,
+            "hallucinating_doc_rate": _safe(report.aggregated_hallucination.get("hallucinating_doc_rate")) if report.aggregated_hallucination else None,
+            "aggregated_hallucination": report.aggregated_hallucination,
+            "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
 
@@ -172,6 +183,11 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 er_entry["structure"] = dr.structure
             if dr.image_quality is not None:
                 er_entry["image_quality"] = dr.image_quality
+            # Sprint 10
+            if dr.line_metrics is not None:
+                er_entry["line_metrics"] = dr.line_metrics
+            if dr.hallucination_metrics is not None:
+                er_entry["hallucination_metrics"] = dr.hallucination_metrics
             engine_results.append(er_entry)
 
         # CER moyen sur ce document (pour le badge galerie)
@@ -308,6 +324,32 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 **corr,
             })
 
+    # ── Sprint 10 — Données scatter plots ─────────────────────────────────
+    # Scatter 1 : Gini vs CER moyen (moteurs)
+    gini_vs_cer = []
+    for report in benchmark.engine_reports:
+        gini_val = report.aggregated_line_metrics.get("gini_mean") if report.aggregated_line_metrics else None
+        cer_val = report.mean_cer
+        if gini_val is not None and cer_val is not None:
+            gini_vs_cer.append({
+                "engine": report.engine_name,
+                "cer": _safe(cer_val),
+                "gini": _safe(gini_val),
+                "is_pipeline": report.is_pipeline,
+            })
+
+    # Scatter 2 : ratio longueur vs score d'ancrage (moteurs)
+    ratio_vs_anchor = []
+    for report in benchmark.engine_reports:
+        if report.aggregated_hallucination:
+            ratio_vs_anchor.append({
+                "engine": report.engine_name,
+                "length_ratio": _safe(report.aggregated_hallucination.get("length_ratio_mean", 1.0)),
+                "anchor_score": _safe(report.aggregated_hallucination.get("anchor_score_mean", 1.0)),
+                "hallucinating_rate": _safe(report.aggregated_hallucination.get("hallucinating_doc_rate", 0.0)),
+                "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
+            })
+
     return {
         "meta": {
             "corpus_name": benchmark.corpus_name,
@@ -329,6 +371,9 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         "venn_data": venn_data,
         "error_clusters": error_clusters,
         "correlation_per_engine": correlation_per_engine,
+        # Sprint 10
+        "gini_vs_cer": gini_vs_cer,
+        "ratio_vs_anchor": ratio_vs_anchor,
     }
 
 
@@ -818,6 +863,58 @@ body.present-mode nav .meta {{ display: none; }}
   min-width: 60px;
 }}
 .corr-table th {{ background: var(--bg); font-weight: 600; font-size: .75rem; }}
+
+/* ── Sprint 10 — heatmap erreurs ─────────────────────────────────*/
+.heatmap-wrap {{
+  display: flex; gap: 3px; align-items: flex-end;
+  height: 60px; margin: .5rem 0;
+}}
+.heatmap-bar {{
+  flex: 1; border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  transition: opacity .15s;
+}}
+.heatmap-bar:hover {{ opacity: .75; }}
+.heatmap-labels {{
+  display: flex; justify-content: space-between;
+  font-size: .65rem; color: var(--text-muted); margin-top: .15rem;
+}}
+
+/* ── Sprint 10 — hallucination badge ─────────────────────────────*/
+.hallucination-badge {{
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .15rem .45rem; border-radius: 4px;
+  font-size: .72rem; font-weight: 700;
+  background: #fce7f3; color: #9d174d;
+  border: 1px solid #fbcfe8;
+}}
+.hallucination-badge.ok {{
+  background: #f0fdf4; color: #15803d;
+  border-color: #bbf7d0;
+}}
+
+/* ── Sprint 10 — bloc halluciné ──────────────────────────────────*/
+.halluc-block {{
+  background: #fce7f3; border: 1px solid #f9a8d4;
+  border-radius: 4px; padding: .35rem .6rem;
+  margin: .25rem 0; font-size: .78rem;
+  font-family: 'Georgia', serif; color: #9d174d;
+}}
+.halluc-block-meta {{
+  font-size: .65rem; color: #be185d; font-family: system-ui, sans-serif;
+  margin-bottom: .15rem; font-weight: 600;
+}}
+
+/* ── Sprint 10 — percentile bars ─────────────────────────────────*/
+.pct-bars {{ display: flex; flex-direction: column; gap: .25rem; margin: .4rem 0; }}
+.pct-bar-row {{ display: flex; align-items: center; gap: .4rem; font-size: .72rem; }}
+.pct-bar-label {{ width: 2.5rem; color: var(--text-muted); text-align: right; flex-shrink: 0; }}
+.pct-bar-track {{
+  flex: 1; height: 8px; background: var(--bg);
+  border-radius: 4px; overflow: hidden;
+}}
+.pct-bar-fill {{ height: 100%; border-radius: 4px; }}
+.pct-bar-val {{ width: 3rem; color: var(--text); font-weight: 600; }}
 </style>
 </head>
 
@@ -862,6 +959,8 @@ body.present-mode nav .meta {{ display: none; }}
             <th data-col="wil"  class="sortable">WIL<i class="sort-icon">↕</i></th>
             <th data-col="ligature_score" class="sortable" title="Taux de reconnaissance des ligatures (ﬁ, ﬂ, œ, æ, ﬀ…)">Ligatures<i class="sort-icon">↕</i></th>
             <th data-col="diacritic_score" class="sortable" title="Taux de conservation des diacritiques (accents, cédilles, trémas…)">Diacritiques<i class="sort-icon">↕</i></th>
+            <th data-col="gini" class="sortable" title="Coefficient de Gini des erreurs CER par ligne — 0 = erreurs uniformes, 1 = erreurs concentrées. Un bon moteur a CER bas ET Gini bas.">Gini<i class="sort-icon">↕</i></th>
+            <th data-col="anchor_score" class="sortable" title="Score d'ancrage : proportion des trigrammes de la sortie trouvant un ancrage dans le GT — faible score = hallucinations probables (LLM/VLM)">Ancrage<i class="sort-icon">↕</i></th>
             <th>CER médian</th>
             <th>CER min</th>
             <th>CER max</th>
@@ -973,6 +1072,18 @@ body.present-mode nav .meta {{ display: none; }}
         <h3>Sorties OCR — diff par moteur</h3>
         <div class="diff-panels" id="doc-diff-panels"></div>
       </div>
+
+      <!-- Sprint 10 — Distribution CER par ligne -->
+      <div class="card" id="doc-line-metrics-card" style="display:none">
+        <h3>Distribution des erreurs par ligne</h3>
+        <div id="doc-line-metrics-content"></div>
+      </div>
+
+      <!-- Sprint 10 — Hallucinations détectées -->
+      <div class="card" id="doc-hallucination-card" style="display:none">
+        <h3>Analyse des hallucinations</h3>
+        <div id="doc-hallucination-content"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1078,6 +1189,29 @@ body.present-mode nav .meta {{ display: none; }}
     <div class="chart-card" style="grid-column:1/-1">
       <h3>Clustering des patterns d'erreurs</h3>
       <div id="error-clusters-container"></div>
+    </div>
+
+    <!-- Sprint 10 — Scatter Gini vs CER moyen -->
+    <div class="chart-card">
+      <h3>Gini vs CER moyen <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)">— idéal : bas-gauche</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-gini-cer"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).
+      </div>
+    </div>
+
+    <!-- Sprint 10 — Scatter ratio longueur vs ancrage -->
+    <div class="chart-card">
+      <h3>Ratio longueur vs ancrage <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)">— hallucinations VLM</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-ratio-anchor"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem">
+        Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT.
+        Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.
+      </div>
     </div>
 
     <!-- Sprint 7 — Matrice de corrélation -->
@@ -1283,11 +1417,29 @@ function renderRanking() {{
       </td>`;
     }}
 
+    // ── Sprint 10 : Gini + Ancrage ─────────────────────────────────────
+    let giniCell = '<td style="color:var(--text-muted)">—</td>';
+    if (e.gini !== null && e.gini !== undefined) {{
+      const gv = e.gini;
+      const gColor = gv < 0.3 ? '#16a34a' : gv < 0.5 ? '#ca8a04' : '#dc2626';
+      const gBg = gv < 0.3 ? '#f0fdf4' : gv < 0.5 ? '#fefce8' : '#fef2f2';
+      giniCell = `<td><span class="cer-badge" style="color:${{gColor}};background:${{gBg}}"
+        title="Gini=${{gv.toFixed(3)}} — 0=uniforme, 1=concentré">${{gv.toFixed(3)}}</span></td>`;
+    }}
+    let anchorCell = '<td style="color:var(--text-muted)">—</td>';
+    if (e.anchor_score !== null && e.anchor_score !== undefined) {{
+      const av = e.anchor_score;
+      const hallBadge = (e.hallucinating_doc_rate && e.hallucinating_doc_rate > 0.2)
+        ? ' <span title="Hallucinations détectées">⚠️</span>' : '';
+      anchorCell = `<td>${{_scoreBadge(av, 'Ancrage trigrammes')}}${{hallBadge}}</td>`;
+    }}
+
     return `<tr>
       <td><span class="${{badgeClass}}">${{rank}}</span></td>
       <td>
         <span class="engine-name">${{esc(e.name)}}</span>
         ${{pipelineBadge}}
+        ${{e.is_vlm ? '<span class="pipeline-tag" style="background:#fce7f3;color:#9d174d">👁 VLM</span>' : ''}}
         <span class="engine-version">v${{esc(e.version)}}</span>
         ${{pipelineStepsHtml}}
       </td>
@@ -1301,6 +1453,8 @@ function renderRanking() {{
       <td>${{pct(e.wil)}}</td>
       <td>${{_scoreBadge(e.ligature_score, 'Ligatures')}}</td>
       <td>${{_scoreBadge(e.diacritic_score, 'Diacritiques')}}</td>
+      ${{giniCell}}
+      ${{anchorCell}}
       <td style="color:var(--text-muted)">${{pct(e.cer_median)}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_min)}}</td>
       <td style="color:var(--text-muted)">${{pct(e.cer_max)}}</td>
@@ -1531,6 +1685,240 @@ function loadDocument(docId) {{
       ${{tripleDiffHtml}}
     </div>`;
   }}).join('');
+
+  // ── Sprint 10 : distribution CER par ligne ──────────────────────────
+  const lineCard = document.getElementById('doc-line-metrics-card');
+  const lineContent = document.getElementById('doc-line-metrics-content');
+  // Prendre le premier moteur ayant des line_metrics
+  const erWithLine = doc.engine_results.find(er => er.line_metrics);
+  if (erWithLine && erWithLine.line_metrics) {{
+    lineCard.style.display = '';
+    lineContent.innerHTML = renderLineMetrics(doc.engine_results);
+  }} else {{
+    lineCard.style.display = 'none';
+  }}
+
+  // ── Sprint 10 : hallucinations ──────────────────────────────────────
+  const hallCard = document.getElementById('doc-hallucination-card');
+  const hallContent = document.getElementById('doc-hallucination-content');
+  const erWithHall = doc.engine_results.find(er => er.hallucination_metrics && er.hallucination_metrics.is_hallucinating);
+  if (erWithHall || doc.engine_results.some(er => er.hallucination_metrics)) {{
+    hallCard.style.display = '';
+    hallContent.innerHTML = renderHallucinationPanel(doc.engine_results);
+  }} else {{
+    hallCard.style.display = 'none';
+  }}
+}}
+
+// ── Sprint 10 : rendu distribution CER par ligne ────────────────
+function renderLineMetrics(engineResults) {{
+  const heatmapColors = (v) => {{
+    if (v < 0.05) return '#86efac';
+    if (v < 0.15) return '#fde68a';
+    if (v < 0.30) return '#fb923c';
+    return '#f87171';
+  }};
+
+  return engineResults.filter(er => er.line_metrics).map(er => {{
+    const lm = er.line_metrics;
+    const c = cerColor(er.cer); const bg = cerBg(er.cer);
+
+    // Heatmap de position
+    const heatmap = lm.heatmap || [];
+    const maxHeat = Math.max(...heatmap, 0.01);
+    const heatmapHtml = heatmap.length > 0
+      ? `<div class="heatmap-wrap">` +
+        heatmap.map((v, i) => {{
+          const h = Math.max(4, Math.round(60 * v / maxHeat));
+          return `<div class="heatmap-bar" style="height:${{h}}px;background:${{heatmapColors(v)}}"
+            title="Tranche ${{i+1}}/${{heatmap.length}} — CER=${{(v*100).toFixed(1)}}%"></div>`;
+        }}).join('') +
+        `</div><div class="heatmap-labels"><span>Début</span><span>Milieu</span><span>Fin</span></div>`
+      : '<em style="color:var(--text-muted)">—</em>';
+
+    // Percentiles
+    const p = lm.percentiles || {{}};
+    const pctBars = ['p50','p75','p90','p95','p99'].map(k => {{
+      const v = p[k] || 0;
+      const w = Math.min(100, v * 100 * 2);
+      const fillColor = v < 0.15 ? '#86efac' : v < 0.30 ? '#fde68a' : '#f87171';
+      return `<div class="pct-bar-row">
+        <span class="pct-bar-label">${{k}}</span>
+        <div class="pct-bar-track"><div class="pct-bar-fill" style="width:${{w}}%;background:${{fillColor}}"></div></div>
+        <span class="pct-bar-val">${{(v*100).toFixed(1)}}%</span>
+      </div>`;
+    }}).join('');
+
+    // Taux catastrophiques
+    const cr = lm.catastrophic_rate || {{}};
+    const crRows = Object.entries(cr).map(([t, rate]) => {{
+      const tPct = (parseFloat(t)*100).toFixed(0);
+      const ratePct = (rate*100).toFixed(1);
+      const color = rate < 0.05 ? '#16a34a' : rate < 0.15 ? '#ca8a04' : '#dc2626';
+      return `<span class="stat"><b style="color:${{color}}">${{ratePct}}%</b> lignes CER&gt;${{tPct}}%</span>`;
+    }}).join('');
+
+    // Gini
+    const gini = lm.gini !== undefined ? lm.gini.toFixed(3) : '—';
+    const giniColor = lm.gini < 0.3 ? '#16a34a' : lm.gini < 0.5 ? '#ca8a04' : '#dc2626';
+
+    return `<div style="margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+        <strong>${{esc(er.engine)}}</strong>
+        <span class="cer-badge" style="color:${{c}};background:${{bg}}">${{pct(er.cer)}}</span>
+        <span class="stat">Gini <b style="color:${{giniColor}}">${{gini}}</b></span>
+        <span class="stat">${{lm.line_count}} lignes</span>
+        ${{crRows}}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">CARTE THERMIQUE (position)</div>
+          ${{heatmapHtml}}
+        </div>
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem">PERCENTILES CER</div>
+          <div class="pct-bars">${{pctBars}}</div>
+        </div>
+      </div>
+    </div>`;
+  }}).join('') || '<em style="color:var(--text-muted)">Aucune métrique de ligne disponible.</em>';
+}}
+
+// ── Sprint 10 : rendu panneau hallucinations ─────────────────────
+function renderHallucinationPanel(engineResults) {{
+  const withHall = engineResults.filter(er => er.hallucination_metrics);
+  if (!withHall.length) return '<em style="color:var(--text-muted)">Aucune métrique d\'hallucination disponible.</em>';
+
+  return withHall.map(er => {{
+    const hm = er.hallucination_metrics;
+    const isHall = hm.is_hallucinating;
+    const badgeClass = isHall ? 'hallucination-badge' : 'hallucination-badge ok';
+    const badgeLabel = isHall ? '⚠️ Hallucinations détectées' : '✓ Ancrage satisfaisant';
+
+    const blocksHtml = hm.hallucinated_blocks && hm.hallucinated_blocks.length > 0
+      ? hm.hallucinated_blocks.slice(0, 5).map(b =>
+          `<div class="halluc-block">
+            <div class="halluc-block-meta">Bloc halluciné — ${{b.length}} mots (tokens ${{b.start_token}}–${{b.end_token}})</div>
+            ${{esc(b.text)}}
+          </div>`
+        ).join('') +
+        (hm.hallucinated_blocks.length > 5 ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">… ${{hm.hallucinated_blocks.length - 5}} bloc(s) supplémentaire(s)</div>` : '')
+      : '<em style="color:var(--text-muted);font-size:.8rem">Aucun bloc halluciné détecté.</em>';
+
+    return `<div style="margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <strong>${{esc(er.engine)}}</strong>
+        <span class="${{badgeClass}}">${{badgeLabel}}</span>
+        <span class="stat">Ancrage <b>${{(hm.anchor_score*100).toFixed(1)}}%</b></span>
+        <span class="stat">Ratio longueur <b>${{hm.length_ratio.toFixed(2)}}</b></span>
+        <span class="stat">Insertion nette <b>${{(hm.net_insertion_rate*100).toFixed(1)}}%</b></span>
+        <span class="stat">${{hm.gt_word_count}} mots GT / ${{hm.hyp_word_count}} mots sortie</span>
+      </div>
+      ${{isHall ? `<div style="margin-bottom:.5rem;font-size:.82rem;font-weight:600;color:#9d174d">Blocs sans ancrage dans le GT :</div>` : ''}}
+      ${{isHall ? blocksHtml : ''}}
+    </div>`;
+  }}).join('');
+}}
+
+// ── Sprint 10 — Scatter Gini vs CER moyen ──────────────────────
+function buildGiniCerScatter() {{
+  const canvas = document.getElementById('chart-gini-cer');
+  if (!canvas) return;
+  const pts = DATA.gini_vs_cer || [];
+  if (!pts.length) {{
+    canvas.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données Gini non disponibles.</p>';
+    return;
+  }}
+  const datasets = pts.map((p, i) => ({{
+    label: p.engine,
+    data: [{{ x: p.cer * 100, y: p.gini }}],
+    backgroundColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)) + 'cc',
+    borderColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)),
+    borderWidth: p.is_pipeline ? 2 : 1,
+    pointRadius: p.is_pipeline ? 9 : 7,
+    pointStyle: p.is_pipeline ? 'triangle' : 'circle',
+  }}));
+
+  chartInstances['gini-cer'] = new Chart(canvas.getContext('2d'), {{
+    type: 'scatter',
+    data: {{ datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{
+        legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }},
+        tooltip: {{ callbacks: {{
+          label: ctx => `${{ctx.dataset.label}}: CER=${{ctx.parsed.x.toFixed(2)}}%, Gini=${{ctx.parsed.y.toFixed(3)}}`,
+        }} }},
+      }},
+      scales: {{
+        x: {{ min: 0, title: {{ display: true, text: 'CER moyen (%)', font: {{ size: 11 }} }} }},
+        y: {{ min: 0, max: 1, title: {{ display: true, text: 'Coefficient de Gini', font: {{ size: 11 }} }} }},
+      }},
+    }},
+  }});
+}}
+
+// ── Sprint 10 — Scatter ratio longueur vs score d'ancrage ────────
+function buildRatioAnchorScatter() {{
+  const canvas = document.getElementById('chart-ratio-anchor');
+  if (!canvas) return;
+  const pts = DATA.ratio_vs_anchor || [];
+  if (!pts.length) {{
+    canvas.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données d\'ancrage non disponibles.</p>';
+    return;
+  }}
+
+  // Zone de danger (ancrage < 0.5 OU ratio > 1.2) dessinée via plugin
+  const datasets = pts.map((p, i) => ({{
+    label: p.engine + (p.is_vlm ? ' 👁' : ''),
+    data: [{{ x: p.anchor_score, y: p.length_ratio }}],
+    backgroundColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)) + 'cc',
+    borderColor: engineColor(DATA.engines.findIndex(e => e.name === p.engine)),
+    borderWidth: p.is_vlm ? 3 : 1,
+    pointRadius: p.is_vlm ? 10 : 7,
+    pointStyle: p.is_vlm ? 'star' : 'circle',
+  }}));
+
+  chartInstances['ratio-anchor'] = new Chart(canvas.getContext('2d'), {{
+    type: 'scatter',
+    data: {{ datasets }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{
+        legend: {{ position: 'top', labels: {{ font: {{ size: 11 }} }} }},
+        tooltip: {{ callbacks: {{
+          label: ctx => `${{ctx.dataset.label}}: ancrage=${{(ctx.parsed.x*100).toFixed(1)}}%, ratio=${{ctx.parsed.y.toFixed(2)}}`,
+        }} }},
+      }},
+      scales: {{
+        x: {{ min: 0, max: 1, title: {{ display: true, text: 'Score d\'ancrage [0–1]', font: {{ size: 11 }} }} }},
+        y: {{ min: 0, title: {{ display: true, text: 'Ratio longueur (sortie/GT)', font: {{ size: 11 }} }} }},
+      }},
+    }},
+    plugins: [{{
+      id: 'danger-zones',
+      beforeDraw(chart) {{
+        const {{ ctx: c, chartArea: {{ left, top, right, bottom }}, scales: {{ x, y }} }} = chart;
+        c.save();
+        // Ancrage < 0.5 (gauche)
+        const xHalf = x.getPixelForValue(0.5);
+        c.fillStyle = 'rgba(239,68,68,0.07)';
+        c.fillRect(left, top, xHalf - left, bottom - top);
+        // Ratio > 1.2 (haut)
+        const y12 = y.getPixelForValue(1.2);
+        if (y12 > top) {{
+          c.fillRect(left, top, right - left, y12 - top);
+        }}
+        // Lignes de seuil
+        c.strokeStyle = 'rgba(239,68,68,0.35)'; c.lineWidth = 1; c.setLineDash([4,4]);
+        c.beginPath(); c.moveTo(xHalf, top); c.lineTo(xHalf, bottom); c.stroke();
+        if (y12 > top) {{
+          c.beginPath(); c.moveTo(left, y12); c.lineTo(right, y12); c.stroke();
+        }}
+        c.restore();
+      }},
+    }}],
+  }});
 }}
 
 function buildDocList() {{
@@ -1603,6 +1991,9 @@ function buildCharts() {{
   buildWilcoxonTable();
   buildErrorClusters();
   initCorrelationMatrix();
+  // Sprint 10
+  buildGiniCerScatter();
+  buildRatioAnchorScatter();
 }}
 
 function buildCerHistogram() {{
@@ -2131,7 +2522,7 @@ function togglePresentMode() {{
 
 // ── Sprint 7 — Export CSV ────────────────────────────────────────
 function exportCSV() {{
-  const rows = [['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score']];
+  const rows = [['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score','gini','anchor_score','length_ratio','is_hallucinating']];
   DATA.documents.forEach(doc => {{
     doc.engine_results.forEach(er => {{
       rows.push([
@@ -2145,6 +2536,10 @@ function exportCSV() {{
         er.ligature_score !== null ? er.ligature_score : '',
         er.diacritic_score !== null ? er.diacritic_score : '',
         doc.difficulty_score !== undefined ? (doc.difficulty_score * 100).toFixed(2) : '',
+        er.line_metrics ? er.line_metrics.gini.toFixed(6) : '',
+        er.hallucination_metrics ? er.hallucination_metrics.anchor_score.toFixed(6) : '',
+        er.hallucination_metrics ? er.hallucination_metrics.length_ratio.toFixed(4) : '',
+        er.hallucination_metrics ? (er.hallucination_metrics.is_hallucinating ? '1' : '0') : '',
       ]);
     }});
   }});

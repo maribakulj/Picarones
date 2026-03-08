@@ -25,6 +25,9 @@ from picarones.core.taxonomy import classify_errors, aggregate_taxonomy
 from picarones.core.structure import analyze_structure, aggregate_structure
 from picarones.core.image_quality import generate_mock_quality_scores, aggregate_image_quality
 from picarones.core.char_scores import aggregate_ligature_scores, aggregate_diacritic_scores
+# Sprint 10 — distribution des erreurs + hallucinations VLM
+from picarones.core.line_metrics import compute_line_metrics, aggregate_line_metrics, LineMetrics
+from picarones.core.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
 
 # ---------------------------------------------------------------------------
 # Textes GT réalistes (documents patrimoniaux BnF)
@@ -115,6 +118,51 @@ def _llm_correction(text: str, rng: random.Random) -> str:
             text = text.replace(src, tgt, 1)
 
     return text
+
+
+def _vlm_hallucinations(text: str, rng: random.Random) -> str:
+    """Simule les hallucinations typiques d'un modèle VLM (vision-language).
+
+    Le modèle "voit" l'image et génère du texte proche du GT mais :
+    - Insère des phrases entières inventées (~30% de contenu supplémentaire)
+    - Mélange des graphies modernes avec des graphies médiévales
+    - Parfois ajoute des métadonnées (folio, date) inventées
+    - Garde une cohérence partielle avec le GT (pas totalement aléatoire)
+    """
+    # Correction partielle d'erreurs OCR (le VLM lit l'image directement)
+    text = text.replace("ſ", "s").replace("&", "et")
+
+    # Hallucination : phrases intercalées absentes du GT
+    hallucinated_phrases = [
+        "Ledit document fut enregistré au greffe le lendemain.",
+        "Signé et paraphé par le notaire royal en présence de témoins.",
+        "Archives nationales, cote F/7/1234, pièce n° 42.",
+        "Transcription réalisée d'après l'original conservé à la BnF.",
+        "Le présent acte a été lu et approuvé par toutes les parties.",
+        "En foi de quoi nous avons apposé notre sceau et notre signature.",
+        "Registre des délibérations du Parlement de Paris, tome III.",
+    ]
+
+    words = text.split()
+    if len(words) > 8 and rng.random() < 0.65:
+        # Insérer une ou deux phrases hallucinées
+        n_phrases = rng.randint(1, 2)
+        for _ in range(n_phrases):
+            phrase = rng.choice(hallucinated_phrases)
+            insert_pos = rng.randint(len(words) // 2, len(words))
+            words = words[:insert_pos] + phrase.split() + words[insert_pos:]
+
+    # Modernisation systématique (le VLM normalise)
+    result = " ".join(words)
+    modern_replacements = [
+        ("nostre", "notre"), ("maistre", "maître"), ("faictes", "faites"),
+        ("ledit", "le dit"), ("ladicte", "la dite"), ("icelle", "icelle"),
+        ("iceluy", "icelui"), ("eſt", "est"), ("ſur", "sur"),
+    ]
+    for src, tgt in modern_replacements:
+        result = result.replace(src, tgt)
+
+    return result
 
 
 def _bad_engine_errors(text: str, rng: random.Random) -> str:
@@ -252,6 +300,30 @@ def generate_sample_benchmark(
                 ],
             },
         ),
+        # Sprint 10 — Modèle VLM fictif avec hallucinations simulées
+        (
+            "gpt-4o-vision (zero-shot)",
+            "gpt-4o-2024-11-20",
+            {"mode": "zero_shot"},
+            _vlm_hallucinations,
+            True,
+            {
+                "pipeline_mode": "zero_shot",
+                "prompt_file": "zero_shot_medieval_vlm.txt",
+                "llm_model": "gpt-4o-2024-11-20",
+                "llm_provider": "openai",
+                "pipeline_steps": [
+                    {
+                        "type": "llm",
+                        "model": "gpt-4o-2024-11-20",
+                        "provider": "openai",
+                        "mode": "zero_shot",
+                        "prompt_file": "zero_shot_medieval_vlm.txt",
+                    },
+                ],
+                "is_vlm": True,
+            },
+        ),
     ]
 
     engine_reports: list[EngineReport] = []
@@ -297,6 +369,13 @@ def generate_sample_benchmark(
 
             metrics = _make_metrics(gt, hypothesis)
 
+            # Sprint 10 — distribution des erreurs par ligne
+            # Pour simuler des textes multi-lignes, on découpe GT et hypothèse en lignes
+            gt_multiline = "\n".join(gt[i:i+30] for i in range(0, len(gt), 30))
+            hyp_multiline = "\n".join(hypothesis[i:i+30] for i in range(0, len(hypothesis), 30))
+            lm = compute_line_metrics(gt_multiline, hyp_multiline)
+            hm = compute_hallucination_metrics(gt, hypothesis)
+
             # Sprint 5 — métriques avancées patrimoniales
             cm = build_confusion_matrix(gt, hypothesis)
             lig_score = compute_ligature_score(gt, hypothesis)
@@ -326,6 +405,8 @@ def generate_sample_benchmark(
                     taxonomy=taxonomy_result.as_dict(),
                     structure=struct_result.as_dict(),
                     image_quality={**iq_result.as_dict(), "script_type": _script_type},
+                    line_metrics=lm.as_dict(),
+                    hallucination_metrics=hm.as_dict(),
                 )
             )
 
@@ -384,6 +465,17 @@ def generate_sample_benchmark(
             for dr in doc_results if dr.image_quality
         ])
 
+        # Sprint 10 — agrégation distribution des erreurs + hallucinations
+        agg_line = aggregate_line_metrics([
+            LineMetrics.from_dict(dr.line_metrics)
+            for dr in doc_results if dr.line_metrics
+        ])
+        from picarones.core.hallucination import HallucinationMetrics as _HM
+        agg_hallucination = aggregate_hallucination_metrics([
+            _HM.from_dict(dr.hallucination_metrics)
+            for dr in doc_results if dr.hallucination_metrics
+        ])
+
         report = EngineReport(
             engine_name=engine_name,
             engine_version=engine_version,
@@ -395,6 +487,8 @@ def generate_sample_benchmark(
             aggregated_taxonomy=agg_taxonomy,
             aggregated_structure=agg_structure,
             aggregated_image_quality=agg_iq,
+            aggregated_line_metrics=agg_line,
+            aggregated_hallucination=agg_hallucination,
         )
         engine_reports.append(report)
 
