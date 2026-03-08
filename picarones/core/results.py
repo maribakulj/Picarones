@@ -46,6 +46,11 @@ class DocumentResult:
     """Analyse structurelle (segmentation lignes, ordre lecture)."""
     image_quality: Optional[dict] = None
     """Métriques de qualité image."""
+    # Champs Sprint 10 — distribution des erreurs + hallucinations VLM
+    line_metrics: Optional[dict] = None
+    """Distribution CER par ligne (percentiles, Gini, heatmap de position)."""
+    hallucination_metrics: Optional[dict] = None
+    """Métriques de détection des hallucinations VLM (ancrage, ratio longueur, blocs)."""
 
     def as_dict(self) -> dict:
         d = {
@@ -71,6 +76,10 @@ class DocumentResult:
             d["structure"] = self.structure
         if self.image_quality is not None:
             d["image_quality"] = self.image_quality
+        if self.line_metrics is not None:
+            d["line_metrics"] = self.line_metrics
+        if self.hallucination_metrics is not None:
+            d["hallucination_metrics"] = self.hallucination_metrics
         return d
 
 
@@ -99,6 +108,11 @@ class EngineReport:
     """Métriques structurelles agrégées."""
     aggregated_image_quality: Optional[dict] = None
     """Métriques de qualité image agrégées."""
+    # Sprint 10
+    aggregated_line_metrics: Optional[dict] = None
+    """Distribution CER par ligne agrégée (Gini moyen, percentiles, heatmap, taux catastrophiques)."""
+    aggregated_hallucination: Optional[dict] = None
+    """Métriques d'hallucination VLM agrégées (ancrage moyen, taux de docs hallucinés…)."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -155,6 +169,10 @@ class EngineReport:
             d["aggregated_structure"] = self.aggregated_structure
         if self.aggregated_image_quality is not None:
             d["aggregated_image_quality"] = self.aggregated_image_quality
+        if self.aggregated_line_metrics is not None:
+            d["aggregated_line_metrics"] = self.aggregated_line_metrics
+        if self.aggregated_hallucination is not None:
+            d["aggregated_hallucination"] = self.aggregated_hallucination
         return d
 
 

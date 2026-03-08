@@ -372,8 +372,10 @@ class TestFixturesPipeline:
         assert steps[1]["type"] == "llm"
 
     def test_non_pipeline_reports_empty_pipeline_info(self, benchmark):
+        # Les concurrents pipeline (LLM ou VLM) ont un pipeline_info non vide
+        pipeline_engines = {"tesseract → gpt-4o", "gpt-4o-vision (zero-shot)"}
         for report in benchmark.engine_reports:
-            if report.engine_name != "tesseract → gpt-4o":
+            if report.engine_name not in pipeline_engines:
                 assert not report.is_pipeline
                 assert report.pipeline_info == {}
 
@@ -401,8 +403,10 @@ class TestReportWithPipeline:
         assert pipeline_e["is_pipeline"] is True
 
     def test_non_pipeline_engines_not_flagged(self, report_data):
+        # Les concurrents pipeline (LLM ou VLM zero-shot) sont correctement marqués is_pipeline=True
+        pipeline_engines = {"tesseract → gpt-4o", "gpt-4o-vision (zero-shot)"}
         for e in report_data["engines"]:
-            if e["name"] != "tesseract → gpt-4o":
+            if e["name"] not in pipeline_engines:
                 assert e["is_pipeline"] is False
 
     def test_pipeline_has_over_normalization_in_info(self, report_data):
