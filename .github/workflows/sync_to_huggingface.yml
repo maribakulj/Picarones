@@ -14,4 +14,6 @@ jobs:
       - name: Push to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push -f https://Ma-Ri-Ba-Ku:$HF_TOKEN@huggingface.co/spaces/Ma-Ri-Ba-Ku/Picarones main
+        run: |
+          git remote add hf https://Ma-Ri-Ba-Ku:$HF_TOKEN@huggingface.co/spaces/Ma-Ri-Ba-Ku/Picarones || true
+          git push -f hf main
