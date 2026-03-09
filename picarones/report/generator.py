@@ -15,13 +15,15 @@ Vues disponibles
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 import math
 from pathlib import Path
 from typing import Optional
 
 from picarones.core.results import BenchmarkResult
-from picarones.report.diff_utils import compute_word_diff
+from picarones.report.diff_utils import compute_char_diff, compute_word_diff
 from picarones.core.statistics import (
     compute_pairwise_stats,
     compute_reliability_curve,
@@ -36,6 +38,50 @@ from picarones.core.difficulty import compute_all_difficulties, difficulty_label
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _encode_image_b64(image_path: str, max_width: int = 1200) -> str:
+    """Lit une image, la redimensionne si besoin, et retourne un data-URI base64."""
+    try:
+        from PIL import Image
+        p = Path(image_path)
+        if not p.exists():
+            return ""
+        with Image.open(p) as img:
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_h = max(1, int(img.height * ratio))
+                img = img.resize((max_width, new_h), Image.LANCZOS)
+            # Convertir en RGB pour éviter les problèmes de mode (RGBA, palette…)
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            buf = io.BytesIO()
+            fmt = "JPEG" if p.suffix.lower() in (".jpg", ".jpeg") else "PNG"
+            img.save(buf, format=fmt, optimize=True, quality=85)
+            b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+            mime = "image/jpeg" if fmt == "JPEG" else "image/png"
+            return f"data:{mime};base64,{b64}"
+    except Exception:
+        return ""
+
+
+def _encode_images_b64_from_result(benchmark: "BenchmarkResult", max_width: int = 1200) -> dict[str, str]:
+    """Encode toutes les images d'un BenchmarkResult en base64.
+
+    Returns
+    -------
+    dict
+        ``{doc_id: data_uri}``
+    """
+    images: dict[str, str] = {}
+    if not benchmark.engine_reports:
+        return images
+    for dr in benchmark.engine_reports[0].document_results:
+        if dr.image_path and dr.doc_id not in images:
+            uri = _encode_image_b64(dr.image_path, max_width=max_width)
+            if uri:
+                images[dr.doc_id] = uri
+    return images
+
 
 def _cer_color(cer: float) -> str:
     """Retourne une couleur CSS pour un score CER donné (0→vert, 1→rouge)."""
@@ -152,7 +198,7 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 continue
             gt = dr.ground_truth
             image_path = dr.image_path
-            diff_ops = compute_word_diff(dr.ground_truth, dr.hypothesis)
+            diff_ops = compute_char_diff(dr.ground_truth, dr.hypothesis)
             er_entry: dict = {
                 "engine": engine_name,
                 "hypothesis": dr.hypothesis,
@@ -692,25 +738,50 @@ tbody tr:hover {{ background: #f8fafc; }}
 .d-rep-old {{ color: var(--del); background: var(--del-bg); border-radius: 2px 0 0 2px; padding: 0 1px; text-decoration: line-through; }}
 .d-rep-new {{ color: var(--rep); background: var(--rep-bg); border-radius: 0 2px 2px 0; padding: 0 1px; }}
 
-/* GT panel */
-.gt-panel {{
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+/* Side-by-side diff */
+.sbs-header {{
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem;
 }}
-.gt-panel-header {{
-  padding: .5rem .75rem;
-  background: #f0fdf4;
-  border-bottom: 1px solid #bbf7d0;
-  font-size: .83rem; font-weight: 700; color: #15803d;
+.sbs-engine-select {{
+  display: flex; align-items: center; gap: .4rem; font-size: .82rem;
 }}
-.gt-panel-body {{
-  padding: .75rem; font-size: .82rem; line-height: 1.7;
+.sbs-engine-select select {{
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: .2rem .4rem; font-size: .82rem; background: var(--surface);
+}}
+.sbs-columns {{
+  display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+}}
+@media (max-width: 700px) {{
+  .sbs-columns {{ grid-template-columns: 1fr; }}
+}}
+.sbs-col {{
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+}}
+.sbs-col-header {{
+  padding: .45rem .75rem;
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  font-size: .83rem; font-weight: 700;
+}}
+.sbs-gt-header {{
+  background: #f0fdf4; border-bottom: 1px solid #bbf7d0; color: #15803d;
+}}
+.sbs-ocr-header {{
+  background: #eff6ff; border-bottom: 1px solid #bfdbfe; color: #1d4ed8;
+}}
+.sbs-col-body {{
+  padding: .75rem; font-size: .82rem; line-height: 1.8;
   font-family: 'Georgia', serif;
-  max-height: 260px; overflow-y: auto;
-  color: var(--text);
+  max-height: 340px; overflow-y: auto;
+  color: var(--text); white-space: pre-wrap; word-break: break-word;
 }}
+/* Caractères manquants dans GT (orange) */
+.d-miss {{ color: #92400e; background: #fef3c7; border-radius: 2px; padding: 0 1px; }}
+/* Caractères erronés dans OCR (rouge) */
+.d-err  {{ color: var(--del); background: var(--del-bg); border-radius: 2px; padding: 0 1px; }}
+/* Insertions dans OCR (vert) */
+.d-ins-ocr {{ color: var(--ins); background: var(--ins-bg); border-radius: 2px; padding: 0 1px; }}
 
 /* ── Analyses ─────────────────────────────────────────────────────── */
 .charts-grid {{
@@ -1058,19 +1129,32 @@ body.present-mode nav .meta {{ display: none; }}
         </div>
       </div>
 
-      <!-- Vérité terrain -->
-      <div class="card">
-        <h3 data-i18n="h_gt">Vérité terrain (GT)</h3>
-        <div class="gt-panel">
-          <div class="gt-panel-header">✓ Ground Truth</div>
-          <div class="gt-panel-body" id="doc-gt-text">—</div>
+      <!-- Diff côte à côte GT / OCR -->
+      <div class="card" id="doc-sidebyside-card">
+        <div class="sbs-header">
+          <h3 data-i18n="h_diff">Comparaison GT / OCR</h3>
+          <div class="sbs-engine-select" id="sbs-engine-select" style="display:none">
+            <label data-i18n="sbs_engine_label">Concurrent :</label>
+            <select id="sbs-engine-dropdown" onchange="renderSideBySide(currentDocId)"></select>
+          </div>
         </div>
-      </div>
-
-      <!-- Diffs par moteur -->
-      <div class="card">
-        <h3 data-i18n="h_diff">Sorties OCR — diff par moteur</h3>
-        <div class="diff-panels" id="doc-diff-panels"></div>
+        <div class="sbs-columns" id="sbs-columns">
+          <div class="sbs-col sbs-col-gt">
+            <div class="sbs-col-header sbs-gt-header">
+              <span>✓ Vérité terrain (GT)</span>
+            </div>
+            <div class="sbs-col-body" id="sbs-gt-body">—</div>
+          </div>
+          <div class="sbs-col sbs-col-ocr">
+            <div class="sbs-col-header sbs-ocr-header" id="sbs-ocr-header">
+              <span id="sbs-ocr-engine-name">OCR</span>
+              <span class="cer-badge" id="sbs-ocr-cer" style="display:none"></span>
+            </div>
+            <div class="sbs-col-body" id="sbs-ocr-body">—</div>
+          </div>
+        </div>
+        <!-- Pipeline triple-diff (affiché en dessous si applicable) -->
+        <div id="sbs-triple-diff" style="display:none"></div>
       </div>
 
       <!-- Sprint 10 — Distribution CER par ligne -->
@@ -1351,6 +1435,113 @@ function renderDiff(ops) {{
   }}).join(' ');
 }}
 
+// ── Rendu côte à côte (char-level) ──────────────────────────────────
+function renderSideBySide(docId) {{
+  const doc = DATA.documents.find(d => d.doc_id === docId);
+  if (!doc) return;
+
+  const sel = document.getElementById('sbs-engine-dropdown');
+  const engineIdx = sel && sel.value !== '' ? parseInt(sel.value, 10) : 0;
+  const er = doc.engine_results[engineIdx];
+  if (!er) return;
+
+  const ops = er.diff || [];
+
+  // Construire le HTML GT (gauche) et OCR (droite) depuis les mêmes ops
+  let gtHtml = '', ocrHtml = '';
+  ops.forEach(op => {{
+    if (op.op === 'equal') {{
+      const t = esc(op.text);
+      gtHtml  += t;
+      ocrHtml += t;
+    }} else if (op.op === 'delete') {{
+      // Présent dans GT, absent de l'OCR → orange dans GT
+      gtHtml += '<span class="d-miss" title="Absent de l\'OCR">' + esc(op.text) + '</span>';
+    }} else if (op.op === 'insert') {{
+      // Présent dans OCR, absent du GT → vert dans OCR
+      ocrHtml += '<span class="d-ins-ocr" title="Insertion OCR">' + esc(op.text) + '</span>';
+    }} else if (op.op === 'replace') {{
+      // Substitution : orange dans GT, rouge dans OCR
+      gtHtml  += '<span class="d-miss" title="Différent dans l\'OCR">' + esc(op.old) + '</span>';
+      ocrHtml += '<span class="d-err"  title="Différent du GT">'       + esc(op.new) + '</span>';
+    }}
+  }});
+
+  document.getElementById('sbs-gt-body').innerHTML  = gtHtml  || '<em style="color:var(--text-muted)">—</em>';
+  document.getElementById('sbs-ocr-body').innerHTML = ocrHtml || '<em style="color:var(--text-muted)">Aucune sortie</em>';
+
+  // En-tête OCR : nom moteur + CER
+  const c = cerColor(er.cer); const bg = cerBg(er.cer);
+  document.getElementById('sbs-ocr-engine-name').textContent = er.engine;
+  const cerBadgeEl = document.getElementById('sbs-ocr-cer');
+  cerBadgeEl.textContent = pct(er.cer);
+  cerBadgeEl.style.cssText = `color:${{c}};background:${{bg}};display:inline-block`;
+
+  // Pipeline triple-diff (si applicable)
+  const tripleEl = document.getElementById('sbs-triple-diff');
+  if (er.ocr_intermediate) {{
+    const ocrDiffHtml = renderDiff(er.ocr_diff);
+    const llmDiffHtml = renderDiff(er.llm_correction_diff);
+    const isPipeline = er.ocr_intermediate !== undefined;
+    const modeLabel = {{text_only:'texte seul', text_and_image:'image+texte', zero_shot:'zero-shot'}}[er.pipeline_mode] || '';
+    const pipeTag = `<span class="pipeline-tag">⛓ ${{modeLabel || 'pipeline'}}</span>`;
+    let onBadge = '';
+    if (er.over_normalization) {{
+      const on = er.over_normalization;
+      const onPct = (on.score * 100).toFixed(2);
+      const cls = on.score > 0.05 ? 'over-norm-badge high' : 'over-norm-badge';
+      onBadge = `<span class="${{cls}}" title="Classe 10 — sur-normalisation LLM">Sur-norm. ${{onPct}}%</span>`;
+    }}
+    let diplomaBadge = '';
+    if (er.cer_diplomatic !== null && er.cer_diplomatic !== undefined) {{
+      const dipC = cerColor(er.cer_diplomatic); const dipB = cerBg(er.cer_diplomatic);
+      const delta = er.cer - er.cer_diplomatic;
+      const deltaHint = delta > 0.001 ? ` (−${{(delta*100).toFixed(1)}}% avec normalisation)` : '';
+      diplomaBadge = `<span class="cer-badge" style="color:${{dipC}};background:${{dipB}};opacity:.85"
+        title="CER diplomatique${{deltaHint}}">diplo. ${{pct(er.cer_diplomatic)}}</span>`;
+    }}
+    tripleEl.style.display = '';
+    tripleEl.innerHTML = `
+      <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;font-size:.83rem;font-weight:600">
+          ${{pipeTag}} ${{diplomaBadge}} ${{onBadge}}
+          <span class="badge" style="background:#f1f5f9">WER ${{pct(er.wer)}}</span>
+        </div>
+        <div class="triple-diff-wrap">
+          <div class="triple-diff-section">
+            <h5>GT → OCR brut</h5>
+            ${{ocrDiffHtml || '<em style="color:var(--text-muted)">—</em>'}}
+          </div>
+          <div class="triple-diff-section">
+            <h5>OCR brut → Correction LLM</h5>
+            ${{llmDiffHtml || '<em style="color:var(--text-muted)">—</em>'}}
+          </div>
+        </div>
+      </div>`;
+  }} else {{
+    // Afficher WER / CER diplomatique même hors pipeline
+    let diplomaBadge = '';
+    if (er.cer_diplomatic !== null && er.cer_diplomatic !== undefined) {{
+      const dipC = cerColor(er.cer_diplomatic); const dipB = cerBg(er.cer_diplomatic);
+      const delta = er.cer - er.cer_diplomatic;
+      const deltaHint = delta > 0.001 ? ` (−${{(delta*100).toFixed(1)}}% avec normalisation)` : '';
+      diplomaBadge = `<span class="cer-badge" style="color:${{dipC}};background:${{dipB}};opacity:.85"
+        title="CER diplomatique${{deltaHint}}">diplo. ${{pct(er.cer_diplomatic)}}</span>`;
+    }}
+    const errBadge = er.error ? `<span class="badge" style="background:#fee2e2;color:#dc2626">Erreur</span>` : '';
+    if (diplomaBadge || errBadge) {{
+      tripleEl.style.display = '';
+      tripleEl.innerHTML = `<div style="margin-top:.5rem;display:flex;gap:.4rem;flex-wrap:wrap;font-size:.82rem">
+        <span class="badge" style="background:#f1f5f9">WER ${{pct(er.wer)}}</span>
+        ${{diplomaBadge}} ${{errBadge}}
+      </div>`;
+    }} else {{
+      tripleEl.style.display = 'none';
+      tripleEl.innerHTML = '';
+    }}
+  }}
+}}
+
 // ── Score badge (ligatures / diacritiques) ───────────────────────
 function _scoreBadge(v, label) {{
   if (v === null || v === undefined) return '<span style="color:var(--text-muted)">—</span>';
@@ -1620,75 +1811,19 @@ function loadDocument(docId) {{
     placeholder.innerHTML = `<span style="font-size:2rem">🖹</span><span>${{esc(doc.image_path)}}</span>`;
   }}
 
-  // GT
-  document.getElementById('doc-gt-text').textContent = doc.ground_truth;
-
-  // Diffs
-  const panels = document.getElementById('doc-diff-panels');
-  panels.innerHTML = doc.engine_results.map((er, i) => {{
-    const c = cerColor(er.cer); const bg = cerBg(er.cer);
-    const diffHtml = renderDiff(er.diff);
-    const errBadge = er.error ? `<span class="badge" style="background:#fee2e2;color:#dc2626">Erreur</span>` : '';
-
-    // Pipeline badge dans l'en-tête du panneau
-    const isPipeline = er.ocr_intermediate !== undefined;
-    const modeLabel = {{text_only:'texte seul', text_and_image:'image+texte', zero_shot:'zero-shot'}}[er.pipeline_mode] || '';
-    const pipeTagPanel = isPipeline
-      ? `<span class="pipeline-tag">⛓ ${{modeLabel || 'pipeline'}}</span>` : '';
-
-    // Sur-normalisation (classe 10)
-    let onBadge = '';
-    if (er.over_normalization) {{
-      const on = er.over_normalization;
-      const onPct = (on.score * 100).toFixed(2);
-      const cls = on.score > 0.05 ? 'over-norm-badge high' : 'over-norm-badge';
-      onBadge = `<span class="${{cls}}" title="Classe 10 — sur-normalisation LLM">Sur-norm. ${{onPct}}%</span>`;
-    }}
-
-    // Triple-diff (vue spécifique pipeline) : OCR brut / Correction LLM
-    let tripleDiffHtml = '';
-    if (isPipeline && er.ocr_intermediate) {{
-      const ocrDiffHtml   = renderDiff(er.ocr_diff);
-      const llmDiffHtml   = renderDiff(er.llm_correction_diff);
-      tripleDiffHtml = `
-        <div class="triple-diff-wrap">
-          <div class="triple-diff-section">
-            <h5>GT → OCR brut</h5>
-            ${{ocrDiffHtml || '<em style="color:var(--text-muted)">—</em>'}}
-          </div>
-          <div class="triple-diff-section">
-            <h5>OCR brut → Correction LLM</h5>
-            ${{llmDiffHtml || '<em style="color:var(--text-muted)">—</em>'}}
-          </div>
-        </div>`;
-    }}
-
-    // CER diplomatique par document
-    let diplomaBadge = '';
-    if (er.cer_diplomatic !== null && er.cer_diplomatic !== undefined) {{
-      const dipC = cerColor(er.cer_diplomatic); const dipB = cerBg(er.cer_diplomatic);
-      const delta = er.cer - er.cer_diplomatic;
-      const deltaHint = delta > 0.001 ? ` (−${{(delta*100).toFixed(1)}}% avec normalisation)` : '';
-      diplomaBadge = `<span class="cer-badge" style="color:${{dipC}};background:${{dipB}};opacity:.85"
-        title="CER diplomatique (ſ=s, u=v, i=j…)${{deltaHint}}">diplo. ${{pct(er.cer_diplomatic)}}</span>`;
-    }}
-
-    return `<div class="diff-panel">
-      <div class="diff-panel-header">
-        <span class="diff-panel-title">${{esc(er.engine)}}</span>
-        ${{pipeTagPanel}}
-        <span class="diff-panel-metrics">
-          <span class="cer-badge" style="color:${{c}};background:${{bg}}">${{pct(er.cer)}}</span>
-          ${{diplomaBadge}}
-          <span class="badge" style="background:#f1f5f9">WER ${{pct(er.wer)}}</span>
-          ${{onBadge}}
-          ${{errBadge}}
-        </span>
-      </div>
-      <div class="diff-panel-body">${{diffHtml || '<em style="color:var(--text-muted)">Aucune sortie</em>'}}</div>
-      ${{tripleDiffHtml}}
-    </div>`;
-  }}).join('');
+  // Side-by-side diff — sélecteur de concurrent
+  const selWrap = document.getElementById('sbs-engine-select');
+  const sel = document.getElementById('sbs-engine-dropdown');
+  if (doc.engine_results.length > 1) {{
+    sel.innerHTML = doc.engine_results.map((er, i) =>
+      `<option value="${{i}}">${{esc(er.engine)}}</option>`
+    ).join('');
+    selWrap.style.display = '';
+  }} else {{
+    sel.innerHTML = '';
+    selWrap.style.display = 'none';
+  }}
+  renderSideBySide(docId);
 
   // ── Sprint 10 : distribution CER par ligne ──────────────────────────
   const lineCard = document.getElementById('doc-line-metrics-card');
@@ -2931,8 +3066,13 @@ class ReportGenerator:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Auto-encoder les images si aucune n'est fournie
+        images_b64 = self.images_b64
+        if not images_b64:
+            images_b64 = _encode_images_b64_from_result(self.benchmark)
+
         labels = get_labels(self.lang)
-        report_data = _build_report_data(self.benchmark, self.images_b64)
+        report_data = _build_report_data(self.benchmark, images_b64)
         report_json = json.dumps(report_data, ensure_ascii=False, separators=(",", ":"))
         i18n_json = json.dumps(labels, ensure_ascii=False, separators=(",", ":"))
 
