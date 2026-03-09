@@ -38,12 +38,12 @@ class MistralOCREngine(BaseOCREngine):
         return "mistral_ocr"
 
     def version(self) -> str:
-        return self.config.get("model", "pixtral-12b-2409")
+        return self.config.get("model", "mistral-ocr-latest")
 
     def __init__(self, config: Optional[dict] = None) -> None:
         super().__init__(config)
         self._api_key = os.environ.get("MISTRAL_API_KEY")
-        self._model = self.config.get("model", "pixtral-12b-2409")
+        self._model = self.config.get("model", "mistral-ocr-latest")
         self._prompt = self.config.get(
             "prompt",
             "Transcris fidèlement le texte visible sur cette image de document "
