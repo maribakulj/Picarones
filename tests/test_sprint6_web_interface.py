@@ -978,3 +978,227 @@ class TestRunnerProgressCallback:
         # Ne doit pas lever d'exception
         result = run_benchmark(corpus, [MockEngine()], progress_callback=bad_callback)
         assert result is not None
+
+
+# ===========================================================================
+# TestFastAPIModels  — GET /api/models/{provider}
+# ===========================================================================
+
+class TestFastAPIModels:
+
+    def test_models_tesseract_200(self, client):
+        r = client.get("/api/models/tesseract")
+        assert r.status_code == 200
+
+    def test_models_tesseract_has_models_list(self, client):
+        r = client.get("/api/models/tesseract")
+        d = r.json()
+        assert "models" in d
+        assert isinstance(d["models"], list)
+
+    def test_models_tesseract_has_provider_field(self, client):
+        r = client.get("/api/models/tesseract")
+        assert r.json()["provider"] == "tesseract"
+
+    def test_models_tesseract_has_languages(self, client):
+        r = client.get("/api/models/tesseract")
+        models = r.json()["models"]
+        # Tesseract est installé dans le CI, au moins fra ou eng doit être présent
+        assert len(models) > 0
+
+    def test_models_google_vision_200(self, client):
+        r = client.get("/api/models/google_vision")
+        assert r.status_code == 200
+        assert "document_text_detection" in r.json()["models"]
+
+    def test_models_azure_doc_intel_200(self, client):
+        r = client.get("/api/models/azure_doc_intel")
+        assert r.status_code == 200
+        assert "prebuilt-document" in r.json()["models"]
+
+    def test_models_ollama_200(self, client):
+        r = client.get("/api/models/ollama")
+        assert r.status_code == 200
+        assert isinstance(r.json()["models"], list)
+
+    def test_models_prompts_200(self, client):
+        r = client.get("/api/models/prompts")
+        assert r.status_code == 200
+        d = r.json()
+        assert isinstance(d["models"], list)
+        assert len(d["models"]) >= 5  # 8 prompts intégrés
+
+    def test_models_prompts_are_txt_files(self, client):
+        r = client.get("/api/models/prompts")
+        for name in r.json()["models"]:
+            assert name.endswith(".txt")
+
+    def test_models_openai_no_key_returns_empty(self, client):
+        # Sans clé, doit renvoyer liste vide + champ error
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if k != "OPENAI_API_KEY"}, clear=True):
+            r = client.get("/api/models/openai")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["models"] == [] or "error" in d
+
+    def test_models_anthropic_no_key_returns_empty(self, client):
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}, clear=True):
+            r = client.get("/api/models/anthropic")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["models"] == [] or "error" in d
+
+    def test_models_unknown_provider_404(self, client):
+        r = client.get("/api/models/provider_xyz_unknown")
+        assert r.status_code == 404
+
+
+# ===========================================================================
+# TestFastAPIBenchmarkRun  — POST /api/benchmark/run
+# ===========================================================================
+
+class TestFastAPIBenchmarkRun:
+
+    def test_run_400_missing_corpus(self, client):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": "/nonexistent/path/xyz",
+            "competitors": [{"ocr_engine": "tesseract", "ocr_model": "fra"}],
+        })
+        assert r.status_code == 400
+
+    def test_run_400_no_competitors(self, client, tmp_corpus):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [],
+        })
+        assert r.status_code == 400
+
+    def test_run_422_missing_ocr_engine(self, client, tmp_corpus):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [{"ocr_model": "fra"}],   # ocr_engine manquant
+        })
+        assert r.status_code == 422
+
+    def test_run_returns_job_id(self, client, tmp_corpus):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [{"ocr_engine": "tesseract", "ocr_model": "fra"}],
+        })
+        assert r.status_code == 200
+        d = r.json()
+        assert "job_id" in d
+        assert "status" in d
+
+    def test_run_job_status_reachable(self, client, tmp_corpus):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [{"ocr_engine": "tesseract", "ocr_model": "fra"}],
+        })
+        job_id = r.json()["job_id"]
+        r2 = client.get(f"/api/benchmark/{job_id}/status")
+        assert r2.status_code == 200
+        d = r2.json()
+        assert d["job_id"] == job_id
+
+    def test_run_with_named_competitor(self, client, tmp_corpus):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [{"name": "Mon Tesseract", "ocr_engine": "tesseract", "ocr_model": "fra"}],
+        })
+        assert r.status_code == 200
+
+    def test_run_multiple_competitors(self, client, tmp_corpus):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [
+                {"ocr_engine": "tesseract", "ocr_model": "fra"},
+                {"ocr_engine": "tesseract", "ocr_model": "eng"},
+            ],
+        })
+        assert r.status_code == 200
+
+    def test_run_with_output_options(self, client, tmp_corpus, tmp_path):
+        r = client.post("/api/benchmark/run", json={
+            "corpus_path": str(tmp_corpus),
+            "competitors": [{"ocr_engine": "tesseract", "ocr_model": "fra"}],
+            "output_dir": str(tmp_path),
+            "report_name": "test_run_report",
+        })
+        assert r.status_code == 200
+
+
+# ===========================================================================
+# TestFastAPIEnginesExtended  — champs ajoutés dans api_engines()
+# ===========================================================================
+
+class TestFastAPIEnginesExtended:
+
+    def test_tesseract_has_langs_field(self, client):
+        r = client.get("/api/engines")
+        tess = next(e for e in r.json()["engines"] if e["id"] == "tesseract")
+        assert "langs" in tess
+        assert isinstance(tess["langs"], list)
+
+    def test_mistral_ocr_in_engines(self, client):
+        r = client.get("/api/engines")
+        ids = [e["id"] for e in r.json()["engines"]]
+        assert "mistral_ocr" in ids
+
+    def test_google_vision_in_engines(self, client):
+        r = client.get("/api/engines")
+        ids = [e["id"] for e in r.json()["engines"]]
+        assert "google_vision" in ids
+
+    def test_azure_doc_intel_in_engines(self, client):
+        r = client.get("/api/engines")
+        ids = [e["id"] for e in r.json()["engines"]]
+        assert "azure_doc_intel" in ids
+
+    def test_cloud_engines_have_key_env(self, client):
+        r = client.get("/api/engines")
+        for eng in r.json()["engines"]:
+            if eng.get("type") == "ocr_cloud":
+                assert "key_env" in eng
+
+    def test_mistral_llm_label_updated(self, client):
+        r = client.get("/api/engines")
+        mistral_llm = next(e for e in r.json()["llms"] if e["id"] == "mistral")
+        assert "LLM" in mistral_llm["label"]
+
+
+# ===========================================================================
+# TestMistralOCRNativeAPI  — mistral-ocr-latest routing
+# ===========================================================================
+
+class TestMistralOCRNativeAPI:
+
+    def test_engine_has_native_api_method(self):
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
+        assert hasattr(eng, "_run_ocr_native_api")
+
+    def test_engine_has_vision_api_method(self):
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine(config={"model": "pixtral-12b-2409"})
+        assert hasattr(eng, "_run_ocr_vision_api")
+
+    def test_model_name_stored(self):
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
+        assert eng._model == "mistral-ocr-latest"
+
+    def test_pixtral_model_stored(self):
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine(config={"model": "pixtral-large-latest"})
+        assert "pixtral" in eng._model.lower()
+
+    def test_engine_name_unchanged(self):
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
+        assert eng.name == "mistral_ocr"
+
+    def test_version_returns_model_name(self):
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
+        assert eng.version() == "mistral-ocr-latest"

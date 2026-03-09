@@ -56,14 +56,7 @@ class MistralOCREngine(BaseOCREngine):
             raise RuntimeError(
                 "Clé API Mistral manquante — définissez la variable d'environnement MISTRAL_API_KEY"
             )
-        try:
-            from mistralai import Mistral
-        except ImportError as exc:
-            raise RuntimeError(
-                "Le package 'mistralai' n'est pas installé. Lancez : pip install mistralai"
-            ) from exc
 
-        # Encoder l'image en base64 avec media type correct
         suffix = image_path.suffix.lower()
         media_type = {
             ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -73,6 +66,42 @@ class MistralOCREngine(BaseOCREngine):
 
         image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
         image_url = f"data:{media_type};base64,{image_b64}"
+
+        if "mistral-ocr" in self._model.lower():
+            return self._run_ocr_native_api(image_url)
+        return self._run_ocr_vision_api(image_url)
+
+    def _run_ocr_native_api(self, image_url: str) -> str:
+        """Endpoint dédié /v1/ocr (pour mistral-ocr-latest et variantes)."""
+        import json
+        import urllib.request
+
+        payload = json.dumps({
+            "model": self._model,
+            "document": {"type": "image_url", "image_url": image_url},
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.mistral.ai/v1/ocr",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode())
+        pages = data.get("pages", [])
+        return "\n\n".join(p.get("markdown", "") for p in pages).strip()
+
+    def _run_ocr_vision_api(self, image_url: str) -> str:
+        """API vision/chat Mistral (pour pixtral-12b, pixtral-large, etc.)."""
+        try:
+            from mistralai import Mistral
+        except ImportError as exc:
+            raise RuntimeError(
+                "Le package 'mistralai' n'est pas installé. Lancez : pip install mistralai"
+            ) from exc
 
         client = Mistral(api_key=self._api_key)
         response = client.chat.complete(

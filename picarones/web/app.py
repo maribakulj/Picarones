@@ -136,6 +136,25 @@ class HuggingFaceImportRequest(BaseModel):
     max_samples: int = 100
 
 
+class CompetitorConfig(BaseModel):
+    name: str = ""
+    ocr_engine: str
+    ocr_model: str = ""
+    llm_provider: str = ""
+    llm_model: str = ""
+    pipeline_mode: str = ""
+    prompt_file: str = ""
+
+
+class BenchmarkRunRequest(BaseModel):
+    corpus_path: str
+    competitors: list[CompetitorConfig]
+    normalization_profile: str = "nfc"
+    output_dir: str = "./rapports/"
+    report_name: str = ""
+    report_lang: str = "fr"
+
+
 # ---------------------------------------------------------------------------
 # API — status
 # ---------------------------------------------------------------------------
@@ -198,6 +217,7 @@ async def api_engines() -> dict:
 
     # Tesseract
     tess = _check_engine("tesseract", "pytesseract")
+    tess["langs"] = _get_tesseract_langs()
     engines.append(tess)
 
     # Pero OCR
@@ -211,6 +231,42 @@ async def api_engines() -> dict:
     # Calamari
     calamari = _check_engine("calamari", "calamari_ocr", label="Calamari")
     engines.append(calamari)
+
+    # Mistral OCR (API cloud)
+    mistral_key = os.environ.get("MISTRAL_API_KEY")
+    engines.append({
+        "id": "mistral_ocr",
+        "label": "Mistral OCR (Pixtral / mistral-ocr-latest)",
+        "type": "ocr_cloud",
+        "available": bool(mistral_key),
+        "key_env": "MISTRAL_API_KEY",
+        "status": "configured" if mistral_key else "missing_key",
+        "version": "",
+    })
+
+    # Google Vision (API cloud)
+    gv_key = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or os.environ.get("GOOGLE_API_KEY")
+    engines.append({
+        "id": "google_vision",
+        "label": "Google Vision API",
+        "type": "ocr_cloud",
+        "available": bool(gv_key),
+        "key_env": "GOOGLE_APPLICATION_CREDENTIALS",
+        "status": "configured" if gv_key else "missing_key",
+        "version": "",
+    })
+
+    # Azure Document Intelligence (API cloud)
+    az_key = os.environ.get("AZURE_DOC_INTEL_KEY")
+    engines.append({
+        "id": "azure_doc_intel",
+        "label": "Azure Document Intelligence",
+        "type": "ocr_cloud",
+        "available": bool(az_key),
+        "key_env": "AZURE_DOC_INTEL_KEY",
+        "status": "configured" if az_key else "missing_key",
+        "version": "",
+    })
 
     llms = []
 
@@ -234,10 +290,10 @@ async def api_engines() -> dict:
         "status": "configured" if os.environ.get("ANTHROPIC_API_KEY") else "missing_key",
     })
 
-    # Mistral
+    # Mistral LLM
     llms.append({
         "id": "mistral",
-        "label": "Mistral (Mistral OCR, Pixtral, Large)",
+        "label": "Mistral LLM (Mistral Large, Small…)",
         "type": "llm",
         "available": bool(os.environ.get("MISTRAL_API_KEY")),
         "key_env": "MISTRAL_API_KEY",
@@ -310,6 +366,134 @@ def _list_ollama_models() -> list[str]:
         return [m.get("name", "") for m in data.get("models", [])]
     except Exception:
         return []
+
+
+def _get_tesseract_langs() -> list[str]:
+    try:
+        import pytesseract
+        langs = pytesseract.get_languages(config="")
+        return sorted(l for l in langs if l != "osd")
+    except Exception:
+        return ["fra", "lat", "eng", "deu", "ita", "spa"]
+
+
+# ---------------------------------------------------------------------------
+# API — models (dynamic per provider)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/models/{provider}")
+async def api_models(provider: str) -> dict:
+    """Retourne la liste des modèles disponibles pour un provider, en temps réel."""
+    import urllib.error
+    import urllib.request as _urlreq
+
+    def _fetch_json(url: str, headers: dict) -> dict:
+        req = _urlreq.Request(url, headers=headers)
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+
+    if provider == "tesseract":
+        return {"provider": provider, "models": _get_tesseract_langs()}
+
+    if provider == "mistral_ocr":
+        api_key = os.environ.get("MISTRAL_API_KEY")
+        if not api_key:
+            return {"provider": provider, "models": [], "error": "MISTRAL_API_KEY non définie"}
+        try:
+            data = _fetch_json(
+                "https://api.mistral.ai/v1/models",
+                {"Authorization": f"Bearer {api_key}"},
+            )
+            models = sorted(
+                m["id"] for m in data.get("data", [])
+                if "pixtral" in m["id"].lower() or "mistral-ocr" in m["id"].lower()
+            )
+            return {"provider": provider, "models": models}
+        except Exception as exc:
+            return {
+                "provider": provider,
+                "models": ["pixtral-12b-2409", "pixtral-large-latest", "mistral-ocr-latest"],
+                "error": str(exc),
+            }
+
+    if provider == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return {"provider": provider, "models": [], "error": "OPENAI_API_KEY non définie"}
+        try:
+            data = _fetch_json(
+                "https://api.openai.com/v1/models",
+                {"Authorization": f"Bearer {api_key}"},
+            )
+            models = sorted(
+                (m["id"] for m in data.get("data", []) if "gpt-4" in m["id"].lower()),
+                reverse=True,
+            )
+            return {"provider": provider, "models": models}
+        except Exception as exc:
+            return {
+                "provider": provider,
+                "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+                "error": str(exc),
+            }
+
+    if provider == "anthropic":
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return {"provider": provider, "models": [], "error": "ANTHROPIC_API_KEY non définie"}
+        try:
+            data = _fetch_json(
+                "https://api.anthropic.com/v1/models",
+                {"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+            )
+            models = [m["id"] for m in data.get("data", [])]
+            return {"provider": provider, "models": models}
+        except Exception as exc:
+            return {
+                "provider": provider,
+                "models": ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-6"],
+                "error": str(exc),
+            }
+
+    if provider == "mistral":
+        api_key = os.environ.get("MISTRAL_API_KEY")
+        if not api_key:
+            return {"provider": provider, "models": [], "error": "MISTRAL_API_KEY non définie"}
+        try:
+            data = _fetch_json(
+                "https://api.mistral.ai/v1/models",
+                {"Authorization": f"Bearer {api_key}"},
+            )
+            models = sorted(
+                m["id"] for m in data.get("data", [])
+                if "pixtral" not in m["id"].lower() and "mistral-ocr" not in m["id"].lower()
+            )
+            return {"provider": provider, "models": models}
+        except Exception as exc:
+            return {
+                "provider": provider,
+                "models": ["mistral-large-latest", "mistral-small-latest"],
+                "error": str(exc),
+            }
+
+    if provider == "ollama":
+        return {"provider": provider, "models": _list_ollama_models()}
+
+    if provider == "google_vision":
+        return {"provider": provider, "models": ["document_text_detection", "text_detection"]}
+
+    if provider == "azure_doc_intel":
+        return {"provider": provider, "models": ["prebuilt-document", "prebuilt-read"]}
+
+    if provider == "prompts":
+        prompts_dir = Path(__file__).parent.parent / "prompts"
+        if prompts_dir.exists():
+            prompts = sorted(f.name for f in prompts_dir.glob("*.txt"))
+        else:
+            prompts = []
+        return {"provider": provider, "models": prompts}
+
+    raise HTTPException(status_code=404, detail=f"Provider inconnu : {provider}")
 
 
 # ---------------------------------------------------------------------------
@@ -587,6 +771,192 @@ def _sse_format(event_type: str, data: Any) -> str:
     return f"event: {event_type}\ndata: {payload}\n\n"
 
 
+# ---------------------------------------------------------------------------
+# API — benchmark/run (concurrents composés)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/benchmark/run")
+async def api_benchmark_run(req: BenchmarkRunRequest) -> dict:
+    corpus_path = Path(req.corpus_path)
+    if not corpus_path.exists() or not corpus_path.is_dir():
+        raise HTTPException(status_code=400, detail=f"Corpus non trouvé : {req.corpus_path}")
+    if not req.competitors:
+        raise HTTPException(status_code=400, detail="Aucun concurrent défini.")
+
+    job_id = str(uuid.uuid4())
+    job = BenchmarkJob(job_id=job_id)
+    _JOBS[job_id] = job
+
+    thread = threading.Thread(
+        target=_run_benchmark_thread_v2,
+        args=(job, req),
+        daemon=True,
+    )
+    thread.start()
+    return {"job_id": job_id, "status": "pending"}
+
+
+def _engine_from_competitor(comp: CompetitorConfig) -> Any:
+    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig."""
+    from picarones.engines.tesseract import TesseractEngine
+    from picarones.engines.mistral_ocr import MistralOCREngine
+
+    engine_id = comp.ocr_engine
+
+    if engine_id == "tesseract":
+        ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
+    elif engine_id == "mistral_ocr":
+        ocr = MistralOCREngine(config={"model": comp.ocr_model or "pixtral-12b-2409"})
+    elif engine_id == "google_vision":
+        try:
+            from picarones.engines.google_vision import GoogleVisionEngine
+            ocr = GoogleVisionEngine(config={"detection_type": comp.ocr_model or "document_text_detection"})
+        except ImportError as exc:
+            raise RuntimeError("Google Vision non disponible (google-cloud-vision non installé).") from exc
+    elif engine_id == "azure_doc_intel":
+        try:
+            from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+            ocr = AzureDocIntelEngine(config={"model": comp.ocr_model or "prebuilt-document"})
+        except ImportError as exc:
+            raise RuntimeError("Azure Document Intelligence non disponible.") from exc
+    else:
+        raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+
+    if not comp.llm_provider:
+        return ocr
+
+    # Pipeline OCR+LLM
+    _mode_map = {
+        "text_only": "text_only",
+        "post_correction_text": "text_only",
+        "text_and_image": "text_and_image",
+        "post_correction_image": "text_and_image",
+        "zero_shot": "zero_shot",
+    }
+    mode = _mode_map.get(comp.pipeline_mode, "text_only")
+
+    if comp.llm_provider == "openai":
+        from picarones.llm.openai_adapter import OpenAIAdapter
+        llm = OpenAIAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "anthropic":
+        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        llm = AnthropicAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "mistral":
+        from picarones.llm.mistral_adapter import MistralAdapter
+        llm = MistralAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "ollama":
+        from picarones.llm.ollama_adapter import OllamaAdapter
+        llm = OllamaAdapter(model=comp.llm_model or None)
+    else:
+        raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
+
+    from picarones.pipelines.base import OCRLLMPipeline
+    prompt = comp.prompt_file or "correction_medieval_french.txt"
+    pipeline_name = comp.name or f"{engine_id}→{comp.llm_model or comp.llm_provider}"
+    return OCRLLMPipeline(
+        ocr_engine=ocr,
+        llm_adapter=llm,
+        mode=mode,
+        prompt=prompt,
+        pipeline_name=pipeline_name,
+    )
+
+
+def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None:
+    """Exécute un benchmark à partir d'une liste de CompetitorConfig."""
+    import time
+
+    job.status = "running"
+    job.started_at = _iso_now()
+    job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
+
+    try:
+        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.core.runner import run_benchmark
+
+        corpus = load_corpus_from_directory(req.corpus_path)
+        job.total_docs = len(corpus)
+        job.add_event("log", {"message": f"{job.total_docs} documents chargés."})
+
+        if job.status == "cancelled":
+            return
+
+        engines = []
+        for comp in req.competitors:
+            try:
+                eng = _engine_from_competitor(comp)
+                engines.append(eng)
+                job.add_event("log", {"message": f"Concurrent : {eng.name}"})
+            except Exception as exc:
+                job.add_event("warning", {
+                    "message": f"Concurrent ignoré '{comp.name or comp.ocr_engine}' : {exc}"
+                })
+
+        if not engines:
+            raise ValueError("Aucun concurrent valide disponible.")
+
+        output_dir = Path(req.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        report_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        output_json = str(output_dir / f"{report_name}.json")
+        output_html = str(output_dir / f"{report_name}.html")
+
+        n_engines = len(engines)
+        total_steps = job.total_docs * n_engines
+        step_counter = [0]
+
+        def _progress_callback(engine_name: str, doc_idx: int, doc_id: str) -> None:
+            if job.status == "cancelled":
+                return
+            step_counter[0] += 1
+            job.current_engine = engine_name
+            job.processed_docs = doc_idx
+            job.progress = step_counter[0] / max(total_steps, 1)
+            job.add_event("progress", {
+                "engine": engine_name,
+                "doc_idx": doc_idx,
+                "doc_id": doc_id,
+                "progress": job.progress,
+                "processed": step_counter[0],
+                "total": total_steps,
+            })
+
+        result = run_benchmark(
+            corpus=corpus,
+            engines=engines,
+            output_json=output_json,
+            show_progress=False,
+            progress_callback=_progress_callback,
+        )
+
+        if job.status == "cancelled":
+            return
+
+        job.add_event("log", {"message": "Génération du rapport HTML…"})
+        from picarones.report.generator import ReportGenerator
+        gen = ReportGenerator(result, lang=req.report_lang)
+        gen.generate(output_html)
+
+        job.output_path = output_html
+        job.progress = 1.0
+        job.status = "complete"
+        job.finished_at = _iso_now()
+
+        ranking = result.ranking()
+        job.add_event("complete", {
+            "message": "Benchmark terminé.",
+            "output_html": output_html,
+            "output_json": output_json,
+            "ranking": ranking,
+        })
+
+    except Exception as exc:
+        job.status = "error"
+        job.error = str(exc)
+        job.finished_at = _iso_now()
+        job.add_event("error", {"message": f"Erreur : {exc}"})
+
+
 def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     """Exécute le benchmark dans un thread et envoie des événements SSE."""
     import time
@@ -840,6 +1210,26 @@ tr:hover td { background: #f0ede6; }
 /* Spinner */
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Provider rows (OCR/LLM status sections) */
+.provider-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; background: #fff; }
+.provider-label { min-width: 200px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.provider-status { font-size: 11px; color: var(--text-muted); min-width: 80px; }
+.provider-model-select { flex: 1; font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Competitor composer */
+.mode-toggle { display: flex; gap: 20px; padding: 10px 14px; background: #f4f2ed; border-radius: var(--radius); margin-bottom: 12px; }
+.mode-toggle label { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.composer-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+.composer-row .form-group { min-width: 150px; }
+
+/* Competitor cards */
+.competitor-card { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 7px; background: #fff; gap: 10px; }
+.competitor-card:hover { border-color: var(--accent); background: #f8f7ff; }
+.competitor-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.competitor-badge { font-size: 11px; background: #eef2fc; color: var(--accent); padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+.competitor-name { font-size: 13px; font-weight: 500; }
+.competitor-detail { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -876,25 +1266,98 @@ tr:hover td { background: #f0ede6; }
       <div id="corpus-info" style="margin-top:8px; font-size:12px; color: var(--text-muted);"></div>
     </div>
 
+    <!-- ── Section 1 : Moteurs OCR ─────────────────────────────────── -->
     <div class="card">
-      <h2 data-i18n="bench_engines_title">2. Moteurs et pipelines</h2>
-      <div id="engine-checkboxes" class="checkbox-grid">
-        <div style="color: var(--text-muted); font-size: 12px;" data-i18n="loading">Chargement…</div>
+      <h2 data-i18n="bench_ocr_title">2. Moteurs OCR</h2>
+      <div id="ocr-engines-status-list">
+        <div style="color: var(--text-muted); font-size: 12px;"><span class="spinner"></span> Chargement…</div>
       </div>
     </div>
 
+    <!-- ── Section 2 : Modèles LLM ──────────────────────────────────── -->
     <div class="card">
-      <h2 data-i18n="bench_options_title">3. Options</h2>
+      <h2 data-i18n="bench_llm_title">3. Modèles LLM</h2>
+      <div id="llm-status-list">
+        <div style="color: var(--text-muted); font-size: 12px;"><span class="spinner"></span> Chargement…</div>
+      </div>
+    </div>
+
+    <!-- ── Section 3 : Composition des concurrents ──────────────────── -->
+    <div class="card">
+      <h2 data-i18n="bench_compose_title">4. Concurrents à benchmarker</h2>
+
+      <div class="mode-toggle">
+        <label><input type="radio" name="compose-mode" value="ocr" checked onchange="onComposeModeChange()"> 🔍 <span data-i18n="compose_ocr_only">OCR seul</span></label>
+        <label><input type="radio" name="compose-mode" value="pipeline" onchange="onComposeModeChange()"> ⛓ <span data-i18n="compose_pipeline">Pipeline OCR+LLM</span></label>
+      </div>
+
+      <div class="composer-row">
+        <div class="form-group">
+          <label data-i18n="compose_ocr_engine">Moteur OCR</label>
+          <select id="compose-ocr-engine" onchange="onComposeOCRChange()">
+            <option value="tesseract">Tesseract</option>
+            <option value="mistral_ocr">Mistral OCR</option>
+            <option value="google_vision">Google Vision</option>
+            <option value="azure_doc_intel">Azure Doc Intel</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label data-i18n="compose_ocr_model">Modèle / Langue <span class="spinner" id="sp-ocr-model" style="display:none"></span></label>
+          <select id="compose-ocr-model"></select>
+        </div>
+      </div>
+
+      <div id="compose-pipeline-section" style="display:none;">
+        <div class="composer-row">
+          <div class="form-group">
+            <label data-i18n="compose_llm_provider">Provider LLM</label>
+            <select id="compose-llm-provider" onchange="onComposeLLMChange()">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="mistral">Mistral LLM</option>
+              <option value="ollama">Ollama</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label data-i18n="compose_llm_model">Modèle LLM <span class="spinner" id="sp-llm-model" style="display:none"></span></label>
+            <select id="compose-llm-model"></select>
+          </div>
+        </div>
+        <div class="composer-row">
+          <div class="form-group">
+            <label data-i18n="compose_mode">Mode pipeline</label>
+            <select id="compose-pipeline-mode">
+              <option value="text_only" data-i18n="mode_text_only">Post-correction texte</option>
+              <option value="text_and_image" data-i18n="mode_text_image">Post-correction image+texte</option>
+              <option value="zero_shot" data-i18n="mode_zero_shot">Zero-shot</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label data-i18n="compose_prompt">Prompt <span class="spinner" id="sp-prompt" style="display:none"></span></label>
+            <select id="compose-prompt"></select>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+        <button class="btn btn-primary btn-sm" onclick="addCompetitor()" data-i18n="compose_add">+ Ajouter</button>
+        <span id="compose-error" style="color: var(--danger); font-size:12px;"></span>
+      </div>
+
+      <div id="competitors-list" style="margin-top:14px;">
+        <div style="color: var(--text-muted); font-size:12px;" data-i18n="compose_empty">Aucun concurrent ajouté.</div>
+      </div>
+    </div>
+
+    <!-- ── 5. Options ─────────────────────────────────────────────────── -->
+    <div class="card">
+      <h2 data-i18n="bench_options_title">5. Options</h2>
       <div class="form-row">
         <div class="form-group">
           <label data-i18n="bench_norm_label">Profil de normalisation</label>
           <select id="norm-profile">
             <option value="nfc">NFC (standard)</option>
           </select>
-        </div>
-        <div class="form-group">
-          <label data-i18n="bench_lang_label">Langue (Tesseract)</label>
-          <input type="text" id="bench-lang" value="fra" placeholder="fra" />
         </div>
         <div class="form-group">
           <label data-i18n="bench_output_label">Dossier de sortie</label>
@@ -1072,7 +1535,23 @@ const T = {
     bench_corpus_label: "Chemin vers le dossier corpus (paires image / .gt.txt)",
     bench_browse: "Parcourir",
     bench_engines_title: "2. Moteurs et pipelines",
-    bench_options_title: "3. Options",
+    bench_ocr_title: "2. Moteurs OCR",
+    bench_llm_title: "3. Modèles LLM",
+    bench_compose_title: "4. Concurrents à benchmarker",
+    bench_options_title: "5. Options",
+    compose_ocr_only: "OCR seul",
+    compose_pipeline: "Pipeline OCR+LLM",
+    compose_ocr_engine: "Moteur OCR",
+    compose_ocr_model: "Modèle / Langue",
+    compose_llm_provider: "Provider LLM",
+    compose_llm_model: "Modèle LLM",
+    compose_mode: "Mode pipeline",
+    compose_prompt: "Prompt",
+    compose_add: "+ Ajouter",
+    compose_empty: "Aucun concurrent ajouté.",
+    mode_text_only: "Post-correction texte",
+    mode_text_image: "Post-correction image+texte",
+    mode_zero_shot: "Zero-shot",
     bench_norm_label: "Profil de normalisation",
     bench_lang_label: "Langue (Tesseract)",
     bench_output_label: "Dossier de sortie",
@@ -1124,7 +1603,23 @@ const T = {
     bench_corpus_label: "Path to corpus directory (image / .gt.txt pairs)",
     bench_browse: "Browse",
     bench_engines_title: "2. Engines & pipelines",
-    bench_options_title: "3. Options",
+    bench_ocr_title: "2. OCR Engines",
+    bench_llm_title: "3. LLM Models",
+    bench_compose_title: "4. Competitors",
+    bench_options_title: "5. Options",
+    compose_ocr_only: "OCR only",
+    compose_pipeline: "OCR+LLM Pipeline",
+    compose_ocr_engine: "OCR Engine",
+    compose_ocr_model: "Model / Language",
+    compose_llm_provider: "LLM Provider",
+    compose_llm_model: "LLM Model",
+    compose_mode: "Pipeline mode",
+    compose_prompt: "Prompt",
+    compose_add: "+ Add",
+    compose_empty: "No competitors added.",
+    mode_text_only: "Text post-correction",
+    mode_text_image: "Image+text post-correction",
+    mode_zero_shot: "Zero-shot",
     bench_norm_label: "Normalization profile",
     bench_lang_label: "Language (Tesseract)",
     bench_output_label: "Output directory",
@@ -1198,32 +1693,221 @@ async function loadStatus() {
   } catch(e) {}
 }
 
-// ─── Engine checkboxes ───────────────────────────────────────────────────────
-async function loadEngineCheckboxes() {
+// ─── Models cache & fetching ─────────────────────────────────────────────────
+let _modelsCache = {};
+let _enginesData = null;
+let _competitors = [];
+let _refreshIntervalId = null;
+
+async function fetchModels(provider) {
+  if (_modelsCache[provider]) return _modelsCache[provider];
+  const r = await fetch(`/api/models/${provider}`);
+  const d = await r.json();
+  const models = d.models || [];
+  _modelsCache[provider] = models;
+  return models;
+}
+
+function populateSelect(selectId, models, spinnerId) {
+  const sel = document.getElementById(selectId);
+  if (spinnerId) { const sp = document.getElementById(spinnerId); if (sp) sp.style.display = "none"; }
+  if (!sel) return;
+  sel.innerHTML = models.length === 0
+    ? '<option value="">— aucun modèle —</option>'
+    : models.map(m => `<option value="${m}">${m}</option>`).join("");
+}
+
+// ─── Benchmark sections (OCR + LLM status + composer init) ───────────────────
+async function loadBenchmarkSections() {
   try {
     const r = await fetch("/api/engines");
     const d = await r.json();
-    const container = document.getElementById("engine-checkboxes");
-    container.innerHTML = "";
-
-    [...d.engines, ...d.llms].forEach(eng => {
-      const item = document.createElement("label");
-      item.className = "checkbox-item" + (eng.available ? " checked" : "");
-      const dot = `<span class="engine-status ${eng.available ? "status-ok" : "status-err"}"></span>`;
-      const chk = `<input type="checkbox" name="engine" value="${eng.id}" ${eng.available ? "checked" : ""} ${eng.available ? "" : ""}>`;
-      item.innerHTML = `${chk}${dot}<span>${eng.label}</span>`;
-      item.querySelector("input").addEventListener("change", e => {
-        item.classList.toggle("checked", e.target.checked);
-      });
-      container.appendChild(item);
-    });
-
-    // Store all engine data for later
-    window._enginesData = d;
+    _enginesData = d;
+    renderOCREnginesSection(d.engines);
+    renderLLMSection(d.llms);
   } catch(e) {
-    document.getElementById("engine-checkboxes").innerHTML =
-      '<span style="color: var(--danger); font-size:12px;">Erreur chargement moteurs</span>';
+    document.getElementById("ocr-engines-status-list").innerHTML =
+      `<div style="color:var(--danger);font-size:12px;">Erreur : ${e.message}</div>`;
   }
+}
+
+function _makeProviderRow(eng, msId) {
+  const dotCls = eng.available ? "status-ok" : (eng.status === "not_running" ? "status-warn" : "status-err");
+  let statusLabel;
+  if (eng.available) statusLabel = eng.version ? eng.version : (lang === "fr" ? "disponible" : "available");
+  else if (eng.status === "missing_key") statusLabel = eng.key_env ? `<code style="font-size:11px;color:var(--warning)">${eng.key_env}</code>` : (lang === "fr" ? "clé manquante" : "key missing");
+  else if (eng.status === "not_running") statusLabel = lang === "fr" ? "inactif" : "not running";
+  else statusLabel = lang === "fr" ? "non installé" : "not installed";
+
+  const row = document.createElement("div");
+  row.className = "provider-row";
+  row.innerHTML = `
+    <div class="provider-label"><span class="engine-status ${dotCls}"></span><strong>${eng.label}</strong></div>
+    <div class="provider-status">${statusLabel}</div>
+    <div class="provider-model-select" id="${msId}">${eng.available ? '<span class="spinner"></span>' : ""}</div>`;
+  return row;
+}
+
+async function renderOCREnginesSection(engines) {
+  const container = document.getElementById("ocr-engines-status-list");
+  container.innerHTML = "";
+  for (const eng of engines) {
+    const msId = `ms-ocr-${eng.id}`;
+    container.appendChild(_makeProviderRow(eng, msId));
+    if (eng.available) {
+      fetchModels(eng.id).then(models => {
+        const div = document.getElementById(msId);
+        if (!div) return;
+        div.innerHTML = models.length === 0
+          ? `<span style="color:var(--text-muted);font-size:11px;">—</span>`
+          : `<span style="font-size:12px;">${models.slice(0,5).join(", ")}${models.length > 5 ? ` +${models.length-5}` : ""}</span>`;
+      }).catch(() => {
+        const div = document.getElementById(msId);
+        if (div) div.innerHTML = `<span style="color:var(--danger);font-size:11px;">Erreur API</span>`;
+      });
+    }
+  }
+}
+
+async function renderLLMSection(llms) {
+  const container = document.getElementById("llm-status-list");
+  container.innerHTML = "";
+  for (const llm of llms) {
+    const msId = `ms-llm-${llm.id}`;
+    container.appendChild(_makeProviderRow(llm, msId));
+    if (llm.available) {
+      fetchModels(llm.id).then(models => {
+        const div = document.getElementById(msId);
+        if (!div) return;
+        div.innerHTML = models.length === 0
+          ? `<span style="color:var(--text-muted);font-size:11px;">—</span>`
+          : `<span style="font-size:12px;">${models.slice(0,3).join(", ")}${models.length > 3 ? ` +${models.length-3}` : ""}</span>`;
+      }).catch(() => {
+        const div = document.getElementById(msId);
+        if (div) div.innerHTML = `<span style="color:var(--danger);font-size:11px;">Erreur API</span>`;
+      });
+    }
+  }
+}
+
+function startAutoRefresh() {
+  if (_refreshIntervalId) clearInterval(_refreshIntervalId);
+  _refreshIntervalId = setInterval(async () => {
+    try {
+      const r = await fetch("/api/engines");
+      const d = await r.json();
+      if (!_enginesData || JSON.stringify(d) !== JSON.stringify(_enginesData)) {
+        _modelsCache = {};
+        _enginesData = d;
+        renderOCREnginesSection(d.engines);
+        renderLLMSection(d.llms);
+      }
+    } catch(e) {}
+  }, 10000);
+}
+
+// ─── Competitor composer ──────────────────────────────────────────────────────
+async function onComposeOCRChange() {
+  const engine = document.getElementById("compose-ocr-engine").value;
+  const sp = document.getElementById("sp-ocr-model");
+  sp.style.display = "inline-block";
+  try {
+    const models = await fetchModels(engine);
+    populateSelect("compose-ocr-model", models, "sp-ocr-model");
+  } catch(e) {
+    sp.style.display = "none";
+    document.getElementById("compose-ocr-model").innerHTML = '<option value="">Erreur</option>';
+  }
+}
+
+async function onComposeLLMChange() {
+  const provider = document.getElementById("compose-llm-provider").value;
+  const sp = document.getElementById("sp-llm-model");
+  sp.style.display = "inline-block";
+  try {
+    const models = await fetchModels(provider);
+    populateSelect("compose-llm-model", models, "sp-llm-model");
+  } catch(e) {
+    sp.style.display = "none";
+    document.getElementById("compose-llm-model").innerHTML = '<option value="">Erreur</option>';
+  }
+}
+
+function onComposeModeChange() {
+  const mode = document.querySelector("input[name=compose-mode]:checked").value;
+  document.getElementById("compose-pipeline-section").style.display =
+    mode === "pipeline" ? "block" : "none";
+}
+
+async function loadComposePrompts() {
+  document.getElementById("sp-prompt").style.display = "inline-block";
+  try {
+    const models = await fetchModels("prompts");
+    populateSelect("compose-prompt", models, "sp-prompt");
+  } catch(e) {
+    document.getElementById("sp-prompt").style.display = "none";
+  }
+}
+
+function addCompetitor() {
+  const ocrEngine = document.getElementById("compose-ocr-engine").value;
+  const ocrModel = document.getElementById("compose-ocr-model").value;
+  const mode = document.querySelector("input[name=compose-mode]:checked").value;
+  const errEl = document.getElementById("compose-error");
+
+  if (!ocrEngine) {
+    errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
+    return;
+  }
+
+  const comp = { name: "", ocr_engine: ocrEngine, ocr_model: ocrModel,
+                  llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "" };
+
+  if (mode === "pipeline") {
+    comp.llm_provider = document.getElementById("compose-llm-provider").value;
+    comp.llm_model = document.getElementById("compose-llm-model").value;
+    comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
+    comp.prompt_file = document.getElementById("compose-prompt").value;
+    if (!comp.llm_provider) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un provider LLM." : "Select an LLM provider.";
+      return;
+    }
+    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_provider}${comp.llm_model ? ":"+comp.llm_model : ""}`;
+  } else {
+    comp.name = `${ocrEngine}${ocrModel ? " ("+ocrModel+")" : ""}`;
+  }
+
+  errEl.textContent = "";
+  _competitors.push(comp);
+  renderCompetitors();
+}
+
+function removeCompetitor(idx) {
+  _competitors.splice(idx, 1);
+  renderCompetitors();
+}
+
+function renderCompetitors() {
+  const container = document.getElementById("competitors-list");
+  if (_competitors.length === 0) {
+    container.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">${t("compose_empty")}</div>`;
+    return;
+  }
+  container.innerHTML = _competitors.map((c, i) => {
+    const isPipeline = !!c.llm_provider;
+    const badge = isPipeline ? "⛓ Pipeline" : "🔍 OCR";
+    const detail = isPipeline
+      ? `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`
+      : `${c.ocr_engine}:${c.ocr_model}`;
+    return `<div class="competitor-card">
+      <div class="competitor-info">
+        <span class="competitor-badge">${badge}</span>
+        <span class="competitor-name">${c.name}</span>
+        <span class="competitor-detail">${detail}</span>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeCompetitor(${i})">✕</button>
+    </div>`;
+  }).join("");
 }
 
 // ─── Normalization profiles ──────────────────────────────────────────────────
@@ -1301,19 +1985,17 @@ async function startBenchmark() {
     alert(lang === "fr" ? "Veuillez sélectionner un dossier corpus." : "Please select a corpus directory.");
     return;
   }
-  const engines = Array.from(document.querySelectorAll("input[name=engine]:checked")).map(e => e.value);
-  if (engines.length === 0) {
-    alert(lang === "fr" ? "Veuillez sélectionner au moins un moteur." : "Please select at least one engine.");
+  if (_competitors.length === 0) {
+    alert(lang === "fr" ? "Ajoutez au moins un concurrent (Section 4)." : "Add at least one competitor (Section 4).");
     return;
   }
 
   const payload = {
     corpus_path: corpusPath,
-    engines: engines,
+    competitors: _competitors,
     normalization_profile: document.getElementById("norm-profile").value,
     output_dir: document.getElementById("output-dir").value,
     report_name: document.getElementById("report-name").value,
-    lang: document.getElementById("bench-lang").value,
   };
 
   document.getElementById("start-btn").disabled = true;
@@ -1325,7 +2007,7 @@ async function startBenchmark() {
   document.getElementById("bench-status-text").textContent = lang === "fr" ? "Démarrage…" : "Starting…";
 
   try {
-    const r = await fetch("/api/benchmark/start", {
+    const r = await fetch("/api/benchmark/run", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(payload),
@@ -1336,7 +2018,7 @@ async function startBenchmark() {
     }
     const d = await r.json();
     _currentJobId = d.job_id;
-    _startSSE(_currentJobId, engines);
+    _startSSE(_currentJobId);
   } catch(e) {
     appendLog(`Erreur : ${e.message}`, "error");
     document.getElementById("start-btn").disabled = false;
@@ -1345,20 +2027,11 @@ async function startBenchmark() {
   }
 }
 
-function _startSSE(jobId, engines) {
+function _startSSE(jobId) {
   if (_eventSource) _eventSource.close();
-  // Init engine progress bars
   const pl = document.getElementById("engine-progress-list");
   pl.innerHTML = "";
-  engines.forEach(eng => {
-    const div = document.createElement("div");
-    div.id = `eng-progress-${eng}`;
-    div.style = "margin-bottom: 8px;";
-    div.innerHTML = `<div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;">
-      <span>${eng}</span><span id="eng-pct-${eng}">0%</span></div>
-      <div class="progress-bar-outer"><div class="progress-bar-inner" id="eng-bar-${eng}" style="width:0%"></div></div>`;
-    pl.appendChild(div);
-  });
+  const seenEngines = {};
 
   _eventSource = new EventSource(`/api/benchmark/${jobId}/stream`);
 
@@ -1381,16 +2054,22 @@ function _startSSE(jobId, engines) {
   _eventSource.addEventListener("progress", e => {
     const d = JSON.parse(e.data);
     const pct = Math.round(d.progress * 100);
+    const engId = d.engine.replace(/[^a-z0-9_-]/gi, "_");
+    if (!seenEngines[engId]) {
+      seenEngines[engId] = true;
+      const div = document.createElement("div");
+      div.style = "margin-bottom: 8px;";
+      div.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+        <span>${d.engine}</span><span id="eng-pct-${engId}">0%</span></div>
+        <div class="progress-bar-outer"><div class="progress-bar-inner" id="eng-bar-${engId}" style="width:0%"></div></div>`;
+      pl.appendChild(div);
+    }
+    const bar = document.getElementById(`eng-bar-${engId}`);
+    const pctEl = document.getElementById(`eng-pct-${engId}`);
+    if (bar) bar.style.width = pct + "%";
+    if (pctEl) pctEl.textContent = pct + "%";
     document.getElementById("bench-status-text").textContent =
       `${pct}% — ${d.engine} (${d.processed}/${d.total})`;
-    engines.forEach(eng => {
-      const bar = document.getElementById(`eng-bar-${eng}`);
-      const pctEl = document.getElementById(`eng-pct-${eng}`);
-      if (d.engine === eng && bar && pctEl) {
-        bar.style.width = pct + "%";
-        pctEl.textContent = pct + "%";
-      }
-    });
   });
 
   _eventSource.addEventListener("complete", e => {
@@ -1411,15 +2090,8 @@ function _startSSE(jobId, engines) {
     _finishBenchmark();
   });
 
-  _eventSource.addEventListener("done", e => {
-    _finishBenchmark();
-  });
-
-  _eventSource.onerror = () => {
-    if (_currentJobId) {
-      _finishBenchmark();
-    }
-  };
+  _eventSource.addEventListener("done", e => { _finishBenchmark(); });
+  _eventSource.onerror = () => { if (_currentJobId) _finishBenchmark(); };
 }
 
 function _showResults(data) {
@@ -1656,11 +2328,15 @@ async function confirmImport() {
 }
 
 // ─── Init ────────────────────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   loadStatus();
-  loadEngineCheckboxes();
   loadNormProfiles();
   initHTRFilters();
+  // Load OCR engines, LLM models, initialize composer
+  await loadBenchmarkSections();
+  onComposeOCRChange();      // Pre-populate Tesseract languages
+  loadComposePrompts();       // Pre-load prompt files
+  startAutoRefresh();         // Auto-detect new API keys every 10 s
   // Close modal on backdrop click
   document.getElementById("import-modal").addEventListener("click", e => {
     if (e.target === document.getElementById("import-modal")) closeImportModal();
