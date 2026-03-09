@@ -1,3 +1,12 @@
+---
+title: Picarones
+emoji: 📜
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Picarones
 
 > **Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux**
