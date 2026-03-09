@@ -1865,7 +1865,7 @@ function buildRatioAnchorScatter() {{
   if (!canvas) return;
   const pts = DATA.ratio_vs_anchor || [];
   if (!pts.length) {{
-    canvas.parentElement.innerHTML = '<p style="color:var(--text-muted);padding:1rem">Données d\'ancrage non disponibles.</p>';
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">Données d'ancrage non disponibles.</p>`;
     return;
   }}
 
@@ -1892,7 +1892,7 @@ function buildRatioAnchorScatter() {{
         }} }},
       }},
       scales: {{
-        x: {{ min: 0, max: 1, title: {{ display: true, text: 'Score d\'ancrage [0–1]', font: {{ size: 11 }} }} }},
+        x: {{ min: 0, max: 1, title: {{ display: true, text: "Score d'ancrage [0–1]", font: {{ size: 11 }} }} }},
         y: {{ min: 0, title: {{ display: true, text: 'Ratio longueur (sortie/GT)', font: {{ size: 11 }} }} }},
       }},
     }},
@@ -2417,7 +2417,7 @@ function buildErrorClusters() {{
   if (!container) return;
   const clusters = DATA.error_clusters || [];
   if (!clusters.length) {{
-    container.innerHTML = '<p style="color:var(--text-muted)">Aucun cluster d\'erreur détecté.</p>';
+    container.innerHTML = `<p style="color:var(--text-muted)">Aucun cluster d'erreur détecté.</p>`;
     return;
   }}
   const cards = clusters.map(cl => {{
@@ -2544,7 +2544,7 @@ function exportCSV() {{
       ]);
     }});
   }});
-  const csv = rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\n');
+  const csv = rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\\n');
   const blob = new Blob(['\ufeff' + csv], {{ type: 'text/csv;charset=utf-8' }});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

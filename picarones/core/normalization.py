@@ -232,6 +232,73 @@ class NormalizationProfile:
 # Profils préconfigurés
 # ---------------------------------------------------------------------------
 
+NORMALIZATION_PROFILES: dict[str, NormalizationProfile] = {
+    "nfc": NormalizationProfile(
+        name="nfc",
+        nfc=True,
+        caseless=False,
+        diplomatic_table={},
+        description="Normalisation NFC uniquement",
+    ),
+    "caseless": NormalizationProfile(
+        name="caseless",
+        nfc=True,
+        caseless=True,
+        diplomatic_table={},
+        description="NFC + insensible à la casse",
+    ),
+    "minimal": NormalizationProfile(
+        name="minimal",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_MINIMAL,
+        description="Minimal : NFC + s long seulement",
+    ),
+    "medieval_french": NormalizationProfile(
+        name="medieval_french",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_FR_MEDIEVAL,
+        description="Français médiéval (XIIe–XVe) : ſ=s, u=v, i=j, æ=ae, œ=oe",
+    ),
+    "early_modern_french": NormalizationProfile(
+        name="early_modern_french",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_FR_EARLY_MODERN,
+        description="Imprimés anciens (XVIe–XVIIIe) : ſ=s, æ=ae, œ=oe",
+    ),
+    "medieval_latin": NormalizationProfile(
+        name="medieval_latin",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_LATIN_MEDIEVAL,
+        description="Latin médiéval : ſ=s, u=v, i=j, ꝑ=per, ꝓ=pro",
+    ),
+    "early_modern_english": NormalizationProfile(
+        name="early_modern_english",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_EN_EARLY_MODERN,
+        description="Early Modern English (XVIth–XVIIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
+    ),
+    "medieval_english": NormalizationProfile(
+        name="medieval_english",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_EN_MEDIEVAL,
+        description="Medieval English (XIIth–XVth c.): ſ=s, u=v, i=j, þ=th, ȝ=y, ꝑ=per, ꝓ=pro",
+    ),
+    "secretary_hand": NormalizationProfile(
+        name="secretary_hand",
+        nfc=True,
+        caseless=False,
+        diplomatic_table=DIPLOMATIC_EN_SECRETARY,
+        description="Secretary hand (XVIth–XVIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
+    ),
+}
+
+
 def get_builtin_profile(name: str) -> NormalizationProfile:
     """Retourne un profil préconfigurée par son identifiant.
 
@@ -252,77 +319,12 @@ def get_builtin_profile(name: str) -> NormalizationProfile:
     KeyError
         Si le nom n'est pas reconnu.
     """
-    profiles = {
-        "medieval_french": NormalizationProfile(
-            name="medieval_french",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_FR_MEDIEVAL,
-            description="Français médiéval (XIIe–XVe) : ſ=s, u=v, i=j, æ=ae, œ=oe",
-        ),
-        "early_modern_french": NormalizationProfile(
-            name="early_modern_french",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_FR_EARLY_MODERN,
-            description="Imprimés anciens (XVIe–XVIIIe) : ſ=s, æ=ae, œ=oe",
-        ),
-        "medieval_latin": NormalizationProfile(
-            name="medieval_latin",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_LATIN_MEDIEVAL,
-            description="Latin médiéval : ſ=s, u=v, i=j, ꝑ=per, ꝓ=pro",
-        ),
-        "minimal": NormalizationProfile(
-            name="minimal",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_MINIMAL,
-            description="Minimal : NFC + s long seulement",
-        ),
-        "nfc": NormalizationProfile(
-            name="nfc",
-            nfc=True,
-            caseless=False,
-            diplomatic_table={},
-            description="Normalisation NFC uniquement",
-        ),
-        "caseless": NormalizationProfile(
-            name="caseless",
-            nfc=True,
-            caseless=True,
-            diplomatic_table={},
-            description="NFC + insensible à la casse",
-        ),
-        "early_modern_english": NormalizationProfile(
-            name="early_modern_english",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_EN_EARLY_MODERN,
-            description="Early Modern English (XVIth–XVIIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
-        ),
-        "medieval_english": NormalizationProfile(
-            name="medieval_english",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_EN_MEDIEVAL,
-            description="Medieval English (XIIth–XVth c.): ſ=s, u=v, i=j, þ=th, ȝ=y, ꝑ=per, ꝓ=pro",
-        ),
-        "secretary_hand": NormalizationProfile(
-            name="secretary_hand",
-            nfc=True,
-            caseless=False,
-            diplomatic_table=DIPLOMATIC_EN_SECRETARY,
-            description="Secretary hand (XVIth–XVIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
-        ),
-    }
-    if name not in profiles:
+    if name not in NORMALIZATION_PROFILES:
         raise KeyError(
             f"Profil de normalisation inconnu : '{name}'. "
-            f"Disponibles : {', '.join(profiles)}"
+            f"Disponibles : {', '.join(NORMALIZATION_PROFILES)}"
         )
-    return profiles[name]
+    return NORMALIZATION_PROFILES[name]
 
 
 # ---------------------------------------------------------------------------

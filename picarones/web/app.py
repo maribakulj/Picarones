@@ -352,31 +352,18 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin Ã
 
 @app.get("/api/normalization/profiles")
 async def api_normalization_profiles() -> dict:
-    from picarones.core.normalization import get_builtin_profile
+    from picarones.core.normalization import NORMALIZATION_PROFILES
 
-    profile_ids = [
-        "nfc",
-        "caseless",
-        "minimal",
-        "medieval_french",
-        "early_modern_french",
-        "medieval_latin",
+    profiles = [
+        {
+            "id": pid,
+            "name": p.name,
+            "description": p.description or p.name,
+            "caseless": p.caseless,
+            "diplomatic_rules": len(p.diplomatic_table),
+        }
+        for pid, p in NORMALIZATION_PROFILES.items()
     ]
-
-    profiles = []
-    for pid in profile_ids:
-        try:
-            p = get_builtin_profile(pid)
-            profiles.append({
-                "id": pid,
-                "name": p.name,
-                "description": p.description or p.name,
-                "caseless": p.caseless,
-                "diplomatic_rules": len(p.diplomatic_table),
-            })
-        except Exception:
-            pass
-
     return {"profiles": profiles}
 
 
