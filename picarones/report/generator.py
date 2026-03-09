@@ -1293,7 +1293,7 @@ function engineColor(idx) {{ return PALETTE[idx % PALETTE.length]; }}
 
 // ── Navigation ──────────────────────────────────────────────────
 let currentView = 'ranking';
-function showView(name) {{
+function _switchView(name) {{
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
@@ -1306,6 +1306,10 @@ function showView(name) {{
   currentView = name;
   if (name === 'analyses' && !chartsBuilt) buildCharts();
   if (name === 'characters' && !charViewBuilt) initCharView();
+}}
+function showView(name) {{
+  _switchView(name);
+  updateURL(name);
 }}
 
 // ── Formatage ───────────────────────────────────────────────────
@@ -1575,7 +1579,7 @@ let dragStart = null;
 let imgOffset = {{ x: 0, y: 0 }};
 
 function openDocument(docId) {{
-  _origShowView('document');
+  _switchView('document');
   updateURL('document', {{ doc: docId }});
   loadDocument(docId);
 }}
@@ -2793,13 +2797,6 @@ function renderTaxonomyDetail(eng) {{
 }}
 
 // ── Init ────────────────────────────────────────────────────────
-// Override showView pour mettre à jour l'URL
-const _origShowView = showView;
-function showView(name) {{
-  _origShowView(name);
-  updateURL(name);
-}}
-
 function applyI18n() {{
   // Applique les traductions aux éléments avec data-i18n (textContent)
   document.querySelectorAll('[data-i18n]').forEach(el => {{
@@ -2854,7 +2851,7 @@ function init() {{
   // Restaurer l'état depuis l'URL
   const {{ view, params }} = readURLState();
   if (view && view !== 'ranking') {{
-    _origShowView(view);  // appel direct pour ne pas écraser l'URL
+    _switchView(view);  // appel direct pour ne pas écraser l'URL
     if (view === 'document' && params.doc) {{
       loadDocument(params.doc);
     }}
@@ -2863,7 +2860,7 @@ function init() {{
   // Gérer le bouton retour
   window.addEventListener('popstate', () => {{
     const {{ view: v, params: p }} = readURLState();
-    _origShowView(v || 'ranking');
+    _switchView(v || 'ranking');
     if ((v === 'document') && p.doc) loadDocument(p.doc);
   }});
 }}
