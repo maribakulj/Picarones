@@ -1050,7 +1050,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     if engine_id == "tesseract":
         ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
     elif engine_id == "mistral_ocr":
-        ocr = MistralOCREngine(config={"model": comp.ocr_model or "pixtral-12b-2409"})
+        ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
     elif engine_id == "google_vision":
         try:
             from picarones.engines.google_vision import GoogleVisionEngine
@@ -2048,6 +2048,7 @@ let _modelsCache = {};
 let _enginesData = null;
 let _competitors = [];
 let _refreshIntervalId = null;
+let _pendingOCREngine = null;   // garde contre les réponses obsolètes (race condition)
 
 async function fetchModels(provider) {
   if (_modelsCache[provider]) return _modelsCache[provider];
@@ -2159,12 +2160,27 @@ function startAutoRefresh() {
 // ─── Competitor composer ──────────────────────────────────────────────────────
 async function onComposeOCRChange() {
   const engine = document.getElementById("compose-ocr-engine").value;
+  _pendingOCREngine = engine;   // marquer la requête courante
   const sp = document.getElementById("sp-ocr-model");
+  // Google Vision et Azure ont des listes statiques — pas d'appel API nécessaire
+  if (engine === "google_vision") {
+    sp.style.display = "none";
+    populateSelect("compose-ocr-model", ["document_text_detection", "text_detection"], null);
+    return;
+  }
+  if (engine === "azure_doc_intel") {
+    sp.style.display = "none";
+    populateSelect("compose-ocr-model", ["prebuilt-document", "prebuilt-read"], null);
+    return;
+  }
+  // Tesseract : langues installées ; Mistral OCR : modèles vision (API dynamique)
   sp.style.display = "inline-block";
   try {
     const models = await fetchModels(engine);
+    if (_pendingOCREngine !== engine) return;  // réponse obsolète, abandonner
     populateSelect("compose-ocr-model", models, "sp-ocr-model");
   } catch(e) {
+    if (_pendingOCREngine !== engine) return;
     sp.style.display = "none";
     document.getElementById("compose-ocr-model").innerHTML = '<option value="">Erreur</option>';
   }

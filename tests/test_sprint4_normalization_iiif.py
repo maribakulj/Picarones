@@ -632,7 +632,8 @@ class TestMistralOCREngine:
     def test_version_default_model(self):
         from picarones.engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine()
-        assert "pixtral" in engine.version()
+        # Le modèle par défaut est désormais mistral-ocr-latest (API OCR native)
+        assert "mistral-ocr" in engine.version()
 
     def test_version_custom_model(self):
         from picarones.engines.mistral_ocr import MistralOCREngine

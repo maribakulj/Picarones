@@ -1052,6 +1052,57 @@ class TestFastAPIModels:
         r = client.get("/api/models/provider_xyz_unknown")
         assert r.status_code == 404
 
+    def test_models_mistral_ocr_no_key_returns_empty(self, client):
+        """Sans MISTRAL_API_KEY, /api/models/mistral_ocr renvoie liste vide + erreur."""
+        with patch.dict(os.environ, {k: v for k, v in os.environ.items() if k != "MISTRAL_API_KEY"}, clear=True):
+            r = client.get("/api/models/mistral_ocr")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["models"] == []
+        assert "error" in d
+
+    def test_models_mistral_ocr_with_key_uses_fallback_on_network_error(self, client):
+        """Avec une clé invalide, l'endpoint renvoie les modèles de fallback."""
+        with patch.dict(os.environ, {"MISTRAL_API_KEY": "test-key-invalid"}):
+            with patch("urllib.request.urlopen", side_effect=Exception("connection refused")):
+                r = client.get("/api/models/mistral_ocr")
+        assert r.status_code == 200
+        d = r.json()
+        assert isinstance(d["models"], list)
+        assert len(d["models"]) > 0
+        # Les modèles de fallback doivent contenir pixtral ou mistral-ocr
+        model_ids = " ".join(d["models"]).lower()
+        assert "pixtral" in model_ids or "mistral-ocr" in model_ids
+
+    def test_models_mistral_ocr_filters_vision_only(self, client):
+        """Avec une réponse API mockée, seuls les modèles vision (pixtral/mistral-ocr) sont renvoyés."""
+        fake_response = {
+            "data": [
+                {"id": "mistral-ocr-latest"},
+                {"id": "pixtral-12b-2409"},
+                {"id": "pixtral-large-latest"},
+                {"id": "mistral-large-latest"},   # LLM text-only → doit être exclu
+                {"id": "mistral-small-latest"},   # idem
+            ]
+        }
+        import json as _json
+
+        class _FakeHTTPResponse:
+            def read(self): return _json.dumps(fake_response).encode()
+            def __enter__(self): return self
+            def __exit__(self, *a): pass
+
+        with patch.dict(os.environ, {"MISTRAL_API_KEY": "test-key"}):
+            with patch("urllib.request.urlopen", return_value=_FakeHTTPResponse()):
+                r = client.get("/api/models/mistral_ocr")
+        assert r.status_code == 200
+        models = r.json()["models"]
+        assert "mistral-ocr-latest" in models
+        assert "pixtral-12b-2409" in models
+        assert "pixtral-large-latest" in models
+        assert "mistral-large-latest" not in models
+        assert "mistral-small-latest" not in models
+
 
 # ===========================================================================
 # TestFastAPIBenchmarkRun  — POST /api/benchmark/run
@@ -1202,6 +1253,67 @@ class TestMistralOCRNativeAPI:
         from picarones.engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         assert eng.version() == "mistral-ocr-latest"
+
+    def test_default_model_is_mistral_ocr_latest(self):
+        """Sans config explicite, le modèle par défaut doit être mistral-ocr-latest."""
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        eng = MistralOCREngine()
+        assert eng._model == "mistral-ocr-latest"
+
+    def test_mistral_ocr_latest_routes_to_native_api(self, tmp_path, monkeypatch):
+        """mistral-ocr-latest doit appeler _run_ocr_native_api, pas _run_ocr_vision_api."""
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
+        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
+        # Créer une fausse image
+        img = tmp_path / "page.jpg"
+        img.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        native_called = []
+        vision_called = []
+        def fake_native(url):
+            native_called.append(url)
+            return "texte extrait via OCR natif"
+        def fake_vision(url):
+            vision_called.append(url)
+            return "texte extrait via vision"
+        monkeypatch.setattr(eng, "_run_ocr_native_api", fake_native)
+        monkeypatch.setattr(eng, "_run_ocr_vision_api", fake_vision)
+        result = eng._run_ocr(img)
+        assert native_called, "_run_ocr_native_api aurait dû être appelée"
+        assert not vision_called, "_run_ocr_vision_api ne doit pas être appelée pour mistral-ocr-latest"
+        assert result == "texte extrait via OCR natif"
+
+    def test_pixtral_model_routes_to_vision_api(self, tmp_path, monkeypatch):
+        """pixtral-12b-2409 doit appeler _run_ocr_vision_api, pas _run_ocr_native_api."""
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
+        eng = MistralOCREngine(config={"model": "pixtral-12b-2409"})
+        img = tmp_path / "page.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        native_called = []
+        vision_called = []
+        def fake_native(url):
+            native_called.append(url)
+            return "natif"
+        def fake_vision(url):
+            vision_called.append(url)
+            return "vision"
+        monkeypatch.setattr(eng, "_run_ocr_native_api", fake_native)
+        monkeypatch.setattr(eng, "_run_ocr_vision_api", fake_vision)
+        result = eng._run_ocr(img)
+        assert vision_called, "_run_ocr_vision_api aurait dû être appelée"
+        assert not native_called, "_run_ocr_native_api ne doit pas être appelée pour pixtral"
+        assert result == "vision"
+
+    def test_no_api_key_raises(self, tmp_path, monkeypatch):
+        """Sans clé API, _run_ocr doit lever RuntimeError."""
+        from picarones.engines.mistral_ocr import MistralOCREngine
+        monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
+        img = tmp_path / "page.jpg"
+        img.write_bytes(b"\xff\xd8\xff")
+        with pytest.raises(RuntimeError, match="MISTRAL_API_KEY"):
+            eng._run_ocr(img)
 
 
 # ===========================================================================
