@@ -125,6 +125,7 @@ class BenchmarkRequest(BaseModel):
     corpus_path: str
     engines: list[str] = ["tesseract"]
     normalization_profile: str = "nfc"
+    char_exclude: str = ""   # Caractères à ignorer (séparés par virgule, ex: "',–")
     output_dir: str = "./rapports/"
     report_name: str = ""
     lang: str = "fra"
@@ -156,6 +157,7 @@ class BenchmarkRunRequest(BaseModel):
     corpus_path: str
     competitors: list[CompetitorConfig]
     normalization_profile: str = "nfc"
+    char_exclude: str = ""   # Caractères à ignorer (séparés par virgule, ex: "',–")
     output_dir: str = "./rapports/"
     report_name: str = ""
     report_lang: str = "fr"
@@ -612,7 +614,11 @@ def _extract_page_text(root: ET.Element) -> str:
 
 def _analyze_corpus_dir(path: Path) -> dict:
     """Analyse un dossier et retourne un résumé des paires image/GT détectées."""
-    images = sorted(f.name for f in path.iterdir() if f.suffix.lower() in _IMAGE_EXTS)
+    # Exclure les fichiers cachés macOS (._* AppleDouble) et tout fichier débutant par .
+    images = sorted(
+        f.name for f in path.iterdir()
+        if f.suffix.lower() in _IMAGE_EXTS and not f.name.startswith(".")
+    )
     pairs: list[dict] = []
     missing_gt: list[str] = []
     for img in images:
@@ -662,6 +668,9 @@ def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
             continue
         p = Path(member.filename)
         name = p.name
+        # Ignorer les fichiers cachés macOS (._* créés par AppleDouble dans les ZIPs)
+        if name.startswith("."):
+            continue
         # Accepter images, .gt.txt et .xml (ALTO/PAGE)
         if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or p.suffix.lower() == ".xml":
             data = zf.read(member.filename)
@@ -779,6 +788,7 @@ async def api_normalization_profiles() -> dict:
             "description": p.description or p.name,
             "caseless": p.caseless,
             "diplomatic_rules": len(p.diplomatic_table),
+            "exclude_chars": sorted(p.exclude_chars),
         }
         for pid, p in NORMALIZATION_PROFILES.items()
     ]
@@ -1155,12 +1165,16 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
                 "total": total_steps,
             })
 
+        from picarones.core.normalization import _parse_exclude_chars
+        char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
+
         result = run_benchmark(
             corpus=corpus,
             engines=engines,
             output_json=output_json,
             show_progress=False,
             progress_callback=_progress_callback,
+            char_exclude=char_excl,
         )
 
         if job.status == "cancelled":
@@ -1259,6 +1273,9 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
                 "total": total_steps,
             })
 
+        from picarones.core.normalization import _parse_exclude_chars
+        char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
+
         # Lancer le benchmark
         result = run_benchmark(
             corpus=corpus,
@@ -1266,6 +1283,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             output_json=output_json,
             show_progress=False,
             progress_callback=_progress_callback,
+            char_exclude=char_excl,
         )
 
         if job.status == "cancelled":
@@ -1660,6 +1678,10 @@ tr:hover td { background: #f0ede6; }
           <select id="norm-profile">
             <option value="nfc">NFC (standard)</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="bench_char_exclude_label">Caractères à ignorer <span style="color:var(--text-muted);font-size:.75rem">(séparés par virgule, ex : ', -, –)</span></label>
+          <input type="text" id="char-exclude" placeholder="ex: ', -, –, ." style="font-family:monospace" />
         </div>
         <div class="form-group">
           <label data-i18n="bench_output_label">Dossier de sortie</label>
@@ -2239,18 +2261,26 @@ function renderCompetitors() {
 }
 
 // ─── Normalization profiles ──────────────────────────────────────────────────
+let _normProfilesData = [];
 async function loadNormProfiles() {
   try {
     const r = await fetch("/api/normalization/profiles");
     const d = await r.json();
+    _normProfilesData = d.profiles || [];
     const sel = document.getElementById("norm-profile");
     sel.innerHTML = "";
-    d.profiles.forEach(p => {
+    _normProfilesData.forEach(p => {
       const opt = document.createElement("option");
       opt.value = p.id;
       opt.textContent = `${p.name} — ${p.description}`;
       if (p.id === "nfc") opt.selected = true;
       sel.appendChild(opt);
+    });
+    sel.addEventListener("change", () => {
+      const p = _normProfilesData.find(x => x.id === sel.value);
+      if (p && p.exclude_chars && p.exclude_chars.length) {
+        document.getElementById("char-exclude").value = p.exclude_chars.join(", ");
+      }
     });
   } catch(e) {}
 }
@@ -2322,6 +2352,7 @@ async function startBenchmark() {
     corpus_path: corpusPath,
     competitors: _competitors,
     normalization_profile: document.getElementById("norm-profile").value,
+    char_exclude: document.getElementById("char-exclude").value.trim(),
     output_dir: document.getElementById("output-dir").value,
     report_name: document.getElementById("report-name").value,
   };

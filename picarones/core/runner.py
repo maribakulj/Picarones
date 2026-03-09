@@ -22,6 +22,7 @@ def run_benchmark(
     output_json: Optional[str | Path] = None,
     show_progress: bool = True,
     progress_callback: Optional[callable] = None,
+    char_exclude: Optional[frozenset] = None,
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -72,7 +73,7 @@ def run_benchmark(
             ocr_result = engine.run(doc.image_path)
 
             if ocr_result.success:
-                metrics = compute_metrics(doc.ground_truth, ocr_result.text)
+                metrics = compute_metrics(doc.ground_truth, ocr_result.text, char_exclude=char_exclude)
             else:
                 metrics = MetricsResult(
                     cer=1.0, cer_nfc=1.0, cer_caseless=1.0,
