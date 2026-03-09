@@ -32,6 +32,7 @@ dependencies = [
     "numpy>=1.24.0",
     "fastapi>=0.111.0",
     "httpx>=0.27.0",
+    "python-multipart>=0.0.9",
 ]
 
 [project.urls]
@@ -45,7 +46,7 @@ Changelog = "https://github.com/bnf/picarones/blob/main/CHANGELOG.md"
 # Développement et tests
 dev = ["pytest>=7.4.0", "pytest-cov>=4.1.0", "httpx>=0.27.0", "fastapi>=0.111.0", "uvicorn[standard]>=0.29.0"]
 # Interface web FastAPI
-web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0"]
+web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0", "python-multipart>=0.0.9"]
 # Import HuggingFace Datasets
 hf = ["datasets>=2.19.0"]
 # Moteurs OCR optionnels

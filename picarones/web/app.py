@@ -29,15 +29,17 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import threading
 import time
 import uuid
+import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
-from fastapi import Cookie, FastAPI, HTTPException, Query, Response
+from fastapi import Cookie, FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -110,6 +112,9 @@ class BenchmarkJob:
 
 
 _JOBS: dict[str, BenchmarkJob] = {}
+
+_IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"})
+_UPLOADS_DIR = Path("./uploads")
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -528,6 +533,125 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin �
         "parent_path": str(target.parent) if target.parent != target else None,
         "items": items,
     }
+
+
+# ---------------------------------------------------------------------------
+# API — corpus upload
+# ---------------------------------------------------------------------------
+
+def _analyze_corpus_dir(path: Path) -> dict:
+    """Analyse un dossier et retourne un résumé des paires image/GT détectées."""
+    images = sorted(f.name for f in path.iterdir() if f.suffix.lower() in _IMAGE_EXTS)
+    pairs: list[dict] = []
+    missing_gt: list[str] = []
+    for img in images:
+        stem = Path(img).stem
+        gt = path / (stem + ".gt.txt")
+        if gt.exists():
+            pairs.append({"image": img, "gt": stem + ".gt.txt"})
+        else:
+            missing_gt.append(img)
+    return {
+        "doc_count": len(pairs),
+        "pairs": pairs[:20],
+        "total_pairs": len(pairs),
+        "missing_gt": missing_gt[:10],
+        "has_missing_gt": len(missing_gt) > 0,
+        "warnings": [f"GT manquant : {img}" for img in missing_gt[:5]],
+        "usable": len(pairs) > 0,
+    }
+
+
+def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
+    """Extrait un ZIP en aplatissant les paires image/.gt.txt dans dest."""
+    dest.mkdir(parents=True, exist_ok=True)
+    for member in zf.infolist():
+        if member.is_dir():
+            continue
+        p = Path(member.filename)
+        name = p.name
+        # Accepter images et .gt.txt
+        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt"):
+            data = zf.read(member.filename)
+            (dest / name).write_bytes(data)
+
+
+@app.post("/api/corpus/upload")
+async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
+    """Upload un corpus : soit un .zip, soit une sélection d'images + .gt.txt."""
+    corpus_id = str(uuid.uuid4())
+    corpus_dir = _UPLOADS_DIR / corpus_id
+    corpus_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        for uf in files:
+            filename = uf.filename or "upload"
+            data = await uf.read()
+            suffix = Path(filename).suffix.lower()
+
+            if suffix == ".zip":
+                # Extraire le ZIP en aplatissant les paires
+                import io
+                with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                    _flatten_zip_to_dir(zf, corpus_dir)
+            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or suffix == ".txt":
+                (corpus_dir / filename).write_bytes(data)
+            # Ignorer les autres types
+
+        summary = _analyze_corpus_dir(corpus_dir)
+        if not summary["usable"]:
+            shutil.rmtree(corpus_dir, ignore_errors=True)
+            raise HTTPException(
+                status_code=422,
+                detail="Aucune paire image/.gt.txt valide trouvée dans les fichiers uploadés.",
+            )
+
+        return {
+            "corpus_id": corpus_id,
+            "corpus_path": str(corpus_dir),
+            **summary,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        shutil.rmtree(corpus_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/corpus/uploads")
+async def api_corpus_uploads() -> dict:
+    """Liste les corpus uploadés disponibles."""
+    if not _UPLOADS_DIR.exists():
+        return {"uploads": []}
+
+    uploads = []
+    for d in sorted(_UPLOADS_DIR.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            summary = _analyze_corpus_dir(d)
+            uploads.append({
+                "corpus_id": d.name,
+                "corpus_path": str(d),
+                "doc_count": summary["doc_count"],
+                "has_missing_gt": summary["has_missing_gt"],
+            })
+        except Exception:
+            pass
+    return {"uploads": uploads}
+
+
+@app.delete("/api/corpus/uploads/{corpus_id}")
+async def api_corpus_delete(corpus_id: str) -> dict:
+    """Supprime un corpus uploadé."""
+    # Sécurité : interdire les path traversal
+    if "/" in corpus_id or "\\" in corpus_id or ".." in corpus_id:
+        raise HTTPException(status_code=400, detail="corpus_id invalide")
+    corpus_dir = _UPLOADS_DIR / corpus_id
+    if not corpus_dir.exists() or not corpus_dir.is_dir():
+        raise HTTPException(status_code=404, detail=f"Corpus non trouvé : {corpus_id}")
+    shutil.rmtree(corpus_dir)
+    return {"deleted": corpus_id}
 
 
 # ---------------------------------------------------------------------------
@@ -1211,6 +1335,34 @@ tr:hover td { background: #f0ede6; }
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Corpus upload tabs */
+.corpus-tabs { display: flex; gap: 0; margin-bottom: 14px; border-bottom: 2px solid var(--border); }
+.corpus-tab { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: color 0.15s, border-color 0.15s; }
+.corpus-tab:hover { color: var(--accent); }
+.corpus-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Upload drop zone */
+.upload-dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; color: var(--text-muted); font-size: 13px; }
+.upload-dropzone:hover, .upload-dropzone.dragover { border-color: var(--accent); background: #eef2fc; color: var(--accent); }
+.upload-dropzone .upload-icon { font-size: 28px; display: block; margin-bottom: 6px; }
+
+/* Upload mode toggle */
+.upload-mode-row { display: flex; gap: 20px; padding: 8px 12px; background: #f4f2ed; border-radius: var(--radius); margin-bottom: 12px; }
+.upload-mode-row label { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 13px; font-weight: 500; }
+
+/* Corpus preview */
+.corpus-preview { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 10px; }
+.corpus-preview-header { padding: 8px 12px; background: #f4f2ed; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.corpus-preview-pair { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border-bottom: 1px solid var(--border); font-size: 12px; font-family: monospace; }
+.corpus-preview-pair:last-child { border-bottom: none; }
+.corpus-preview-more { padding: 6px 12px; font-size: 11px; color: var(--text-muted); background: #fafaf8; }
+
+/* Uploaded corpus list */
+.upload-corpus-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; background: #fff; cursor: pointer; transition: border-color 0.15s; }
+.upload-corpus-item:hover { border-color: var(--accent); background: #f8f7ff; }
+.upload-corpus-item.selected { border-color: var(--accent); background: #eef2fc; }
+.upload-corpus-label { flex: 1; font-size: 13px; }
+
 /* Provider rows (OCR/LLM status sections) */
 .provider-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; background: #fff; }
 .provider-label { min-width: 200px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
@@ -1252,17 +1404,57 @@ tr:hover td { background: #f0ede6; }
 
     <div class="card">
       <h2 data-i18n="bench_corpus_title">1. Corpus</h2>
-      <div class="form-group">
-        <label data-i18n="bench_corpus_label">Chemin vers le dossier corpus (paires image/.gt.txt)</label>
-        <div class="path-input-row">
-          <input type="text" id="corpus-path" placeholder="./corpus/" value="" />
-          <button class="btn btn-secondary btn-sm" onclick="openFileBrowser()" data-i18n="bench_browse">Parcourir</button>
+
+      <!-- Tab bar -->
+      <div class="corpus-tabs">
+        <button class="corpus-tab active" id="ctab-browse" onclick="switchCorpusTab('browse')" data-i18n="corpus_tab_browse">📁 Parcourir</button>
+        <button class="corpus-tab" id="ctab-upload" onclick="switchCorpusTab('upload')" data-i18n="corpus_tab_upload">⬆ Uploader</button>
+      </div>
+
+      <!-- Browse tab -->
+      <div id="corpus-tab-browse">
+        <div class="form-group">
+          <label data-i18n="bench_corpus_label">Chemin vers le dossier corpus (paires image/.gt.txt)</label>
+          <div class="path-input-row">
+            <input type="text" id="corpus-path" placeholder="./corpus/" value="" />
+            <button class="btn btn-secondary btn-sm" onclick="openFileBrowser()" data-i18n="bench_browse">Parcourir</button>
+          </div>
+        </div>
+        <div id="file-browser-container" style="display:none; margin-top:10px;">
+          <div class="fb-path" id="fb-current-path">.</div>
+          <div id="file-browser"></div>
         </div>
       </div>
-      <div id="file-browser-container" style="display:none; margin-top:10px;">
-        <div class="fb-path" id="fb-current-path">.</div>
-        <div id="file-browser"></div>
+
+      <!-- Upload tab -->
+      <div id="corpus-tab-upload" style="display:none;">
+        <div class="upload-mode-row">
+          <label><input type="radio" name="upload-mode" value="zip" checked onchange="onUploadModeChange()"> 🗜 <span data-i18n="upload_zip_mode">Archive ZIP</span></label>
+          <label><input type="radio" name="upload-mode" value="files" onchange="onUploadModeChange()"> 🖼 <span data-i18n="upload_files_mode">Fichiers individuels</span></label>
+        </div>
+        <!-- Drop zone -->
+        <div id="upload-dropzone" class="upload-dropzone"
+             onclick="document.getElementById('upload-file-input').click()"
+             ondragover="event.preventDefault(); this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="onDropFiles(event)">
+          <span class="upload-icon">⬆</span>
+          <span id="upload-dropzone-text" data-i18n="upload_drop_zip">Glissez un .zip ici ou cliquez pour sélectionner</span>
+          <input type="file" id="upload-file-input" style="display:none" accept=".zip" onchange="onFileInputChange(event)" />
+        </div>
+        <!-- Progress -->
+        <div id="upload-progress-container" style="display:none; margin-top:10px;">
+          <div class="progress-bar-outer">
+            <div class="progress-bar-inner" id="upload-progress-bar" style="width:0%; transition:width 0.2s;"></div>
+          </div>
+          <div id="upload-progress-text" style="font-size:12px; color:var(--text-muted); margin-top:4px;"></div>
+        </div>
+        <!-- Preview after upload -->
+        <div id="upload-preview" style="margin-top:10px;"></div>
+        <!-- Previously uploaded corpora -->
+        <div id="uploads-list" style="margin-top:14px;"></div>
       </div>
+
       <div id="corpus-info" style="margin-top:8px; font-size:12px; color: var(--text-muted);"></div>
     </div>
 
@@ -1534,6 +1726,19 @@ const T = {
     bench_corpus_title: "1. Corpus",
     bench_corpus_label: "Chemin vers le dossier corpus (paires image / .gt.txt)",
     bench_browse: "Parcourir",
+    corpus_tab_browse: "📁 Parcourir",
+    corpus_tab_upload: "⬆ Uploader",
+    upload_zip_mode: "Archive ZIP",
+    upload_files_mode: "Fichiers individuels",
+    upload_drop_zip: "Glissez un .zip ici ou cliquez pour sélectionner",
+    upload_drop_files: "Glissez des images + .gt.txt ou cliquez pour sélectionner",
+    upload_uploading: "Upload en cours…",
+    upload_success: "Corpus chargé avec succès",
+    upload_no_corpus: "Aucun corpus uploadé.",
+    upload_select: "Utiliser ce corpus",
+    upload_delete: "Supprimer",
+    upload_pairs: "paires",
+    upload_missing_gt: "GT manquant(s)",
     bench_engines_title: "2. Moteurs et pipelines",
     bench_ocr_title: "2. Moteurs OCR",
     bench_llm_title: "3. Modèles LLM",
@@ -1602,6 +1807,19 @@ const T = {
     bench_corpus_title: "1. Corpus",
     bench_corpus_label: "Path to corpus directory (image / .gt.txt pairs)",
     bench_browse: "Browse",
+    corpus_tab_browse: "📁 Browse",
+    corpus_tab_upload: "⬆ Upload",
+    upload_zip_mode: "ZIP archive",
+    upload_files_mode: "Individual files",
+    upload_drop_zip: "Drop a .zip here or click to select",
+    upload_drop_files: "Drop images + .gt.txt files or click to select",
+    upload_uploading: "Uploading…",
+    upload_success: "Corpus loaded successfully",
+    upload_no_corpus: "No corpus uploaded.",
+    upload_select: "Use this corpus",
+    upload_delete: "Delete",
+    upload_pairs: "pairs",
+    upload_missing_gt: "missing GT",
     bench_engines_title: "2. Engines & pipelines",
     bench_ocr_title: "2. OCR Engines",
     bench_llm_title: "3. LLM Models",
@@ -2325,6 +2543,164 @@ async function confirmImport() {
   } catch(e) {
     statusDiv.innerHTML = `<div class="alert alert-error">Erreur : ${e.message}</div>`;
   }
+}
+
+// ─── Corpus upload ────────────────────────────────────────────────────────────
+let _uploadMode = "zip";  // "zip" | "files"
+
+function switchCorpusTab(tab) {
+  document.getElementById("corpus-tab-browse").style.display = tab === "browse" ? "block" : "none";
+  document.getElementById("corpus-tab-upload").style.display = tab === "upload" ? "block" : "none";
+  document.getElementById("ctab-browse").classList.toggle("active", tab === "browse");
+  document.getElementById("ctab-upload").classList.toggle("active", tab === "upload");
+  if (tab === "upload") loadUploadedCorpora();
+}
+
+function onUploadModeChange() {
+  _uploadMode = document.querySelector("input[name=upload-mode]:checked").value;
+  const input = document.getElementById("upload-file-input");
+  if (_uploadMode === "zip") {
+    input.accept = ".zip";
+    input.multiple = false;
+    document.getElementById("upload-dropzone-text").textContent = t("upload_drop_zip");
+  } else {
+    input.accept = ".jpg,.jpeg,.png,.tif,.tiff,.webp,.gt.txt,.txt";
+    input.multiple = true;
+    document.getElementById("upload-dropzone-text").textContent = t("upload_drop_files");
+  }
+}
+
+function onFileInputChange(event) {
+  const files = Array.from(event.target.files);
+  if (files.length > 0) uploadCorpus(files);
+}
+
+function onDropFiles(event) {
+  event.preventDefault();
+  document.getElementById("upload-dropzone").classList.remove("dragover");
+  const files = Array.from(event.dataTransfer.files);
+  if (files.length > 0) uploadCorpus(files);
+}
+
+async function uploadCorpus(files) {
+  const progressContainer = document.getElementById("upload-progress-container");
+  const progressBar = document.getElementById("upload-progress-bar");
+  const progressText = document.getElementById("upload-progress-text");
+  const previewEl = document.getElementById("upload-preview");
+
+  progressContainer.style.display = "block";
+  progressBar.style.width = "10%";
+  progressText.textContent = t("upload_uploading");
+  previewEl.innerHTML = "";
+
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f);
+
+  try {
+    // Simulate progress during upload
+    let pct = 10;
+    const timer = setInterval(() => {
+      pct = Math.min(pct + 5, 85);
+      progressBar.style.width = pct + "%";
+    }, 200);
+
+    const r = await fetch("/api/corpus/upload", {method: "POST", body: fd});
+    clearInterval(timer);
+    progressBar.style.width = "100%";
+
+    if (!r.ok) {
+      const err = await r.json();
+      throw new Error(err.detail || "Erreur serveur");
+    }
+    const d = await r.json();
+    progressText.textContent = `✓ ${t("upload_success")} — ${d.doc_count} ${t("upload_pairs")}`;
+    progressBar.style.background = "var(--success)";
+
+    // Show preview
+    renderUploadPreview(d, previewEl);
+
+    // Set corpus path and auto-select
+    setCorpusPath(d.corpus_path, `upload:${d.corpus_id} (${d.doc_count} docs)`);
+
+    // Refresh list
+    loadUploadedCorpora();
+  } catch(e) {
+    progressBar.style.width = "100%";
+    progressBar.style.background = "var(--danger)";
+    progressText.textContent = `✗ ${e.message}`;
+  }
+}
+
+function renderUploadPreview(data, container) {
+  const missingBadge = data.has_missing_gt
+    ? `<span class="badge badge-err" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
+    : "";
+  let html = `<div class="corpus-preview">
+    <div class="corpus-preview-header">
+      <span>📄 ${data.doc_count} ${t("upload_pairs")}</span>${missingBadge}
+    </div>`;
+  for (const p of data.pairs) {
+    html += `<div class="corpus-preview-pair">
+      <span style="color:var(--text-muted);">🖼</span><span>${p.image}</span>
+      <span style="color:var(--text-muted); margin-left:auto;">↔</span>
+      <span style="color:var(--success);">${p.gt}</span>
+    </div>`;
+  }
+  if (data.total_pairs > data.pairs.length) {
+    html += `<div class="corpus-preview-more">… et ${data.total_pairs - data.pairs.length} autres paires</div>`;
+  }
+  for (const w of (data.warnings || [])) {
+    html += `<div style="padding:5px 12px; font-size:11px; color:var(--warning);">⚠ ${w}</div>`;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function setCorpusPath(path, label) {
+  document.getElementById("corpus-path").value = path;
+  document.getElementById("corpus-info").textContent = `✓ ${label}`;
+}
+
+async function loadUploadedCorpora() {
+  const container = document.getElementById("uploads-list");
+  try {
+    const r = await fetch("/api/corpus/uploads");
+    const d = await r.json();
+    if (d.uploads.length === 0) {
+      container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">${t("upload_no_corpus")}</div>`;
+      return;
+    }
+    const currentPath = document.getElementById("corpus-path").value;
+    container.innerHTML = d.uploads.map(u => {
+      const isSelected = u.corpus_path === currentPath;
+      const missing = u.has_missing_gt
+        ? `<span class="badge badge-warn" style="margin-left:6px;">${t("upload_missing_gt")}</span>` : "";
+      return `<div class="upload-corpus-item${isSelected ? " selected" : ""}"
+                   onclick="setCorpusPath('${u.corpus_path}', 'upload (${u.doc_count} docs)'); loadUploadedCorpora()">
+        <span class="upload-corpus-label">
+          <strong>${u.doc_count} ${t("upload_pairs")}</strong>${missing}
+          <span style="display:block; font-size:11px; color:var(--text-muted); font-family:monospace;">${u.corpus_path}</span>
+        </span>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteUploadedCorpus('${u.corpus_id}')"
+                title="${t("upload_delete")}">✕</button>
+      </div>`;
+    }).join("");
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+  }
+}
+
+async function deleteUploadedCorpus(corpusId) {
+  try {
+    await fetch(`/api/corpus/uploads/${corpusId}`, {method: "DELETE"});
+    loadUploadedCorpora();
+    // Clear corpus path if it was the deleted one
+    const p = document.getElementById("corpus-path").value;
+    if (p.includes(corpusId)) {
+      document.getElementById("corpus-path").value = "";
+      document.getElementById("corpus-info").textContent = "";
+    }
+  } catch(e) {}
 }
 
 // ─── Init ────────────────────────────────────────────────────────────────────

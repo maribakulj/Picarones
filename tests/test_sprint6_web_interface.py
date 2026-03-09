@@ -1202,3 +1202,138 @@ class TestMistralOCRNativeAPI:
         from picarones.engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         assert eng.version() == "mistral-ocr-latest"
+
+
+# ===========================================================================
+# TestFastAPICorpusUpload  — POST /api/corpus/upload, GET/DELETE uploads
+# ===========================================================================
+
+class TestFastAPICorpusUpload:
+
+    @pytest.fixture
+    def tmp_corpus_zip(self, tmp_path):
+        """Crée un ZIP contenant 2 paires image/.gt.txt."""
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("page001.jpg", b"\xff\xd8\xff")        # fake JPEG
+            zf.writestr("page001.gt.txt", "Texte de la page 1")
+            zf.writestr("page002.png", b"\x89PNG")             # fake PNG
+            zf.writestr("page002.gt.txt", "Texte de la page 2")
+        buf.seek(0)
+        return buf.getvalue()
+
+    @pytest.fixture
+    def tmp_zip_missing_gt(self):
+        """ZIP avec une image sans GT."""
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("page001.jpg", b"\xff\xd8\xff")
+            zf.writestr("page001.gt.txt", "GT ok")
+            zf.writestr("page002.png", b"\x89PNG")             # pas de GT
+        buf.seek(0)
+        return buf.getvalue()
+
+    def test_upload_zip_returns_200(self, client, tmp_corpus_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        assert r.status_code == 200
+
+    def test_upload_zip_doc_count(self, client, tmp_corpus_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        d = r.json()
+        assert d["doc_count"] == 2
+
+    def test_upload_zip_has_corpus_id(self, client, tmp_corpus_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        d = r.json()
+        assert "corpus_id" in d
+        assert "corpus_path" in d
+
+    def test_upload_zip_has_pairs(self, client, tmp_corpus_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        d = r.json()
+        assert len(d["pairs"]) == 2
+
+    def test_upload_zip_missing_gt_reported(self, client, tmp_zip_missing_gt):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_zip_missing_gt, "application/zip"))],
+        )
+        assert r.status_code == 200
+        d = r.json()
+        assert d["has_missing_gt"] is True
+        assert len(d["missing_gt"]) == 1
+
+    def test_upload_individual_files(self, client):
+        files = [
+            ("files", ("img001.jpg", b"\xff\xd8\xff", "image/jpeg")),
+            ("files", ("img001.gt.txt", b"Texte GT", "text/plain")),
+        ]
+        r = client.post("/api/corpus/upload", files=files)
+        assert r.status_code == 200
+        assert r.json()["doc_count"] == 1
+
+    def test_upload_empty_zip_returns_422(self, client):
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("readme.txt", "no images here")
+        buf.seek(0)
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("empty.zip", buf.getvalue(), "application/zip"))],
+        )
+        assert r.status_code == 422
+
+    def test_list_uploads_returns_list(self, client):
+        r = client.get("/api/corpus/uploads")
+        assert r.status_code == 200
+        assert "uploads" in r.json()
+
+    def test_list_uploads_includes_uploaded_corpus(self, client, tmp_corpus_zip):
+        client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        r = client.get("/api/corpus/uploads")
+        uploads = r.json()["uploads"]
+        assert len(uploads) >= 1
+        assert all("corpus_path" in u for u in uploads)
+
+    def test_delete_corpus(self, client, tmp_corpus_zip):
+        upload_r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        corpus_id = upload_r.json()["corpus_id"]
+        del_r = client.delete(f"/api/corpus/uploads/{corpus_id}")
+        assert del_r.status_code == 200
+        assert del_r.json()["deleted"] == corpus_id
+
+    def test_delete_nonexistent_corpus_returns_404(self, client):
+        r = client.delete("/api/corpus/uploads/nonexistent-id-xyz")
+        assert r.status_code == 404
+
+    def test_delete_path_traversal_returns_400(self, client):
+        # corpus_id containing ".." (without slash — FastAPI strips slashes from path params)
+        r = client.delete("/api/corpus/uploads/..malicious..")
+        assert r.status_code in (400, 404)
