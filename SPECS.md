@@ -2,8 +2,7 @@
 
 > **Plateforme de comparaison et d'évaluation de moteurs OCR/HTR et de pipelines OCR+LLM pour documents patrimoniaux**
 >
-> Version 1.0 — Mars 2025  
-> Bibliothèque nationale de France — Département numérique
+> Version 1.0 — Mars 2025
 
 ---
 
