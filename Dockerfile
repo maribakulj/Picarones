@@ -42,7 +42,6 @@ RUN pip install --upgrade pip && \
 # ──────────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
-LABEL maintainer="BnF — Département numérique"
 LABEL description="Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
 LABEL version="1.0.0"
 LABEL org.opencontainers.image.source="https://github.com/bnf/picarones"
@@ -91,10 +90,11 @@ ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
 
 # ── Ports ───────────────────────────────────────────────────────
 EXPOSE 8000
+EXPOSE 7860
 
 # ── Health check ────────────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
 # ── Démarrage ───────────────────────────────────────────────────
-CMD ["picarones", "serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["picarones", "serve", "--host", "0.0.0.0", "--port", "7860"]
