@@ -152,6 +152,10 @@ class NormalizationProfile:
     diplomatic_table:
         Table de correspondances graphiques historiques appliquée caractère
         par caractère sur les deux textes avant calcul du CER.
+    exclude_chars:
+        Ensemble de caractères supprimés des deux textes (GT et OCR) avant
+        tout calcul de métriques (CER, WER, MER, WIL et CER diplomatique).
+        Utile pour ignorer la ponctuation ou les apostrophes.
     description:
         Description courte du profil (affichée dans le rapport HTML).
     """
@@ -160,10 +164,13 @@ class NormalizationProfile:
     nfc: bool = True
     caseless: bool = False
     diplomatic_table: dict[str, str] = field(default_factory=dict)
+    exclude_chars: frozenset = field(default_factory=frozenset)
     description: str = ""
 
     def normalize(self, text: str) -> str:
         """Applique le profil de normalisation à un texte."""
+        if self.exclude_chars:
+            text = "".join(c for c in text if c not in self.exclude_chars)
         if self.nfc:
             text = unicodedata.normalize("NFC", text)
         if self.caseless:
@@ -178,6 +185,7 @@ class NormalizationProfile:
             "nfc": self.nfc,
             "caseless": self.caseless,
             "diplomatic_table": self.diplomatic_table,
+            "exclude_chars": sorted(self.exclude_chars),
             "description": self.description,
         }
 
@@ -186,7 +194,8 @@ class NormalizationProfile:
         """Charge un profil depuis un fichier YAML.
 
         Le fichier YAML doit contenir les clés ``name``, optionnellement
-        ``caseless``, ``description`` et ``diplomatic`` (dict str→str).
+        ``caseless``, ``description``, ``diplomatic`` (dict str→str) et
+        ``exclude_chars`` (liste ou chaîne de caractères à ignorer).
 
         Example
         -------
@@ -195,6 +204,7 @@ class NormalizationProfile:
             name: medieval_custom
             caseless: false
             description: Français médiéval personnalisé
+            exclude_chars: ".,;:!?"
             diplomatic:
               ſ: s
               u: v
@@ -213,6 +223,7 @@ class NormalizationProfile:
             nfc=bool(data.get("nfc", True)),
             caseless=bool(data.get("caseless", False)),
             diplomatic_table=data.get("diplomatic", {}),
+            exclude_chars=_parse_exclude_chars(data.get("exclude_chars", "")),
             description=data.get("description", ""),
         )
 
@@ -224,6 +235,7 @@ class NormalizationProfile:
             nfc=bool(data.get("nfc", True)),
             caseless=bool(data.get("caseless", False)),
             diplomatic_table=data.get("diplomatic", {}),
+            exclude_chars=_parse_exclude_chars(data.get("exclude_chars", "")),
             description=data.get("description", ""),
         )
 
@@ -296,6 +308,23 @@ NORMALIZATION_PROFILES: dict[str, NormalizationProfile] = {
         diplomatic_table=DIPLOMATIC_EN_SECRETARY,
         description="Secretary hand (XVIth–XVIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
     ),
+    # ── Profils d'exclusion de caractères ────────────────────────────────
+    "sans_ponctuation": NormalizationProfile(
+        name="sans_ponctuation",
+        nfc=True,
+        caseless=False,
+        diplomatic_table={},
+        exclude_chars=frozenset(". , ; : ! ? ' \u2019 \" - \u2013 \u2014 ( ) [ ]".split()),
+        description="NFC + suppression de la ponctuation courante : . , ; : ! ? ' \" - – — ( ) [ ]",
+    ),
+    "sans_apostrophes": NormalizationProfile(
+        name="sans_apostrophes",
+        nfc=True,
+        caseless=False,
+        diplomatic_table={},
+        exclude_chars=frozenset(["'", "\u2019"]),  # apostrophe droite + apostrophe typographique
+        description="NFC + suppression des apostrophes droite (') et typographique (\u2019)",
+    ),
 }
 
 
@@ -330,6 +359,31 @@ def get_builtin_profile(name: str) -> NormalizationProfile:
 # ---------------------------------------------------------------------------
 # Fonctions utilitaires
 # ---------------------------------------------------------------------------
+
+def _parse_exclude_chars(value: "str | list | None") -> frozenset:
+    """Convertit une liste de caractères (str ou list) en frozenset.
+
+    Accepte :
+    - Une chaîne de caractères séparés par une virgule+espace (ex. ``"', -, –"``)
+      ou simplement concaténés sans séparateur (ex. ``".,;:!?"``)
+    - Une liste Python/YAML de chaînes (chacune un caractère)
+    - None ou chaîne vide → frozenset vide
+
+    Règle de désambiguïsation : si la chaîne contient la séquence ``", "``
+    (virgule suivie d'un espace), on découpe par ``", "``. Sinon, chaque
+    caractère Unicode est un item distinct.
+    """
+    if not value:
+        return frozenset()
+    if isinstance(value, (list, tuple)):
+        return frozenset(str(c) for c in value if c)
+    raw = str(value)
+    # Désambiguïsation : séparer par ", " si présent (format lisible)
+    if ", " in raw:
+        return frozenset(c.strip() for c in raw.split(",") if c.strip())
+    # Sinon, chaque caractère Unicode est un item distinct
+    return frozenset(raw)
+
 
 def _apply_diplomatic_table(text: str, table: dict[str, str]) -> str:
     """Applique une table de correspondances diplomatiques caractère par caractère.

@@ -120,6 +120,7 @@ def compute_metrics(
     reference: str,
     hypothesis: str,
     normalization_profile: "Optional[NormalizationProfile]" = None,  # noqa: F821
+    char_exclude: "Optional[frozenset]" = None,
 ) -> MetricsResult:
     """Calcule l'ensemble des métriques CER/WER pour une paire de textes.
 
@@ -133,6 +134,9 @@ def compute_metrics(
         Profil de normalisation diplomatique optionnel.
         Si fourni, calcule ``cer_diplomatic`` en plus des métriques standard.
         Si None, utilise le profil medieval_french par défaut.
+    char_exclude:
+        Ensemble de caractères à supprimer des deux textes avant tout calcul
+        (CER, WER, MER, WIL). Appliqué également au CER diplomatique.
 
     Returns
     -------
@@ -149,6 +153,11 @@ def compute_metrics(
         )
 
     try:
+        # Exclusion de caractères avant tout calcul
+        if char_exclude:
+            reference  = "".join(c for c in reference  if c not in char_exclude)
+            hypothesis = "".join(c for c in hypothesis if c not in char_exclude)
+
         # CER variants
         cer_raw = _cer_from_strings(reference, hypothesis)
         cer_nfc = _cer_from_strings(

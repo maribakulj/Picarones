@@ -161,11 +161,12 @@ class TestReportGenerator:
         html = out.read_text(encoding="utf-8")
         assert "chart.js" in html.lower() or "Chart.js" in html
 
-    def test_contains_diff2html(self, sample_generator, tmp_path):
+    def test_contains_chartjs(self, sample_generator, tmp_path):
         out = tmp_path / "rapport.html"
         sample_generator.generate(out)
         html = out.read_text(encoding="utf-8")
-        assert "diff2html" in html.lower()
+        # Chart.js est désormais embarqué inline (plus de CDN)
+        assert "Chart.js" in html or "new Chart(" in html
 
     def test_data_embedded(self, sample_generator, tmp_path):
         out = tmp_path / "rapport.html"

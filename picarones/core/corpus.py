@@ -109,9 +109,10 @@ def load_corpus_from_directory(
     documents: list[Document] = []
     skipped = 0
 
-    # Collecte de toutes les images
+    # Collecte de toutes les images (on exclut les fichiers cachés macOS ._* et .*)
     image_paths = sorted(
-        p for p in directory.iterdir() if p.suffix.lower() in IMAGE_EXTENSIONS
+        p for p in directory.iterdir()
+        if p.suffix.lower() in IMAGE_EXTENSIONS and not p.name.startswith(".")
     )
 
     for image_path in image_paths:

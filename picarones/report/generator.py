@@ -22,6 +22,20 @@ import math
 from pathlib import Path
 from typing import Optional
 
+# ---------------------------------------------------------------------------
+# Ressources vendor (embarquées dans le rapport HTML)
+# ---------------------------------------------------------------------------
+
+_VENDOR_DIR = Path(__file__).parent / "vendor"
+
+
+def _load_vendor_js(name: str) -> str:
+    """Lit un fichier JS vendorisé et retourne son contenu."""
+    p = _VENDOR_DIR / name
+    if p.exists():
+        return p.read_text(encoding="utf-8")
+    return f"/* vendor/{name} non trouvé */"
+
 from picarones.core.results import BenchmarkResult
 from picarones.report.diff_utils import compute_char_diff, compute_word_diff
 from picarones.core.statistics import (
@@ -435,17 +449,8 @@ _HTML_TEMPLATE = """\
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Picarones — {corpus_name}</title>
 
-<!-- Chart.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
-  integrity="sha512-CQBWl4fJHWbryGE+Pc3UJWW1h3Q8IkkvNnPTozals+S49OTEQPoQj/m1LZRM28Wr/7bJCMlpYS3/Zp4hHuWQ=="
-  crossorigin="anonymous"></script>
-
-<!-- diff2html -->
-<link rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.47/diff2html.min.css"
-  crossorigin="anonymous">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.47/diff2html.min.js"
-  crossorigin="anonymous"></script>
+<!-- Chart.js (vendorisé inline) -->
+<script>{chartjs_inline}</script>
 
 <style>
 /* ── Reset & base ─────────────────────────────────────────────────── */
@@ -579,6 +584,22 @@ tbody tr:hover {{ background: #f8fafc; }}
 }}
 
 /* ── Gallery ──────────────────────────────────────────────────────── */
+/* Robust metrics controls */
+.robust-controls {{
+  display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: .75rem;
+}}
+.robust-controls label {{
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .82rem; color: var(--text-muted);
+}}
+.robust-controls input[type=range] {{ width: 140px; }}
+.slider-val {{
+  font-weight: 700; color: var(--text); min-width: 2.5rem;
+}}
+.robust-table td {{ padding: .4rem .6rem; font-size: .85rem; }}
+.robust-table .improved {{ color: #16a34a; font-weight: 600; }}
+.robust-table .worsened {{ color: #dc2626; font-weight: 600; }}
+
 .gallery-controls {{
   display: flex; align-items: center; gap: .75rem;
   margin-bottom: 1rem; flex-wrap: wrap;
@@ -1056,6 +1077,31 @@ body.present-mode nav .meta {{ display: none; }}
         <span class="legend-dot" style="background:#dc2626"></span>&gt; 30 %
       </div>
     </div>
+  </div>
+
+  <!-- ── Métriques robustes ────────────────────────────────────── -->
+  <div class="card" id="robust-metrics-card">
+    <h2 data-i18n="h_robust">Métriques robustes (sans hallucinations)</h2>
+    <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem" data-i18n="robust_desc">
+      Recalcule CER, WER, MER, WIL en excluant les documents détectés comme hallucinés.
+    </p>
+    <div class="robust-controls">
+      <label>
+        <span data-i18n="robust_anchor_label">Seuil d'ancrage min :</span>
+        <input type="range" id="robust-anchor" min="0" max="1" step="0.05" value="0.5"
+          oninput="document.getElementById('robust-anchor-val').textContent=parseFloat(this.value).toFixed(2);renderRobustMetrics()">
+        <span id="robust-anchor-val" class="slider-val">0.50</span>
+      </label>
+      <label>
+        <span data-i18n="robust_ratio_label">Ratio longueur max :</span>
+        <input type="range" id="robust-ratio" min="1" max="3" step="0.1" value="1.5"
+          oninput="document.getElementById('robust-ratio-val').textContent=parseFloat(this.value).toFixed(1);renderRobustMetrics()">
+        <span id="robust-ratio-val" class="slider-val">1.5</span>
+      </label>
+    </div>
+    <div id="robust-summary" style="font-size:.82rem;color:var(--text-muted);margin:.5rem 0"></div>
+    <div id="robust-table-wrap" class="table-wrap"></div>
+    <div id="robust-excluded-docs" style="margin-top:.75rem;font-size:.82rem"></div>
   </div>
 </div>
 
@@ -1691,6 +1737,110 @@ document.querySelectorAll('#ranking-table th.sortable').forEach(th => {{
     renderRanking();
   }});
 }});
+
+// ── Métriques robustes ──────────────────────────────────────────
+function renderRobustMetrics() {{
+  const anchorThreshold = parseFloat(document.getElementById('robust-anchor').value);
+  const ratioThreshold  = parseFloat(document.getElementById('robust-ratio').value);
+
+  // Pour chaque engine : recalculer CER/WER en excluant les docs hallucinés
+  const results = DATA.engines.map(eng => {{
+    const allDocs = DATA.documents;
+    const excluded = [];
+    const cerVals = [], werVals = [], merVals = [], wilVals = [];
+
+    allDocs.forEach(doc => {{
+      const er = doc.engine_results.find(r => r.engine === eng.name);
+      if (!er || er.error) return;
+      const hm = er.hallucination_metrics;
+      const isHall = hm && (hm.anchor_score < anchorThreshold || hm.length_ratio > ratioThreshold);
+      if (isHall) {{
+        excluded.push({{ doc_id: doc.doc_id, anchor: hm.anchor_score, ratio: hm.length_ratio }});
+      }} else {{
+        cerVals.push(er.cer);
+        werVals.push(er.wer);
+        if (er.mer !== undefined) merVals.push(er.mer);
+        if (er.wil !== undefined) wilVals.push(er.wil);
+      }}
+    }});
+
+    const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    return {{
+      name: eng.name,
+      global_cer: eng.cer,
+      global_wer: eng.wer,
+      robust_cer: mean(cerVals),
+      robust_wer: mean(werVals),
+      robust_mer: mean(merVals),
+      robust_docs: cerVals.length,
+      excluded_count: excluded.length,
+      excluded_docs: excluded,
+    }};
+  }});
+
+  // Résumé
+  const totalExcluded = Math.max(...results.map(r => r.excluded_count));
+  const totalDocs = DATA.documents.length;
+  document.getElementById('robust-summary').textContent =
+    `${{totalExcluded}} document(s) exclu(s) sur ${{totalDocs}} ` +
+    `(seuil ancrage < ${{anchorThreshold.toFixed(2)}}, ratio > ${{ratioThreshold.toFixed(1)}})`;
+
+  // Tableau comparatif
+  const hasRobust = results.some(r => r.excluded_count > 0);
+  const card = document.getElementById('robust-metrics-card');
+  if (!results.some(r => r.excluded_docs.length > 0 || r.robust_cer !== null)) {{
+    document.getElementById('robust-table-wrap').innerHTML =
+      '<p style="color:var(--text-muted);font-size:.82rem">Aucune donnée de hallucinations disponible pour ce corpus.</p>';
+    return;
+  }}
+
+  const rows = results.map(r => {{
+    const delta = r.robust_cer !== null ? r.robust_cer - r.global_cer : null;
+    const deltaClass = delta === null ? '' : (delta < -0.001 ? 'improved' : delta > 0.001 ? 'worsened' : '');
+    const deltaStr = delta === null ? '—' : (delta >= 0 ? '+' : '') + (delta*100).toFixed(2) + '%';
+    return `<tr>
+      <td><b>${{esc(r.name)}}</b></td>
+      <td>${{pct(r.global_cer)}}</td>
+      <td>${{r.robust_cer !== null ? pct(r.robust_cer) : '—'}}</td>
+      <td class="${{deltaClass}}">${{deltaStr}}</td>
+      <td>${{pct(r.global_wer)}}</td>
+      <td>${{r.robust_wer !== null ? pct(r.robust_wer) : '—'}}</td>
+      <td style="color:var(--text-muted)">${{r.excluded_count}} exclu(s) / ${{r.robust_docs}} restant(s)</td>
+    </tr>`;
+  }}).join('');
+
+  document.getElementById('robust-table-wrap').innerHTML = `
+    <table class="robust-table" style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:var(--bg)">
+          <th style="text-align:left;padding:.4rem .6rem;font-size:.8rem">Moteur</th>
+          <th style="padding:.4rem .6rem;font-size:.8rem">CER global</th>
+          <th style="padding:.4rem .6rem;font-size:.8rem">CER robuste</th>
+          <th style="padding:.4rem .6rem;font-size:.8rem">Δ CER</th>
+          <th style="padding:.4rem .6rem;font-size:.8rem">WER global</th>
+          <th style="padding:.4rem .6rem;font-size:.8rem">WER robuste</th>
+          <th style="padding:.4rem .6rem;font-size:.8rem">Documents</th>
+        </tr>
+      </thead>
+      <tbody>${{rows}}</tbody>
+    </table>`;
+
+  // Documents exclus
+  const allExcluded = results.flatMap(r => r.excluded_docs.map(d => ({{...d, engine: r.name}})));
+  if (allExcluded.length > 0) {{
+    const uniq = [...new Map(allExcluded.map(d => [d.doc_id, d])).values()];
+    document.getElementById('robust-excluded-docs').innerHTML =
+      `<details><summary style="cursor:pointer;font-size:.82rem;color:var(--text-muted)">` +
+      `▶ Documents exclus (${{uniq.length}})</summary>` +
+      `<ul style="margin:.4rem 0 0 1rem;font-size:.8rem;color:var(--text-muted)">` +
+      uniq.map(d => `<li><a href="#" onclick="openDocument('${{esc(d.doc_id)}}');return false">${{esc(d.doc_id)}}</a>` +
+        ` — ancrage: ${{d.anchor !== undefined ? d.anchor.toFixed(3) : '?'}}, ratio: ${{d.ratio !== undefined ? d.ratio.toFixed(2) : '?'}}</li>`
+      ).join('') +
+      `</ul></details>`;
+  }} else {{
+    document.getElementById('robust-excluded-docs').innerHTML = '';
+  }}
+}}
 
 // ── Vue Galerie ─────────────────────────────────────────────────
 function renderGallery() {{
@@ -2979,6 +3129,7 @@ function init() {{
   }});
 
   renderRanking();
+  renderRobustMetrics();
   renderGallery();
   buildDocList();
 
@@ -3076,13 +3227,18 @@ class ReportGenerator:
         report_json = json.dumps(report_data, ensure_ascii=False, separators=(",", ":"))
         i18n_json = json.dumps(labels, ensure_ascii=False, separators=(",", ":"))
 
+        # Chart.js contient des { } qui casseraient .format() → injection post-format
+        chartjs_js = _load_vendor_js("chart.umd.min.js")
+
         html = _HTML_TEMPLATE.format(
             corpus_name=self.benchmark.corpus_name,
             picarones_version=self.benchmark.picarones_version,
             report_data_json=report_json,
             i18n_json=i18n_json,
             html_lang=labels.get("html_lang", "fr"),
+            chartjs_inline="__CHARTJS_PLACEHOLDER__",
         )
+        html = html.replace("__CHARTJS_PLACEHOLDER__", chartjs_js)
 
         output_path.write_text(html, encoding="utf-8")
         return output_path.resolve()
