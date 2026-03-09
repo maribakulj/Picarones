@@ -1270,7 +1270,6 @@ body.present-mode nav .meta {{ display: none; }}
 
 <footer>
   <span data-i18n="footer_by">par Picarones</span> v{picarones_version}
-  — BnF, Département numérique
   — <span id="footer-date"></span>
 </footer>
 

@@ -72,10 +72,7 @@ def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCREngine":
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(__version__, "-V", "--version", prog_name="picarones")
 def cli() -> None:
-    """Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux.
-
-    Bibliothèque nationale de France — Département numérique.
-    """
+    """Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux."""
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +271,7 @@ def engines_cmd() -> None:
 def info_cmd() -> None:
     """Affiche les informations de version de Picarones et de ses dépendances."""
     click.echo(f"Picarones v{__version__}")
-    click.echo("BnF — Département numérique\n")
+    click.echo("")
 
     deps = [
         ("click", "click"),
