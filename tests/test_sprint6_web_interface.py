@@ -1337,3 +1337,158 @@ class TestFastAPICorpusUpload:
         # corpus_id containing ".." (without slash — FastAPI strips slashes from path params)
         r = client.delete("/api/corpus/uploads/..malicious..")
         assert r.status_code in (400, 404)
+
+    # --- ALTO XML ---
+
+    @pytest.fixture
+    def alto_xml_bytes(self):
+        """Contenu d'un fichier ALTO XML minimal valide."""
+        return (
+            b'<?xml version="1.0" encoding="UTF-8"?>'
+            b'<alto xmlns="http://www.loc.gov/standards/alto/ns-v4#">'
+            b"<Layout><Page><PrintSpace>"
+            b"<TextBlock><TextLine>"
+            b'<String CONTENT="Bonjour"/>'
+            b'<String CONTENT="monde"/>'
+            b"</TextLine></TextBlock>"
+            b"</PrintSpace></Page></Layout>"
+            b"</alto>"
+        )
+
+    @pytest.fixture
+    def tmp_alto_zip(self, alto_xml_bytes):
+        """ZIP contenant une paire image + ALTO XML."""
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("page001.png", b"\x89PNG")
+            zf.writestr("page001.xml", alto_xml_bytes)
+        buf.seek(0)
+        return buf.getvalue()
+
+    def test_upload_alto_zip_returns_200(self, client, tmp_alto_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_alto_zip, "application/zip"))],
+        )
+        assert r.status_code == 200
+
+    def test_upload_alto_zip_doc_count(self, client, tmp_alto_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_alto_zip, "application/zip"))],
+        )
+        assert r.json()["doc_count"] == 1
+
+    def test_upload_alto_zip_format(self, client, tmp_alto_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_alto_zip, "application/zip"))],
+        )
+        d = r.json()
+        assert d["gt_format"] == "ALTO XML"
+        assert d["pairs"][0]["gt_format"] == "ALTO XML"
+
+    def test_upload_alto_individual_files(self, client, alto_xml_bytes):
+        files = [
+            ("files", ("img001.png", b"\x89PNG", "image/png")),
+            ("files", ("img001.xml", alto_xml_bytes, "application/xml")),
+        ]
+        r = client.post("/api/corpus/upload", files=files)
+        assert r.status_code == 200
+        assert r.json()["doc_count"] == 1
+        assert r.json()["gt_format"] == "ALTO XML"
+
+    def test_alto_text_extraction(self, alto_xml_bytes):
+        """_detect_xml_gt extrait correctement le texte depuis un ALTO XML."""
+        from picarones.web.app import _detect_xml_gt
+        result = _detect_xml_gt(alto_xml_bytes)
+        assert result is not None
+        fmt, text = result
+        assert fmt == "ALTO XML"
+        assert "Bonjour" in text
+        assert "monde" in text
+
+    # --- PAGE XML ---
+
+    @pytest.fixture
+    def page_xml_bytes(self):
+        """Contenu d'un fichier PAGE XML minimal valide."""
+        return (
+            b'<?xml version="1.0" encoding="UTF-8"?>'
+            b'<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15">'
+            b"<Page><TextRegion><TextLine>"
+            b"<TextEquiv><Unicode>Texte de la ligne</Unicode></TextEquiv>"
+            b"</TextLine></TextRegion></Page>"
+            b"</PcGts>"
+        )
+
+    @pytest.fixture
+    def tmp_page_zip(self, page_xml_bytes):
+        """ZIP contenant une paire image + PAGE XML."""
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("page002.png", b"\x89PNG")
+            zf.writestr("page002.xml", page_xml_bytes)
+        buf.seek(0)
+        return buf.getvalue()
+
+    def test_upload_page_zip_returns_200(self, client, tmp_page_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_page_zip, "application/zip"))],
+        )
+        assert r.status_code == 200
+
+    def test_upload_page_zip_format(self, client, tmp_page_zip):
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_page_zip, "application/zip"))],
+        )
+        d = r.json()
+        assert d["gt_format"] == "PAGE XML"
+        assert d["pairs"][0]["gt_format"] == "PAGE XML"
+
+    def test_page_text_extraction(self, page_xml_bytes):
+        """_detect_xml_gt extrait correctement le texte depuis un PAGE XML."""
+        from picarones.web.app import _detect_xml_gt
+        result = _detect_xml_gt(page_xml_bytes)
+        assert result is not None
+        fmt, text = result
+        assert fmt == "PAGE XML"
+        assert "Texte de la ligne" in text
+
+    # --- Texte brut ---
+
+    def test_upload_plain_txt_format_reported(self, client, tmp_corpus_zip):
+        """Un corpus .gt.txt classique doit indiquer 'texte brut' dans le résumé."""
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", tmp_corpus_zip, "application/zip"))],
+        )
+        assert r.status_code == 200
+        assert r.json()["gt_format"] == "texte brut"
+
+    # --- XML inconnu ignoré ---
+
+    def test_unknown_xml_not_valid_pair(self, client):
+        """Un XML non ALTO/PAGE ne crée pas de paire valide."""
+        import io
+        import zipfile
+
+        unknown_xml = b'<?xml version="1.0"?><root><item>foo</item></root>'
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("pageX.png", b"\x89PNG")
+            zf.writestr("pageX.xml", unknown_xml)
+        buf.seek(0)
+        r = client.post(
+            "/api/corpus/upload",
+            files=[("files", ("corpus.zip", buf.getvalue(), "application/zip"))],
+        )
+        assert r.status_code == 422
