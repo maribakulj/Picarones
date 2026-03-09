@@ -1456,13 +1456,13 @@ function renderSideBySide(docId) {{
       ocrHtml += t;
     }} else if (op.op === 'delete') {{
       // Présent dans GT, absent de l'OCR → orange dans GT
-      gtHtml += '<span class="d-miss" title="Absent de l\'OCR">' + esc(op.text) + '</span>';
+      gtHtml += '<span class="d-miss" title="Manquant dans OCR">' + esc(op.text) + '</span>';
     }} else if (op.op === 'insert') {{
       // Présent dans OCR, absent du GT → vert dans OCR
       ocrHtml += '<span class="d-ins-ocr" title="Insertion OCR">' + esc(op.text) + '</span>';
     }} else if (op.op === 'replace') {{
       // Substitution : orange dans GT, rouge dans OCR
-      gtHtml  += '<span class="d-miss" title="Différent dans l\'OCR">' + esc(op.old) + '</span>';
+      gtHtml  += '<span class="d-miss" title="Substitution GT">' + esc(op.old) + '</span>';
       ocrHtml += '<span class="d-err"  title="Différent du GT">'       + esc(op.new) + '</span>';
     }}
   }});
