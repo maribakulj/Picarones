@@ -33,6 +33,7 @@ import shutil
 import threading
 import time
 import uuid
+import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -539,6 +540,76 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin �
 # API — corpus upload
 # ---------------------------------------------------------------------------
 
+def _detect_xml_gt(xml_bytes: bytes) -> tuple[str, str] | None:
+    """Détecte si xml_bytes est un fichier ALTO ou PAGE XML et extrait le texte GT.
+
+    Retourne (format_label, texte_gt) ou None si le format n'est pas reconnu.
+    """
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError:
+        return None
+
+    tag = root.tag  # peut être "{namespace}alto" ou "alto" ou "{ns}PcGts"
+
+    # --- ALTO XML ---
+    # Namespace contient loc.gov/standards/alto ou balise racine "alto"
+    ns_alto = "http://www.loc.gov/standards/alto"
+    is_alto = (
+        ns_alto in tag
+        or tag.lower() == "alto"
+        or (tag.startswith("{") and tag.split("}")[1].lower() in ("alto",))
+    )
+    if is_alto:
+        text = _extract_alto_text(root)
+        return ("ALTO XML", text)
+
+    # --- PAGE XML ---
+    # Balise racine PcGts (avec ou sans namespace)
+    local = tag.split("}")[-1] if "}" in tag else tag
+    if local == "PcGts":
+        text = _extract_page_text(root)
+        return ("PAGE XML", text)
+
+    return None
+
+
+def _extract_alto_text(root: ET.Element) -> str:
+    """Extrait le texte plein d'un arbre ALTO XML.
+
+    Concatène les attributs CONTENT des balises <String> dans l'ordre de lecture
+    (bloc → ligne → mot), avec un espace entre mots et une newline entre lignes.
+    """
+    # Chercher les éléments TextLine (avec ou sans namespace)
+    lines: list[str] = []
+    for elem in root.iter():
+        local = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+        if local == "TextLine":
+            words: list[str] = []
+            for child in elem.iter():
+                child_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                if child_local == "String":
+                    content = child.get("CONTENT", "")
+                    if content:
+                        words.append(content)
+            if words:
+                lines.append(" ".join(words))
+    return "\n".join(lines)
+
+
+def _extract_page_text(root: ET.Element) -> str:
+    """Extrait le texte plein d'un arbre PAGE XML.
+
+    Concatène le contenu des balises <Unicode> dans l'ordre de lecture.
+    """
+    texts: list[str] = []
+    for elem in root.iter():
+        local = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+        if local == "Unicode" and elem.text:
+            texts.append(elem.text.strip())
+    return "\n".join(t for t in texts if t)
+
+
 def _analyze_corpus_dir(path: Path) -> dict:
     """Analyse un dossier et retourne un résumé des paires image/GT détectées."""
     images = sorted(f.name for f in path.iterdir() if f.suffix.lower() in _IMAGE_EXTS)
@@ -546,11 +617,31 @@ def _analyze_corpus_dir(path: Path) -> dict:
     missing_gt: list[str] = []
     for img in images:
         stem = Path(img).stem
-        gt = path / (stem + ".gt.txt")
-        if gt.exists():
-            pairs.append({"image": img, "gt": stem + ".gt.txt"})
+        gt_txt = path / (stem + ".gt.txt")
+        gt_xml = path / (stem + ".xml")
+        if gt_txt.exists():
+            pairs.append({"image": img, "gt": stem + ".gt.txt", "gt_format": "texte brut"})
+        elif gt_xml.exists():
+            result = _detect_xml_gt(gt_xml.read_bytes())
+            if result is not None:
+                fmt, text = result
+                # Matérialiser le GT en .gt.txt pour le chargeur de corpus
+                gt_txt.write_text(text, encoding="utf-8")
+                pairs.append({"image": img, "gt": stem + ".gt.txt", "gt_format": fmt})
+            else:
+                missing_gt.append(img)
         else:
             missing_gt.append(img)
+
+    # Détecter le format dominant pour le résumé global
+    formats = {p["gt_format"] for p in pairs}
+    if len(formats) == 1:
+        dominant_format: str = formats.pop()
+    elif formats:
+        dominant_format = "mixte"
+    else:
+        dominant_format = "texte brut"
+
     return {
         "doc_count": len(pairs),
         "pairs": pairs[:20],
@@ -559,19 +650,20 @@ def _analyze_corpus_dir(path: Path) -> dict:
         "has_missing_gt": len(missing_gt) > 0,
         "warnings": [f"GT manquant : {img}" for img in missing_gt[:5]],
         "usable": len(pairs) > 0,
+        "gt_format": dominant_format,
     }
 
 
 def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
-    """Extrait un ZIP en aplatissant les paires image/.gt.txt dans dest."""
+    """Extrait un ZIP en aplatissant les paires image/.gt.txt/.xml dans dest."""
     dest.mkdir(parents=True, exist_ok=True)
     for member in zf.infolist():
         if member.is_dir():
             continue
         p = Path(member.filename)
         name = p.name
-        # Accepter images et .gt.txt
-        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt"):
+        # Accepter images, .gt.txt et .xml (ALTO/PAGE)
+        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or p.suffix.lower() == ".xml":
             data = zf.read(member.filename)
             (dest / name).write_bytes(data)
 
@@ -594,7 +686,7 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
                 import io
                 with zipfile.ZipFile(io.BytesIO(data)) as zf:
                     _flatten_zip_to_dir(zf, corpus_dir)
-            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or suffix == ".txt":
+            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or suffix in (".txt", ".xml"):
                 (corpus_dir / filename).write_bytes(data)
             # Ignorer les autres types
 
