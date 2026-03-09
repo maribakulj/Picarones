@@ -733,6 +733,24 @@ async def api_corpus_uploads() -> dict:
     return {"uploads": uploads}
 
 
+@app.get("/api/corpus/image/{upload_id}/{filename}")
+async def api_corpus_image(upload_id: str, filename: str) -> FileResponse:
+    """Sert une image depuis le dossier d'upload."""
+    # Sécurité : interdire les path traversal
+    if "/" in upload_id or "\\" in upload_id or ".." in upload_id:
+        raise HTTPException(status_code=400, detail="upload_id invalide")
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="filename invalide")
+    image_path = _UPLOADS_DIR / upload_id / filename
+    if not image_path.exists() or not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Image non trouvée")
+    suffix = image_path.suffix.lower()
+    media_types = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+                   ".tif": "image/tiff", ".tiff": "image/tiff", ".webp": "image/webp"}
+    media_type = media_types.get(suffix, "application/octet-stream")
+    return FileResponse(str(image_path), media_type=media_type)
+
+
 @app.delete("/api/corpus/uploads/{corpus_id}")
 async def api_corpus_delete(corpus_id: str) -> dict:
     """Supprime un corpus uploadé."""
