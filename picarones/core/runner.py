@@ -415,6 +415,12 @@ def run_benchmark(
             )
 
         docs_to_process = [doc for doc in corpus.documents if doc.doc_id not in loaded_doc_ids]
+        if loaded_doc_ids:
+            logger.info(
+                "[%s] %d doc(s) ignorés (résultats partiels existants) — "
+                "supprimer le fichier partiel '%s' pour forcer le recalcul.",
+                engine.name, len(loaded_doc_ids), partial_path,
+            )
         document_results: list[DocumentResult] = list(loaded_results)
 
         # Sélection du type d'exécution selon la classe du moteur
