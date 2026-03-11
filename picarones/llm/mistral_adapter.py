@@ -66,7 +66,8 @@ class MistralAdapter(BaseLLMAdapter):
             from mistralai import Mistral
         except ImportError as exc:
             raise RuntimeError(
-                "Le package 'mistralai' n'est pas installé. Lancez : pip install mistralai"
+                "Import du SDK Mistral impossible. Le package 'mistralai' est absent ou cassé "
+                f"(ImportError: {exc}). Vérifiez l'environnement runtime et réinstallez: pip install mistralai"
             ) from exc
 
         client = Mistral(api_key=self._api_key)

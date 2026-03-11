@@ -154,7 +154,7 @@ class OCRLLMPipeline(BaseOCREngine):
             )
             logger.info("[Pipeline] appel LLM pour doc %s (zero-shot)", image_path.name)
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
-            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
+            self._log_llm_call_result(image_path.name, result.success, result.error)
 
         elif self.mode == PipelineMode.TEXT_ONLY:
             if self.ocr_engine is None:
@@ -175,7 +175,7 @@ class OCRLLMPipeline(BaseOCREngine):
             prompt = self._build_prompt(ocr_text=ocr_text)
             logger.info("[Pipeline] appel LLM pour doc %s (text_only, ocr=%d chars)", image_path.name, len(ocr_text))
             result = self.llm_adapter.complete(prompt)
-            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
+            self._log_llm_call_result(image_path.name, result.success, result.error)
 
         else:  # TEXT_AND_IMAGE
             if self.ocr_engine is None:
@@ -197,7 +197,7 @@ class OCRLLMPipeline(BaseOCREngine):
             prompt = self._build_prompt(ocr_text=ocr_text, image_b64=image_b64)
             logger.info("[Pipeline] appel LLM pour doc %s (text_and_image, ocr=%d chars)", image_path.name, len(ocr_text))
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
-            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
+            self._log_llm_call_result(image_path.name, result.success, result.error)
 
         if not result.success:
             raise RuntimeError(f"Erreur LLM ({self.llm_adapter.model}): {result.error}")
@@ -273,6 +273,17 @@ class OCRLLMPipeline(BaseOCREngine):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _log_llm_call_result(self, doc_name: str, success: bool, error: Optional[str]) -> None:
+        """Journalise explicitement le résultat de l'appel LLM."""
+        if success:
+            logger.info("[Pipeline] LLM retourné pour doc %s", doc_name)
+            return
+        logger.warning(
+            "[Pipeline] échec appel LLM pour doc %s : %s",
+            doc_name,
+            error or "erreur inconnue",
+        )
 
     def _build_prompt(self, ocr_text: str = "", image_b64: str = "") -> str:
         """Substitue {ocr_output} et {image_b64} dans le template de prompt."""
