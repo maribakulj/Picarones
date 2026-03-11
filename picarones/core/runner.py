@@ -424,6 +424,14 @@ def run_benchmark(
             if is_cpu_bound
             else concurrent.futures.ThreadPoolExecutor
         )
+        logger.info(
+            "[%s] classe=%s, exécuteur=%s, docs à traiter=%d (reprise=%d).",
+            engine.name,
+            engine.__class__.__name__,
+            "ProcessPoolExecutor" if is_cpu_bound else "ThreadPoolExecutor",
+            len(docs_to_process),
+            len(loaded_results),
+        )
 
         pbar = tqdm(
             total=len(corpus.documents),
@@ -522,6 +530,20 @@ def run_benchmark(
         # Réordonner selon l'ordre du corpus pour reproductibilité
         doc_order = {doc.doc_id: i for i, doc in enumerate(corpus.documents)}
         document_results.sort(key=lambda dr: doc_order.get(dr.doc_id, len(doc_order)))
+
+        logger.info(
+            "[%s] collecte terminée — %d/%d documents (dont %d chargés depuis reprise).",
+            engine.name,
+            len(document_results),
+            len(corpus.documents),
+            len(loaded_results),
+        )
+        if not document_results:
+            logger.warning(
+                "[%s] aucun DocumentResult collecté — le rapport affichera 0/0 documents. "
+                "Vérifier que le moteur/pipeline a bien produit des résultats.",
+                engine.name,
+            )
 
         # Supprimer le fichier partiel — moteur terminé avec succès
         _delete_partial(partial_path)
