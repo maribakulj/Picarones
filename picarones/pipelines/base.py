@@ -15,6 +15,7 @@ exposées via ``EngineResult.metadata``.
 from __future__ import annotations
 
 import base64
+import logging
 import time
 from enum import Enum
 from pathlib import Path
@@ -22,6 +23,8 @@ from typing import Optional
 
 from picarones.engines.base import BaseOCREngine, EngineResult
 from picarones.llm.base import BaseLLMAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class PipelineMode(str, Enum):
@@ -146,6 +149,9 @@ class OCRLLMPipeline(BaseOCREngine):
         if self.mode == PipelineMode.ZERO_SHOT:
             image_b64 = _image_to_b64(image_path)
             prompt = self._build_prompt(image_b64=image_b64)
+            logger.debug(
+                "[%s] zero-shot — longueur prompt : %d car.", self._name, len(prompt)
+            )
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
 
         elif self.mode == PipelineMode.TEXT_ONLY:
@@ -154,6 +160,16 @@ class OCRLLMPipeline(BaseOCREngine):
             ocr_result = self.ocr_engine.run(image_path)
             ocr_text = ocr_result.text
             self._last_ocr_text = ocr_text
+            logger.debug(
+                "[%s] texte OCR : %d car. → envoi au LLM.",
+                self._name, len(ocr_text),
+            )
+            if not ocr_text.strip():
+                logger.warning(
+                    "[%s] le moteur OCR a produit un texte vide pour '%s'. "
+                    "Le LLM recevra un prompt sans texte OCR ({ocr_output} vide).",
+                    self._name, image_path.name,
+                )
             prompt = self._build_prompt(ocr_text=ocr_text)
             result = self.llm_adapter.complete(prompt)
 
@@ -163,6 +179,16 @@ class OCRLLMPipeline(BaseOCREngine):
             ocr_result = self.ocr_engine.run(image_path)
             ocr_text = ocr_result.text
             self._last_ocr_text = ocr_text
+            logger.debug(
+                "[%s] texte OCR : %d car. + image → envoi au LLM.",
+                self._name, len(ocr_text),
+            )
+            if not ocr_text.strip():
+                logger.warning(
+                    "[%s] le moteur OCR a produit un texte vide pour '%s'. "
+                    "Le LLM recevra un prompt sans texte OCR ({ocr_output} vide).",
+                    self._name, image_path.name,
+                )
             image_b64 = _image_to_b64(image_path)
             prompt = self._build_prompt(ocr_text=ocr_text, image_b64=image_b64)
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
@@ -170,7 +196,23 @@ class OCRLLMPipeline(BaseOCREngine):
         if not result.success:
             raise RuntimeError(f"Erreur LLM ({self.llm_adapter.model}): {result.error}")
 
-        return result.text
+        llm_text = result.text
+        if not llm_text or not llm_text.strip():
+            logger.warning(
+                "[%s] le LLM ('%s') a retourné un texte vide pour '%s'. "
+                "CER sera calculé à 1.0 (100%%). "
+                "Vérifier : (1) le prompt contient-il {ocr_output} ? "
+                "(2) le modèle supporte-t-il ce mode d'appel ? "
+                "(3) la réponse n'est-elle pas tronquée (max_tokens) ?",
+                self._name, self.llm_adapter.model, image_path.name,
+            )
+        else:
+            logger.debug(
+                "[%s] réponse LLM : %d car., extrait : %r",
+                self._name, len(llm_text), llm_text[:120],
+            )
+
+        return llm_text
 
     # ------------------------------------------------------------------
     # Override run() pour injecter les métadonnées pipeline
