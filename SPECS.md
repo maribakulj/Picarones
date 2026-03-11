@@ -621,7 +621,7 @@ Risque spécifique aux pipelines OCR+LLM : le LLM "corrige" à tort des graphies
 | **Sprint 6** | 1-2 sem. | Interface web FastAPI, import HTR-United / HuggingFace, profils de normalisation, Ollama (LLMs locaux) |
 | **Sprint 7** | 1-2 sem. | Rapport HTML v2 : vue Caractères, scatter plots, heatmaps, clustering |
 | **Sprint 8** | 2 sem. | Intégration eScriptorium et Gallica API, suivi longitudinal, analyse de robustesse, prompts bibliothèque |
-| **Sprint 9+** | Continu | Tests utilisateurs BnF, documentation, packaging Docker, CI/CD, publication open-source |
+| **Sprint 9+** | Continu | Tests utilisateurs, documentation, packaging Docker, CI/CD, publication open-source |
 
 ---
 

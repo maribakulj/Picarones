@@ -30,7 +30,7 @@ from picarones.core.line_metrics import compute_line_metrics, aggregate_line_met
 from picarones.core.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
 
 # ---------------------------------------------------------------------------
-# Textes GT réalistes (documents patrimoniaux BnF)
+# Textes GT réalistes (documents patrimoniaux)
 # ---------------------------------------------------------------------------
 
 _GT_TEXTS = [
@@ -137,7 +137,7 @@ def _vlm_hallucinations(text: str, rng: random.Random) -> str:
         "Ledit document fut enregistré au greffe le lendemain.",
         "Signé et paraphé par le notaire royal en présence de témoins.",
         "Archives nationales, cote F/7/1234, pièce n° 42.",
-        "Transcription réalisée d'après l'original conservé à la BnF.",
+        "Transcription réalisée d'après l'original conservé aux archives.",
         "Le présent acte a été lu et approuvé par toutes les parties.",
         "En foi de quoi nous avons apposé notre sceau et notre signature.",
         "Registre des délibérations du Parlement de Paris, tome III.",
@@ -493,7 +493,7 @@ def generate_sample_benchmark(
         engine_reports.append(report)
 
     bm = BenchmarkResult(
-        corpus_name="Corpus de test — Chroniques médiévales BnF",
+        corpus_name="Corpus de test — Chroniques médiévales",
         corpus_source="/corpus/chroniques/",
         document_count=n_docs,
         engine_reports=engine_reports,
@@ -501,7 +501,7 @@ def generate_sample_benchmark(
             "description": "Données de démonstration générées par picarones.fixtures",
             "script": "gothique textura",
             "langue": "Français médiéval (XIVe-XVe siècle)",
-            "institution": "BnF — Département des manuscrits",
+            "institution": "Département des manuscrits",
         },
     )
 

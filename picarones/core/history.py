@@ -565,7 +565,7 @@ def generate_demo_history(
     rng = random.Random(seed)
 
     engines = ["tesseract", "pero_ocr", "ancien_moteur"]
-    corpus = "Chroniques médiévales BnF"
+    corpus = "Chroniques médiévales"
 
     # Trajectoires de CER simulées (amélioration progressive + bruit)
     base_cers = {

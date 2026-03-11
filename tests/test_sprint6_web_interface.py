@@ -81,7 +81,7 @@ class TestHTRUnitedEntry:
         d = {
             "id": "test-corpus", "title": "Test Corpus", "url": "https://github.com/test/corpus",
             "language": ["French"], "script": ["Gothic"], "century": [14, 15],
-            "institution": "BnF", "description": "Un corpus de test.", "license": "CC-BY 4.0",
+            "institution": "Test Org", "description": "Un corpus de test.", "license": "CC-BY 4.0",
             "lines": 5000, "format": "ALTO", "tags": ["test", "médiéval"],
         }
         e = HTRUnitedEntry.from_dict(d)

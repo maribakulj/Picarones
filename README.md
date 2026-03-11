@@ -12,7 +12,7 @@ pinned: false
 > **Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux**
 Apache 2.0
 
-[![CI](https://github.com/bnf/picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/bnf/picarones/actions/workflows/ci.yml)
+[![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
@@ -67,7 +67,7 @@ documents historiques (manuscrits, imprimés anciens, archives).
 |--------|----------|
 | Dossier local | `picarones run --corpus ./corpus/` |
 | IIIF (Gallica, Bodleian, BL…) | `picarones import iiif <url>` |
-| Gallica (API BnF + OCR) | `GallicaClient` / `picarones import iiif` |
+| Gallica (API SRU + OCR) | `GallicaClient` / `picarones import iiif` |
 | HuggingFace Datasets | `picarones import hf <dataset>` |
 | HTR-United | `picarones import htr-united` |
 | eScriptorium | `EScriptoriumClient` |
@@ -96,7 +96,7 @@ documents historiques (manuscrits, imprimés anciens, archives).
 
 ```bash
 # Cloner et installer
-git clone https://github.com/bnf/picarones.git
+git clone https://github.com/maribakulj/Picarones.git
 cd picarones
 pip install -e .
 

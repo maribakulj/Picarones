@@ -79,7 +79,7 @@ class TestEScriptoriumClient:
         from picarones.importers.escriptorium import EScriptoriumClient, EScriptoriumProject
         client = EScriptoriumClient("https://example.org", token="tok")
         mock_data = [
-            {"pk": 1, "name": "Projet BnF", "slug": "projet-bnf",
+            {"pk": 1, "name": "Projet Test", "slug": "projet-test",
              "owner": {"username": "user1"}, "documents_count": 5},
         ]
         with patch.object(client, "_paginate", return_value=mock_data):
@@ -87,7 +87,7 @@ class TestEScriptoriumClient:
             assert len(projects) == 1
             assert isinstance(projects[0], EScriptoriumProject)
             assert projects[0].pk == 1
-            assert projects[0].name == "Projet BnF"
+            assert projects[0].name == "Projet Test"
             assert projects[0].document_count == 5
 
     def test_list_documents_with_project_filter(self):

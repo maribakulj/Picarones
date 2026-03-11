@@ -9,7 +9,7 @@ description = "Plateforme de comparaison de moteurs OCR/HTR pour documents patri
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-authors = [{ name = "Bibliothèque nationale de France — Département numérique" }]
+authors = [{ name = "maribakulj" }]
 keywords = ["ocr", "htr", "patrimoine", "benchmark", "cer", "wer", "gallica", "escriptorium", "iiif"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -36,11 +36,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bnf/picarones"
-Documentation = "https://github.com/bnf/picarones/blob/main/INSTALL.md"
-Repository = "https://github.com/bnf/picarones"
-Changelog = "https://github.com/bnf/picarones/blob/main/CHANGELOG.md"
-"Bug Tracker" = "https://github.com/bnf/picarones/issues"
+Homepage = "https://github.com/maribakulj/Picarones"
+Documentation = "https://github.com/maribakulj/Picarones/blob/main/INSTALL.md"
+Repository = "https://github.com/maribakulj/Picarones"
+Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/maribakulj/Picarones/issues"
 
 [project.optional-dependencies]
 # Développement et tests
