@@ -98,12 +98,40 @@ class MistralAdapter(BaseLLMAdapter):
             self.model, len(prompt), "oui" if image_b64 else "non",
         )
 
-        response = client.chat.complete(
-            model=self.model,
-            messages=[{"role": "user", "content": content}],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        try:
+            response = client.chat.complete(
+                model=self.model,
+                messages=[{"role": "user", "content": content}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        except Exception as exc:
+            status_code = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
+            if status_code == 401:
+                logger.warning(
+                    "[MistralAdapter] erreur HTTP 401 — clé API invalide ou expirée "
+                    "(modèle=%s). Vérifier MISTRAL_API_KEY.",
+                    self.model,
+                )
+            elif status_code == 429:
+                logger.warning(
+                    "[MistralAdapter] erreur HTTP 429 — quota dépassé ou rate-limit "
+                    "(modèle=%s). Réessayer plus tard.",
+                    self.model,
+                )
+            elif status_code is not None and status_code >= 500:
+                logger.warning(
+                    "[MistralAdapter] erreur HTTP %d — problème serveur Mistral "
+                    "(modèle=%s) : %s",
+                    status_code, self.model, exc,
+                )
+            else:
+                logger.warning(
+                    "[MistralAdapter] erreur lors de l'appel API (modèle=%s) : %s",
+                    self.model, exc,
+                )
+            raise
+
         raw = response.choices[0].message.content
         text = raw or ""
 

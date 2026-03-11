@@ -190,16 +190,21 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         engines_summary.append(entry)
 
     # Documents (vue galerie + vue détail)
-    # On collecte tous les doc_ids depuis le premier moteur
-    doc_ids_ordered = []
-    if benchmark.engine_reports:
-        doc_ids_ordered = [dr.doc_id for dr in benchmark.engine_reports[0].document_results]
+    # On collecte tous les doc_ids depuis l'union de tous les moteurs,
+    # en préservant l'ordre d'apparition (premier moteur d'abord, puis compléments).
+    seen_doc_ids: set[str] = set()
+    doc_ids_ordered: list[str] = []
+    for report in benchmark.engine_reports:
+        for dr in report.document_results:
+            if dr.doc_id not in seen_doc_ids:
+                seen_doc_ids.add(dr.doc_id)
+                doc_ids_ordered.append(dr.doc_id)
 
     # Index croisé : doc_id → {engine_name → DocumentResult}
     doc_engine_map: dict[str, dict] = {did: {} for did in doc_ids_ordered}
     for report in benchmark.engine_reports:
         for dr in report.document_results:
-            doc_engine_map[dr.doc_id][report.engine_name] = dr
+            doc_engine_map.setdefault(dr.doc_id, {})[report.engine_name] = dr
 
     documents = []
     for doc_id in doc_ids_ordered:
