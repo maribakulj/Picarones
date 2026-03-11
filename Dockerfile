@@ -34,7 +34,7 @@ COPY picarones/ picarones/
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --upgrade pip && \
-    pip install -e ".[web]" && \
+    pip install -e ".[web,llm]" && \
     pip cache purge
 
 # ──────────────────────────────────────────────────────────────────
