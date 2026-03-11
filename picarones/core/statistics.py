@@ -18,6 +18,16 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
 
+# Import optionnel de scipy — utilisé pour le test de Wilcoxon si disponible
+# (méthode exacte pour n ≤ 25, approximation normale pour n > 25).
+# En son absence, l'implémentation native (approximation normale pour n ≥ 10)
+# est utilisée automatiquement.
+try:
+    from scipy.stats import wilcoxon as _scipy_wilcoxon  # type: ignore[import-untyped]
+    _SCIPY_AVAILABLE = True
+except ImportError:
+    _SCIPY_AVAILABLE = False
+
 
 # ---------------------------------------------------------------------------
 # Bootstrap CI
@@ -69,14 +79,36 @@ def wilcoxon_test(
     """Test de Wilcoxon signé-rangé entre deux séries de CER appariées.
 
     Retourne un dict avec :
-      - statistic : W+
-      - p_value   : p-value approximée (distribution normale pour n ≥ 10)
-      - significant : bool (p < 0.05)
+      - statistic     : W = min(W⁺, W⁻)
+      - p_value       : p-value bilatérale
+      - significant   : bool (p < 0.05)
       - interpretation : phrase lisible
-      - n_pairs   : nombre de paires utilisées
+      - n_pairs       : nombre de paires utilisées (après retrait des zéros)
+      - W_plus        : somme des rangs des différences positives
+      - W_minus       : somme des rangs des différences négatives
 
-    Pour n < 10, on utilise la table exacte simplifée.
-    Pour n ≥ 10, on utilise l'approximation normale.
+    Hypothèses et limites
+    ---------------------
+    * Les observations sont appariées (même corpus, deux moteurs différents).
+    * Le test est non-paramétrique : aucune hypothèse de normalité des CER.
+    * ``zero_method="wilcox"`` (défaut) : les paires sans différence (aᵢ = bᵢ)
+      sont simplement exclues.  Les autres méthodes (``"pratt"``, ``"zsplit"``)
+      nécessitent scipy.
+    * **Approximation normale** (implémentation native, n ≥ 10) :
+      L'approximation est raisonnable pour n ≥ 10 et converge vers la
+      distribution exacte.  Pour n < 10, une table critique simplifiée est
+      utilisée (p ∈ {0.04, 0.20}) — résultat **conservateur**.
+    * **scipy** (si installé) : ``scipy.stats.wilcoxon`` est utilisé à la place
+      de l'approximation native.  scipy utilise la méthode exacte pour n ≤ 25
+      et l'approximation normale pour n > 25, ce qui est plus précis.
+    * **Validité** : le test suppose la symétrie de la distribution des
+      différences.  Avec de très petits n (< 5), les résultats sont peu fiables
+      quelle que soit la méthode.
+
+    Parameters
+    ----------
+    a, b : séries de CER (même longueur, même ordre de documents)
+    zero_method : gestion des paires nulles (défaut : ``"wilcox"``)
     """
     if len(a) != len(b):
         raise ValueError("Les deux listes doivent avoir la même longueur")
@@ -117,19 +149,16 @@ def wilcoxon_test(
     W_minus = sum(ranks[k] for k in range(n) if diffs[k] < 0)
     W = min(W_plus, W_minus)
 
-    # Approximation normale (valide pour n ≥ 10)
-    if n >= 10:
-        mu = n * (n + 1) / 4.0
-        # Correction pour les ex-aequo (simplifiée)
-        sigma2 = n * (n + 1) * (2 * n + 1) / 24.0
-        if sigma2 <= 0:
-            p_value = 1.0
-        else:
-            z = abs((W + 0.5) - mu) / math.sqrt(sigma2)  # correction de continuité
-            p_value = 2.0 * _normal_sf(z)  # test bilatéral
+    # Calcul de la p-value : scipy si disponible, sinon approximation native
+    if _SCIPY_AVAILABLE:
+        try:
+            scipy_res = _scipy_wilcoxon(diffs, zero_method=zero_method)
+            p_value = float(scipy_res.pvalue)
+        except Exception:
+            # Repli sur l'implémentation native en cas d'erreur scipy
+            p_value = _native_p_value(n, W)
     else:
-        # Table exacte approximée pour petits n
-        p_value = _wilcoxon_exact_p(n, W)
+        p_value = _native_p_value(n, W)
 
     significant = p_value < 0.05
 
@@ -167,15 +196,33 @@ def _normal_sf(z: float) -> float:
     return p if z >= 0 else 1.0 - p
 
 
-# Table des valeurs critiques de W pour α=0.05 bilatéral
+# Table des valeurs critiques de W pour α=0.05 bilatéral (test exact, source : tables de Wilcoxon)
 _W_CRITICAL = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 2, 8: 3, 9: 5}
 
+
 def _wilcoxon_exact_p(n: int, w: float) -> float:
-    """P-value approximée pour petits n (< 10) via table critique simplifiée."""
+    """P-value approximée pour petits n (< 10) via table critique simplifiée.
+
+    Note : résultat **conservateur** — seules deux valeurs sont retournées :
+    0.04 (significatif à 5 %) ou 0.20 (non significatif).
+    Préférer scipy pour des p-values exactes.
+    """
     critical = _W_CRITICAL.get(n, 0)
     if w <= critical:
         return 0.04  # significatif à 5 %
     return 0.20      # non significatif (approximation conservative)
+
+
+def _native_p_value(n: int, W: float) -> float:
+    """Calcule la p-value via l'approximation normale (n ≥ 10) ou la table exacte (n < 10)."""
+    if n >= 10:
+        mu = n * (n + 1) / 4.0
+        sigma2 = n * (n + 1) * (2 * n + 1) / 24.0
+        if sigma2 <= 0:
+            return 1.0
+        z = abs((W + 0.5) - mu) / math.sqrt(sigma2)  # correction de continuité
+        return 2.0 * _normal_sf(z)  # test bilatéral
+    return _wilcoxon_exact_p(n, W)
 
 
 # ---------------------------------------------------------------------------

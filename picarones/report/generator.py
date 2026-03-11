@@ -617,6 +617,7 @@ tbody tr:hover {{ background: #f8fafc; }}
   border-radius: var(--radius);
   overflow: hidden;
   cursor: pointer;
+  position: relative;
   transition: transform .15s, box-shadow .15s;
 }}
 .gallery-card:hover {{
@@ -1081,25 +1082,32 @@ body.present-mode nav .meta {{ display: none; }}
 
   <!-- ── Métriques robustes ────────────────────────────────────── -->
   <div class="card" id="robust-metrics-card">
-    <h2 data-i18n="h_robust">Métriques robustes (sans hallucinations)</h2>
+    <h2 data-i18n="h_robust">Analyse robuste (sans hallucinations)</h2>
     <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem" data-i18n="robust_desc">
-      Recalcule CER, WER, MER, WIL en excluant les documents détectés comme hallucinés.
+      Recalcule CER, WER, MER, WIL, Gini et ancrage en excluant les documents détectés comme hallucinés ou problématiques.
+      Cochez/décochez des documents dans la Galerie pour les exclure manuellement.
     </p>
     <div class="robust-controls">
       <label>
-        <span data-i18n="robust_anchor_label">Seuil d'ancrage min :</span>
+        <span data-i18n="robust_cer_label">CER &gt; seuil :</span>
+        <input type="range" id="robust-cer" min="0" max="100" step="1" value="100"
+          oninput="document.getElementById('robust-cer-val').textContent=parseInt(this.value)+'%';renderRobustMetrics()">
+        <span id="robust-cer-val" class="slider-val">100%</span>
+      </label>
+      <label>
+        <span data-i18n="robust_anchor_label">Ancrage &lt; seuil :</span>
         <input type="range" id="robust-anchor" min="0" max="1" step="0.05" value="0.5"
           oninput="document.getElementById('robust-anchor-val').textContent=parseFloat(this.value).toFixed(2);renderRobustMetrics()">
         <span id="robust-anchor-val" class="slider-val">0.50</span>
       </label>
       <label>
-        <span data-i18n="robust_ratio_label">Ratio longueur max :</span>
+        <span data-i18n="robust_ratio_label">Ratio longueur &gt; seuil :</span>
         <input type="range" id="robust-ratio" min="1" max="3" step="0.1" value="1.5"
           oninput="document.getElementById('robust-ratio-val').textContent=parseFloat(this.value).toFixed(1);renderRobustMetrics()">
         <span id="robust-ratio-val" class="slider-val">1.5</span>
       </label>
     </div>
-    <div id="robust-summary" style="font-size:.82rem;color:var(--text-muted);margin:.5rem 0"></div>
+    <div id="robust-summary" style="font-size:.85rem;font-weight:600;margin:.75rem 0;padding:.5rem .75rem;background:var(--bg);border-radius:.4rem;border:1px solid var(--border)"></div>
     <div id="robust-table-wrap" class="table-wrap"></div>
     <div id="robust-excluded-docs" style="margin-top:.75rem;font-size:.82rem"></div>
   </div>
@@ -1127,7 +1135,12 @@ body.present-mode nav .meta {{ display: none; }}
           <option value="" data-i18n-opt="gallery_filter_all">Tous</option>
         </select>
       </label>
+      <button class="btn-secondary" onclick="resetGalleryExclusions()" id="gallery-reset-btn"
+        title="Réinitialiser toutes les exclusions manuelles" style="display:none">
+        ↺ Réinitialiser exclusions
+      </button>
     </div>
+    <div id="gallery-exclusion-info" style="font-size:.82rem;color:var(--text-muted);margin:.4rem 0;display:none"></div>
     <div id="gallery-grid" class="gallery-grid"></div>
     <div id="gallery-empty" class="empty-state" style="display:none" data-i18n="gallery_empty">
       Aucun document ne correspond aux filtres.
@@ -1739,103 +1752,199 @@ document.querySelectorAll('#ranking-table th.sortable').forEach(th => {{
 }});
 
 // ── Métriques robustes ──────────────────────────────────────────
+
+// Ensemble des doc_id exclus manuellement via la galerie
+const _manualExclusions = new Set();
+
+function _robustStat(arr) {{
+  // Retourne {{mean, median, p90, p95}} ou null si tableau vide
+  if (!arr.length) return null;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const n = sorted.length;
+  const mean = sorted.reduce((a, b) => a + b, 0) / n;
+  const median = n % 2 === 0 ? (sorted[n/2-1] + sorted[n/2]) / 2 : sorted[Math.floor(n/2)];
+  const p90 = sorted[Math.min(Math.ceil(n * 0.9) - 1, n - 1)];
+  const p95 = sorted[Math.min(Math.ceil(n * 0.95) - 1, n - 1)];
+  return {{ mean, median, p90, p95 }};
+}}
+
+function _deltaCell(globalVal, robustVal) {{
+  if (robustVal === null || globalVal === null) return '—';
+  const delta = robustVal - globalVal;
+  const cls = delta < -0.001 ? 'color:#16a34a' : delta > 0.001 ? 'color:#dc2626' : 'color:var(--text-muted)';
+  const sign = delta >= 0 ? '+' : '';
+  return `<span style="${{cls}}">${{sign}}${{(delta*100).toFixed(2)}}%</span>`;
+}}
+
 function renderRobustMetrics() {{
+  const cerThreshold   = parseInt(document.getElementById('robust-cer').value) / 100;
   const anchorThreshold = parseFloat(document.getElementById('robust-anchor').value);
   const ratioThreshold  = parseFloat(document.getElementById('robust-ratio').value);
+  const totalDocs = DATA.documents.length;
 
-  // Pour chaque engine : recalculer CER/WER en excluant les docs hallucinés
+  // Pour chaque engine : recalculer métriques en excluant les docs problématiques
   const results = DATA.engines.map(eng => {{
-    const allDocs = DATA.documents;
     const excluded = [];
-    const cerVals = [], werVals = [], merVals = [], wilVals = [];
+    const cerVals = [], werVals = [], merVals = [], wilVals = [], giniVals = [], anchorVals = [];
 
-    allDocs.forEach(doc => {{
+    DATA.documents.forEach(doc => {{
       const er = doc.engine_results.find(r => r.engine === eng.name);
       if (!er || er.error) return;
       const hm = er.hallucination_metrics;
-      const isHall = hm && (hm.anchor_score < anchorThreshold || hm.length_ratio > ratioThreshold);
-      if (isHall) {{
-        excluded.push({{ doc_id: doc.doc_id, anchor: hm.anchor_score, ratio: hm.length_ratio }});
+      const lm = er.line_metrics;
+
+      // Raisons d'exclusion
+      const reasons = [];
+      if (cerThreshold < 1.0 && er.cer !== null && er.cer > cerThreshold)
+        reasons.push(`CER ${{(er.cer*100).toFixed(1)}}% > ${{(cerThreshold*100).toFixed(0)}}%`);
+      if (hm && hm.anchor_score < anchorThreshold)
+        reasons.push(`ancrage ${{hm.anchor_score.toFixed(3)}} < ${{anchorThreshold.toFixed(2)}}`);
+      if (hm && hm.length_ratio > ratioThreshold)
+        reasons.push(`ratio ${{hm.length_ratio.toFixed(2)}} > ${{ratioThreshold.toFixed(1)}}`);
+      if (_manualExclusions.has(doc.doc_id))
+        reasons.push('exclusion manuelle');
+
+      if (reasons.length > 0) {{
+        excluded.push({{
+          doc_id: doc.doc_id,
+          cer: er.cer,
+          anchor: hm ? hm.anchor_score : undefined,
+          ratio: hm ? hm.length_ratio : undefined,
+          reasons,
+        }});
       }} else {{
-        cerVals.push(er.cer);
-        werVals.push(er.wer);
-        if (er.mer !== undefined) merVals.push(er.mer);
-        if (er.wil !== undefined) wilVals.push(er.wil);
+        if (er.cer !== null) cerVals.push(er.cer);
+        if (er.wer !== null) werVals.push(er.wer);
+        if (er.mer !== null) merVals.push(er.mer);
+        if (er.wil !== null) wilVals.push(er.wil);
+        if (lm && lm.gini !== null) giniVals.push(lm.gini);
+        if (hm && hm.anchor_score !== null) anchorVals.push(hm.anchor_score);
       }}
     }});
 
-    const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    const meanOf = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
     return {{
       name: eng.name,
       global_cer: eng.cer,
       global_wer: eng.wer,
-      robust_cer: mean(cerVals),
-      robust_wer: mean(werVals),
-      robust_mer: mean(merVals),
+      global_mer: eng.mer,
+      global_wil: eng.wil,
+      robust_cer: _robustStat(cerVals),
+      robust_wer: meanOf(werVals),
+      robust_mer: meanOf(merVals),
+      robust_wil: meanOf(wilVals),
+      robust_gini: meanOf(giniVals),
+      robust_anchor: meanOf(anchorVals),
       robust_docs: cerVals.length,
       excluded_count: excluded.length,
       excluded_docs: excluded,
     }};
   }});
 
-  // Résumé
-  const totalExcluded = Math.max(...results.map(r => r.excluded_count));
-  const totalDocs = DATA.documents.length;
-  document.getElementById('robust-summary').textContent =
-    `${{totalExcluded}} document(s) exclu(s) sur ${{totalDocs}} ` +
-    `(seuil ancrage < ${{anchorThreshold.toFixed(2)}}, ratio > ${{ratioThreshold.toFixed(1)}})`;
+  // Résumé — nombre unique de docs exclus (au moins par un moteur)
+  const allExcludedIds = new Set(results.flatMap(r => r.excluded_docs.map(d => d.doc_id)));
+  const countExcl = allExcludedIds.size;
+  const countIncl = totalDocs - countExcl;
+  const summaryEl = document.getElementById('robust-summary');
+  summaryEl.textContent = countExcl === 0
+    ? `Aucun document exclu — métriques calculées sur ${{totalDocs}} documents.`
+    : `${{countExcl}} doc${{countExcl>1?'s':''}} exclu${{countExcl>1?'s':''}} sur ${{totalDocs}} — métriques robustes calculées sur ${{countIncl}} document${{countIncl>1?'s':''}}.`;
 
-  // Tableau comparatif
-  const hasRobust = results.some(r => r.excluded_count > 0);
-  const card = document.getElementById('robust-metrics-card');
-  if (!results.some(r => r.excluded_docs.length > 0 || r.robust_cer !== null)) {{
+  if (!results.some(r => r.robust_cer !== null)) {{
     document.getElementById('robust-table-wrap').innerHTML =
-      '<p style="color:var(--text-muted);font-size:.82rem">Aucune donnée de hallucinations disponible pour ce corpus.</p>';
+      '<p style="color:var(--text-muted);font-size:.82rem">Aucune donnée disponible pour ce corpus.</p>';
+    document.getElementById('robust-excluded-docs').innerHTML = '';
     return;
   }}
 
+  // Tableau comparatif étendu
+  const fmt = v => v !== null ? pct(v) : '—';
   const rows = results.map(r => {{
-    const delta = r.robust_cer !== null ? r.robust_cer - r.global_cer : null;
-    const deltaClass = delta === null ? '' : (delta < -0.001 ? 'improved' : delta > 0.001 ? 'worsened' : '');
-    const deltaStr = delta === null ? '—' : (delta >= 0 ? '+' : '') + (delta*100).toFixed(2) + '%';
+    const rs = r.robust_cer;
+    const robCerMean = rs ? rs.mean : null;
     return `<tr>
-      <td><b>${{esc(r.name)}}</b></td>
-      <td>${{pct(r.global_cer)}}</td>
-      <td>${{r.robust_cer !== null ? pct(r.robust_cer) : '—'}}</td>
-      <td class="${{deltaClass}}">${{deltaStr}}</td>
-      <td>${{pct(r.global_wer)}}</td>
-      <td>${{r.robust_wer !== null ? pct(r.robust_wer) : '—'}}</td>
-      <td style="color:var(--text-muted)">${{r.excluded_count}} exclu(s) / ${{r.robust_docs}} restant(s)</td>
+      <td style="font-weight:600;white-space:nowrap">${{esc(r.name)}}</td>
+      <td style="text-align:center">${{fmt(r.global_cer)}}</td>
+      <td style="text-align:center">${{rs ? pct(rs.mean) : '—'}}</td>
+      <td style="text-align:center">${{_deltaCell(r.global_cer, robCerMean)}}</td>
+      <td style="text-align:center;color:var(--text-muted)">${{rs ? pct(rs.median) : '—'}}</td>
+      <td style="text-align:center;color:var(--text-muted)">${{rs ? pct(rs.p90) : '—'}}</td>
+      <td style="text-align:center;color:var(--text-muted)">${{rs ? pct(rs.p95) : '—'}}</td>
+      <td style="text-align:center">${{fmt(r.global_wer)}}</td>
+      <td style="text-align:center">${{fmt(r.robust_wer)}}</td>
+      <td style="text-align:center">${{_deltaCell(r.global_wer, r.robust_wer)}}</td>
+      <td style="text-align:center">${{fmt(r.global_mer)}}</td>
+      <td style="text-align:center">${{fmt(r.robust_mer)}}</td>
+      <td style="text-align:center">${{fmt(r.global_wil)}}</td>
+      <td style="text-align:center">${{fmt(r.robust_wil)}}</td>
+      <td style="text-align:center;color:var(--text-muted)">${{r.robust_gini !== null ? r.robust_gini.toFixed(3) : '—'}}</td>
+      <td style="text-align:center;color:var(--text-muted)">${{r.robust_anchor !== null ? r.robust_anchor.toFixed(3) : '—'}}</td>
+      <td style="text-align:center;color:var(--text-muted)">${{r.excluded_count}} / ${{r.robust_docs}}</td>
     </tr>`;
   }}).join('');
 
+  const thStyle = 'padding:.35rem .5rem;font-size:.75rem;white-space:nowrap;text-align:center;border-bottom:1px solid var(--border)';
+  const thStyleL = thStyle + ';text-align:left';
   document.getElementById('robust-table-wrap').innerHTML = `
-    <table class="robust-table" style="width:100%;border-collapse:collapse">
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
       <thead>
         <tr style="background:var(--bg)">
-          <th style="text-align:left;padding:.4rem .6rem;font-size:.8rem">Moteur</th>
-          <th style="padding:.4rem .6rem;font-size:.8rem">CER global</th>
-          <th style="padding:.4rem .6rem;font-size:.8rem">CER robuste</th>
-          <th style="padding:.4rem .6rem;font-size:.8rem">Δ CER</th>
-          <th style="padding:.4rem .6rem;font-size:.8rem">WER global</th>
-          <th style="padding:.4rem .6rem;font-size:.8rem">WER robuste</th>
-          <th style="padding:.4rem .6rem;font-size:.8rem">Documents</th>
+          <th style="${{thStyleL}}">Moteur</th>
+          <th colspan="3" style="${{thStyle}};border-left:2px solid var(--border)">— CER —</th>
+          <th colspan="3" style="${{thStyle}}">— CER robuste détail —</th>
+          <th colspan="3" style="${{thStyle}};border-left:2px solid var(--border)">— WER —</th>
+          <th colspan="2" style="${{thStyle}};border-left:2px solid var(--border)">— MER —</th>
+          <th colspan="2" style="${{thStyle}};border-left:2px solid var(--border)">— WIL —</th>
+          <th style="${{thStyle}};border-left:2px solid var(--border)">Gini rob.</th>
+          <th style="${{thStyle}}">Ancrage rob.</th>
+          <th style="${{thStyle}}">Excl./Incl.</th>
+        </tr>
+        <tr style="background:var(--bg)">
+          <th style="${{thStyleL}}"></th>
+          <th style="${{thStyle}};border-left:2px solid var(--border)">Global</th>
+          <th style="${{thStyle}}">Robuste</th>
+          <th style="${{thStyle}}">Δ</th>
+          <th style="${{thStyle}}">Médiane</th>
+          <th style="${{thStyle}}">P90</th>
+          <th style="${{thStyle}}">P95</th>
+          <th style="${{thStyle}};border-left:2px solid var(--border)">Global</th>
+          <th style="${{thStyle}}">Robuste</th>
+          <th style="${{thStyle}}">Δ</th>
+          <th style="${{thStyle}};border-left:2px solid var(--border)">Global</th>
+          <th style="${{thStyle}}">Robuste</th>
+          <th style="${{thStyle}};border-left:2px solid var(--border)">Global</th>
+          <th style="${{thStyle}}">Robuste</th>
+          <th style="${{thStyle}};border-left:2px solid var(--border)"></th>
+          <th style="${{thStyle}}"></th>
+          <th style="${{thStyle}}"></th>
         </tr>
       </thead>
       <tbody>${{rows}}</tbody>
-    </table>`;
+    </table>
+    </div>`;
 
-  // Documents exclus
-  const allExcluded = results.flatMap(r => r.excluded_docs.map(d => ({{...d, engine: r.name}})));
-  if (allExcluded.length > 0) {{
-    const uniq = [...new Map(allExcluded.map(d => [d.doc_id, d])).values()];
+  // Documents exclus — liste déroulante unifiée
+  if (allExcludedIds.size > 0) {{
+    // Collecter infos par doc_id (union des raisons de tous les moteurs)
+    const docInfoMap = new Map();
+    results.forEach(r => {{
+      r.excluded_docs.forEach(d => {{
+        if (!docInfoMap.has(d.doc_id)) {{
+          docInfoMap.set(d.doc_id, {{ doc_id: d.doc_id, cer: d.cer, anchor: d.anchor, ratio: d.ratio, reasons: new Set() }});
+        }}
+        d.reasons.forEach(reason => docInfoMap.get(d.doc_id).reasons.add(reason));
+      }});
+    }});
+    const uniqDocs = [...docInfoMap.values()].sort((a,b) => a.doc_id.localeCompare(b.doc_id));
     document.getElementById('robust-excluded-docs').innerHTML =
       `<details><summary style="cursor:pointer;font-size:.82rem;color:var(--text-muted)">` +
-      `▶ Documents exclus (${{uniq.length}})</summary>` +
-      `<ul style="margin:.4rem 0 0 1rem;font-size:.8rem;color:var(--text-muted)">` +
-      uniq.map(d => `<li><a href="#" onclick="openDocument('${{esc(d.doc_id)}}');return false">${{esc(d.doc_id)}}</a>` +
-        ` — ancrage: ${{d.anchor !== undefined ? d.anchor.toFixed(3) : '?'}}, ratio: ${{d.ratio !== undefined ? d.ratio.toFixed(2) : '?'}}</li>`
-      ).join('') +
+      `▶ Documents exclus (${{uniqDocs.length}})</summary>` +
+      `<ul style="margin:.4rem 0 0 1rem;font-size:.8rem;color:var(--text-muted);max-height:220px;overflow-y:auto">` +
+      uniqDocs.map(d => {{
+        const cerStr = d.cer !== null && d.cer !== undefined ? ` CER ${{(d.cer*100).toFixed(1)}}%` : '';
+        return `<li><a href="#" onclick="openDocument('${{esc(d.doc_id)}}');return false">${{esc(d.doc_id)}}</a>${{cerStr}} — ${{[...d.reasons].join(', ')}}</li>`;
+      }}).join('') +
       `</ul></details>`;
   }} else {{
     document.getElementById('robust-excluded-docs').innerHTML = '';
@@ -1843,6 +1952,36 @@ function renderRobustMetrics() {{
 }}
 
 // ── Vue Galerie ─────────────────────────────────────────────────
+function toggleGalleryExclusion(docId, checked) {{
+  if (checked) {{
+    _manualExclusions.delete(docId);
+  }} else {{
+    _manualExclusions.add(docId);
+  }}
+  _updateGalleryExclusionUI();
+}}
+
+function resetGalleryExclusions() {{
+  _manualExclusions.clear();
+  renderGallery();
+  renderRobustMetrics();
+}}
+
+function _updateGalleryExclusionUI() {{
+  const count = _manualExclusions.size;
+  const btn = document.getElementById('gallery-reset-btn');
+  const info = document.getElementById('gallery-exclusion-info');
+  if (count > 0) {{
+    btn.style.display = '';
+    info.style.display = '';
+    info.textContent = `${{count}} document${{count>1?'s':''}} exclu${{count>1?'s':''}} manuellement des métriques robustes.`;
+  }} else {{
+    btn.style.display = 'none';
+    info.style.display = 'none';
+  }}
+  renderRobustMetrics();
+}}
+
 function renderGallery() {{
   const sortKey  = document.getElementById('gallery-sort').value;
   const filterCer = parseFloat(document.getElementById('gallery-filter-cer').value) / 100 || 0;
@@ -1879,6 +2018,18 @@ function renderGallery() {{
   }}
   empty.style.display = 'none';
 
+  // Mise à jour bouton reset
+  const btn = document.getElementById('gallery-reset-btn');
+  const info = document.getElementById('gallery-exclusion-info');
+  if (_manualExclusions.size > 0) {{
+    btn.style.display = '';
+    info.style.display = '';
+    info.textContent = `${{_manualExclusions.size}} document${{_manualExclusions.size>1?'s':''}} exclu${{_manualExclusions.size>1?'s':''}} manuellement des métriques robustes.`;
+  }} else {{
+    btn.style.display = 'none';
+    info.style.display = 'none';
+  }}
+
   grid.innerHTML = docs.map(doc => {{
     const imgTag = doc.image_b64
       ? `<img src="${{doc.image_b64}}" alt="${{esc(doc.doc_id)}}" loading="lazy">`
@@ -1902,11 +2053,23 @@ function renderGallery() {{
         title="Difficulté intrinsèque : ${{doc.difficulty_label}}">⚡ ${{doc.difficulty_label}}</span>`;
     }}
 
-    return `<div class="gallery-card" onclick="openDocument('${{esc(doc.doc_id)}}')">
-      ${{imgTag}}
-      <div class="gallery-card-body">
-        <div class="gallery-card-title">${{esc(doc.doc_id)}}${{diffBadge}}</div>
-        <div class="gallery-card-badges">${{badges}}</div>
+    const isExcluded = _manualExclusions.has(doc.doc_id);
+    const checkboxId = `gal-chk-${{doc.doc_id.replace(/[^a-z0-9]/gi,'_')}}`;
+    const cardStyle = isExcluded ? 'opacity:.5;border:2px dashed #dc2626' : '';
+    return `<div class="gallery-card" style="${{cardStyle}}">
+      <label class="gallery-exclude-label" title="${{isExcluded ? 'Inclure dans les métriques robustes' : 'Exclure des métriques robustes'}}"
+        style="position:absolute;top:.35rem;right:.35rem;z-index:2;cursor:pointer;background:rgba(255,255,255,.85);border-radius:.25rem;padding:.1rem .25rem;font-size:.7rem;display:flex;align-items:center;gap:.25rem">
+        <input type="checkbox" id="${{checkboxId}}" ${{isExcluded ? '' : 'checked'}}
+          onchange="toggleGalleryExclusion('${{esc(doc.doc_id)}}',this.checked)"
+          onclick="event.stopPropagation()">
+        <span>${{isExcluded ? 'Exclu' : 'Inclus'}}</span>
+      </label>
+      <div onclick="openDocument('${{esc(doc.doc_id)}}')">
+        ${{imgTag}}
+        <div class="gallery-card-body">
+          <div class="gallery-card-title">${{esc(doc.doc_id)}}${{diffBadge}}</div>
+          <div class="gallery-card-badges">${{badges}}</div>
+        </div>
       </div>
     </div>`;
   }}).join('');
@@ -2810,9 +2973,10 @@ function togglePresentMode() {{
 }}
 
 // ── Sprint 7 — Export CSV ────────────────────────────────────────
-function exportCSV() {{
-  const rows = [['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score','gini','anchor_score','length_ratio','is_hallucinating']];
-  DATA.documents.forEach(doc => {{
+function _buildCSVRows(docs) {{
+  const header = ['doc_id','engine','cer','wer','mer','wil','duration','ligature_score','diacritic_score','difficulty_score','gini','anchor_score','length_ratio','is_hallucinating'];
+  const rows = [header];
+  docs.forEach(doc => {{
     doc.engine_results.forEach(er => {{
       rows.push([
         doc.doc_id,
@@ -2832,14 +2996,45 @@ function exportCSV() {{
       ]);
     }});
   }});
-  const csv = rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\\n');
-  const blob = new Blob(['\ufeff' + csv], {{ type: 'text/csv;charset=utf-8' }});
+  return rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\\n');
+}}
+
+function _downloadCSV(content, filename) {{
+  const blob = new Blob(['\ufeff' + content], {{ type: 'text/csv;charset=utf-8' }});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'picarones_metrics_' + DATA.meta.corpus_name.replace(/\\s+/g,'-') + '.csv';
+  a.download = filename;
   document.body.appendChild(a); a.click();
   setTimeout(() => {{ document.body.removeChild(a); URL.revokeObjectURL(url); }}, 100);
+}}
+
+function exportCSV() {{
+  // Feuille 1 : tous les documents
+  const corpusSlug = DATA.meta.corpus_name.replace(/\\s+/g,'-');
+  _downloadCSV(_buildCSVRows(DATA.documents), `picarones_metrics_${{corpusSlug}}.csv`);
+
+  // Feuille 2 : documents filtrés (exclusions robustes actives)
+  const cerThreshold   = parseInt(document.getElementById('robust-cer').value) / 100;
+  const anchorThreshold = parseFloat(document.getElementById('robust-anchor').value);
+  const ratioThreshold  = parseFloat(document.getElementById('robust-ratio').value);
+  const filteredDocs = DATA.documents.filter(doc => {{
+    // Exclure si doc est dans _manualExclusions
+    if (_manualExclusions.has(doc.doc_id)) return false;
+    // Exclure si tous les moteurs le détectent comme problématique
+    return doc.engine_results.some(er => {{
+      if (!er || er.error) return false;
+      if (cerThreshold < 1.0 && er.cer !== null && er.cer > cerThreshold) return false;
+      const hm = er.hallucination_metrics;
+      if (hm && hm.anchor_score < anchorThreshold) return false;
+      if (hm && hm.length_ratio > ratioThreshold) return false;
+      return true;
+    }});
+  }});
+  // Télécharger avec un délai pour ne pas bloquer le premier download
+  setTimeout(() => {{
+    _downloadCSV(_buildCSVRows(filteredDocs), `picarones_metrics_${{corpusSlug}}_robust.csv`);
+  }}, 400);
 }}
 
 // ── Vue Caractères ───────────────────────────────────────────────

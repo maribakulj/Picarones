@@ -43,7 +43,7 @@ class TestBenchmarkHistory:
     def test_record_single(self, db):
         db.record_single(
             run_id="run001",
-            corpus_name="BnF Test",
+            corpus_name="Corpus Test",
             engine_name="tesseract",
             cer_mean=0.12,
             wer_mean=0.20,

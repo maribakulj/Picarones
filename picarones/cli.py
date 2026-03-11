@@ -709,7 +709,7 @@ def history_cmd(
     \b
     Exemples :
         picarones history
-        picarones history --engine tesseract --corpus "Chroniques BnF"
+        picarones history --engine tesseract --corpus "Chroniques médiévales"
         picarones history --regression --regression-threshold 0.02
         picarones history --demo   # données fictives de démonstration
         picarones history --export-json historique.json

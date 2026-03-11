@@ -315,7 +315,7 @@ def _download_url(
 ) -> bytes:
     """Télécharge une URL avec retry exponentiel."""
     headers = {
-        "User-Agent": "Picarones/1.0 (BnF OCR benchmark platform; https://github.com/bnf/picarones)"
+        "User-Agent": "Picarones/1.0 (OCR benchmark platform; https://github.com/maribakulj/Picarones)"
     }
     last_exc: Optional[Exception] = None
     for attempt in range(retries):

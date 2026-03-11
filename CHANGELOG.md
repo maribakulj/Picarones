@@ -38,7 +38,7 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
   - `export_benchmark_as_layer()` : export des résultats benchmark comme couche OCR nommée dans eScriptorium
   - `connect_escriptorium()` : connexion avec validation automatique
 - **Gallica API** (`picarones/importers/gallica.py`)
-  - `GallicaClient` : recherche SRU BnF par cote/titre/auteur/date/langue/type
+  - `GallicaClient` : recherche SRU par cote/titre/auteur/date/langue/type
   - Récupération OCR Gallica texte brut (`f{n}.texteBrut`)
   - Import IIIF Gallica avec enrichissement OCR comme vérité terrain de référence
   - Métadonnées OAI-PMH (`/services/OAIRecord`)

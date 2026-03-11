@@ -106,14 +106,14 @@ _REFERENCE_DATASETS: list[dict] = [
     },
     {
         "dataset_id": "bnf-gallica/gallica-ocr",
-        "title": "Gallica OCR — BnF",
+        "title": "Gallica OCR",
         "description": "Extraits d'imprimés anciens numérisés depuis Gallica avec vérité terrain.",
         "language": ["French", "Latin"],
-        "tags": ["ocr", "historical", "printed", "gallica", "bnf", "french"],
+        "tags": ["ocr", "historical", "printed", "gallica", "french"],
         "license": "etalab-2.0",
         "size_category": "10K<n<100K",
         "task": "image-to-text",
-        "institution": "Bibliothèque nationale de France",
+        "institution": "Gallica",
         "downloads": 2800,
     },
     {

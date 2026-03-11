@@ -37,7 +37,17 @@ class BaseOCREngine(ABC):
     - ``name`` : identifiant unique du moteur
     - ``version()`` : retourne la version du moteur sous forme de chaîne
     - ``_run_ocr(image_path)`` : logique d'exécution OCR, retourne le texte brut
+
+    Attribut de classe
+    ------------------
+    execution_mode : ``"io"`` (défaut) ou ``"cpu"``
+        Indique au runner quel type d'exécuteur utiliser :
+        - ``"io"``  → ``ThreadPoolExecutor``  (moteurs API / réseau)
+        - ``"cpu"`` → ``ProcessPoolExecutor`` (moteurs CPU-intensifs : Tesseract, Pero, Kraken)
     """
+
+    execution_mode: str = "io"
+    """``"io"`` pour ThreadPoolExecutor (défaut), ``"cpu"`` pour ProcessPoolExecutor."""
 
     def __init__(self, config: Optional[dict] = None) -> None:
         self.config: dict = config or {}

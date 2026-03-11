@@ -37,6 +37,8 @@ _PSM_LABELS = {
 class TesseractEngine(BaseOCREngine):
     """Adaptateur pour Tesseract 5 (via pytesseract).
 
+    Moteur CPU-bound : utilise ``ProcessPoolExecutor`` dans le runner parallèle.
+
     Configuration YAML :
     ```yaml
     name: tesseract
@@ -47,6 +49,8 @@ class TesseractEngine(BaseOCREngine):
     tesseract_cmd: tesseract  # chemin vers l'exécutable si non standard
     ```
     """
+
+    execution_mode = "cpu"
 
     @property
     def name(self) -> str:

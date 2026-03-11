@@ -44,7 +44,7 @@ FROM python:3.11-slim AS runtime
 
 LABEL description="Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
 LABEL version="1.0.0"
-LABEL org.opencontainers.image.source="https://github.com/bnf/picarones"
+LABEL org.opencontainers.image.source="https://github.com/maribakulj/Picarones"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 WORKDIR /app

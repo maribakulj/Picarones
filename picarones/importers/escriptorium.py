@@ -102,7 +102,7 @@ class EScriptoriumClient:
     Parameters
     ----------
     base_url:
-        URL racine de l'instance (ex : ``"https://escriptorium.bnf.fr"``).
+        URL racine de l'instance (ex : ``"https://escriptorium.example.org"``).
     token:
         Token d'authentification API (depuis Settings > API dans eScriptorium).
     timeout:

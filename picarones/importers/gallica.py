@@ -128,7 +128,7 @@ class GallicaClient:
         """Télécharge le contenu d'une URL."""
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Picarones/1.0 (BnF; research tool)"},
+            headers={"User-Agent": "Picarones/1.0 (research tool)"},
         )
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:

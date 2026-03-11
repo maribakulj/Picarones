@@ -67,7 +67,7 @@ tesseract --list-langs
 ### 2.3 Picarones
 
 ```bash
-git clone https://github.com/bnf/picarones.git
+git clone https://github.com/maribakulj/Picarones.git
 cd picarones
 
 # Créer un environnement virtuel (recommandé)
@@ -121,7 +121,7 @@ brew install tesseract-lang   # Installe tous les modèles
 ### 3.3 Picarones
 
 ```bash
-git clone https://github.com/bnf/picarones.git
+git clone https://github.com/maribakulj/Picarones.git
 cd picarones
 
 python3.11 -m venv .venv
@@ -176,7 +176,7 @@ Télécharger depuis [git-scm.com](https://git-scm.com/download/win) et installe
 ### 4.4 Picarones
 
 ```powershell
-git clone https://github.com/bnf/picarones.git
+git clone https://github.com/maribakulj/Picarones.git
 cd picarones
 
 python -m venv .venv
