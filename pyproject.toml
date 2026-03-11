@@ -53,6 +53,7 @@ kraken = ["kraken>=4.0.0"]
 llm = [
     "openai>=1.0.0",
     "anthropic>=0.20.0",
+    "mistralai>=1.0.0",
 ]
 # OCR cloud APIs
 ocr-cloud = [
