@@ -71,6 +71,11 @@ def _io_doc_worker(
     moteur est partagée entre les threads — les adaptateurs HTTP sont
     généralement sans état mutable entre les appels.
     """
+    # ENTRY TRACE — confirme que _io_doc_worker est bien exécuté et quelle classe est appelée
+    logger.info(
+        "[runner-ENTRY] _io_doc_worker — classe=%s, doc=%s",
+        engine.__class__.__name__, getattr(doc, "doc_id", "?"),
+    )
     ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
     return _compute_document_result(
         doc_id=doc.doc_id,  # type: ignore[attr-defined]
@@ -415,6 +420,12 @@ def run_benchmark(
             )
 
         docs_to_process = [doc for doc in corpus.documents if doc.doc_id not in loaded_doc_ids]
+        if loaded_doc_ids:
+            logger.info(
+                "[%s] %d doc(s) ignorés (résultats partiels existants) — "
+                "supprimer le fichier partiel '%s' pour forcer le recalcul.",
+                engine.name, len(loaded_doc_ids), partial_path,
+            )
         document_results: list[DocumentResult] = list(loaded_results)
 
         # Sélection du type d'exécution selon la classe du moteur

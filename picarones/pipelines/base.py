@@ -143,6 +143,11 @@ class OCRLLMPipeline(BaseOCREngine):
 
     def _run_ocr(self, image_path: Path) -> str:
         """Logique interne du pipeline — appelée par ``run()``."""
+        # ENTRY TRACE — confirme que _run_ocr() est atteint après run()
+        logger.info(
+            "[Pipeline-ENTRY] _run_ocr() appelé — doc=%s, mode=%s",
+            image_path.name, self.mode.value,
+        )
         self._last_ocr_text = None
         ocr_text = ""
 
@@ -152,7 +157,9 @@ class OCRLLMPipeline(BaseOCREngine):
             logger.debug(
                 "[%s] zero-shot — longueur prompt : %d car.", self._name, len(prompt)
             )
+            logger.info("[Pipeline] appel LLM pour doc %s (zero-shot)", image_path.name)
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
+            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
 
         elif self.mode == PipelineMode.TEXT_ONLY:
             if self.ocr_engine is None:
@@ -171,7 +178,9 @@ class OCRLLMPipeline(BaseOCREngine):
                     self._name, image_path.name,
                 )
             prompt = self._build_prompt(ocr_text=ocr_text)
+            logger.info("[Pipeline] appel LLM pour doc %s (text_only, ocr=%d chars)", image_path.name, len(ocr_text))
             result = self.llm_adapter.complete(prompt)
+            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
 
         else:  # TEXT_AND_IMAGE
             if self.ocr_engine is None:
@@ -191,7 +200,9 @@ class OCRLLMPipeline(BaseOCREngine):
                 )
             image_b64 = _image_to_b64(image_path)
             prompt = self._build_prompt(ocr_text=ocr_text, image_b64=image_b64)
+            logger.info("[Pipeline] appel LLM pour doc %s (text_and_image, ocr=%d chars)", image_path.name, len(ocr_text))
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
+            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
 
         if not result.success:
             raise RuntimeError(f"Erreur LLM ({self.llm_adapter.model}): {result.error}")
@@ -226,6 +237,11 @@ class OCRLLMPipeline(BaseOCREngine):
     def run(self, image_path: str | Path) -> EngineResult:
         """Exécute le pipeline et retourne un EngineResult enrichi de métadonnées."""
         image_path = Path(image_path)
+        # ENTRY TRACE — confirme que OCRLLMPipeline.run() est bien la méthode exécutée
+        logger.info(
+            "[Pipeline-ENTRY] OCRLLMPipeline.run() appelé — doc=%s, mode=%s, llm=%s",
+            image_path.name, self.mode.value, self.llm_adapter.model,
+        )
         self._last_ocr_text = None
         start = time.perf_counter()
 
@@ -235,6 +251,11 @@ class OCRLLMPipeline(BaseOCREngine):
         except Exception as exc:  # noqa: BLE001
             text = ""
             error = str(exc)
+            # INFO — exception capturée avant ou pendant l'appel LLM (visible niveau INFO)
+            logger.info(
+                "[Pipeline] EXCEPTION capturée pour doc %s : %s: %s",
+                image_path.name, type(exc).__name__, exc,
+            )
 
         duration = time.perf_counter() - start
 
