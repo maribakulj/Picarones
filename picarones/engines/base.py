@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
-
-_base_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -71,11 +68,6 @@ class BaseOCREngine(ABC):
     def run(self, image_path: str | Path) -> EngineResult:
         """Point d'entrée public : exécute l'OCR et mesure le temps d'exécution."""
         image_path = Path(image_path)
-        # ENTRY TRACE — confirme quel moteur/classe est réellement exécuté
-        _base_logger.info(
-            "[BaseOCREngine-ENTRY] run() — classe=%s, doc=%s",
-            self.__class__.__name__, image_path.name,
-        )
         start = time.perf_counter()
         try:
             text = self._run_ocr(image_path)
