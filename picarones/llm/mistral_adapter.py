@@ -93,11 +93,14 @@ class MistralAdapter(BaseLLMAdapter):
         else:
             content = prompt
 
-        # DEBUG — prompt envoyé (tronqué à 200 chars)
+        # INFO — longueur du texte OCR reçu (visible niveau INFO)
+        logger.info(
+            "[MistralAdapter] texte OCR reçu : %d chars (modèle=%s, image=%s)",
+            len(prompt), self.model, "oui" if image_b64 else "non",
+        )
+        # DEBUG — prompt complet tronqué à 200 chars
         logger.debug(
-            "[MistralAdapter] appel %s — longueur prompt : %d caractères, image : %s\n"
             "[MistralAdapter] DEBUG prompt (200 premiers chars) : %r",
-            self.model, len(prompt), "oui" if image_b64 else "non",
             prompt[:200],
         )
 
@@ -140,52 +143,58 @@ class MistralAdapter(BaseLLMAdapter):
                 )
             raise
 
-        # DEBUG — réponse brute (choices complètes)
+        # DEBUG — choices complètes (visible niveau DEBUG uniquement)
         try:
             choices_debug = [
                 {
                     "index": c.index,
                     "finish_reason": c.finish_reason,
-                    "message_role": c.message.role if c.message else None,
                     "content_type": type(c.message.content).__name__ if c.message else None,
                     "content_len": len(c.message.content) if c.message and c.message.content else 0,
-                    "content_preview": (c.message.content[:80] if c.message and isinstance(c.message.content, str) else repr(c.message.content)[:80]) if c.message else None,
                 }
                 for c in (response.choices or [])
             ]
         except Exception as _exc:  # noqa: BLE001
             choices_debug = f"<erreur sérialisation choices : {_exc}>"
-        logger.debug(
-            "[MistralAdapter] DEBUG response.choices : %s",
-            choices_debug,
-        )
-        # DEBUG — usage tokens si disponible
-        if hasattr(response, "usage") and response.usage:
-            logger.debug(
-                "[MistralAdapter] DEBUG usage : prompt_tokens=%s completion_tokens=%s total_tokens=%s",
-                getattr(response.usage, "prompt_tokens", "?"),
-                getattr(response.usage, "completion_tokens", "?"),
-                getattr(response.usage, "total_tokens", "?"),
-            )
+        logger.debug("[MistralAdapter] DEBUG response.choices : %s", choices_debug)
 
         if not response.choices:
             logger.warning(
-                "[MistralAdapter] DEBUG response.choices est vide — modèle=%s. "
-                "Réponse complète : %r",
-                self.model, response,
+                "[MistralAdapter] DEBUG response.choices est vide — modèle=%s.",
+                self.model,
             )
             return ""
 
-        raw = response.choices[0].message.content
-        # DEBUG — valeur brute extraite avant retour
+        _choice = response.choices[0]
+        raw = _choice.message.content
+        _finish_reason = _choice.finish_reason
+        _content_len = len(raw) if raw else 0
+
+        # INFO — statut réponse API : finish_reason + content_len (visible niveau INFO)
+        logger.info(
+            "[MistralAdapter] réponse : finish_reason=%s, content_len=%d",
+            _finish_reason, _content_len,
+        )
+
+        # DEBUG — valeur brute avant retour
         logger.debug(
             "[MistralAdapter] DEBUG choices[0].message.content type=%s valeur=%r",
             type(raw).__name__,
             raw[:200] if isinstance(raw, str) else raw,
         )
+
         text = raw or ""
 
         if not text or not text.strip():
+            _completion_tokens = "?"
+            if hasattr(response, "usage") and response.usage:
+                _completion_tokens = getattr(response.usage, "completion_tokens", "?")
+            # INFO — contenu vide avec completion_tokens pour diagnostic (visible niveau INFO)
+            logger.info(
+                "[MistralAdapter] WARNING contenu vide — completion_tokens=%s "
+                "(modèle=%s, finish_reason=%s)",
+                _completion_tokens, self.model, _finish_reason,
+            )
             logger.warning(
                 "[MistralAdapter] réponse vide reçue du modèle '%s' "
                 "(longueur brute : %s). "

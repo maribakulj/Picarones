@@ -197,6 +197,11 @@ class OCRLLMPipeline(BaseOCREngine):
             raise RuntimeError(f"Erreur LLM ({self.llm_adapter.model}): {result.error}")
 
         llm_text = result.text
+        # INFO — bilan OCR→LLM visible sur HuggingFace (niveau INFO)
+        logger.info(
+            "[Pipeline] %s — OCR: %d chars → LLM: %d chars",
+            image_path.name, len(ocr_text), len(llm_text),
+        )
         if not llm_text or not llm_text.strip():
             logger.warning(
                 "[%s] le LLM ('%s') a retourné un texte vide pour '%s'. "
