@@ -74,6 +74,34 @@ class TestComputeMetrics:
         result = compute_metrics("abcd", "abce")
         assert result.cer_percent == pytest.approx(25.0, rel=1e-2)
 
+    # ── Bug fix : hypothèse vide → CER doit être 1.0, pas 0.0 (bug sprint 13) ──
+
+    def test_empty_hypothesis_cer_is_one(self):
+        """Hypothèse vide avec référence non vide doit donner CER=1.0."""
+        result = compute_metrics("Bonjour le monde", "")
+        assert result.cer == pytest.approx(1.0), (
+            f"CER attendu 1.0 pour hypothèse vide, obtenu {result.cer}"
+        )
+        assert result.error is None
+
+    def test_empty_hypothesis_wer_is_one(self):
+        """WER doit être 1.0 pour hypothèse vide (pas de ZeroDivisionError)."""
+        result = compute_metrics("hello world", "")
+        assert result.wer == pytest.approx(1.0)
+        assert result.mer == pytest.approx(1.0)
+        assert result.wil == pytest.approx(1.0)
+        assert result.error is None
+
+    def test_empty_hypothesis_whitespace_is_treated_as_empty(self):
+        """Hypothèse avec uniquement des espaces est traitée comme vide."""
+        result = compute_metrics("Bonjour", "   ")
+        assert result.cer == pytest.approx(1.0)
+
+    def test_empty_hypothesis_hypothesis_length_is_zero(self):
+        """hypothesis_length doit être 0 pour hypothèse vide."""
+        result = compute_metrics("Bonjour le monde", "")
+        assert result.hypothesis_length == 0
+
 
 class TestAggregateMetrics:
     """Tests de aggregate_metrics."""

@@ -152,6 +152,18 @@ def compute_metrics(
             error="jiwer n'est pas installé (pip install jiwer)",
         )
 
+    # Hypothèse vide avec référence non vide = erreur totale (toutes les
+    # métriques jiwer lèvent une ZeroDivisionError sur hypothèse vide).
+    ref_stripped = reference.strip()
+    hyp_stripped = hypothesis.strip() if hypothesis else ""
+    if ref_stripped and not hyp_stripped:
+        return MetricsResult(
+            cer=1.0, cer_nfc=1.0, cer_caseless=1.0,
+            wer=1.0, wer_normalized=1.0, mer=1.0, wil=1.0,
+            reference_length=len(reference),
+            hypothesis_length=0,
+        )
+
     try:
         # Exclusion de caractères avant tout calcul
         if char_exclude:
