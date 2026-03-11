@@ -45,7 +45,11 @@ class PeroOCREngine(BaseOCREngine):
 
     Pero OCR produit une sortie structurée (PAGE XML) ; cet adaptateur
     en extrait le texte plat dans l'ordre de lecture naturel.
+
+    Moteur CPU-bound : utilise ``ProcessPoolExecutor`` dans le runner parallèle.
     """
+
+    execution_mode = "cpu"
 
     def __init__(self, config: Optional[dict] = None) -> None:
         super().__init__(config)
