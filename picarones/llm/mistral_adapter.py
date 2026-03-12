@@ -63,7 +63,10 @@ class MistralAdapter(BaseLLMAdapter):
                 "Clé API Mistral manquante — définissez la variable d'environnement MISTRAL_API_KEY"
             )
         try:
-            from mistralai import Mistral
+            try:
+                from mistralai.client import Mistral
+            except ImportError:
+                from mistralai import Mistral  # type: ignore[no-redef]
         except ImportError as exc:
             raise RuntimeError(
                 "Le package 'mistralai' n'est pas installé. Lancez : pip install mistralai"
