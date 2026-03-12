@@ -224,6 +224,8 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 "cer": _safe(dr.metrics.cer),
                 "cer_diplomatic": _safe(dr.metrics.cer_diplomatic) if dr.metrics.cer_diplomatic is not None else None,
                 "wer": _safe(dr.metrics.wer),
+                "mer": _safe(dr.metrics.mer),
+                "wil": _safe(dr.metrics.wil),
                 "duration": dr.duration_seconds,
                 "error": dr.engine_error,
                 "diff": diff_ops,
@@ -1045,6 +1047,12 @@ body.present-mode nav .meta {{ display: none; }}
   <button class="btn-present" id="btn-present" onclick="togglePresentMode()" data-i18n="btn_present">⊞ Présentation</button>
 </nav>
 
+<!-- ── Bandeau exclusion globale ───────────────────────────────────── -->
+<div id="global-exclusion-banner" style="display:none;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:.5rem 1.5rem;font-size:.85rem;font-weight:600;color:#92400e;text-align:center">
+  <span id="global-exclusion-text"></span>
+  <button onclick="resetAllExclusions()" style="margin-left:1rem;font-size:.75rem;padding:.15rem .5rem;border:1px solid #d97706;background:#fff;border-radius:.25rem;cursor:pointer">Réinitialiser</button>
+</div>
+
 <!-- ── Main ───────────────────────────────────────────────────────── -->
 <main>
 
@@ -1107,7 +1115,7 @@ body.present-mode nav .meta {{ display: none; }}
           onclick="toggleRobustCriterion('cer',this)">✓</button>
         <span data-i18n="robust_cer_label">CER &gt; seuil :</span>
         <input type="range" id="robust-cer" min="0" max="100" step="1" value="100"
-          oninput="document.getElementById('robust-cer-val').textContent=parseInt(this.value)+'%';renderRobustMetrics()">
+          oninput="document.getElementById('robust-cer-val').textContent=parseInt(this.value)+'%';_computeHallucinationExclusions();recalculateAll()">
         <span id="robust-cer-val" class="slider-val">100%</span>
       </label>
       <label>
@@ -1115,7 +1123,7 @@ body.present-mode nav .meta {{ display: none; }}
           onclick="toggleRobustCriterion('anchor',this)">✓</button>
         <span data-i18n="robust_anchor_label">Ancrage &lt; seuil :</span>
         <input type="range" id="robust-anchor" min="0" max="1" step="0.05" value="0.5"
-          oninput="document.getElementById('robust-anchor-val').textContent=parseFloat(this.value).toFixed(2);renderRobustMetrics()">
+          oninput="document.getElementById('robust-anchor-val').textContent=parseFloat(this.value).toFixed(2);_computeHallucinationExclusions();recalculateAll()">
         <span id="robust-anchor-val" class="slider-val">0.50</span>
       </label>
       <label>
@@ -1123,7 +1131,7 @@ body.present-mode nav .meta {{ display: none; }}
           onclick="toggleRobustCriterion('ratio',this)">✓</button>
         <span data-i18n="robust_ratio_label">Ratio longueur &gt; seuil :</span>
         <input type="range" id="robust-ratio" min="1" max="3" step="0.1" value="1.5"
-          oninput="document.getElementById('robust-ratio-val').textContent=parseFloat(this.value).toFixed(1);renderRobustMetrics()">
+          oninput="document.getElementById('robust-ratio-val').textContent=parseFloat(this.value).toFixed(1);_computeHallucinationExclusions();recalculateAll()">
         <span id="robust-ratio-val" class="slider-val">1.5</span>
       </label>
     </div>
@@ -1739,10 +1747,13 @@ function renderRanking() {{
 
   // Stats globales
   const pipelineCount = DATA.engines.filter(e => e.is_pipeline).length;
+  const totalDocs = DATA.meta.document_count;
+  const exclCount = EXCLUDED_DOCS.size;
+  const activeDocs = totalDocs - exclCount;
   const stats = document.getElementById('ranking-stats');
   stats.innerHTML = `
     <div class="stat">Corpus <b>${{esc(DATA.meta.corpus_name)}}</b></div>
-    <div class="stat">Documents <b>${{DATA.meta.document_count}}</b></div>
+    <div class="stat">Documents <b>${{activeDocs}}</b>${{exclCount > 0 ? ` <span style="font-size:.75rem;color:#dc2626">(−${{exclCount}} exclu${{exclCount>1?'s':''}})</span>` : ''}}</div>
     <div class="stat">Concurrents <b>${{DATA.engines.length}}</b>
       ${{pipelineCount ? `<span class="pipeline-tag" style="margin-left:.3rem">${{pipelineCount}} pipeline${{pipelineCount>1?'s':''}}</span>` : ''}}
     </div>
@@ -1771,10 +1782,154 @@ document.querySelectorAll('#ranking-table th.sortable').forEach(th => {{
   }});
 }});
 
+// ── Système d'exclusion globale ─────────────────────────────────
+// Union de toutes les sources d'exclusion (manuelle + hallucination toggles)
+const EXCLUDED_DOCS = new Set();
+const _manualExclusions = new Set();
+const _hallucinationExclusions = new Set();
+
+// Données originales sauvegardées pour recalcul
+const _originalEngines = JSON.parse(JSON.stringify(DATA.engines));
+
+function _updateExcludedDocs() {{
+  EXCLUDED_DOCS.clear();
+  _manualExclusions.forEach(id => EXCLUDED_DOCS.add(id));
+  _hallucinationExclusions.forEach(id => EXCLUDED_DOCS.add(id));
+  _updateExclusionBanner();
+}}
+
+function _updateExclusionBanner() {{
+  const banner = document.getElementById('global-exclusion-banner');
+  const text = document.getElementById('global-exclusion-text');
+  if (EXCLUDED_DOCS.size > 0) {{
+    banner.style.display = '';
+    text.textContent = EXCLUDED_DOCS.size + ' document' + (EXCLUDED_DOCS.size > 1 ? 's' : '') +
+      ' exclu' + (EXCLUDED_DOCS.size > 1 ? 's' : '') + ' de l\\'analyse' +
+      (_manualExclusions.size > 0 ? ' (' + _manualExclusions.size + ' manuel' + (_manualExclusions.size > 1 ? 's' : '') + ')' : '') +
+      (_hallucinationExclusions.size > 0 ? ' (' + _hallucinationExclusions.size + ' hallucination' + (_hallucinationExclusions.size > 1 ? 's' : '') + ')' : '');
+  }} else {{
+    banner.style.display = 'none';
+  }}
+}}
+
+function resetAllExclusions() {{
+  _manualExclusions.clear();
+  _hallucinationExclusions.clear();
+  EXCLUDED_DOCS.clear();
+  _updateExclusionBanner();
+  // Reset hallucination toggles
+  ['robust-cer-toggle','robust-anchor-toggle','robust-ratio-toggle'].forEach(id => {{
+    const btn = document.getElementById(id);
+    if (btn) {{ btn.dataset.active = 'true'; btn.textContent = '✓'; btn.closest('label').classList.remove('criterion-off'); }}
+  }});
+  document.getElementById('robust-cer').value = 100;
+  document.getElementById('robust-cer-val').textContent = '100%';
+  document.getElementById('robust-anchor').value = 0.5;
+  document.getElementById('robust-anchor-val').textContent = '0.50';
+  document.getElementById('robust-ratio').value = 1.5;
+  document.getElementById('robust-ratio-val').textContent = '1.5';
+  recalculateAll();
+  renderGallery();
+}}
+
+function _recalcEngineMetrics() {{
+  // Recalcule les métriques agrégées de chaque moteur en excluant EXCLUDED_DOCS
+  DATA.engines.forEach((eng, idx) => {{
+    const orig = _originalEngines[idx];
+    if (EXCLUDED_DOCS.size === 0) {{
+      // Restaurer les valeurs originales
+      eng.cer = orig.cer;
+      eng.wer = orig.wer;
+      eng.mer = orig.mer;
+      eng.wil = orig.wil;
+      eng.cer_median = orig.cer_median;
+      eng.cer_min = orig.cer_min;
+      eng.cer_max = orig.cer_max;
+      eng.cer_values = orig.cer_values.slice();
+      eng.doc_count = orig.doc_count;
+      eng.gini = orig.gini;
+      eng.anchor_score = orig.anchor_score;
+      eng.length_ratio = orig.length_ratio;
+      eng.hallucinating_doc_rate = orig.hallucinating_doc_rate;
+      return;
+    }}
+    // Recalculer depuis les documents non exclus
+    const cerVals = [], werVals = [], merVals = [], wilVals = [];
+    const giniVals = [], anchorVals = [];
+    DATA.documents.forEach(doc => {{
+      if (EXCLUDED_DOCS.has(doc.doc_id)) return;
+      const er = doc.engine_results.find(r => r.engine === eng.name);
+      if (!er || er.error) return;
+      if (er.cer !== null) cerVals.push(er.cer);
+      if (er.wer !== null) werVals.push(er.wer);
+      if (er.mer !== null) merVals.push(er.mer);
+      if (er.wil !== null) wilVals.push(er.wil);
+      const lm = er.line_metrics;
+      if (lm && lm.gini !== null) giniVals.push(lm.gini);
+      const hm = er.hallucination_metrics;
+      if (hm && hm.anchor_score !== null) anchorVals.push(hm.anchor_score);
+    }});
+    const mean = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
+    const sorted = arr => [...arr].sort((a,b) => a - b);
+    const median = arr => {{
+      if (!arr.length) return 0;
+      const s = sorted(arr); const n = s.length;
+      return n % 2 === 0 ? (s[n/2-1] + s[n/2]) / 2 : s[Math.floor(n/2)];
+    }};
+    eng.cer = cerVals.length ? mean(cerVals) : orig.cer;
+    eng.wer = werVals.length ? mean(werVals) : orig.wer;
+    eng.mer = merVals.length ? mean(merVals) : orig.mer;
+    eng.wil = wilVals.length ? mean(wilVals) : orig.wil;
+    eng.cer_median = cerVals.length ? median(cerVals) : orig.cer_median;
+    eng.cer_min = cerVals.length ? Math.min(...cerVals) : orig.cer_min;
+    eng.cer_max = cerVals.length ? Math.max(...cerVals) : orig.cer_max;
+    eng.cer_values = cerVals;
+    eng.doc_count = cerVals.length;
+    eng.gini = giniVals.length ? mean(giniVals) : orig.gini;
+    eng.anchor_score = anchorVals.length ? mean(anchorVals) : orig.anchor_score;
+  }});
+}}
+
+function recalculateAll() {{
+  console.log('[Picarones] recalculateAll — EXCLUDED_DOCS:', [...EXCLUDED_DOCS]);
+  _recalcEngineMetrics();
+  renderRanking();
+  renderRobustMetrics();
+  // Rebuild charts if they were already built
+  if (chartsBuilt) {{
+    chartsBuilt = false;
+    Object.keys(chartInstances).forEach(id => destroyChart(id));
+    buildCharts();
+  }}
+}}
+
 // ── Métriques robustes ──────────────────────────────────────────
 
-// Ensemble des doc_id exclus manuellement via la galerie
-const _manualExclusions = new Set();
+function _computeHallucinationExclusions() {{
+  // Recalcule _hallucinationExclusions à partir des toggles/sliders
+  _hallucinationExclusions.clear();
+  const cerOn     = document.getElementById('robust-cer-toggle').dataset.active === 'true';
+  const anchorOn  = document.getElementById('robust-anchor-toggle').dataset.active === 'true';
+  const ratioOn   = document.getElementById('robust-ratio-toggle').dataset.active === 'true';
+  const cerThreshold   = parseInt(document.getElementById('robust-cer').value) / 100;
+  const anchorThreshold = parseFloat(document.getElementById('robust-anchor').value);
+  const ratioThreshold  = parseFloat(document.getElementById('robust-ratio').value);
+
+  DATA.documents.forEach(doc => {{
+    // Un doc est exclu par hallucination si AU MOINS un moteur le détecte comme problématique
+    const dominated = doc.engine_results.some(er => {{
+      if (!er || er.error) return false;
+      const hm = er.hallucination_metrics;
+      if (cerOn && cerThreshold < 1.0 && er.cer !== null && er.cer > cerThreshold) return true;
+      if (anchorOn && hm && hm.anchor_score < anchorThreshold) return true;
+      if (ratioOn && hm && hm.length_ratio > ratioThreshold) return true;
+      return false;
+    }});
+    if (dominated) _hallucinationExclusions.add(doc.doc_id);
+  }});
+  console.log('[Picarones] _hallucinationExclusions:', [..._hallucinationExclusions]);
+  _updateExcludedDocs();
+}}
 
 function _robustStat(arr) {{
   // Retourne {{mean, median, p90, p95}} ou null si tableau vide
@@ -1801,7 +1956,8 @@ function toggleRobustCriterion(id, btn) {{
   btn.dataset.active = active ? 'true' : 'false';
   btn.textContent = active ? '✓' : '✕';
   btn.closest('label').classList.toggle('criterion-off', !active);
-  renderRobustMetrics();
+  _computeHallucinationExclusions();
+  recalculateAll();
 }}
 
 function renderRobustMetrics() {{
@@ -1989,13 +2145,15 @@ function toggleGalleryExclusion(docId, checked) {{
   }} else {{
     _manualExclusions.add(docId);
   }}
+  _updateExcludedDocs();
   _updateGalleryExclusionUI();
 }}
 
 function resetGalleryExclusions() {{
   _manualExclusions.clear();
+  _updateExcludedDocs();
   renderGallery();
-  renderRobustMetrics();
+  recalculateAll();
 }}
 
 function _updateGalleryExclusionUI() {{
@@ -2005,12 +2163,12 @@ function _updateGalleryExclusionUI() {{
   if (count > 0) {{
     btn.style.display = '';
     info.style.display = '';
-    info.textContent = `${{count}} document${{count>1?'s':''}} exclu${{count>1?'s':''}} manuellement des métriques robustes.`;
+    info.textContent = `${{count}} document${{count>1?'s':''}} exclu${{count>1?'s':''}} manuellement de l'analyse.`;
   }} else {{
     btn.style.display = 'none';
     info.style.display = 'none';
   }}
-  renderRobustMetrics();
+  recalculateAll();
 }}
 
 function renderGallery() {{
@@ -2055,7 +2213,7 @@ function renderGallery() {{
   if (_manualExclusions.size > 0) {{
     btn.style.display = '';
     info.style.display = '';
-    info.textContent = `${{_manualExclusions.size}} document${{_manualExclusions.size>1?'s':''}} exclu${{_manualExclusions.size>1?'s':''}} manuellement des métriques robustes.`;
+    info.textContent = `${{_manualExclusions.size}} document${{_manualExclusions.size>1?'s':''}} exclu${{_manualExclusions.size>1?'s':''}} manuellement de l'analyse.`;
   }} else {{
     btn.style.display = 'none';
     info.style.display = 'none';
@@ -2088,7 +2246,7 @@ function renderGallery() {{
     const checkboxId = `gal-chk-${{doc.doc_id.replace(/[^a-z0-9]/gi,'_')}}`;
     const cardStyle = isExcluded ? 'opacity:.5;border:2px dashed #dc2626' : '';
     return `<div class="gallery-card" style="${{cardStyle}}">
-      <label class="gallery-exclude-label" title="${{isExcluded ? 'Inclure dans les métriques robustes' : 'Exclure des métriques robustes'}}"
+      <label class="gallery-exclude-label" title="${{isExcluded ? 'Inclure dans l\\'analyse' : 'Exclure de l\\'analyse'}}"
         style="position:absolute;top:.35rem;right:.35rem;z-index:2;cursor:pointer;background:rgba(255,255,255,.85);border-radius:.25rem;padding:.1rem .25rem;font-size:.7rem;display:flex;align-items:center;gap:.25rem">
         <input type="checkbox" id="${{checkboxId}}" ${{isExcluded ? '' : 'checked'}}
           onchange="toggleGalleryExclusion('${{esc(doc.doc_id)}}',this.checked)"
@@ -2555,9 +2713,10 @@ function buildRadar() {{
 function buildCerPerDoc() {{
   destroyChart('cer-doc');
   const ctx = document.getElementById('chart-cer-doc').getContext('2d');
-  const labels = DATA.documents.map(d => d.doc_id);
+  const filteredDocs = DATA.documents.filter(d => !EXCLUDED_DOCS.has(d.doc_id));
+  const labels = filteredDocs.map(d => d.doc_id);
   const datasets = DATA.engines.map((e, ei) => {{
-    const data = DATA.documents.map(doc => {{
+    const data = filteredDocs.map(doc => {{
       const er = doc.engine_results.find(r => r.engine === e.name);
       return er ? er.cer * 100 : null;
     }});
@@ -2588,10 +2747,10 @@ function buildDurationChart() {{
   destroyChart('duration');
   const ctx = document.getElementById('chart-duration').getContext('2d');
 
+  const filteredDocs = DATA.documents.filter(d => !EXCLUDED_DOCS.has(d.doc_id));
   const labels = DATA.engines.map(e => e.name);
   const data   = DATA.engines.map(e => {{
-    const docs = DATA.documents;
-    const durs = docs.flatMap(d => d.engine_results
+    const durs = filteredDocs.flatMap(d => d.engine_results
       .filter(r => r.engine === e.name)
       .map(r => r.duration));
     const mean = durs.length ? durs.reduce((a,b) => a+b, 0) / durs.length : 0;
@@ -2623,9 +2782,10 @@ function buildDurationChart() {{
 function buildQualityCerScatter() {{
   const ctx = document.getElementById('chart-quality-cer');
   if (!ctx) return;
+  const filteredDocs = DATA.documents.filter(d => !EXCLUDED_DOCS.has(d.doc_id));
   // Construire les points : un par document, un dataset par moteur
   const datasets = DATA.engines.map((e, ei) => {{
-    const points = DATA.documents.flatMap(doc => {{
+    const points = filteredDocs.flatMap(doc => {{
       const er = doc.engine_results.find(r => r.engine === e.name);
       if (!er || er.error || !er.image_quality) return [];
       return [{{ x: er.image_quality.quality_score, y: er.cer * 100 }}];
