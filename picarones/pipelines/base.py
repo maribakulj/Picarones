@@ -126,8 +126,6 @@ class OCRLLMPipeline(BaseOCREngine):
         else:
             self._name = f"pipeline → {llm_adapter.model}"
 
-        # Stockage temporaire de la sortie OCR intermédiaire (pour over-normalization)
-        self._last_ocr_text: Optional[str] = None
 
     # ------------------------------------------------------------------
     # Interface BaseOCREngine
@@ -141,9 +139,14 @@ class OCRLLMPipeline(BaseOCREngine):
         ocr_v = self.ocr_engine._safe_version() if self.ocr_engine else "—"
         return f"ocr={ocr_v}; llm={self.llm_adapter.model}"
 
-    def _run_ocr(self, image_path: Path) -> str:
-        """Logique interne du pipeline — appelée par ``run()``."""
-        self._last_ocr_text = None
+    def _run_ocr(self, image_path: Path) -> tuple[str, Optional[str]]:
+        """Logique interne du pipeline — appelée par ``run()``.
+
+        Returns
+        -------
+        tuple[str, Optional[str]]
+            (llm_text, ocr_intermediate) — ocr_intermediate est None en mode zero_shot.
+        """
         ocr_text = ""
 
         if self.mode == PipelineMode.ZERO_SHOT:
@@ -161,7 +164,6 @@ class OCRLLMPipeline(BaseOCREngine):
                 raise ValueError("ocr_engine est requis pour le mode text_only")
             ocr_result = self.ocr_engine.run(image_path)
             ocr_text = ocr_result.text
-            self._last_ocr_text = ocr_text
             logger.debug(
                 "[%s] texte OCR : %d car. → envoi au LLM.",
                 self._name, len(ocr_text),
@@ -182,7 +184,6 @@ class OCRLLMPipeline(BaseOCREngine):
                 raise ValueError("ocr_engine est requis pour le mode text_and_image")
             ocr_result = self.ocr_engine.run(image_path)
             ocr_text = ocr_result.text
-            self._last_ocr_text = ocr_text
             logger.debug(
                 "[%s] texte OCR : %d car. + image → envoi au LLM.",
                 self._name, len(ocr_text),
@@ -223,7 +224,8 @@ class OCRLLMPipeline(BaseOCREngine):
                 self._name, len(llm_text), llm_text[:120],
             )
 
-        return llm_text
+        ocr_intermediate = ocr_text if self.mode != PipelineMode.ZERO_SHOT else None
+        return llm_text, ocr_intermediate
 
     # ------------------------------------------------------------------
     # Override run() pour injecter les métadonnées pipeline
@@ -232,11 +234,11 @@ class OCRLLMPipeline(BaseOCREngine):
     def run(self, image_path: str | Path) -> EngineResult:
         """Exécute le pipeline et retourne un EngineResult enrichi de métadonnées."""
         image_path = Path(image_path)
-        self._last_ocr_text = None
         start = time.perf_counter()
 
+        ocr_intermediate: Optional[str] = None
         try:
-            text = self._run_ocr(image_path)
+            text, ocr_intermediate = self._run_ocr(image_path)
             error = None
         except Exception as exc:  # noqa: BLE001
             text = ""
@@ -258,8 +260,8 @@ class OCRLLMPipeline(BaseOCREngine):
             "pipeline_steps": self._build_steps_info(),
             "is_pipeline": True,
         }
-        if self._last_ocr_text is not None:
-            metadata["ocr_intermediate"] = self._last_ocr_text
+        if ocr_intermediate is not None:
+            metadata["ocr_intermediate"] = ocr_intermediate
 
         return EngineResult(
             engine_name=self.name,
