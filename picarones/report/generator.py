@@ -596,11 +596,20 @@ tbody tr:hover {{ background: #f8fafc; }}
 .robust-controls label {{
   display: flex; align-items: center; gap: .4rem;
   font-size: .82rem; color: var(--text-muted);
+  transition: opacity .15s;
 }}
+.robust-controls label.criterion-off {{ opacity: .4; }}
 .robust-controls input[type=range] {{ width: 140px; }}
 .slider-val {{
   font-weight: 700; color: var(--text); min-width: 2.5rem;
 }}
+.robust-toggle {{
+  cursor: pointer; border: 1px solid; border-radius: .25rem;
+  padding: 0 .3rem; font-size: .8rem; font-weight: 700;
+  line-height: 1.6; background: none; flex-shrink: 0;
+}}
+.robust-toggle[data-active="true"]  {{ color: #16a34a; border-color: #16a34a; }}
+.robust-toggle[data-active="false"] {{ color: var(--text-muted); border-color: var(--border); }}
 .robust-table td {{ padding: .4rem .6rem; font-size: .85rem; }}
 .robust-table .improved {{ color: #16a34a; font-weight: 600; }}
 .robust-table .worsened {{ color: #dc2626; font-weight: 600; }}
@@ -1094,18 +1103,24 @@ body.present-mode nav .meta {{ display: none; }}
     </p>
     <div class="robust-controls">
       <label>
+        <button class="robust-toggle" id="robust-cer-toggle" data-active="true"
+          onclick="toggleRobustCriterion('cer',this)">✓</button>
         <span data-i18n="robust_cer_label">CER &gt; seuil :</span>
         <input type="range" id="robust-cer" min="0" max="100" step="1" value="100"
           oninput="document.getElementById('robust-cer-val').textContent=parseInt(this.value)+'%';renderRobustMetrics()">
         <span id="robust-cer-val" class="slider-val">100%</span>
       </label>
       <label>
+        <button class="robust-toggle" id="robust-anchor-toggle" data-active="true"
+          onclick="toggleRobustCriterion('anchor',this)">✓</button>
         <span data-i18n="robust_anchor_label">Ancrage &lt; seuil :</span>
         <input type="range" id="robust-anchor" min="0" max="1" step="0.05" value="0.5"
           oninput="document.getElementById('robust-anchor-val').textContent=parseFloat(this.value).toFixed(2);renderRobustMetrics()">
         <span id="robust-anchor-val" class="slider-val">0.50</span>
       </label>
       <label>
+        <button class="robust-toggle" id="robust-ratio-toggle" data-active="true"
+          onclick="toggleRobustCriterion('ratio',this)">✓</button>
         <span data-i18n="robust_ratio_label">Ratio longueur &gt; seuil :</span>
         <input type="range" id="robust-ratio" min="1" max="3" step="0.1" value="1.5"
           oninput="document.getElementById('robust-ratio-val').textContent=parseFloat(this.value).toFixed(1);renderRobustMetrics()">
@@ -1781,7 +1796,18 @@ function _deltaCell(globalVal, robustVal) {{
   return `<span style="${{cls}}">${{sign}}${{(delta*100).toFixed(2)}}%</span>`;
 }}
 
+function toggleRobustCriterion(id, btn) {{
+  const active = btn.dataset.active !== 'true';
+  btn.dataset.active = active ? 'true' : 'false';
+  btn.textContent = active ? '✓' : '✕';
+  btn.closest('label').classList.toggle('criterion-off', !active);
+  renderRobustMetrics();
+}}
+
 function renderRobustMetrics() {{
+  const cerOn     = document.getElementById('robust-cer-toggle').dataset.active === 'true';
+  const anchorOn  = document.getElementById('robust-anchor-toggle').dataset.active === 'true';
+  const ratioOn   = document.getElementById('robust-ratio-toggle').dataset.active === 'true';
   const cerThreshold   = parseInt(document.getElementById('robust-cer').value) / 100;
   const anchorThreshold = parseFloat(document.getElementById('robust-anchor').value);
   const ratioThreshold  = parseFloat(document.getElementById('robust-ratio').value);
@@ -1800,11 +1826,11 @@ function renderRobustMetrics() {{
 
       // Raisons d'exclusion
       const reasons = [];
-      if (cerThreshold < 1.0 && er.cer !== null && er.cer > cerThreshold)
+      if (cerOn && cerThreshold < 1.0 && er.cer !== null && er.cer > cerThreshold)
         reasons.push(`CER ${{(er.cer*100).toFixed(1)}}% > ${{(cerThreshold*100).toFixed(0)}}%`);
-      if (hm && hm.anchor_score < anchorThreshold)
+      if (anchorOn && hm && hm.anchor_score < anchorThreshold)
         reasons.push(`ancrage ${{hm.anchor_score.toFixed(3)}} < ${{anchorThreshold.toFixed(2)}}`);
-      if (hm && hm.length_ratio > ratioThreshold)
+      if (ratioOn && hm && hm.length_ratio > ratioThreshold)
         reasons.push(`ratio ${{hm.length_ratio.toFixed(2)}} > ${{ratioThreshold.toFixed(1)}}`);
       if (_manualExclusions.has(doc.doc_id))
         reasons.push('exclusion manuelle');
