@@ -97,7 +97,7 @@ class MistralOCREngine(BaseOCREngine):
     def _run_ocr_vision_api(self, image_url: str) -> str:
         """API vision/chat Mistral (pour pixtral-12b, pixtral-large, etc.)."""
         try:
-            from mistralai import Mistral
+            from mistralai.client import Mistral
         except ImportError as exc:
             raise RuntimeError(
                 "Le package 'mistralai' n'est pas installé. Lancez : pip install mistralai"
