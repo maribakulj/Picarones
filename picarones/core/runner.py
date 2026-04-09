@@ -354,6 +354,7 @@ def run_benchmark(
     max_workers: int = 4,
     timeout_seconds: float = 60.0,
     partial_dir: Optional[str | Path] = None,
+    cancel_event: Optional[threading.Event] = None,
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -398,14 +399,23 @@ def run_benchmark(
     partial_dir:
         Répertoire pour les fichiers de reprise (défaut : répertoire temporaire
         système).
+    cancel_event:
+        ``threading.Event`` optionnel.  Si défini et signalé (``set()``),
+        le benchmark s'interrompt proprement dès que possible et retourne
+        les résultats partiels collectés jusque-là.
 
     Returns
     -------
     BenchmarkResult
     """
+    def _is_cancelled() -> bool:
+        return cancel_event is not None and cancel_event.is_set()
     engine_reports: list[EngineReport] = []
 
     for engine in engines:
+        if _is_cancelled():
+            logger.info("Benchmark annulé avant le moteur '%s'.", engine.name)
+            break
         logger.info("Démarrage : %s", engine.name)
 
         # Reprise depuis résultats partiels d'une éventuelle exécution précédente
@@ -458,6 +468,9 @@ def run_benchmark(
             submitted_at: dict = {}
 
             for doc in docs_to_process:
+                if _is_cancelled():
+                    logger.info("[%s] annulation — arrêt de la soumission.", engine.name)
+                    break
                 if is_cpu_bound:
                     engine_module = engine.__class__.__module__
                     engine_class_name = engine.__class__.__name__
@@ -476,6 +489,12 @@ def run_benchmark(
             remaining = set(future_to_doc)
 
             while remaining:
+                if _is_cancelled():
+                    logger.info("[%s] annulation — annulation des futures restantes.", engine.name)
+                    for f in remaining:
+                        f.cancel()
+                    break
+
                 done, remaining = concurrent.futures.wait(
                     remaining,
                     timeout=0.5,
@@ -536,6 +555,15 @@ def run_benchmark(
             executor.shutdown(wait=True, cancel_futures=True)
             pbar.close()
 
+        if _is_cancelled():
+            logger.info(
+                "[%s] annulé — %d documents traités sur %d.",
+                engine.name, len(document_results) - len(loaded_results),
+                len(docs_to_process),
+            )
+            # Conserver le fichier partiel pour reprise ultérieure
+            break
+
         # Réordonner selon l'ordre du corpus pour reproductibilité
         doc_order = {doc.doc_id: i for i, doc in enumerate(corpus.documents)}
         document_results.sort(key=lambda dr: doc_order.get(dr.doc_id, len(doc_order)))
@@ -584,6 +612,10 @@ def run_benchmark(
             engine.name,
             (report.mean_cer or 0) * 100,
         )
+
+        # Libérer la mémoire des analyses per-document après agrégation
+        for dr in document_results:
+            dr.compact()
 
     benchmark = BenchmarkResult(
         corpus_name=corpus.name,

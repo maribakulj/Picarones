@@ -82,6 +82,28 @@ class DocumentResult:
             d["hallucination_metrics"] = self.hallucination_metrics
         return d
 
+    def compact(self) -> None:
+        """Libère les champs lourds pour réduire l'empreinte mémoire.
+
+        Appelé après que les données ont été sérialisées dans le fichier
+        partiel et que les agrégations ont été calculées.  Les champs
+        ``ground_truth`` et ``hypothesis`` sont tronqués et les analyses
+        détaillées (confusion, taxonomy…) sont supprimées.
+        """
+        # Garder un extrait pour le rapport, libérer le texte complet
+        if len(self.ground_truth) > 200:
+            self.ground_truth = self.ground_truth[:200] + "…"
+        if len(self.hypothesis) > 200:
+            self.hypothesis = self.hypothesis[:200] + "…"
+        if self.ocr_intermediate and len(self.ocr_intermediate) > 200:
+            self.ocr_intermediate = self.ocr_intermediate[:200] + "…"
+        # Les analyses per-document ne sont plus nécessaires après agrégation
+        self.confusion_matrix = None
+        self.char_scores = None
+        self.taxonomy = None
+        self.structure = None
+        self.image_quality = None
+
 
 @dataclass
 class EngineReport:

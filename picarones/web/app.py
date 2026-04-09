@@ -81,6 +81,7 @@ class BenchmarkJob:
     events: list[dict] = field(default_factory=list)
     _subscribers: list[asyncio.Queue] = field(default_factory=list)
     _lock: threading.Lock = field(default_factory=threading.Lock)
+    _cancel_event: threading.Event = field(default_factory=threading.Event)
 
     def add_event(self, kind: str, data: Any) -> None:
         event = {"kind": kind, "data": data, "ts": _iso_now()}
@@ -1034,6 +1035,7 @@ async def api_benchmark_cancel(job_id: str) -> dict:
     if job.status in ("complete", "error"):
         return {"job_id": job_id, "status": job.status, "message": "Job déjà terminé."}
     job.status = "cancelled"
+    job._cancel_event.set()  # Signal d'annulation pour run_benchmark
     job.add_event("cancelled", {"message": "Benchmark annulé par l'utilisateur."})
     return {"job_id": job_id, "status": "cancelled"}
 
@@ -1247,6 +1249,7 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
             show_progress=False,
             progress_callback=_progress_callback,
             char_exclude=char_excl,
+            cancel_event=job._cancel_event,
         )
 
         if job.status == "cancelled":
@@ -1356,6 +1359,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             show_progress=False,
             progress_callback=_progress_callback,
             char_exclude=char_excl,
+            cancel_event=job._cancel_event,
         )
 
         if job.status == "cancelled":
