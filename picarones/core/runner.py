@@ -16,6 +16,7 @@ import json
 import logging
 import re
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -29,8 +30,8 @@ from picarones.engines.base import BaseOCREngine, EngineResult
 
 logger = logging.getLogger(__name__)
 
-# Classes de moteurs CPU-bound → ProcessPoolExecutor
-_CPU_BOUND_ENGINE_CLASSES = frozenset({"TesseractEngine", "PeroOCREngine", "KrakenEngine"})
+# Lock pour la sérialisation des écritures de résultats partiels
+_partial_write_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -100,8 +101,8 @@ def _compute_document_result(
     Les analyses secondaires qui échouent sont loguées en WARNING et non propagées :
     le benchmark continue avec les métriques de base disponibles.
     """
-    import logging as _log
-    _logger = _log.getLogger(__name__)
+    import logging as _logging
+    _logger = _logging.getLogger(__name__)
 
     if ocr_result.success:
         metrics = compute_metrics(ground_truth, ocr_result.text, char_exclude=char_exclude)
@@ -320,10 +321,12 @@ def _load_partial(
 
 
 def _save_partial_line(partial_path: Path, doc_result: DocumentResult) -> None:
-    """Ajoute une entrée NDJSON au fichier de résultats partiels."""
+    """Ajoute une entrée NDJSON au fichier de résultats partiels (thread-safe)."""
     try:
-        with partial_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(doc_result.as_dict(), ensure_ascii=False) + "\n")
+        line = json.dumps(doc_result.as_dict(), ensure_ascii=False) + "\n"
+        with _partial_write_lock:
+            with partial_path.open("a", encoding="utf-8") as fh:
+                fh.write(line)
     except Exception as e:
         logger.warning("Impossible d'écrire dans le fichier partiel '%s' : %s", partial_path, e)
 
@@ -423,8 +426,8 @@ def run_benchmark(
             )
         document_results: list[DocumentResult] = list(loaded_results)
 
-        # Sélection du type d'exécution selon la classe du moteur
-        is_cpu_bound = engine.__class__.__name__ in _CPU_BOUND_ENGINE_CLASSES
+        # Sélection du type d'exécution selon execution_mode du moteur
+        is_cpu_bound = getattr(engine, "execution_mode", "io") == "cpu"
         ExecutorClass = (
             concurrent.futures.ProcessPoolExecutor
             if is_cpu_bound
@@ -530,7 +533,7 @@ def run_benchmark(
                     processed_count += 1
 
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            executor.shutdown(wait=True, cancel_futures=True)
             pbar.close()
 
         # Réordonner selon l'ordre du corpus pour reproductibilité

@@ -15,9 +15,12 @@ Métriques implémentées
 
 from __future__ import annotations
 
+import logging
 import unicodedata
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 try:
     import jiwer
@@ -198,8 +201,8 @@ def compute_metrics(
             hyp_diplo = profile.normalize(hypothesis)
             cer_diplomatic = _cer_from_strings(ref_diplo, hyp_diplo)
             diplomatic_profile_name = profile.name
-        except Exception:  # noqa: BLE001
-            pass  # CER diplomatique non critique
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[metrics] CER diplomatique dégradé : %s", e)
 
         return MetricsResult(
             cer=cer_raw,
@@ -216,6 +219,7 @@ def compute_metrics(
         )
 
     except Exception as exc:  # noqa: BLE001
+        logger.warning("[metrics] calcul métriques échoué : %s", exc)
         return MetricsResult(
             cer=0.0, cer_nfc=0.0, cer_caseless=0.0,
             wer=0.0, wer_normalized=0.0, mer=0.0, wil=0.0,

@@ -311,11 +311,21 @@ def _check_char_at_context(
     gt_char: str,
     equivalents: list[str],
 ) -> bool:
-    """Vérifie si la position correspondante dans l'hypothèse contient un équivalent."""
-    # Approche simple : chercher si l'hypothèse contient le caractère ou son équivalent
-    # dans une fenêtre autour de la position estimée
+    """Vérifie si la position correspondante dans l'hypothèse contient un équivalent.
+
+    Cherche dans une fenêtre de ±5 caractères autour de la position estimée
+    pour tolérer les décalages d'alignement OCR.
+    """
+    # Position estimée dans l'hypothèse (ratio proportionnel)
+    if len(gt) == 0:
+        return False
+    est_pos = int(gt_pos * len(hyp) / len(gt)) if len(gt) > 0 else 0
+    window = 5
+    start = max(0, est_pos - window)
+    end = min(len(hyp), est_pos + window + len(gt_char))
+    context = hyp[start:end]
     for equiv in equivalents:
-        if equiv in hyp:
+        if equiv in context:
             return True
     return False
 

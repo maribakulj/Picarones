@@ -335,9 +335,8 @@ async def api_engines() -> dict:
         "status": "configured" if os.environ.get("MISTRAL_API_KEY") else "missing_key",
     })
 
-    # Ollama
-    ollama_available = _check_ollama()
-    ollama_models = _list_ollama_models() if ollama_available else []
+    # Ollama (un seul appel HTTP)
+    ollama_available, ollama_models = _fetch_ollama_info()
     llms.append({
         "id": "ollama",
         "label": "Ollama (Llama 3, Gemma, Phi — local)",
@@ -384,23 +383,28 @@ def _check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
     }
 
 
-def _check_ollama() -> bool:
+def _fetch_ollama_info() -> tuple[bool, list[str]]:
+    """Vérifie la disponibilité d'Ollama et liste ses modèles en un seul appel HTTP."""
     import urllib.error, urllib.request
     try:
         with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2) as r:
-            return r.status == 200
+            if r.status != 200:
+                return False, []
+            data = json.loads(r.read().decode())
+        models = [m.get("name", "") for m in data.get("models", [])]
+        return True, models
     except Exception:
-        return False
+        return False, []
+
+
+def _check_ollama() -> bool:
+    available, _ = _fetch_ollama_info()
+    return available
 
 
 def _list_ollama_models() -> list[str]:
-    import urllib.error, urllib.request
-    try:
-        with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2) as r:
-            data = json.loads(r.read().decode())
-        return [m.get("name", "") for m in data.get("models", [])]
-    except Exception:
-        return []
+    _, models = _fetch_ollama_info()
+    return models
 
 
 def _get_tesseract_langs() -> list[str]:

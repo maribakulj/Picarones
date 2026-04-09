@@ -257,8 +257,13 @@ class HTRUnitedCatalogue:
                 raw = resp.read().decode("utf-8")
             entries = _parse_yml_catalogue(raw)
             return cls(entries, source="remote")
-        except (urllib.error.URLError, Exception):
-            # Fallback démo
+        except (urllib.error.URLError, Exception) as exc:
+            # Fallback démo avec avertissement
+            logger.warning(
+                "[HTR-United] impossible de charger le catalogue distant (%s) : %s. "
+                "Utilisation des données de démonstration.",
+                _CATALOGUE_URL, exc,
+            )
             return cls.from_demo()
 
     def search(

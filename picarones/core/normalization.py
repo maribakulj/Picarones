@@ -386,30 +386,35 @@ def _parse_exclude_chars(value: "str | list | None") -> frozenset:
 
 
 def _apply_diplomatic_table(text: str, table: dict[str, str]) -> str:
-    """Applique une table de correspondances diplomatiques caractère par caractère.
+    """Applique une table de correspondances diplomatiques en un seul pass.
 
     Les clés multi-caractères (ex : ``"ae"`` → ``"æ"``) sont gérées en priorité
-    sur les correspondances simples.
+    sur les correspondances simples. Le remplacement est fait en un seul pass
+    via regex pour éviter les remplacements en cascade (ex : ``"ſ"→"s"`` puis
+    ``"s"→"z"`` donnerait ``"z"`` au lieu de ``"s"``).
     """
     if not table:
         return text
 
-    # Séparer les clés simples (1 char) des clés multi-chars pour traitement ordonné
+    import re
+
+    # Séparer les clés simples (1 char) des clés multi-chars
     multi_keys = sorted(
         (k for k in table if len(k) > 1), key=len, reverse=True
     )
     simple_table = {k: v for k, v in table.items() if len(k) == 1}
 
-    result = text
-    # Remplacements multi-chars en premier (évite les conflits)
-    for key in multi_keys:
-        result = result.replace(key, table[key])
+    if multi_keys:
+        # Single-pass : construire un pattern regex avec toutes les clés multi-chars
+        # triées par longueur décroissante pour matcher les plus longues d'abord
+        pattern = re.compile("|".join(re.escape(k) for k in multi_keys))
+        text = pattern.sub(lambda m: table[m.group(0)], text)
 
-    # Remplacements char par char
+    # Remplacements char par char (single-pass via itération)
     if simple_table:
-        result = "".join(simple_table.get(c, c) for c in result)
+        text = "".join(simple_table.get(c, c) for c in text)
 
-    return result
+    return text
 
 
 # Profil par défaut utilisé pour le CER diplomatique intégré

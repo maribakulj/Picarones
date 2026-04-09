@@ -282,7 +282,7 @@ def compute_hallucination_metrics(
     # ── Badge hallucination ──────────────────────────────────────────────
     is_hallucinating = (
         anchor_score < anchor_threshold
-        or (length_ratio > length_ratio_threshold and length_ratio != float("inf"))
+        or length_ratio > length_ratio_threshold
     )
 
     return HallucinationMetrics(
