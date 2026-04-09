@@ -80,7 +80,7 @@ RUN mkdir -p /app/corpus /app/rapports /app/data
 
 # ── Utilisateur non-root pour la sécurité ──────────────────────
 RUN useradd -m -u 1000 picarones && \
-    chown -R picarones:picarones /app
+    chown -R picarones:picarones /app /opt/venv
 USER picarones
 
 # ── Variables d'environnement par défaut ───────────────────────
@@ -89,7 +89,6 @@ ENV PYTHONIOENCODING=utf-8
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
 
 # ── Ports ───────────────────────────────────────────────────────
-EXPOSE 8000
 EXPOSE 7860
 
 # ── Health check ────────────────────────────────────────────────

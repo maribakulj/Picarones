@@ -165,7 +165,7 @@ class TestDockerCompose:
         assert "ollama" in compose
 
     def test_has_port_mapping(self, compose):
-        assert "8000" in compose
+        assert "7860" in compose
 
     def test_has_volume_for_history(self, compose):
         assert "picarones_history" in compose
