@@ -139,72 +139,53 @@ class OCRLLMPipeline(BaseOCREngine):
         ocr_v = self.ocr_engine._safe_version() if self.ocr_engine else "—"
         return f"ocr={ocr_v}; llm={self.llm_adapter.model}"
 
-    def _run_ocr(self, image_path: Path) -> tuple[str, Optional[str]]:
-        """Logique interne du pipeline — appelée par ``run()``.
+    def _run_llm_step(
+        self, image_path: Path, ocr_text: str,
+    ) -> tuple[str, Optional[str]]:
+        """Étape LLM du pipeline (commune à run() et run_with_ocr_text()).
 
-        Returns
-        -------
-        tuple[str, Optional[str]]
-            (llm_text, ocr_intermediate) — ocr_intermediate est None en mode zero_shot.
+        Construit le prompt, appelle le LLM, retourne ``(llm_text, ocr_intermediate)``.
+        ``ocr_intermediate`` est ``None`` en mode zero_shot.
         """
-        ocr_text = ""
-
         if self.mode == PipelineMode.ZERO_SHOT:
             image_b64 = _image_to_b64(image_path)
             prompt = self._build_prompt(image_b64=image_b64)
-            logger.debug(
-                "[%s] zero-shot — longueur prompt : %d car.", self._name, len(prompt)
-            )
             logger.info("[Pipeline] appel LLM pour doc %s (zero-shot)", image_path.name)
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
-            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
 
         elif self.mode == PipelineMode.TEXT_ONLY:
-            if self.ocr_engine is None:
-                raise ValueError("ocr_engine est requis pour le mode text_only")
-            ocr_result = self.ocr_engine.run(image_path)
-            ocr_text = ocr_result.text
-            logger.debug(
-                "[%s] texte OCR : %d car. → envoi au LLM.",
-                self._name, len(ocr_text),
-            )
             if not ocr_text.strip():
                 logger.warning(
-                    "[%s] le moteur OCR a produit un texte vide pour '%s'. "
-                    "Le LLM recevra un prompt sans texte OCR ({ocr_output} vide).",
+                    "[%s] texte OCR vide pour '%s' — le LLM recevra {ocr_output} vide.",
                     self._name, image_path.name,
                 )
             prompt = self._build_prompt(ocr_text=ocr_text)
-            logger.info("[Pipeline] appel LLM pour doc %s (text_only, ocr=%d chars)", image_path.name, len(ocr_text))
+            logger.info(
+                "[Pipeline] appel LLM pour doc %s (text_only, ocr=%d chars)",
+                image_path.name, len(ocr_text),
+            )
             result = self.llm_adapter.complete(prompt)
-            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
 
         else:  # TEXT_AND_IMAGE
-            if self.ocr_engine is None:
-                raise ValueError("ocr_engine est requis pour le mode text_and_image")
-            ocr_result = self.ocr_engine.run(image_path)
-            ocr_text = ocr_result.text
-            logger.debug(
-                "[%s] texte OCR : %d car. + image → envoi au LLM.",
-                self._name, len(ocr_text),
-            )
             if not ocr_text.strip():
                 logger.warning(
-                    "[%s] le moteur OCR a produit un texte vide pour '%s'. "
-                    "Le LLM recevra un prompt sans texte OCR ({ocr_output} vide).",
+                    "[%s] texte OCR vide pour '%s' — le LLM recevra {ocr_output} vide.",
                     self._name, image_path.name,
                 )
             image_b64 = _image_to_b64(image_path)
             prompt = self._build_prompt(ocr_text=ocr_text, image_b64=image_b64)
-            logger.info("[Pipeline] appel LLM pour doc %s (text_and_image, ocr=%d chars)", image_path.name, len(ocr_text))
+            logger.info(
+                "[Pipeline] appel LLM pour doc %s (text_and_image, ocr=%d chars)",
+                image_path.name, len(ocr_text),
+            )
             result = self.llm_adapter.complete(prompt, image_b64=image_b64)
-            logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
+
+        logger.info("[Pipeline] LLM retourné pour doc %s", image_path.name)
 
         if not result.success:
             raise RuntimeError(f"Erreur LLM ({self.llm_adapter.model}): {result.error}")
 
         llm_text = result.text
-        # INFO — bilan OCR→LLM visible sur HuggingFace (niveau INFO)
         logger.info(
             "[Pipeline] %s — OCR: %d chars → LLM: %d chars",
             image_path.name, len(ocr_text), len(llm_text),
@@ -226,6 +207,26 @@ class OCRLLMPipeline(BaseOCREngine):
 
         ocr_intermediate = ocr_text if self.mode != PipelineMode.ZERO_SHOT else None
         return llm_text, ocr_intermediate
+
+    def _run_ocr(self, image_path: Path) -> tuple[str, Optional[str]]:
+        """Logique interne du pipeline — lance l'OCR engine puis le LLM.
+
+        Returns
+        -------
+        tuple[str, Optional[str]]
+            (llm_text, ocr_intermediate) — ocr_intermediate est None en mode zero_shot.
+        """
+        ocr_text = ""
+        if self.mode != PipelineMode.ZERO_SHOT:
+            if self.ocr_engine is None:
+                raise ValueError(
+                    f"ocr_engine est requis pour le mode {self.mode.value} "
+                    "(utilisez run_with_ocr_text() pour la post-correction sans OCR engine)"
+                )
+            ocr_result = self.ocr_engine.run(image_path)
+            ocr_text = ocr_result.text
+
+        return self._run_llm_step(image_path, ocr_text)
 
     # ------------------------------------------------------------------
     # Override run() pour injecter les métadonnées pipeline
@@ -259,6 +260,69 @@ class OCRLLMPipeline(BaseOCREngine):
             "llm_provider": self.llm_adapter.name,
             "pipeline_steps": self._build_steps_info(),
             "is_pipeline": True,
+        }
+        if ocr_intermediate is not None:
+            metadata["ocr_intermediate"] = ocr_intermediate
+
+        return EngineResult(
+            engine_name=self.name,
+            image_path=str(image_path),
+            text=text,
+            duration_seconds=round(duration, 4),
+            error=error,
+            metadata=metadata,
+        )
+
+    # ------------------------------------------------------------------
+    # Post-correction avec OCR pré-calculé
+    # ------------------------------------------------------------------
+
+    def run_with_ocr_text(
+        self, image_path: str | Path, ocr_text: str,
+    ) -> EngineResult:
+        """Exécute le pipeline avec un texte OCR pré-fourni (corpus triplet).
+
+        Utilisé quand le corpus contient des fichiers ``.ocr.txt`` : le
+        texte OCR bruité est fourni directement, sans lancer de moteur OCR.
+
+        Parameters
+        ----------
+        image_path:
+            Chemin de l'image (utilisée en mode multimodal, ignorée en text_only).
+        ocr_text:
+            Texte OCR bruité pré-calculé.
+
+        Returns
+        -------
+        EngineResult
+        """
+        image_path = Path(image_path)
+        start = time.perf_counter()
+
+        ocr_intermediate: Optional[str] = ocr_text
+        try:
+            text, _ = self._run_llm_step(image_path, ocr_text)
+            error = None
+        except Exception as exc:  # noqa: BLE001
+            text = ""
+            error = str(exc)
+            logger.warning(
+                "[%s] erreur pipeline (post-correction) pour '%s' : %s",
+                self._name, image_path.name, exc,
+            )
+
+        duration = time.perf_counter() - start
+
+        metadata: dict = {
+            "engine_version": self._safe_version(),
+            "pipeline_mode": self.mode.value,
+            "prompt_file": self.prompt_path,
+            "prompt_template": self._prompt_template,
+            "llm_model": self.llm_adapter.model,
+            "llm_provider": self.llm_adapter.name,
+            "pipeline_steps": self._build_steps_info(),
+            "is_pipeline": True,
+            "ocr_source": "corpus",  # distingue de "live"
         }
         if ocr_intermediate is not None:
             metadata["ocr_intermediate"] = ocr_intermediate

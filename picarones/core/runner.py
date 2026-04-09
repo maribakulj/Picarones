@@ -71,8 +71,23 @@ def _io_doc_worker(
     Exécute l'OCR et calcule les métriques dans un thread.  L'instance du
     moteur est partagée entre les threads — les adaptateurs HTTP sont
     généralement sans état mutable entre les appels.
+
+    Si le document possède un texte OCR pré-calculé (corpus triplet) et que
+    le moteur est un pipeline OCR+LLM, utilise ``run_with_ocr_text()`` pour
+    court-circuiter l'étape OCR et tester directement la post-correction LLM.
     """
-    ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
+    doc_ocr_text = getattr(doc, "ocr_text", None)
+    if doc_ocr_text is not None:
+        # Corpus triplet — vérifier si le moteur supporte run_with_ocr_text
+        run_with = getattr(engine, "run_with_ocr_text", None)
+        if run_with is not None:
+            ocr_result = run_with(doc.image_path, doc_ocr_text)  # type: ignore[attr-defined]
+        else:
+            # Moteur OCR classique — ignorer le texte OCR pré-calculé
+            ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
+    else:
+        ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
+
     return _compute_document_result(
         doc_id=doc.doc_id,  # type: ignore[attr-defined]
         image_path=str(doc.image_path),  # type: ignore[attr-defined]

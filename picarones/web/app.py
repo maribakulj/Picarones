@@ -173,7 +173,8 @@ class HuggingFaceImportRequest(BaseModel):
 
 class CompetitorConfig(BaseModel):
     name: str = ""
-    ocr_engine: str
+    ocr_engine: str = ""
+    """Moteur OCR : 'tesseract', 'mistral_ocr', ... ou 'corpus' pour utiliser l'OCR pré-calculé."""
     ocr_model: str = ""
     llm_provider: str = ""
     llm_model: str = ""
@@ -418,12 +419,66 @@ def _get_tesseract_langs() -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# API — models (dynamic per provider)
+# API — models (dynamic per provider, with capability metadata)
 # ---------------------------------------------------------------------------
 
+# Modèles Mistral text-only (pas de support vision)
+_MISTRAL_TEXT_ONLY = frozenset({
+    "ministral-3b-latest", "ministral-8b-latest", "mistral-tiny",
+    "mistral-tiny-latest", "open-mistral-7b", "open-mixtral-8x7b",
+    "mistral-small-latest", "mistral-small-2409",
+})
+
+# Familles Ollama multimodales connues
+_OLLAMA_VISION_FAMILIES = frozenset({
+    "llava", "bakllava", "moondream", "minicpm-v", "llama3.2-vision",
+    "llava-llama3", "llava-phi3", "nanollava",
+})
+
+
+def _model_entry(model_id: str, capabilities: list[str]) -> dict:
+    """Crée une entrée modèle avec son ID et ses capacités."""
+    return {"id": model_id, "capabilities": capabilities}
+
+
+def _infer_mistral_capabilities(model_id: str) -> list[str]:
+    mid = model_id.lower()
+    if mid in _MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in ("ministral", "open-mistral", "open-mixtral")):
+        return ["text"]
+    if "pixtral" in mid or "mistral-ocr" in mid:
+        return ["text", "vision"]
+    # Mistral Large et autres modèles récents supportent la vision
+    return ["text", "vision"]
+
+
+def _infer_openai_capabilities(model_id: str) -> list[str]:
+    mid = model_id.lower()
+    if "gpt-4o" in mid or "gpt-4-turbo" in mid or "gpt-4.1" in mid or "o1" in mid or "o3" in mid:
+        return ["text", "vision"]
+    return ["text"]
+
+
+def _infer_ollama_capabilities(model_name: str) -> list[str]:
+    base = model_name.split(":")[0].lower()
+    if any(base.startswith(family) for family in _OLLAMA_VISION_FAMILIES):
+        return ["text", "vision"]
+    return ["text"]
+
+
 @app.get("/api/models/{provider}")
-async def api_models(provider: str) -> dict:
-    """Retourne la liste des modèles disponibles pour un provider, en temps réel."""
+async def api_models(
+    provider: str,
+    capability: str = Query(default="", description="Filtre par capacité : 'text', 'vision', ou vide pour tout"),
+) -> dict:
+    """Retourne les modèles disponibles avec leurs capacités (text, vision).
+
+    Interroge l'API du provider en temps réel.  Les capacités sont déterminées
+    par heuristique sur le nom du modèle quand l'API ne fournit pas cette
+    information directement.
+
+    Le paramètre ``capability`` filtre les résultats (ex : ``?capability=vision``
+    ne retourne que les modèles supportant la vision).
+    """
     import urllib.error
     import urllib.request as _urlreq
 
@@ -432,98 +487,128 @@ async def api_models(provider: str) -> dict:
         with _urlreq.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode())
 
+    def _filter_and_format(models: list[dict]) -> dict:
+        if capability:
+            models = [m for m in models if capability in m["capabilities"]]
+        return {
+            "provider": provider,
+            "models": models,
+            "model_ids": [m["id"] for m in models],
+        }
+
     if provider == "tesseract":
-        return {"provider": provider, "models": _get_tesseract_langs()}
+        langs = _get_tesseract_langs()
+        return {"provider": provider, "models": langs, "model_ids": langs}
 
     if provider == "mistral_ocr":
         api_key = os.environ.get("MISTRAL_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "MISTRAL_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "MISTRAL_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.mistral.ai/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
-            models = sorted(
-                m["id"] for m in data.get("data", [])
+            models = [
+                _model_entry(m["id"], _infer_mistral_capabilities(m["id"]))
+                for m in data.get("data", [])
                 if "pixtral" in m["id"].lower() or "mistral-ocr" in m["id"].lower()
-            )
-            return {"provider": provider, "models": models}
+            ]
+            return _filter_and_format(sorted(models, key=lambda m: m["id"]))
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["pixtral-12b-2409", "pixtral-large-latest", "mistral-ocr-latest"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("pixtral-12b-2409", ["text", "vision"]),
+                _model_entry("pixtral-large-latest", ["text", "vision"]),
+                _model_entry("mistral-ocr-latest", ["text", "vision"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "openai":
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "OPENAI_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "OPENAI_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.openai.com/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
-            models = sorted(
-                (m["id"] for m in data.get("data", []) if "gpt-4" in m["id"].lower()),
-                reverse=True,
-            )
-            return {"provider": provider, "models": models}
+            models = [
+                _model_entry(m["id"], _infer_openai_capabilities(m["id"]))
+                for m in data.get("data", [])
+                if "gpt-4" in m["id"].lower() or "o1" in m["id"].lower() or "o3" in m["id"].lower()
+            ]
+            return _filter_and_format(sorted(models, key=lambda m: m["id"], reverse=True))
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("gpt-4o", ["text", "vision"]),
+                _model_entry("gpt-4o-mini", ["text", "vision"]),
+                _model_entry("gpt-4-turbo", ["text", "vision"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "ANTHROPIC_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "ANTHROPIC_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.anthropic.com/v1/models",
                 {"x-api-key": api_key, "anthropic-version": "2023-06-01"},
             )
-            models = [m["id"] for m in data.get("data", [])]
-            return {"provider": provider, "models": models}
+            # Tous les modèles Claude 3+ supportent la vision
+            models = [_model_entry(m["id"], ["text", "vision"]) for m in data.get("data", [])]
+            return _filter_and_format(models)
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-6"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("claude-sonnet-4-6", ["text", "vision"]),
+                _model_entry("claude-haiku-4-5-20251001", ["text", "vision"]),
+                _model_entry("claude-opus-4-6", ["text", "vision"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "mistral":
         api_key = os.environ.get("MISTRAL_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "MISTRAL_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "MISTRAL_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.mistral.ai/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
-            models = sorted(
-                m["id"] for m in data.get("data", [])
+            models = [
+                _model_entry(m["id"], _infer_mistral_capabilities(m["id"]))
+                for m in data.get("data", [])
                 if "pixtral" not in m["id"].lower() and "mistral-ocr" not in m["id"].lower()
-            )
-            return {"provider": provider, "models": models}
+            ]
+            return _filter_and_format(sorted(models, key=lambda m: m["id"]))
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["mistral-large-latest", "mistral-small-latest"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("mistral-large-latest", ["text", "vision"]),
+                _model_entry("mistral-small-latest", ["text"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "ollama":
-        return {"provider": provider, "models": _list_ollama_models()}
+        _, model_names = _fetch_ollama_info()
+        models = [
+            _model_entry(name, _infer_ollama_capabilities(name))
+            for name in model_names
+        ]
+        return _filter_and_format(models)
 
     if provider == "google_vision":
-        return {"provider": provider, "models": ["document_text_detection", "text_detection"]}
+        models = [
+            _model_entry("document_text_detection", ["vision"]),
+            _model_entry("text_detection", ["vision"]),
+        ]
+        return _filter_and_format(models)
 
     if provider == "azure_doc_intel":
-        return {"provider": provider, "models": ["prebuilt-document", "prebuilt-read"]}
+        models = [
+            _model_entry("prebuilt-document", ["vision"]),
+            _model_entry("prebuilt-read", ["vision"]),
+        ]
+        return _filter_and_format(models)
 
     if provider == "prompts":
         prompts_dir = Path(__file__).parent.parent / "prompts"
@@ -531,7 +616,7 @@ async def api_models(provider: str) -> dict:
             prompts = sorted(f.name for f in prompts_dir.glob("*.txt"))
         else:
             prompts = []
-        return {"provider": provider, "models": prompts}
+        return {"provider": provider, "models": prompts, "model_ids": prompts}
 
     raise HTTPException(status_code=404, detail=f"Provider inconnu : {provider}")
 
@@ -700,6 +785,12 @@ def _analyze_corpus_dir(path: Path) -> dict:
     else:
         dominant_format = "texte brut"
 
+    # Détecter les fichiers OCR bruité (.ocr.txt) pour les corpus triplets
+    ocr_text_count = sum(
+        1 for p in pairs
+        if (path / (Path(p["image"]).stem + ".ocr.txt")).exists()
+    )
+
     return {
         "doc_count": len(pairs),
         "pairs": pairs[:20],
@@ -709,6 +800,8 @@ def _analyze_corpus_dir(path: Path) -> dict:
         "warnings": [f"GT manquant : {img}" for img in missing_gt[:5]],
         "usable": len(pairs) > 0,
         "gt_format": dominant_format,
+        "has_ocr_text": ocr_text_count > 0,
+        "ocr_text_count": ocr_text_count,
     }
 
 
@@ -729,8 +822,8 @@ def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
         # Ignorer les fichiers cachés macOS (._* créés par AppleDouble dans les ZIPs)
         if name.startswith("."):
             continue
-        # Accepter images, .gt.txt et .xml (ALTO/PAGE)
-        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or p.suffix.lower() == ".xml":
+        # Accepter images, .gt.txt, .ocr.txt et .xml (ALTO/PAGE)
+        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or name.endswith(".ocr.txt") or p.suffix.lower() == ".xml":
             # Protection ZIP bomb : vérifier la taille décompressée
             total_size += member.file_size
             if total_size > _MAX_ZIP_TOTAL_SIZE:
@@ -762,7 +855,7 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
                 import io
                 with zipfile.ZipFile(io.BytesIO(data)) as zf:
                     _flatten_zip_to_dir(zf, corpus_dir)
-            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or suffix in (".txt", ".xml"):
+            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or filename.endswith(".ocr.txt") or suffix in (".txt", ".xml"):
                 (corpus_dir / filename).write_bytes(data)
             # Ignorer les autres types
 
@@ -1114,36 +1207,73 @@ async def api_benchmark_run(req: BenchmarkRunRequest) -> dict:
     return {"job_id": job_id, "status": "pending"}
 
 
-def _engine_from_competitor(comp: CompetitorConfig) -> Any:
-    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig."""
-    from picarones.engines.tesseract import TesseractEngine
-    from picarones.engines.mistral_ocr import MistralOCREngine
+def _build_llm_adapter(comp: CompetitorConfig) -> Any:
+    """Instancie un adaptateur LLM depuis la config d'un concurrent."""
+    if comp.llm_provider == "openai":
+        from picarones.llm.openai_adapter import OpenAIAdapter
+        return OpenAIAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "anthropic":
+        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        return AnthropicAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "mistral":
+        from picarones.llm.mistral_adapter import MistralAdapter
+        return MistralAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "ollama":
+        from picarones.llm.ollama_adapter import OllamaAdapter
+        return OllamaAdapter(model=comp.llm_model or None)
+    else:
+        raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
 
+
+def _engine_from_competitor(comp: CompetitorConfig) -> Any:
+    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig.
+
+    Modes supportés :
+    - ``ocr_engine`` = 'tesseract', 'mistral_ocr', etc. → moteur OCR seul
+    - ``ocr_engine`` + ``llm_provider`` → pipeline OCR live + LLM
+    - ``ocr_engine`` = 'corpus' + ``llm_provider`` → post-correction LLM
+      avec OCR pré-calculé (fichiers .ocr.txt du corpus triplet)
+    - ``ocr_engine`` = '' + ``llm_provider`` → LLM seul (zero-shot ou post-correction)
+    """
     engine_id = comp.ocr_engine
 
-    if engine_id == "tesseract":
-        ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
-    elif engine_id == "mistral_ocr":
-        ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
-    elif engine_id == "google_vision":
-        try:
-            from picarones.engines.google_vision import GoogleVisionEngine
-            ocr = GoogleVisionEngine(config={"detection_type": comp.ocr_model or "document_text_detection"})
-        except ImportError as exc:
-            raise RuntimeError("Google Vision non disponible (google-cloud-vision non installé).") from exc
-    elif engine_id == "azure_doc_intel":
-        try:
-            from picarones.engines.azure_doc_intel import AzureDocIntelEngine
-            ocr = AzureDocIntelEngine(config={"model": comp.ocr_model or "prebuilt-document"})
-        except ImportError as exc:
-            raise RuntimeError("Azure Document Intelligence non disponible.") from exc
-    else:
-        raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+    # Pipeline post-correction avec OCR pré-calculé (corpus triplet)
+    is_corpus_ocr = engine_id in ("corpus", "")
 
-    if not comp.llm_provider:
-        return ocr
+    if is_corpus_ocr and not comp.llm_provider:
+        raise ValueError(
+            "ocr_engine='corpus' nécessite un llm_provider "
+            "(pour la post-correction ou le zero-shot)"
+        )
 
-    # Pipeline OCR+LLM
+    ocr = None
+    if not is_corpus_ocr:
+        from picarones.engines.tesseract import TesseractEngine
+        from picarones.engines.mistral_ocr import MistralOCREngine
+
+        if engine_id == "tesseract":
+            ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
+        elif engine_id == "mistral_ocr":
+            ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
+        elif engine_id == "google_vision":
+            try:
+                from picarones.engines.google_vision import GoogleVisionEngine
+                ocr = GoogleVisionEngine(config={"detection_type": comp.ocr_model or "document_text_detection"})
+            except ImportError as exc:
+                raise RuntimeError("Google Vision non disponible.") from exc
+        elif engine_id == "azure_doc_intel":
+            try:
+                from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+                ocr = AzureDocIntelEngine(config={"model": comp.ocr_model or "prebuilt-document"})
+            except ImportError as exc:
+                raise RuntimeError("Azure Document Intelligence non disponible.") from exc
+        else:
+            raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+
+        if not comp.llm_provider:
+            return ocr
+
+    # Pipeline OCR+LLM (live ou post-correction)
     _mode_map = {
         "text_only": "text_only",
         "post_correction_text": "text_only",
@@ -1153,24 +1283,16 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     }
     mode = _mode_map.get(comp.pipeline_mode, "text_only")
 
-    if comp.llm_provider == "openai":
-        from picarones.llm.openai_adapter import OpenAIAdapter
-        llm = OpenAIAdapter(model=comp.llm_model or None)
-    elif comp.llm_provider == "anthropic":
-        from picarones.llm.anthropic_adapter import AnthropicAdapter
-        llm = AnthropicAdapter(model=comp.llm_model or None)
-    elif comp.llm_provider == "mistral":
-        from picarones.llm.mistral_adapter import MistralAdapter
-        llm = MistralAdapter(model=comp.llm_model or None)
-    elif comp.llm_provider == "ollama":
-        from picarones.llm.ollama_adapter import OllamaAdapter
-        llm = OllamaAdapter(model=comp.llm_model or None)
-    else:
-        raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
+    llm = _build_llm_adapter(comp)
 
     from picarones.pipelines.base import OCRLLMPipeline
     prompt = comp.prompt_file or "correction_medieval_french.txt"
-    pipeline_name = comp.name or f"{engine_id}→{comp.llm_model or comp.llm_provider}"
+
+    if is_corpus_ocr:
+        pipeline_name = comp.name or f"corpus_ocr → {comp.llm_model or comp.llm_provider}"
+    else:
+        pipeline_name = comp.name or f"{engine_id} → {comp.llm_model or comp.llm_provider}"
+
     return OCRLLMPipeline(
         ocr_engine=ocr,
         llm_adapter=llm,
