@@ -124,8 +124,19 @@ class GallicaClient:
         self.timeout = timeout
         self.delay = delay_between_requests
 
+    @staticmethod
+    def _validate_url(url: str) -> None:
+        """Vérifie que l'URL est sûre (pas de schéma file://, ftp://, etc.)."""
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"Schéma URL non autorisé '{parsed.scheme}' (seuls http/https sont acceptés) : {url}"
+            )
+
     def _fetch_url(self, url: str) -> bytes:
         """Télécharge le contenu d'une URL."""
+        self._validate_url(url)
         req = urllib.request.Request(
             url,
             headers={"User-Agent": "Picarones/1.0 (research tool)"},

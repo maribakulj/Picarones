@@ -307,6 +307,16 @@ def _extract_v3_transcription(canvas: dict) -> Optional[str]:
 # Téléchargement avec retry
 # ---------------------------------------------------------------------------
 
+def _validate_url(url: str) -> None:
+    """Vérifie que l'URL est sûre (pas de schéma file://, ftp://, etc.)."""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(
+            f"Schéma URL non autorisé '{parsed.scheme}' (seuls http/https sont acceptés) : {url}"
+        )
+
+
 def _download_url(
     url: str,
     retries: int = 4,
@@ -314,6 +324,7 @@ def _download_url(
     timeout: int = 60,
 ) -> bytes:
     """Télécharge une URL avec retry exponentiel."""
+    _validate_url(url)
     headers = {
         "User-Agent": "Picarones/1.0 (OCR benchmark platform; https://github.com/maribakulj/Picarones)"
     }

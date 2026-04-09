@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
+from urllib.parse import urlparse
 
 from picarones.llm.base import BaseLLMAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class OllamaAdapter(BaseLLMAdapter):
@@ -36,7 +40,14 @@ class OllamaAdapter(BaseLLMAdapter):
         config: Optional[dict] = None,
     ) -> None:
         super().__init__(model, config)
-        self._base_url = self.config.get("base_url", "http://localhost:11434").rstrip("/")
+        base_url = self.config.get("base_url", "http://localhost:11434").rstrip("/")
+        parsed = urlparse(base_url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"URL Ollama invalide (schéma '{parsed.scheme}' non autorisé, "
+                f"seuls http/https sont acceptés) : {base_url}"
+            )
+        self._base_url = base_url
 
     def _call(self, prompt: str, image_b64: Optional[str] = None) -> str:
         import json
@@ -61,10 +72,35 @@ class OllamaAdapter(BaseLLMAdapter):
         )
         try:
             with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read().decode("utf-8"))
+                raw = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            logger.warning(
+                "[OllamaAdapter] erreur HTTP %d (modèle=%s) : %s",
+                exc.code, self.model, exc,
+            )
+            raise RuntimeError(
+                f"Erreur HTTP {exc.code} du serveur Ollama ({self._base_url}) : {exc}"
+            ) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(
                 f"Impossible de joindre le serveur Ollama sur {self._base_url}. "
                 f"Vérifiez qu'Ollama est démarré (ollama serve). Erreur : {exc}"
             ) from exc
-        return result.get("response", "")
+
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "[OllamaAdapter] réponse JSON invalide (modèle=%s) : %s",
+                self.model, raw[:200],
+            )
+            raise RuntimeError(
+                f"Réponse JSON invalide du serveur Ollama : {exc}"
+            ) from exc
+
+        text = result.get("response", "")
+        if not text:
+            logger.warning(
+                "[OllamaAdapter] réponse vide (modèle=%s).", self.model,
+            )
+        return text

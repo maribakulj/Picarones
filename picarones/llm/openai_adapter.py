@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional
 
 from picarones.llm.base import BaseLLMAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIAdapter(BaseLLMAdapter):
@@ -59,10 +62,34 @@ class OpenAIAdapter(BaseLLMAdapter):
         else:
             content = prompt  # type: ignore[assignment]
 
-        response = client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": content}],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        try:
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": content}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        except Exception as exc:
+            status_code = getattr(exc, "status_code", None)
+            if status_code == 401:
+                logger.warning(
+                    "[OpenAIAdapter] erreur HTTP 401 — clé API invalide (modèle=%s).",
+                    self.model,
+                )
+            elif status_code == 429:
+                logger.warning(
+                    "[OpenAIAdapter] erreur HTTP 429 — rate limit (modèle=%s).",
+                    self.model,
+                )
+            else:
+                logger.warning(
+                    "[OpenAIAdapter] erreur API (modèle=%s) : %s", self.model, exc,
+                )
+            raise
+
+        if not response.choices:
+            logger.warning(
+                "[OpenAIAdapter] response.choices vide (modèle=%s).", self.model,
+            )
+            return ""
         return response.choices[0].message.content or ""

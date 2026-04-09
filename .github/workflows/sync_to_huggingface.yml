@@ -7,13 +7,15 @@ jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
       - name: Push to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ vars.HF_USERNAME || 'Ma-Ri-Ba-Ku' }}
+          HF_SPACE: ${{ vars.HF_SPACE || 'Ma-Ri-Ba-Ku/Picarones' }}
         run: |
-          git remote add hf https://Ma-Ri-Ba-Ku:$HF_TOKEN@huggingface.co/spaces/Ma-Ri-Ba-Ku/Picarones || true
-          git push -f hf main
+          git remote add hf "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" || true
+          git push --force-with-lease hf main

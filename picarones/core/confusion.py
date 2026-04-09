@@ -130,8 +130,13 @@ def build_confusion_matrix(
             gt_seg = ground_truth[i1:i2]
             oc_seg = hypothesis[j1:j2]
             _align_segments(gt_seg, oc_seg, matrix, ignore_whitespace)
-            # Comptabiliser grossièrement (alignement sous-optimal possible)
-            n_subs += max(len(gt_seg), len(oc_seg))
+            # Substitutions = longueur commune, surplus = insertions ou suppressions
+            n_subs += min(len(gt_seg), len(oc_seg))
+            surplus = abs(len(gt_seg) - len(oc_seg))
+            if len(gt_seg) > len(oc_seg):
+                n_dels += surplus
+            else:
+                n_ins += surplus
         elif tag == "delete":
             for ch in ground_truth[i1:i2]:
                 if ignore_whitespace and ch in _WHITESPACE:
@@ -248,7 +253,7 @@ def top_confused_chars(
             continue
         error_count = sum(
             cnt for oc, cnt in ocr_counts.items()
-            if (oc != gt_char) and (not exclude_empty or oc != EMPTY_CHAR or True)
+            if (oc != gt_char) and (not exclude_empty or oc != EMPTY_CHAR)
         )
         if error_count > 0:
             top_subs = sorted(

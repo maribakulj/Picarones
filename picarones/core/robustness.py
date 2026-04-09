@@ -261,7 +261,6 @@ def _degrade_pillow(png_bytes: bytes, degradation_type: str, level: float) -> by
     if degradation_type == "noise":
         if level > 0:
             import random
-            import struct
             data = list(img.getdata())
             rng = random.Random(0)
             noisy = []
@@ -291,8 +290,25 @@ def _degrade_pillow(png_bytes: bytes, degradation_type: str, level: float) -> by
     elif degradation_type == "binarization":
         img = img.convert("L")  # niveaux de gris
         if level == 0:
-            # Seuillage Otsu approché
-            threshold = 128
+            # Seuillage Otsu : calcul du seuil optimal
+            histogram = img.histogram()
+            total = img.size[0] * img.size[1]
+            best_thresh, best_var = 128, -1.0
+            total_sum = sum(i * histogram[i] for i in range(256))
+            w0, sum0 = 0, 0.0
+            for t in range(256):
+                w0 += histogram[t]
+                if w0 == 0:
+                    continue
+                w1 = total - w0
+                if w1 == 0:
+                    break
+                sum0 += t * histogram[t]
+                var = w0 * w1 * (sum0 / w0 - (total_sum - sum0) / w1) ** 2
+                if var > best_var:
+                    best_var = var
+                    best_thresh = t
+            threshold = best_thresh
         else:
             threshold = int(level)
         img = img.point(lambda p: 255 if p >= threshold else 0, "1").convert("RGB")
@@ -488,7 +504,8 @@ class RobustnessAnalyzer:
                             tmp_path = tmp.name
 
                         try:
-                            hypothesis = engine.process_image(tmp_path)
+                            ocr_result = engine.run(tmp_path)
+                            hypothesis = ocr_result.text
                             metrics = compute_metrics(gt, hypothesis)
                             doc_cers.append(metrics.cer)
                         except Exception as exc:
@@ -544,15 +561,12 @@ class RobustnessAnalyzer:
         if original_bytes is None:
             return None
 
+        # Niveau 0 = image originale (sauf binarisation à 0 = Otsu)
         if (degradation_type == "noise" and level == 0) or \
            (degradation_type == "blur" and level == 0) or \
            (degradation_type == "rotation" and level == 0) or \
-           (degradation_type == "resolution" and level >= 1.0) or \
-           (degradation_type == "binarization" and level == 0 and
-                degradation_type not in ("binarization",)):
-            # Niveau 0 = image originale (sauf binarisation à 0 = Otsu)
-            if degradation_type != "binarization":
-                return original_bytes
+           (degradation_type == "resolution" and level >= 1.0):
+            return original_bytes
 
         return degrade_image_bytes(original_bytes, degradation_type, level)
 

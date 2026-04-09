@@ -107,11 +107,14 @@ class GoogleVisionEngine(BaseOCREngine):
                 }
             ]
         }
-        url = f"https://vision.googleapis.com/v1/images:annotate?key={self._api_key}"
+        url = "https://vision.googleapis.com/v1/images:annotate"
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url, data=data,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": self._api_key,
+            },
         )
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import shutil
 import threading
@@ -62,6 +63,9 @@ app = FastAPI(
 # Job management
 # ---------------------------------------------------------------------------
 
+_logger = logging.getLogger(__name__)
+
+
 @dataclass
 class BenchmarkJob:
     job_id: str
@@ -76,11 +80,14 @@ class BenchmarkJob:
     finished_at: Optional[str] = None
     events: list[dict] = field(default_factory=list)
     _subscribers: list[asyncio.Queue] = field(default_factory=list)
+    _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def add_event(self, kind: str, data: Any) -> None:
         event = {"kind": kind, "data": data, "ts": _iso_now()}
-        self.events.append(event)
-        for q in self._subscribers:
+        with self._lock:
+            self.events.append(event)
+            subscribers = list(self._subscribers)
+        for q in subscribers:
             try:
                 q.put_nowait(event)
             except asyncio.QueueFull:
@@ -88,14 +95,16 @@ class BenchmarkJob:
 
     def subscribe(self) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=200)
-        self._subscribers.append(q)
+        with self._lock:
+            self._subscribers.append(q)
         return q
 
     def unsubscribe(self, q: asyncio.Queue) -> None:
-        try:
-            self._subscribers.remove(q)
-        except ValueError:
-            pass
+        with self._lock:
+            try:
+                self._subscribers.remove(q)
+            except ValueError:
+                pass
 
     def as_dict(self) -> dict:
         return {
@@ -113,6 +122,24 @@ class BenchmarkJob:
 
 
 _JOBS: dict[str, BenchmarkJob] = {}
+_JOBS_MAX = 100  # Nombre max de jobs conservés en mémoire
+_JOBS_LOCK = threading.Lock()
+
+
+def _cleanup_old_jobs() -> None:
+    """Supprime les jobs terminés les plus anciens si le nombre dépasse _JOBS_MAX."""
+    with _JOBS_LOCK:
+        if len(_JOBS) <= _JOBS_MAX:
+            return
+        finished = [
+            (jid, j) for jid, j in _JOBS.items()
+            if j.status in ("complete", "error", "cancelled")
+        ]
+        finished.sort(key=lambda x: x[1].finished_at or "")
+        to_remove = len(_JOBS) - _JOBS_MAX
+        for jid, _ in finished[:to_remove]:
+            del _JOBS[jid]
+
 
 _IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"})
 _UPLOADS_DIR = Path("./uploads")
@@ -508,11 +535,17 @@ async def api_models(provider: str) -> dict:
 # API — corpus browse
 # ---------------------------------------------------------------------------
 
+_BROWSE_ROOTS = [Path(".").resolve(), _UPLOADS_DIR.resolve(), Path("/workspaces").resolve()]
+
+
 @app.get("/api/corpus/browse")
 async def api_corpus_browse(path: str = Query(default=".", description="Chemin à explorer")) -> dict:
     target = Path(path).resolve()
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail=f"Dossier non trouvé : {path}")
+    # Sécurité : restreindre la navigation aux répertoires autorisés
+    if not any(target == root or str(target).startswith(str(root) + "/") for root in _BROWSE_ROOTS):
+        raise HTTPException(status_code=403, detail="Accès refusé : chemin hors des répertoires autorisés")
 
     items = []
     try:
@@ -542,14 +575,28 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin �
 # API — corpus upload
 # ---------------------------------------------------------------------------
 
+def _safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
+    """Parse du XML en désactivant les entités externes (protection XXE)."""
+    try:
+        import defusedxml.ElementTree as SafeET
+        return SafeET.fromstring(xml_bytes)
+    except ImportError:
+        pass
+    # Fallback : parser standard avec entités externes désactivées
+    parser = ET.XMLParser()
+    try:
+        return ET.fromstring(xml_bytes, parser=parser)
+    except ET.ParseError:
+        return None
+
+
 def _detect_xml_gt(xml_bytes: bytes) -> tuple[str, str] | None:
     """Détecte si xml_bytes est un fichier ALTO ou PAGE XML et extrait le texte GT.
 
     Retourne (format_label, texte_gt) ou None si le format n'est pas reconnu.
     """
-    try:
-        root = ET.fromstring(xml_bytes)
-    except ET.ParseError:
+    root = _safe_parse_xml(xml_bytes)
+    if root is None:
         return None
 
     tag = root.tag  # peut être "{namespace}alto" ou "alto" ou "{ns}PcGts"
@@ -660,9 +707,15 @@ def _analyze_corpus_dir(path: Path) -> dict:
     }
 
 
+_MAX_ZIP_TOTAL_SIZE = 500 * 1024 * 1024  # 500 Mo décompressé max
+_MAX_ZIP_FILES = 2000  # nombre max de fichiers extraits
+
+
 def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
     """Extrait un ZIP en aplatissant les paires image/.gt.txt/.xml dans dest."""
     dest.mkdir(parents=True, exist_ok=True)
+    total_size = 0
+    file_count = 0
     for member in zf.infolist():
         if member.is_dir():
             continue
@@ -673,6 +726,15 @@ def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
             continue
         # Accepter images, .gt.txt et .xml (ALTO/PAGE)
         if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or p.suffix.lower() == ".xml":
+            # Protection ZIP bomb : vérifier la taille décompressée
+            total_size += member.file_size
+            if total_size > _MAX_ZIP_TOTAL_SIZE:
+                raise ValueError(
+                    f"ZIP trop volumineux : taille décompressée > {_MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
+                )
+            file_count += 1
+            if file_count > _MAX_ZIP_FILES:
+                raise ValueError(f"ZIP contient trop de fichiers (> {_MAX_ZIP_FILES})")
             data = zf.read(member.filename)
             (dest / name).write_bytes(data)
 
@@ -827,6 +889,9 @@ async def api_reports(reports_dir: str = Query(default=".", description="Dossier
 
 @app.get("/reports/{filename}", response_class=HTMLResponse)
 async def serve_report(filename: str) -> HTMLResponse:
+    # Sécurité : interdire les path traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier invalide")
     # Cherche dans le répertoire courant et ./rapports/
     # Lecture directe + renvoi en text/html pour fonctionner depuis un Codespace
     # ou tout reverse-proxy distant (pas de redirect vers fichier statique).
@@ -936,6 +1001,7 @@ async def api_benchmark_start(req: BenchmarkRequest) -> dict:
     job_id = str(uuid.uuid4())
     job = BenchmarkJob(job_id=job_id)
     _JOBS[job_id] = job
+    _cleanup_old_jobs()
 
     # Démarrer le benchmark dans un thread séparé
     thread = threading.Thread(
@@ -975,16 +1041,18 @@ async def api_benchmark_stream(job_id: str) -> StreamingResponse:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
 
     async def event_generator() -> AsyncIterator[str]:
-        # Envoie d'abord les événements déjà produits
-        for event in list(job.events):
-            yield _sse_format(event["kind"], event["data"])
-
-        if job.status in ("complete", "error", "cancelled"):
-            yield _sse_format("done", {"status": job.status})
-            return
-
+        # S'abonner AVANT de lire les événements existants pour ne rien perdre
         queue = job.subscribe()
         try:
+            # Envoie les événements déjà produits (snapshot thread-safe)
+            with job._lock:
+                past_events = list(job.events)
+            for event in past_events:
+                yield _sse_format(event["kind"], event["data"])
+
+            if job.status in ("complete", "error", "cancelled"):
+                yield _sse_format("done", {"status": job.status})
+                return
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
