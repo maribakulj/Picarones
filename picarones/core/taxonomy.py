@@ -300,10 +300,10 @@ def _is_diacritic_error(gt: str, hyp: str) -> bool:
     # Si les mots sont identiques sans diacritiques → erreur diacritique
     if gt_stripped.casefold() == hyp_stripped.casefold() and gt != hyp:
         return True
-    # Si le GT contient des diacritiques que l'OCR a supprimés
+    # Si le GT contient des diacritiques que l'OCR a perdus et que les textes
+    # sans diacritiques sont identiques (même longueur requise)
     gt_has_diac = any(c in DIACRITIC_MAP for c in gt)
-    hyp_missing_diac = any(c not in DIACRITIC_MAP for c in hyp if c.isalpha())
-    return gt_has_diac and len(gt) == len(hyp) and gt_stripped == hyp_stripped
+    return gt_has_diac and len(gt) == len(hyp) and gt_stripped.casefold() == hyp_stripped.casefold()
 
 
 def _is_visual_confusion(gt: str, hyp: str) -> bool:

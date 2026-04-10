@@ -88,7 +88,7 @@ jobs:
           files: coverage.xml
           flags: unittests
           name: picarones-coverage
-          fail_ci_if_error: false
+          fail_ci_if_error: true
 
   # ──────────────────────────────────────────────────────────────────
   # Job 2 : Vérification du rapport demo
@@ -114,7 +114,7 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-fra
 
       - name: Install Picarones
-        run: pip install -e .
+        run: pip install -e ".[web]"
 
       - name: Run demo
         run: |
@@ -194,8 +194,8 @@ jobs:
 
       - name: Run ruff
         run: |
-          ruff check picarones/ --select=E,W,F --ignore=E501,W503 || true
-          ruff check tests/ --select=E,W,F --ignore=E501,W503 || true
+          ruff check picarones/ --select=E,W,F --ignore=E501,W503
+          ruff check tests/ --select=E,W,F --ignore=E501,W503
 
   # ──────────────────────────────────────────────────────────────────
   # Job 5 : CI/CD — Détection de régression CER (optionnel)

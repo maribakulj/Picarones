@@ -99,23 +99,25 @@ def _encode_images_b64_from_result(benchmark: "BenchmarkResult", max_width: int 
 
 def _cer_color(cer: float) -> str:
     """Retourne une couleur CSS pour un score CER donné (0→vert, 1→rouge)."""
+    from picarones.core.colors import COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED
     if cer < 0.05:
-        return "#16a34a"   # vert
+        return COLOR_GREEN
     if cer < 0.15:
-        return "#ca8a04"   # jaune-orangé
+        return COLOR_YELLOW
     if cer < 0.30:
-        return "#ea580c"   # orange
-    return "#dc2626"       # rouge
+        return COLOR_ORANGE
+    return COLOR_RED
 
 
 def _cer_bg(cer: float) -> str:
+    from picarones.core.colors import BG_GREEN, BG_YELLOW, BG_ORANGE, BG_RED
     if cer < 0.05:
-        return "#dcfce7"
+        return BG_GREEN
     if cer < 0.15:
-        return "#fef9c3"
+        return BG_YELLOW
     if cer < 0.30:
-        return "#ffedd5"
-    return "#fee2e2"
+        return BG_ORANGE
+    return BG_RED
 
 
 def _pct(v: Optional[float], decimals: int = 2) -> str:

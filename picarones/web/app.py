@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import shutil
 import threading
@@ -62,6 +63,9 @@ app = FastAPI(
 # Job management
 # ---------------------------------------------------------------------------
 
+_logger = logging.getLogger(__name__)
+
+
 @dataclass
 class BenchmarkJob:
     job_id: str
@@ -76,11 +80,15 @@ class BenchmarkJob:
     finished_at: Optional[str] = None
     events: list[dict] = field(default_factory=list)
     _subscribers: list[asyncio.Queue] = field(default_factory=list)
+    _lock: threading.Lock = field(default_factory=threading.Lock)
+    _cancel_event: threading.Event = field(default_factory=threading.Event)
 
     def add_event(self, kind: str, data: Any) -> None:
         event = {"kind": kind, "data": data, "ts": _iso_now()}
-        self.events.append(event)
-        for q in self._subscribers:
+        with self._lock:
+            self.events.append(event)
+            subscribers = list(self._subscribers)
+        for q in subscribers:
             try:
                 q.put_nowait(event)
             except asyncio.QueueFull:
@@ -88,14 +96,16 @@ class BenchmarkJob:
 
     def subscribe(self) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=200)
-        self._subscribers.append(q)
+        with self._lock:
+            self._subscribers.append(q)
         return q
 
     def unsubscribe(self, q: asyncio.Queue) -> None:
-        try:
-            self._subscribers.remove(q)
-        except ValueError:
-            pass
+        with self._lock:
+            try:
+                self._subscribers.remove(q)
+            except ValueError:
+                pass
 
     def as_dict(self) -> dict:
         return {
@@ -113,6 +123,24 @@ class BenchmarkJob:
 
 
 _JOBS: dict[str, BenchmarkJob] = {}
+_JOBS_MAX = 100  # Nombre max de jobs conservés en mémoire
+_JOBS_LOCK = threading.Lock()
+
+
+def _cleanup_old_jobs() -> None:
+    """Supprime les jobs terminés les plus anciens si le nombre dépasse _JOBS_MAX."""
+    with _JOBS_LOCK:
+        if len(_JOBS) <= _JOBS_MAX:
+            return
+        finished = [
+            (jid, j) for jid, j in _JOBS.items()
+            if j.status in ("complete", "error", "cancelled")
+        ]
+        finished.sort(key=lambda x: x[1].finished_at or "")
+        to_remove = len(_JOBS) - _JOBS_MAX
+        for jid, _ in finished[:to_remove]:
+            del _JOBS[jid]
+
 
 _IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"})
 _UPLOADS_DIR = Path("./uploads")
@@ -145,7 +173,8 @@ class HuggingFaceImportRequest(BaseModel):
 
 class CompetitorConfig(BaseModel):
     name: str = ""
-    ocr_engine: str
+    ocr_engine: str = ""
+    """Moteur OCR : 'tesseract', 'mistral_ocr', ... ou 'corpus' pour utiliser l'OCR pré-calculé."""
     ocr_model: str = ""
     llm_provider: str = ""
     llm_model: str = ""
@@ -308,9 +337,8 @@ async def api_engines() -> dict:
         "status": "configured" if os.environ.get("MISTRAL_API_KEY") else "missing_key",
     })
 
-    # Ollama
-    ollama_available = _check_ollama()
-    ollama_models = _list_ollama_models() if ollama_available else []
+    # Ollama (un seul appel HTTP)
+    ollama_available, ollama_models = _fetch_ollama_info()
     llms.append({
         "id": "ollama",
         "label": "Ollama (Llama 3, Gemma, Phi — local)",
@@ -357,23 +385,28 @@ def _check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
     }
 
 
-def _check_ollama() -> bool:
+def _fetch_ollama_info() -> tuple[bool, list[str]]:
+    """Vérifie la disponibilité d'Ollama et liste ses modèles en un seul appel HTTP."""
     import urllib.error, urllib.request
     try:
         with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2) as r:
-            return r.status == 200
+            if r.status != 200:
+                return False, []
+            data = json.loads(r.read().decode())
+        models = [m.get("name", "") for m in data.get("models", [])]
+        return True, models
     except Exception:
-        return False
+        return False, []
+
+
+def _check_ollama() -> bool:
+    available, _ = _fetch_ollama_info()
+    return available
 
 
 def _list_ollama_models() -> list[str]:
-    import urllib.error, urllib.request
-    try:
-        with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2) as r:
-            data = json.loads(r.read().decode())
-        return [m.get("name", "") for m in data.get("models", [])]
-    except Exception:
-        return []
+    _, models = _fetch_ollama_info()
+    return models
 
 
 def _get_tesseract_langs() -> list[str]:
@@ -386,12 +419,66 @@ def _get_tesseract_langs() -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# API — models (dynamic per provider)
+# API — models (dynamic per provider, with capability metadata)
 # ---------------------------------------------------------------------------
 
+# Modèles Mistral text-only (pas de support vision)
+_MISTRAL_TEXT_ONLY = frozenset({
+    "ministral-3b-latest", "ministral-8b-latest", "mistral-tiny",
+    "mistral-tiny-latest", "open-mistral-7b", "open-mixtral-8x7b",
+    "mistral-small-latest", "mistral-small-2409",
+})
+
+# Familles Ollama multimodales connues
+_OLLAMA_VISION_FAMILIES = frozenset({
+    "llava", "bakllava", "moondream", "minicpm-v", "llama3.2-vision",
+    "llava-llama3", "llava-phi3", "nanollava",
+})
+
+
+def _model_entry(model_id: str, capabilities: list[str]) -> dict:
+    """Crée une entrée modèle avec son ID et ses capacités."""
+    return {"id": model_id, "capabilities": capabilities}
+
+
+def _infer_mistral_capabilities(model_id: str) -> list[str]:
+    mid = model_id.lower()
+    if mid in _MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in ("ministral", "open-mistral", "open-mixtral")):
+        return ["text"]
+    if "pixtral" in mid or "mistral-ocr" in mid:
+        return ["text", "vision"]
+    # Mistral Large et autres modèles récents supportent la vision
+    return ["text", "vision"]
+
+
+def _infer_openai_capabilities(model_id: str) -> list[str]:
+    mid = model_id.lower()
+    if "gpt-4o" in mid or "gpt-4-turbo" in mid or "gpt-4.1" in mid or "o1" in mid or "o3" in mid:
+        return ["text", "vision"]
+    return ["text"]
+
+
+def _infer_ollama_capabilities(model_name: str) -> list[str]:
+    base = model_name.split(":")[0].lower()
+    if any(base.startswith(family) for family in _OLLAMA_VISION_FAMILIES):
+        return ["text", "vision"]
+    return ["text"]
+
+
 @app.get("/api/models/{provider}")
-async def api_models(provider: str) -> dict:
-    """Retourne la liste des modèles disponibles pour un provider, en temps réel."""
+async def api_models(
+    provider: str,
+    capability: str = Query(default="", description="Filtre par capacité : 'text', 'vision', ou vide pour tout"),
+) -> dict:
+    """Retourne les modèles disponibles avec leurs capacités (text, vision).
+
+    Interroge l'API du provider en temps réel.  Les capacités sont déterminées
+    par heuristique sur le nom du modèle quand l'API ne fournit pas cette
+    information directement.
+
+    Le paramètre ``capability`` filtre les résultats (ex : ``?capability=vision``
+    ne retourne que les modèles supportant la vision).
+    """
     import urllib.error
     import urllib.request as _urlreq
 
@@ -400,98 +487,128 @@ async def api_models(provider: str) -> dict:
         with _urlreq.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode())
 
+    def _filter_and_format(models: list[dict]) -> dict:
+        if capability:
+            models = [m for m in models if capability in m["capabilities"]]
+        return {
+            "provider": provider,
+            "models": models,
+            "model_ids": [m["id"] for m in models],
+        }
+
     if provider == "tesseract":
-        return {"provider": provider, "models": _get_tesseract_langs()}
+        langs = _get_tesseract_langs()
+        return {"provider": provider, "models": langs, "model_ids": langs}
 
     if provider == "mistral_ocr":
         api_key = os.environ.get("MISTRAL_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "MISTRAL_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "MISTRAL_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.mistral.ai/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
-            models = sorted(
-                m["id"] for m in data.get("data", [])
+            models = [
+                _model_entry(m["id"], _infer_mistral_capabilities(m["id"]))
+                for m in data.get("data", [])
                 if "pixtral" in m["id"].lower() or "mistral-ocr" in m["id"].lower()
-            )
-            return {"provider": provider, "models": models}
+            ]
+            return _filter_and_format(sorted(models, key=lambda m: m["id"]))
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["pixtral-12b-2409", "pixtral-large-latest", "mistral-ocr-latest"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("pixtral-12b-2409", ["text", "vision"]),
+                _model_entry("pixtral-large-latest", ["text", "vision"]),
+                _model_entry("mistral-ocr-latest", ["text", "vision"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "openai":
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "OPENAI_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "OPENAI_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.openai.com/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
-            models = sorted(
-                (m["id"] for m in data.get("data", []) if "gpt-4" in m["id"].lower()),
-                reverse=True,
-            )
-            return {"provider": provider, "models": models}
+            models = [
+                _model_entry(m["id"], _infer_openai_capabilities(m["id"]))
+                for m in data.get("data", [])
+                if "gpt-4" in m["id"].lower() or "o1" in m["id"].lower() or "o3" in m["id"].lower()
+            ]
+            return _filter_and_format(sorted(models, key=lambda m: m["id"], reverse=True))
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("gpt-4o", ["text", "vision"]),
+                _model_entry("gpt-4o-mini", ["text", "vision"]),
+                _model_entry("gpt-4-turbo", ["text", "vision"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "ANTHROPIC_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "ANTHROPIC_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.anthropic.com/v1/models",
                 {"x-api-key": api_key, "anthropic-version": "2023-06-01"},
             )
-            models = [m["id"] for m in data.get("data", [])]
-            return {"provider": provider, "models": models}
+            # Tous les modèles Claude 3+ supportent la vision
+            models = [_model_entry(m["id"], ["text", "vision"]) for m in data.get("data", [])]
+            return _filter_and_format(models)
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["claude-sonnet-4-6", "claude-haiku-4-5-20251001", "claude-opus-4-6"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("claude-sonnet-4-6", ["text", "vision"]),
+                _model_entry("claude-haiku-4-5-20251001", ["text", "vision"]),
+                _model_entry("claude-opus-4-6", ["text", "vision"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "mistral":
         api_key = os.environ.get("MISTRAL_API_KEY")
         if not api_key:
-            return {"provider": provider, "models": [], "error": "MISTRAL_API_KEY non définie"}
+            return {"provider": provider, "models": [], "model_ids": [], "error": "MISTRAL_API_KEY non définie"}
         try:
             data = _fetch_json(
                 "https://api.mistral.ai/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
-            models = sorted(
-                m["id"] for m in data.get("data", [])
+            models = [
+                _model_entry(m["id"], _infer_mistral_capabilities(m["id"]))
+                for m in data.get("data", [])
                 if "pixtral" not in m["id"].lower() and "mistral-ocr" not in m["id"].lower()
-            )
-            return {"provider": provider, "models": models}
+            ]
+            return _filter_and_format(sorted(models, key=lambda m: m["id"]))
         except Exception as exc:
-            return {
-                "provider": provider,
-                "models": ["mistral-large-latest", "mistral-small-latest"],
-                "error": str(exc),
-            }
+            fallback = [
+                _model_entry("mistral-large-latest", ["text", "vision"]),
+                _model_entry("mistral-small-latest", ["text"]),
+            ]
+            return {**_filter_and_format(fallback), "error": str(exc)}
 
     if provider == "ollama":
-        return {"provider": provider, "models": _list_ollama_models()}
+        _, model_names = _fetch_ollama_info()
+        models = [
+            _model_entry(name, _infer_ollama_capabilities(name))
+            for name in model_names
+        ]
+        return _filter_and_format(models)
 
     if provider == "google_vision":
-        return {"provider": provider, "models": ["document_text_detection", "text_detection"]}
+        models = [
+            _model_entry("document_text_detection", ["vision"]),
+            _model_entry("text_detection", ["vision"]),
+        ]
+        return _filter_and_format(models)
 
     if provider == "azure_doc_intel":
-        return {"provider": provider, "models": ["prebuilt-document", "prebuilt-read"]}
+        models = [
+            _model_entry("prebuilt-document", ["vision"]),
+            _model_entry("prebuilt-read", ["vision"]),
+        ]
+        return _filter_and_format(models)
 
     if provider == "prompts":
         prompts_dir = Path(__file__).parent.parent / "prompts"
@@ -499,7 +616,7 @@ async def api_models(provider: str) -> dict:
             prompts = sorted(f.name for f in prompts_dir.glob("*.txt"))
         else:
             prompts = []
-        return {"provider": provider, "models": prompts}
+        return {"provider": provider, "models": prompts, "model_ids": prompts}
 
     raise HTTPException(status_code=404, detail=f"Provider inconnu : {provider}")
 
@@ -508,11 +625,17 @@ async def api_models(provider: str) -> dict:
 # API — corpus browse
 # ---------------------------------------------------------------------------
 
+_BROWSE_ROOTS = [Path(".").resolve(), _UPLOADS_DIR.resolve(), Path("/workspaces").resolve()]
+
+
 @app.get("/api/corpus/browse")
 async def api_corpus_browse(path: str = Query(default=".", description="Chemin à explorer")) -> dict:
     target = Path(path).resolve()
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail=f"Dossier non trouvé : {path}")
+    # Sécurité : restreindre la navigation aux répertoires autorisés
+    if not any(target == root or str(target).startswith(str(root) + "/") for root in _BROWSE_ROOTS):
+        raise HTTPException(status_code=403, detail="Accès refusé : chemin hors des répertoires autorisés")
 
     items = []
     try:
@@ -542,14 +665,28 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin �
 # API — corpus upload
 # ---------------------------------------------------------------------------
 
+def _safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
+    """Parse du XML en désactivant les entités externes (protection XXE)."""
+    try:
+        import defusedxml.ElementTree as SafeET
+        return SafeET.fromstring(xml_bytes)
+    except ImportError:
+        pass
+    # Fallback : parser standard avec entités externes désactivées
+    parser = ET.XMLParser()
+    try:
+        return ET.fromstring(xml_bytes, parser=parser)
+    except ET.ParseError:
+        return None
+
+
 def _detect_xml_gt(xml_bytes: bytes) -> tuple[str, str] | None:
     """Détecte si xml_bytes est un fichier ALTO ou PAGE XML et extrait le texte GT.
 
     Retourne (format_label, texte_gt) ou None si le format n'est pas reconnu.
     """
-    try:
-        root = ET.fromstring(xml_bytes)
-    except ET.ParseError:
+    root = _safe_parse_xml(xml_bytes)
+    if root is None:
         return None
 
     tag = root.tag  # peut être "{namespace}alto" ou "alto" ou "{ns}PcGts"
@@ -648,6 +785,12 @@ def _analyze_corpus_dir(path: Path) -> dict:
     else:
         dominant_format = "texte brut"
 
+    # Détecter les fichiers OCR bruité (.ocr.txt) pour les corpus triplets
+    ocr_text_count = sum(
+        1 for p in pairs
+        if (path / (Path(p["image"]).stem + ".ocr.txt")).exists()
+    )
+
     return {
         "doc_count": len(pairs),
         "pairs": pairs[:20],
@@ -657,12 +800,20 @@ def _analyze_corpus_dir(path: Path) -> dict:
         "warnings": [f"GT manquant : {img}" for img in missing_gt[:5]],
         "usable": len(pairs) > 0,
         "gt_format": dominant_format,
+        "has_ocr_text": ocr_text_count > 0,
+        "ocr_text_count": ocr_text_count,
     }
+
+
+_MAX_ZIP_TOTAL_SIZE = 500 * 1024 * 1024  # 500 Mo décompressé max
+_MAX_ZIP_FILES = 2000  # nombre max de fichiers extraits
 
 
 def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
     """Extrait un ZIP en aplatissant les paires image/.gt.txt/.xml dans dest."""
     dest.mkdir(parents=True, exist_ok=True)
+    total_size = 0
+    file_count = 0
     for member in zf.infolist():
         if member.is_dir():
             continue
@@ -671,8 +822,17 @@ def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
         # Ignorer les fichiers cachés macOS (._* créés par AppleDouble dans les ZIPs)
         if name.startswith("."):
             continue
-        # Accepter images, .gt.txt et .xml (ALTO/PAGE)
-        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or p.suffix.lower() == ".xml":
+        # Accepter images, .gt.txt, .ocr.txt et .xml (ALTO/PAGE)
+        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or name.endswith(".ocr.txt") or p.suffix.lower() == ".xml":
+            # Protection ZIP bomb : vérifier la taille décompressée
+            total_size += member.file_size
+            if total_size > _MAX_ZIP_TOTAL_SIZE:
+                raise ValueError(
+                    f"ZIP trop volumineux : taille décompressée > {_MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
+                )
+            file_count += 1
+            if file_count > _MAX_ZIP_FILES:
+                raise ValueError(f"ZIP contient trop de fichiers (> {_MAX_ZIP_FILES})")
             data = zf.read(member.filename)
             (dest / name).write_bytes(data)
 
@@ -695,7 +855,7 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
                 import io
                 with zipfile.ZipFile(io.BytesIO(data)) as zf:
                     _flatten_zip_to_dir(zf, corpus_dir)
-            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or suffix in (".txt", ".xml"):
+            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or filename.endswith(".ocr.txt") or suffix in (".txt", ".xml"):
                 (corpus_dir / filename).write_bytes(data)
             # Ignorer les autres types
 
@@ -827,6 +987,9 @@ async def api_reports(reports_dir: str = Query(default=".", description="Dossier
 
 @app.get("/reports/{filename}", response_class=HTMLResponse)
 async def serve_report(filename: str) -> HTMLResponse:
+    # Sécurité : interdire les path traversal
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier invalide")
     # Cherche dans le répertoire courant et ./rapports/
     # Lecture directe + renvoi en text/html pour fonctionner depuis un Codespace
     # ou tout reverse-proxy distant (pas de redirect vers fichier statique).
@@ -936,6 +1099,7 @@ async def api_benchmark_start(req: BenchmarkRequest) -> dict:
     job_id = str(uuid.uuid4())
     job = BenchmarkJob(job_id=job_id)
     _JOBS[job_id] = job
+    _cleanup_old_jobs()
 
     # Démarrer le benchmark dans un thread séparé
     thread = threading.Thread(
@@ -964,6 +1128,7 @@ async def api_benchmark_cancel(job_id: str) -> dict:
     if job.status in ("complete", "error"):
         return {"job_id": job_id, "status": job.status, "message": "Job déjà terminé."}
     job.status = "cancelled"
+    job._cancel_event.set()  # Signal d'annulation pour run_benchmark
     job.add_event("cancelled", {"message": "Benchmark annulé par l'utilisateur."})
     return {"job_id": job_id, "status": "cancelled"}
 
@@ -975,16 +1140,18 @@ async def api_benchmark_stream(job_id: str) -> StreamingResponse:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
 
     async def event_generator() -> AsyncIterator[str]:
-        # Envoie d'abord les événements déjà produits
-        for event in list(job.events):
-            yield _sse_format(event["kind"], event["data"])
-
-        if job.status in ("complete", "error", "cancelled"):
-            yield _sse_format("done", {"status": job.status})
-            return
-
+        # S'abonner AVANT de lire les événements existants pour ne rien perdre
         queue = job.subscribe()
         try:
+            # Envoie les événements déjà produits (snapshot thread-safe)
+            with job._lock:
+                past_events = list(job.events)
+            for event in past_events:
+                yield _sse_format(event["kind"], event["data"])
+
+            if job.status in ("complete", "error", "cancelled"):
+                yield _sse_format("done", {"status": job.status})
+                return
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
@@ -1040,36 +1207,73 @@ async def api_benchmark_run(req: BenchmarkRunRequest) -> dict:
     return {"job_id": job_id, "status": "pending"}
 
 
-def _engine_from_competitor(comp: CompetitorConfig) -> Any:
-    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig."""
-    from picarones.engines.tesseract import TesseractEngine
-    from picarones.engines.mistral_ocr import MistralOCREngine
+def _build_llm_adapter(comp: CompetitorConfig) -> Any:
+    """Instancie un adaptateur LLM depuis la config d'un concurrent."""
+    if comp.llm_provider == "openai":
+        from picarones.llm.openai_adapter import OpenAIAdapter
+        return OpenAIAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "anthropic":
+        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        return AnthropicAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "mistral":
+        from picarones.llm.mistral_adapter import MistralAdapter
+        return MistralAdapter(model=comp.llm_model or None)
+    elif comp.llm_provider == "ollama":
+        from picarones.llm.ollama_adapter import OllamaAdapter
+        return OllamaAdapter(model=comp.llm_model or None)
+    else:
+        raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
 
+
+def _engine_from_competitor(comp: CompetitorConfig) -> Any:
+    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig.
+
+    Modes supportés :
+    - ``ocr_engine`` = 'tesseract', 'mistral_ocr', etc. → moteur OCR seul
+    - ``ocr_engine`` + ``llm_provider`` → pipeline OCR live + LLM
+    - ``ocr_engine`` = 'corpus' + ``llm_provider`` → post-correction LLM
+      avec OCR pré-calculé (fichiers .ocr.txt du corpus triplet)
+    - ``ocr_engine`` = '' + ``llm_provider`` → LLM seul (zero-shot ou post-correction)
+    """
     engine_id = comp.ocr_engine
 
-    if engine_id == "tesseract":
-        ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
-    elif engine_id == "mistral_ocr":
-        ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
-    elif engine_id == "google_vision":
-        try:
-            from picarones.engines.google_vision import GoogleVisionEngine
-            ocr = GoogleVisionEngine(config={"detection_type": comp.ocr_model or "document_text_detection"})
-        except ImportError as exc:
-            raise RuntimeError("Google Vision non disponible (google-cloud-vision non installé).") from exc
-    elif engine_id == "azure_doc_intel":
-        try:
-            from picarones.engines.azure_doc_intel import AzureDocIntelEngine
-            ocr = AzureDocIntelEngine(config={"model": comp.ocr_model or "prebuilt-document"})
-        except ImportError as exc:
-            raise RuntimeError("Azure Document Intelligence non disponible.") from exc
-    else:
-        raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+    # Pipeline post-correction avec OCR pré-calculé (corpus triplet)
+    is_corpus_ocr = engine_id in ("corpus", "")
 
-    if not comp.llm_provider:
-        return ocr
+    if is_corpus_ocr and not comp.llm_provider:
+        raise ValueError(
+            "ocr_engine='corpus' nécessite un llm_provider "
+            "(pour la post-correction ou le zero-shot)"
+        )
 
-    # Pipeline OCR+LLM
+    ocr = None
+    if not is_corpus_ocr:
+        from picarones.engines.tesseract import TesseractEngine
+        from picarones.engines.mistral_ocr import MistralOCREngine
+
+        if engine_id == "tesseract":
+            ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
+        elif engine_id == "mistral_ocr":
+            ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
+        elif engine_id == "google_vision":
+            try:
+                from picarones.engines.google_vision import GoogleVisionEngine
+                ocr = GoogleVisionEngine(config={"detection_type": comp.ocr_model or "document_text_detection"})
+            except ImportError as exc:
+                raise RuntimeError("Google Vision non disponible.") from exc
+        elif engine_id == "azure_doc_intel":
+            try:
+                from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+                ocr = AzureDocIntelEngine(config={"model": comp.ocr_model or "prebuilt-document"})
+            except ImportError as exc:
+                raise RuntimeError("Azure Document Intelligence non disponible.") from exc
+        else:
+            raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+
+        if not comp.llm_provider:
+            return ocr
+
+    # Pipeline OCR+LLM (live ou post-correction)
     _mode_map = {
         "text_only": "text_only",
         "post_correction_text": "text_only",
@@ -1079,24 +1283,16 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     }
     mode = _mode_map.get(comp.pipeline_mode, "text_only")
 
-    if comp.llm_provider == "openai":
-        from picarones.llm.openai_adapter import OpenAIAdapter
-        llm = OpenAIAdapter(model=comp.llm_model or None)
-    elif comp.llm_provider == "anthropic":
-        from picarones.llm.anthropic_adapter import AnthropicAdapter
-        llm = AnthropicAdapter(model=comp.llm_model or None)
-    elif comp.llm_provider == "mistral":
-        from picarones.llm.mistral_adapter import MistralAdapter
-        llm = MistralAdapter(model=comp.llm_model or None)
-    elif comp.llm_provider == "ollama":
-        from picarones.llm.ollama_adapter import OllamaAdapter
-        llm = OllamaAdapter(model=comp.llm_model or None)
-    else:
-        raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
+    llm = _build_llm_adapter(comp)
 
     from picarones.pipelines.base import OCRLLMPipeline
     prompt = comp.prompt_file or "correction_medieval_french.txt"
-    pipeline_name = comp.name or f"{engine_id}→{comp.llm_model or comp.llm_provider}"
+
+    if is_corpus_ocr:
+        pipeline_name = comp.name or f"corpus_ocr → {comp.llm_model or comp.llm_provider}"
+    else:
+        pipeline_name = comp.name or f"{engine_id} → {comp.llm_model or comp.llm_provider}"
+
     return OCRLLMPipeline(
         ocr_engine=ocr,
         llm_adapter=llm,
@@ -1175,6 +1371,7 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
             show_progress=False,
             progress_callback=_progress_callback,
             char_exclude=char_excl,
+            cancel_event=job._cancel_event,
         )
 
         if job.status == "cancelled":
@@ -1284,6 +1481,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             show_progress=False,
             progress_callback=_progress_callback,
             char_exclude=char_excl,
+            cancel_event=job._cancel_event,
         )
 
         if job.status == "cancelled":
@@ -1609,9 +1807,14 @@ tr:hover td { background: #f0ede6; }
       <div class="mode-toggle">
         <label><input type="radio" name="compose-mode" value="ocr" checked onchange="onComposeModeChange()"> 🔍 <span data-i18n="compose_ocr_only">OCR seul</span></label>
         <label><input type="radio" name="compose-mode" value="pipeline" onchange="onComposeModeChange()"> ⛓ <span data-i18n="compose_pipeline">Pipeline OCR+LLM</span></label>
+        <label><input type="radio" name="compose-mode" value="postcorrection" onchange="onComposeModeChange()"> 📝 <span data-i18n="compose_postcorrection">Post-correction (corpus OCR)</span></label>
       </div>
 
-      <div class="composer-row">
+      <div id="corpus-ocr-notice" style="display:none; margin:8px 0; padding:8px 12px; background:var(--bg-highlight,#f0fdf4); border-radius:6px; font-size:12px; color:var(--success,#16a34a);">
+        📝 <span data-i18n="corpus_has_ocr">Ce corpus contient des fichiers OCR pré-calculés (.ocr.txt) — post-correction disponible.</span>
+      </div>
+
+      <div id="compose-ocr-section" class="composer-row">
         <div class="form-group">
           <label data-i18n="compose_ocr_engine">Moteur OCR</label>
           <select id="compose-ocr-engine" onchange="onComposeOCRChange()">
@@ -1646,7 +1849,7 @@ tr:hover td { background: #f0ede6; }
         <div class="composer-row">
           <div class="form-group">
             <label data-i18n="compose_mode">Mode pipeline</label>
-            <select id="compose-pipeline-mode">
+            <select id="compose-pipeline-mode" onchange="onComposePipelineModeChange()">
               <option value="text_only" data-i18n="mode_text_only">Post-correction texte</option>
               <option value="text_and_image" data-i18n="mode_text_image">Post-correction image+texte</option>
               <option value="zero_shot" data-i18n="mode_zero_shot">Zero-shot</option>
@@ -1878,6 +2081,9 @@ const T = {
     bench_options_title: "5. Options",
     compose_ocr_only: "OCR seul",
     compose_pipeline: "Pipeline OCR+LLM",
+    compose_postcorrection: "Post-correction (corpus OCR)",
+    corpus_has_ocr: "Ce corpus contient des fichiers OCR pré-calculés (.ocr.txt) — post-correction disponible.",
+    corpus_no_ocr_warn: "Ce corpus ne contient pas de fichiers .ocr.txt — uploadez un corpus triplet pour la post-correction.",
     compose_ocr_engine: "Moteur OCR",
     compose_ocr_model: "Modèle / Langue",
     compose_llm_provider: "Provider LLM",
@@ -1959,6 +2165,9 @@ const T = {
     bench_options_title: "5. Options",
     compose_ocr_only: "OCR only",
     compose_pipeline: "OCR+LLM Pipeline",
+    compose_postcorrection: "Post-correction (corpus OCR)",
+    corpus_has_ocr: "This corpus contains pre-computed OCR files (.ocr.txt) — post-correction available.",
+    corpus_no_ocr_warn: "This corpus has no .ocr.txt files — upload a triplet corpus for post-correction.",
     compose_ocr_engine: "OCR Engine",
     compose_ocr_model: "Model / Language",
     compose_llm_provider: "LLM Provider",
@@ -2050,12 +2259,18 @@ let _competitors = [];
 let _refreshIntervalId = null;
 let _pendingOCREngine = null;   // garde contre les réponses obsolètes (race condition)
 
-async function fetchModels(provider) {
-  if (_modelsCache[provider]) return _modelsCache[provider];
-  const r = await fetch(`/api/models/${provider}`);
+async function fetchModels(provider, capability) {
+  const cacheKey = capability ? `${provider}__${capability}` : provider;
+  if (_modelsCache[cacheKey]) return _modelsCache[cacheKey];
+  const url = capability ? `/api/models/${provider}?capability=${capability}` : `/api/models/${provider}`;
+  const r = await fetch(url);
   const d = await r.json();
-  const models = d.models || [];
-  _modelsCache[provider] = models;
+  // Support both new format (objects with id+capabilities) and old format (flat strings)
+  let models = d.model_ids || d.models || [];
+  if (models.length > 0 && typeof models[0] === "object") {
+    models = models.map(m => m.id || m);
+  }
+  _modelsCache[cacheKey] = models;
   return models;
 }
 
@@ -2063,9 +2278,11 @@ function populateSelect(selectId, models, spinnerId) {
   const sel = document.getElementById(selectId);
   if (spinnerId) { const sp = document.getElementById(spinnerId); if (sp) sp.style.display = "none"; }
   if (!sel) return;
-  sel.innerHTML = models.length === 0
+  // Handle both string arrays and object arrays
+  const items = models.map(m => typeof m === "object" ? (m.id || m) : m);
+  sel.innerHTML = items.length === 0
     ? '<option value="">— aucun modèle —</option>'
-    : models.map(m => `<option value="${m}">${m}</option>`).join("");
+    : items.map(m => `<option value="${m}">${m}</option>`).join("");
 }
 
 // ─── Benchmark sections (OCR + LLM status + composer init) ───────────────────
@@ -2188,21 +2405,58 @@ async function onComposeOCRChange() {
 
 async function onComposeLLMChange() {
   const provider = document.getElementById("compose-llm-provider").value;
-  const sp = document.getElementById("sp-llm-model");
-  sp.style.display = "inline-block";
-  try {
-    const models = await fetchModels(provider);
-    populateSelect("compose-llm-model", models, "sp-llm-model");
-  } catch(e) {
-    sp.style.display = "none";
-    document.getElementById("compose-llm-model").innerHTML = '<option value="">Erreur</option>';
-  }
+  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  const pipelineMode = document.getElementById("compose-pipeline-mode").value;
+  // Apply capability filter for modes requiring vision
+  const needsVision = (pipelineMode === "text_and_image" || pipelineMode === "zero_shot");
+  const capability = (composeMode === "postcorrection" || composeMode === "pipeline") && needsVision ? "vision" : "";
+  _loadLLMModelsWithCapability(provider, capability);
 }
 
 function onComposeModeChange() {
   const mode = document.querySelector("input[name=compose-mode]:checked").value;
-  document.getElementById("compose-pipeline-section").style.display =
-    mode === "pipeline" ? "block" : "none";
+  const ocrSection = document.getElementById("compose-ocr-section");
+  const pipelineSection = document.getElementById("compose-pipeline-section");
+
+  if (mode === "ocr") {
+    ocrSection.style.display = "flex";
+    pipelineSection.style.display = "none";
+  } else if (mode === "pipeline") {
+    ocrSection.style.display = "flex";
+    pipelineSection.style.display = "block";
+    // Reload LLM models without capability filter
+    onComposeLLMChange();
+  } else if (mode === "postcorrection") {
+    ocrSection.style.display = "none";
+    pipelineSection.style.display = "block";
+    // Reload LLM models with capability filter based on pipeline mode
+    onComposePipelineModeChange();
+  }
+}
+
+function onComposePipelineModeChange() {
+  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  if (composeMode !== "postcorrection" && composeMode !== "pipeline") return;
+  const pipelineMode = document.getElementById("compose-pipeline-mode").value;
+  // Filter by vision capability for modes that need images
+  const needsVision = (pipelineMode === "text_and_image" || pipelineMode === "zero_shot");
+  const capability = needsVision ? "vision" : "";
+  const provider = document.getElementById("compose-llm-provider").value;
+  // Clear cache for this provider to re-fetch with new capability filter
+  const cacheKey = capability ? `${provider}__${capability}` : provider;
+  delete _modelsCache[cacheKey];
+  _loadLLMModelsWithCapability(provider, capability);
+}
+
+async function _loadLLMModelsWithCapability(provider, capability) {
+  document.getElementById("sp-llm-model").style.display = "inline-block";
+  try {
+    const models = await fetchModels(provider, capability);
+    populateSelect("compose-llm-model", models, "sp-llm-model");
+  } catch(e) {
+    document.getElementById("sp-llm-model").style.display = "none";
+    document.getElementById("compose-llm-model").innerHTML = '<option value="">Erreur</option>';
+  }
 }
 
 async function loadComposePrompts() {
@@ -2216,20 +2470,34 @@ async function loadComposePrompts() {
 }
 
 function addCompetitor() {
-  const ocrEngine = document.getElementById("compose-ocr-engine").value;
-  const ocrModel = document.getElementById("compose-ocr-model").value;
   const mode = document.querySelector("input[name=compose-mode]:checked").value;
   const errEl = document.getElementById("compose-error");
 
-  if (!ocrEngine) {
-    errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
-    return;
-  }
-
-  const comp = { name: "", ocr_engine: ocrEngine, ocr_model: ocrModel,
+  const comp = { name: "", ocr_engine: "", ocr_model: "",
                   llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "" };
 
-  if (mode === "pipeline") {
+  if (mode === "postcorrection") {
+    // Post-correction : OCR vient du corpus (.ocr.txt)
+    comp.ocr_engine = "corpus";
+    comp.llm_provider = document.getElementById("compose-llm-provider").value;
+    comp.llm_model = document.getElementById("compose-llm-model").value;
+    comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
+    comp.prompt_file = document.getElementById("compose-prompt").value;
+    if (!comp.llm_provider || !comp.llm_model) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un provider et un modèle LLM." : "Select an LLM provider and model.";
+      return;
+    }
+    const modeLabel = {"text_only":"texte","text_and_image":"img+texte","zero_shot":"zero-shot"}[comp.pipeline_mode] || comp.pipeline_mode;
+    comp.name = `📝 ${comp.llm_model} [${modeLabel}]`;
+  } else if (mode === "pipeline") {
+    const ocrEngine = document.getElementById("compose-ocr-engine").value;
+    const ocrModel = document.getElementById("compose-ocr-model").value;
+    if (!ocrEngine) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
+      return;
+    }
+    comp.ocr_engine = ocrEngine;
+    comp.ocr_model = ocrModel;
     comp.llm_provider = document.getElementById("compose-llm-provider").value;
     comp.llm_model = document.getElementById("compose-llm-model").value;
     comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
@@ -2238,8 +2506,17 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un provider LLM." : "Select an LLM provider.";
       return;
     }
-    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_provider}${comp.llm_model ? ":"+comp.llm_model : ""}`;
+    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_model || comp.llm_provider}`;
   } else {
+    // OCR seul
+    const ocrEngine = document.getElementById("compose-ocr-engine").value;
+    const ocrModel = document.getElementById("compose-ocr-model").value;
+    if (!ocrEngine) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
+      return;
+    }
+    comp.ocr_engine = ocrEngine;
+    comp.ocr_model = ocrModel;
     comp.name = `${ocrEngine}${ocrModel ? " ("+ocrModel+")" : ""}`;
   }
 
@@ -2260,11 +2537,19 @@ function renderCompetitors() {
     return;
   }
   container.innerHTML = _competitors.map((c, i) => {
-    const isPipeline = !!c.llm_provider;
-    const badge = isPipeline ? "⛓ Pipeline" : "🔍 OCR";
-    const detail = isPipeline
-      ? `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`
-      : `${c.ocr_engine}:${c.ocr_model}`;
+    const isCorpusOCR = c.ocr_engine === "corpus" || (c.ocr_engine === "" && c.llm_provider);
+    const isPipeline = !!c.llm_provider && !isCorpusOCR;
+    let badge, detail;
+    if (isCorpusOCR) {
+      badge = "📝 Post-correction";
+      detail = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+    } else if (isPipeline) {
+      badge = "⛓ Pipeline";
+      detail = `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+    } else {
+      badge = "🔍 OCR";
+      detail = `${c.ocr_engine}:${c.ocr_model}`;
+    }
     return `<div class="competitor-card">
       <div class="competitor-info">
         <span class="competitor-badge">${badge}</span>
@@ -2776,6 +3061,9 @@ async function uploadCorpus(files) {
     // Show preview
     renderUploadPreview(d, previewEl);
 
+    // Show corpus OCR notice if triplet corpus
+    _updateCorpusOCRNotice(d);
+
     // Set corpus path and auto-select
     setCorpusPath(d.corpus_path, `upload:${d.corpus_id} (${d.doc_count} docs)`);
 
@@ -2792,9 +3080,12 @@ function renderUploadPreview(data, container) {
   const missingBadge = data.has_missing_gt
     ? `<span class="badge badge-err" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
     : "";
+  const ocrBadge = (data.has_ocr_text && data.ocr_text_count > 0)
+    ? `<span class="badge" style="margin-left:8px; background:#dcfce7; color:#16a34a;">📝 ${data.ocr_text_count} .ocr.txt</span>`
+    : "";
   let html = `<div class="corpus-preview">
     <div class="corpus-preview-header">
-      <span>📄 ${data.doc_count} ${t("upload_pairs")}</span>${missingBadge}
+      <span>📄 ${data.doc_count} ${t("upload_pairs")}</span>${ocrBadge}${missingBadge}
     </div>`;
   for (const p of data.pairs) {
     html += `<div class="corpus-preview-pair">
@@ -2816,6 +3107,17 @@ function renderUploadPreview(data, container) {
 function setCorpusPath(path, label) {
   document.getElementById("corpus-path").value = path;
   document.getElementById("corpus-info").textContent = `✓ ${label}`;
+}
+
+function _updateCorpusOCRNotice(corpusData) {
+  const notice = document.getElementById("corpus-ocr-notice");
+  if (!notice) return;
+  if (corpusData && corpusData.has_ocr_text && corpusData.ocr_text_count > 0) {
+    notice.style.display = "block";
+    notice.innerHTML = `📝 ${t("corpus_has_ocr")} <strong>(${corpusData.ocr_text_count} fichiers .ocr.txt)</strong>`;
+  } else {
+    notice.style.display = "none";
+  }
 }
 
 async function loadUploadedCorpora() {

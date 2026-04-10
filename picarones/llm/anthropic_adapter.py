@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Optional
 
 from picarones.llm.base import BaseLLMAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicAdapter(BaseLLMAdapter):
@@ -63,10 +66,33 @@ class AnthropicAdapter(BaseLLMAdapter):
         else:
             content = prompt
 
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[{"role": "user", "content": content}],
-        )
-        return response.content[0].text
+        try:
+            response = client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                messages=[{"role": "user", "content": content}],
+            )
+        except Exception as exc:
+            logger.warning(
+                "[AnthropicAdapter] erreur API (modèle=%s) : %s",
+                self.model, exc,
+            )
+            raise
+
+        if not response.content:
+            logger.warning(
+                "[AnthropicAdapter] réponse vide (modèle=%s, stop_reason=%s).",
+                self.model, getattr(response, "stop_reason", None),
+            )
+            return ""
+
+        block = response.content[0]
+        text = getattr(block, "text", None)
+        if text is None:
+            logger.warning(
+                "[AnthropicAdapter] bloc de type '%s' sans texte (modèle=%s).",
+                getattr(block, "type", "unknown"), self.model,
+            )
+            return ""
+        return text

@@ -16,6 +16,7 @@ import json
 import logging
 import re
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -29,8 +30,8 @@ from picarones.engines.base import BaseOCREngine, EngineResult
 
 logger = logging.getLogger(__name__)
 
-# Classes de moteurs CPU-bound → ProcessPoolExecutor
-_CPU_BOUND_ENGINE_CLASSES = frozenset({"TesseractEngine", "PeroOCREngine", "KrakenEngine"})
+# Lock pour la sérialisation des écritures de résultats partiels
+_partial_write_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -70,8 +71,23 @@ def _io_doc_worker(
     Exécute l'OCR et calcule les métriques dans un thread.  L'instance du
     moteur est partagée entre les threads — les adaptateurs HTTP sont
     généralement sans état mutable entre les appels.
+
+    Si le document possède un texte OCR pré-calculé (corpus triplet) et que
+    le moteur est un pipeline OCR+LLM, utilise ``run_with_ocr_text()`` pour
+    court-circuiter l'étape OCR et tester directement la post-correction LLM.
     """
-    ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
+    doc_ocr_text = getattr(doc, "ocr_text", None)
+    if doc_ocr_text is not None:
+        # Corpus triplet — vérifier si le moteur supporte run_with_ocr_text
+        run_with = getattr(engine, "run_with_ocr_text", None)
+        if run_with is not None:
+            ocr_result = run_with(doc.image_path, doc_ocr_text)  # type: ignore[attr-defined]
+        else:
+            # Moteur OCR classique — ignorer le texte OCR pré-calculé
+            ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
+    else:
+        ocr_result = engine.run(doc.image_path)  # type: ignore[attr-defined]
+
     return _compute_document_result(
         doc_id=doc.doc_id,  # type: ignore[attr-defined]
         image_path=str(doc.image_path),  # type: ignore[attr-defined]
@@ -100,8 +116,8 @@ def _compute_document_result(
     Les analyses secondaires qui échouent sont loguées en WARNING et non propagées :
     le benchmark continue avec les métriques de base disponibles.
     """
-    import logging as _log
-    _logger = _log.getLogger(__name__)
+    import logging as _logging
+    _logger = _logging.getLogger(__name__)
 
     if ocr_result.success:
         metrics = compute_metrics(ground_truth, ocr_result.text, char_exclude=char_exclude)
@@ -320,10 +336,12 @@ def _load_partial(
 
 
 def _save_partial_line(partial_path: Path, doc_result: DocumentResult) -> None:
-    """Ajoute une entrée NDJSON au fichier de résultats partiels."""
+    """Ajoute une entrée NDJSON au fichier de résultats partiels (thread-safe)."""
     try:
-        with partial_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(doc_result.as_dict(), ensure_ascii=False) + "\n")
+        line = json.dumps(doc_result.as_dict(), ensure_ascii=False) + "\n"
+        with _partial_write_lock:
+            with partial_path.open("a", encoding="utf-8") as fh:
+                fh.write(line)
     except Exception as e:
         logger.warning("Impossible d'écrire dans le fichier partiel '%s' : %s", partial_path, e)
 
@@ -351,6 +369,7 @@ def run_benchmark(
     max_workers: int = 4,
     timeout_seconds: float = 60.0,
     partial_dir: Optional[str | Path] = None,
+    cancel_event: Optional[threading.Event] = None,
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -395,14 +414,23 @@ def run_benchmark(
     partial_dir:
         Répertoire pour les fichiers de reprise (défaut : répertoire temporaire
         système).
+    cancel_event:
+        ``threading.Event`` optionnel.  Si défini et signalé (``set()``),
+        le benchmark s'interrompt proprement dès que possible et retourne
+        les résultats partiels collectés jusque-là.
 
     Returns
     -------
     BenchmarkResult
     """
+    def _is_cancelled() -> bool:
+        return cancel_event is not None and cancel_event.is_set()
     engine_reports: list[EngineReport] = []
 
     for engine in engines:
+        if _is_cancelled():
+            logger.info("Benchmark annulé avant le moteur '%s'.", engine.name)
+            break
         logger.info("Démarrage : %s", engine.name)
 
         # Reprise depuis résultats partiels d'une éventuelle exécution précédente
@@ -423,8 +451,8 @@ def run_benchmark(
             )
         document_results: list[DocumentResult] = list(loaded_results)
 
-        # Sélection du type d'exécution selon la classe du moteur
-        is_cpu_bound = engine.__class__.__name__ in _CPU_BOUND_ENGINE_CLASSES
+        # Sélection du type d'exécution selon execution_mode du moteur
+        is_cpu_bound = getattr(engine, "execution_mode", "io") == "cpu"
         ExecutorClass = (
             concurrent.futures.ProcessPoolExecutor
             if is_cpu_bound
@@ -455,6 +483,9 @@ def run_benchmark(
             submitted_at: dict = {}
 
             for doc in docs_to_process:
+                if _is_cancelled():
+                    logger.info("[%s] annulation — arrêt de la soumission.", engine.name)
+                    break
                 if is_cpu_bound:
                     engine_module = engine.__class__.__module__
                     engine_class_name = engine.__class__.__name__
@@ -473,6 +504,12 @@ def run_benchmark(
             remaining = set(future_to_doc)
 
             while remaining:
+                if _is_cancelled():
+                    logger.info("[%s] annulation — annulation des futures restantes.", engine.name)
+                    for f in remaining:
+                        f.cancel()
+                    break
+
                 done, remaining = concurrent.futures.wait(
                     remaining,
                     timeout=0.5,
@@ -530,8 +567,17 @@ def run_benchmark(
                     processed_count += 1
 
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            executor.shutdown(wait=True, cancel_futures=True)
             pbar.close()
+
+        if _is_cancelled():
+            logger.info(
+                "[%s] annulé — %d documents traités sur %d.",
+                engine.name, len(document_results) - len(loaded_results),
+                len(docs_to_process),
+            )
+            # Conserver le fichier partiel pour reprise ultérieure
+            break
 
         # Réordonner selon l'ordre du corpus pour reproductibilité
         doc_order = {doc.doc_id: i for i, doc in enumerate(corpus.documents)}
@@ -581,6 +627,10 @@ def run_benchmark(
             engine.name,
             (report.mean_cer or 0) * 100,
         )
+
+        # Libérer la mémoire des analyses per-document après agrégation
+        for dr in document_results:
+            dr.compact()
 
     benchmark = BenchmarkResult(
         corpus_name=corpus.name,

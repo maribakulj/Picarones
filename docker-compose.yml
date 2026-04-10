@@ -1,7 +1,7 @@
 # docker-compose.yml — Picarones
 #
 # Services disponibles :
-#   - picarones   : interface web + benchmarks (port 8000)
+#   - picarones   : interface web + benchmarks (port 7860)
 #   - ollama      : LLMs locaux (port 11434, profil optionnel)
 #
 # Usage :
@@ -26,7 +26,7 @@ services:
     container_name: picarones
     restart: unless-stopped
     ports:
-      - "${PICARONES_PORT:-8000}:8000"
+      - "${PICARONES_PORT:-7860}:7860"
     volumes:
       # Corpus à benchmarker (lecture seule)
       - "${CORPUS_DIR:-./corpus}:/app/corpus:ro"
@@ -51,10 +51,8 @@ services:
       # Python
       - PYTHONUNBUFFERED=1
       - PYTHONIOENCODING=utf-8
-    depends_on:
-      - ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
       interval: 30s
       timeout: 10s
       retries: 3
