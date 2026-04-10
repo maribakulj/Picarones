@@ -567,7 +567,7 @@ def run_benchmark(
                     processed_count += 1
 
         finally:
-            executor.shutdown(wait=True, cancel_futures=True)
+            executor.shutdown(wait=False, cancel_futures=True)
             pbar.close()
 
         if _is_cancelled():
