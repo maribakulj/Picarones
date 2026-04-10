@@ -1807,9 +1807,14 @@ tr:hover td { background: #f0ede6; }
       <div class="mode-toggle">
         <label><input type="radio" name="compose-mode" value="ocr" checked onchange="onComposeModeChange()"> 🔍 <span data-i18n="compose_ocr_only">OCR seul</span></label>
         <label><input type="radio" name="compose-mode" value="pipeline" onchange="onComposeModeChange()"> ⛓ <span data-i18n="compose_pipeline">Pipeline OCR+LLM</span></label>
+        <label><input type="radio" name="compose-mode" value="postcorrection" onchange="onComposeModeChange()"> 📝 <span data-i18n="compose_postcorrection">Post-correction (corpus OCR)</span></label>
       </div>
 
-      <div class="composer-row">
+      <div id="corpus-ocr-notice" style="display:none; margin:8px 0; padding:8px 12px; background:var(--bg-highlight,#f0fdf4); border-radius:6px; font-size:12px; color:var(--success,#16a34a);">
+        📝 <span data-i18n="corpus_has_ocr">Ce corpus contient des fichiers OCR pré-calculés (.ocr.txt) — post-correction disponible.</span>
+      </div>
+
+      <div id="compose-ocr-section" class="composer-row">
         <div class="form-group">
           <label data-i18n="compose_ocr_engine">Moteur OCR</label>
           <select id="compose-ocr-engine" onchange="onComposeOCRChange()">
@@ -1844,7 +1849,7 @@ tr:hover td { background: #f0ede6; }
         <div class="composer-row">
           <div class="form-group">
             <label data-i18n="compose_mode">Mode pipeline</label>
-            <select id="compose-pipeline-mode">
+            <select id="compose-pipeline-mode" onchange="onComposePipelineModeChange()">
               <option value="text_only" data-i18n="mode_text_only">Post-correction texte</option>
               <option value="text_and_image" data-i18n="mode_text_image">Post-correction image+texte</option>
               <option value="zero_shot" data-i18n="mode_zero_shot">Zero-shot</option>
@@ -2076,6 +2081,9 @@ const T = {
     bench_options_title: "5. Options",
     compose_ocr_only: "OCR seul",
     compose_pipeline: "Pipeline OCR+LLM",
+    compose_postcorrection: "Post-correction (corpus OCR)",
+    corpus_has_ocr: "Ce corpus contient des fichiers OCR pré-calculés (.ocr.txt) — post-correction disponible.",
+    corpus_no_ocr_warn: "Ce corpus ne contient pas de fichiers .ocr.txt — uploadez un corpus triplet pour la post-correction.",
     compose_ocr_engine: "Moteur OCR",
     compose_ocr_model: "Modèle / Langue",
     compose_llm_provider: "Provider LLM",
@@ -2157,6 +2165,9 @@ const T = {
     bench_options_title: "5. Options",
     compose_ocr_only: "OCR only",
     compose_pipeline: "OCR+LLM Pipeline",
+    compose_postcorrection: "Post-correction (corpus OCR)",
+    corpus_has_ocr: "This corpus contains pre-computed OCR files (.ocr.txt) — post-correction available.",
+    corpus_no_ocr_warn: "This corpus has no .ocr.txt files — upload a triplet corpus for post-correction.",
     compose_ocr_engine: "OCR Engine",
     compose_ocr_model: "Model / Language",
     compose_llm_provider: "LLM Provider",
@@ -2248,12 +2259,18 @@ let _competitors = [];
 let _refreshIntervalId = null;
 let _pendingOCREngine = null;   // garde contre les réponses obsolètes (race condition)
 
-async function fetchModels(provider) {
-  if (_modelsCache[provider]) return _modelsCache[provider];
-  const r = await fetch(`/api/models/${provider}`);
+async function fetchModels(provider, capability) {
+  const cacheKey = capability ? `${provider}__${capability}` : provider;
+  if (_modelsCache[cacheKey]) return _modelsCache[cacheKey];
+  const url = capability ? `/api/models/${provider}?capability=${capability}` : `/api/models/${provider}`;
+  const r = await fetch(url);
   const d = await r.json();
-  const models = d.models || [];
-  _modelsCache[provider] = models;
+  // Support both new format (objects with id+capabilities) and old format (flat strings)
+  let models = d.model_ids || d.models || [];
+  if (models.length > 0 && typeof models[0] === "object") {
+    models = models.map(m => m.id || m);
+  }
+  _modelsCache[cacheKey] = models;
   return models;
 }
 
@@ -2261,9 +2278,11 @@ function populateSelect(selectId, models, spinnerId) {
   const sel = document.getElementById(selectId);
   if (spinnerId) { const sp = document.getElementById(spinnerId); if (sp) sp.style.display = "none"; }
   if (!sel) return;
-  sel.innerHTML = models.length === 0
+  // Handle both string arrays and object arrays
+  const items = models.map(m => typeof m === "object" ? (m.id || m) : m);
+  sel.innerHTML = items.length === 0
     ? '<option value="">— aucun modèle —</option>'
-    : models.map(m => `<option value="${m}">${m}</option>`).join("");
+    : items.map(m => `<option value="${m}">${m}</option>`).join("");
 }
 
 // ─── Benchmark sections (OCR + LLM status + composer init) ───────────────────
@@ -2386,21 +2405,58 @@ async function onComposeOCRChange() {
 
 async function onComposeLLMChange() {
   const provider = document.getElementById("compose-llm-provider").value;
-  const sp = document.getElementById("sp-llm-model");
-  sp.style.display = "inline-block";
-  try {
-    const models = await fetchModels(provider);
-    populateSelect("compose-llm-model", models, "sp-llm-model");
-  } catch(e) {
-    sp.style.display = "none";
-    document.getElementById("compose-llm-model").innerHTML = '<option value="">Erreur</option>';
-  }
+  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  const pipelineMode = document.getElementById("compose-pipeline-mode").value;
+  // Apply capability filter for modes requiring vision
+  const needsVision = (pipelineMode === "text_and_image" || pipelineMode === "zero_shot");
+  const capability = (composeMode === "postcorrection" || composeMode === "pipeline") && needsVision ? "vision" : "";
+  _loadLLMModelsWithCapability(provider, capability);
 }
 
 function onComposeModeChange() {
   const mode = document.querySelector("input[name=compose-mode]:checked").value;
-  document.getElementById("compose-pipeline-section").style.display =
-    mode === "pipeline" ? "block" : "none";
+  const ocrSection = document.getElementById("compose-ocr-section");
+  const pipelineSection = document.getElementById("compose-pipeline-section");
+
+  if (mode === "ocr") {
+    ocrSection.style.display = "flex";
+    pipelineSection.style.display = "none";
+  } else if (mode === "pipeline") {
+    ocrSection.style.display = "flex";
+    pipelineSection.style.display = "block";
+    // Reload LLM models without capability filter
+    onComposeLLMChange();
+  } else if (mode === "postcorrection") {
+    ocrSection.style.display = "none";
+    pipelineSection.style.display = "block";
+    // Reload LLM models with capability filter based on pipeline mode
+    onComposePipelineModeChange();
+  }
+}
+
+function onComposePipelineModeChange() {
+  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  if (composeMode !== "postcorrection" && composeMode !== "pipeline") return;
+  const pipelineMode = document.getElementById("compose-pipeline-mode").value;
+  // Filter by vision capability for modes that need images
+  const needsVision = (pipelineMode === "text_and_image" || pipelineMode === "zero_shot");
+  const capability = needsVision ? "vision" : "";
+  const provider = document.getElementById("compose-llm-provider").value;
+  // Clear cache for this provider to re-fetch with new capability filter
+  const cacheKey = capability ? `${provider}__${capability}` : provider;
+  delete _modelsCache[cacheKey];
+  _loadLLMModelsWithCapability(provider, capability);
+}
+
+async function _loadLLMModelsWithCapability(provider, capability) {
+  document.getElementById("sp-llm-model").style.display = "inline-block";
+  try {
+    const models = await fetchModels(provider, capability);
+    populateSelect("compose-llm-model", models, "sp-llm-model");
+  } catch(e) {
+    document.getElementById("sp-llm-model").style.display = "none";
+    document.getElementById("compose-llm-model").innerHTML = '<option value="">Erreur</option>';
+  }
 }
 
 async function loadComposePrompts() {
@@ -2414,20 +2470,34 @@ async function loadComposePrompts() {
 }
 
 function addCompetitor() {
-  const ocrEngine = document.getElementById("compose-ocr-engine").value;
-  const ocrModel = document.getElementById("compose-ocr-model").value;
   const mode = document.querySelector("input[name=compose-mode]:checked").value;
   const errEl = document.getElementById("compose-error");
 
-  if (!ocrEngine) {
-    errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
-    return;
-  }
-
-  const comp = { name: "", ocr_engine: ocrEngine, ocr_model: ocrModel,
+  const comp = { name: "", ocr_engine: "", ocr_model: "",
                   llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "" };
 
-  if (mode === "pipeline") {
+  if (mode === "postcorrection") {
+    // Post-correction : OCR vient du corpus (.ocr.txt)
+    comp.ocr_engine = "corpus";
+    comp.llm_provider = document.getElementById("compose-llm-provider").value;
+    comp.llm_model = document.getElementById("compose-llm-model").value;
+    comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
+    comp.prompt_file = document.getElementById("compose-prompt").value;
+    if (!comp.llm_provider || !comp.llm_model) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un provider et un modèle LLM." : "Select an LLM provider and model.";
+      return;
+    }
+    const modeLabel = {"text_only":"texte","text_and_image":"img+texte","zero_shot":"zero-shot"}[comp.pipeline_mode] || comp.pipeline_mode;
+    comp.name = `📝 ${comp.llm_model} [${modeLabel}]`;
+  } else if (mode === "pipeline") {
+    const ocrEngine = document.getElementById("compose-ocr-engine").value;
+    const ocrModel = document.getElementById("compose-ocr-model").value;
+    if (!ocrEngine) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
+      return;
+    }
+    comp.ocr_engine = ocrEngine;
+    comp.ocr_model = ocrModel;
     comp.llm_provider = document.getElementById("compose-llm-provider").value;
     comp.llm_model = document.getElementById("compose-llm-model").value;
     comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
@@ -2436,8 +2506,17 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un provider LLM." : "Select an LLM provider.";
       return;
     }
-    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_provider}${comp.llm_model ? ":"+comp.llm_model : ""}`;
+    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_model || comp.llm_provider}`;
   } else {
+    // OCR seul
+    const ocrEngine = document.getElementById("compose-ocr-engine").value;
+    const ocrModel = document.getElementById("compose-ocr-model").value;
+    if (!ocrEngine) {
+      errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
+      return;
+    }
+    comp.ocr_engine = ocrEngine;
+    comp.ocr_model = ocrModel;
     comp.name = `${ocrEngine}${ocrModel ? " ("+ocrModel+")" : ""}`;
   }
 
@@ -2458,11 +2537,19 @@ function renderCompetitors() {
     return;
   }
   container.innerHTML = _competitors.map((c, i) => {
-    const isPipeline = !!c.llm_provider;
-    const badge = isPipeline ? "⛓ Pipeline" : "🔍 OCR";
-    const detail = isPipeline
-      ? `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`
-      : `${c.ocr_engine}:${c.ocr_model}`;
+    const isCorpusOCR = c.ocr_engine === "corpus" || (c.ocr_engine === "" && c.llm_provider);
+    const isPipeline = !!c.llm_provider && !isCorpusOCR;
+    let badge, detail;
+    if (isCorpusOCR) {
+      badge = "📝 Post-correction";
+      detail = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+    } else if (isPipeline) {
+      badge = "⛓ Pipeline";
+      detail = `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+    } else {
+      badge = "🔍 OCR";
+      detail = `${c.ocr_engine}:${c.ocr_model}`;
+    }
     return `<div class="competitor-card">
       <div class="competitor-info">
         <span class="competitor-badge">${badge}</span>
@@ -2974,6 +3061,9 @@ async function uploadCorpus(files) {
     // Show preview
     renderUploadPreview(d, previewEl);
 
+    // Show corpus OCR notice if triplet corpus
+    _updateCorpusOCRNotice(d);
+
     // Set corpus path and auto-select
     setCorpusPath(d.corpus_path, `upload:${d.corpus_id} (${d.doc_count} docs)`);
 
@@ -2990,9 +3080,12 @@ function renderUploadPreview(data, container) {
   const missingBadge = data.has_missing_gt
     ? `<span class="badge badge-err" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
     : "";
+  const ocrBadge = (data.has_ocr_text && data.ocr_text_count > 0)
+    ? `<span class="badge" style="margin-left:8px; background:#dcfce7; color:#16a34a;">📝 ${data.ocr_text_count} .ocr.txt</span>`
+    : "";
   let html = `<div class="corpus-preview">
     <div class="corpus-preview-header">
-      <span>📄 ${data.doc_count} ${t("upload_pairs")}</span>${missingBadge}
+      <span>📄 ${data.doc_count} ${t("upload_pairs")}</span>${ocrBadge}${missingBadge}
     </div>`;
   for (const p of data.pairs) {
     html += `<div class="corpus-preview-pair">
@@ -3014,6 +3107,17 @@ function renderUploadPreview(data, container) {
 function setCorpusPath(path, label) {
   document.getElementById("corpus-path").value = path;
   document.getElementById("corpus-info").textContent = `✓ ${label}`;
+}
+
+function _updateCorpusOCRNotice(corpusData) {
+  const notice = document.getElementById("corpus-ocr-notice");
+  if (!notice) return;
+  if (corpusData && corpusData.has_ocr_text && corpusData.ocr_text_count > 0) {
+    notice.style.display = "block";
+    notice.innerHTML = `📝 ${t("corpus_has_ocr")} <strong>(${corpusData.ocr_text_count} fichiers .ocr.txt)</strong>`;
+  } else {
+    notice.style.display = "none";
+  }
 }
 
 async function loadUploadedCorpora() {
