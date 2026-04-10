@@ -634,13 +634,24 @@ _BROWSE_ROOTS = [
 ]
 
 
+def _is_path_allowed(target: Path) -> bool:
+    """Vérifie qu'un chemin résolu est sous un des répertoires autorisés (cross-plateforme)."""
+    for root in _BROWSE_ROOTS:
+        try:
+            if target == root or target.is_relative_to(root):
+                return True
+        except (ValueError, TypeError):
+            continue
+    return False
+
+
 @app.get("/api/corpus/browse")
 async def api_corpus_browse(path: str = Query(default=".", description="Chemin à explorer")) -> dict:
     target = Path(path).resolve()
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail=f"Dossier non trouvé : {path}")
     # Sécurité : restreindre la navigation aux répertoires autorisés
-    if not any(target == root or str(target).startswith(str(root) + "/") for root in _BROWSE_ROOTS):
+    if not _is_path_allowed(target):
         raise HTTPException(status_code=403, detail="Accès refusé : chemin hors des répertoires autorisés")
 
     items = []

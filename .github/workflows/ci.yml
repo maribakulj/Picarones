@@ -82,13 +82,16 @@ jobs:
 
       # ── Couverture ──────────────────────────────────────────────
       - name: Upload coverage to Codecov
-        if: runner.os == 'Linux' && matrix.python-version == '3.11'
+        if: runner.os == 'Linux' && matrix.python-version == '3.11' && env.CODECOV_TOKEN != ''
         uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
           flags: unittests
           name: picarones-coverage
           fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # ──────────────────────────────────────────────────────────────────
   # Job 2 : Vérification du rapport demo
@@ -194,8 +197,8 @@ jobs:
 
       - name: Run ruff
         run: |
-          ruff check picarones/ --select=E,W,F --ignore=E501,W503
-          ruff check tests/ --select=E,W,F --ignore=E501,W503
+          ruff check picarones/ --select=E,W,F --ignore=E501
+          ruff check tests/ --select=E,W,F --ignore=E501
 
   # ──────────────────────────────────────────────────────────────────
   # Job 5 : CI/CD — Détection de régression CER (optionnel)
