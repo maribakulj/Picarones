@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 import threading
 import time
 import uuid
@@ -625,7 +626,12 @@ async def api_models(
 # API — corpus browse
 # ---------------------------------------------------------------------------
 
-_BROWSE_ROOTS = [Path(".").resolve(), _UPLOADS_DIR.resolve(), Path("/workspaces").resolve()]
+_BROWSE_ROOTS = [
+    Path(".").resolve(),
+    _UPLOADS_DIR.resolve(),
+    Path("/workspaces").resolve(),
+    Path(tempfile.gettempdir()).resolve(),
+]
 
 
 @app.get("/api/corpus/browse")

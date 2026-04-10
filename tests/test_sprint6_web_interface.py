@@ -1009,12 +1009,14 @@ class TestFastAPIModels:
     def test_models_google_vision_200(self, client):
         r = client.get("/api/models/google_vision")
         assert r.status_code == 200
-        assert "document_text_detection" in r.json()["models"]
+        model_ids = r.json().get("model_ids", r.json()["models"])
+        assert "document_text_detection" in model_ids
 
     def test_models_azure_doc_intel_200(self, client):
         r = client.get("/api/models/azure_doc_intel")
         assert r.status_code == 200
-        assert "prebuilt-document" in r.json()["models"]
+        model_ids = r.json().get("model_ids", r.json()["models"])
+        assert "prebuilt-document" in model_ids
 
     def test_models_ollama_200(self, client):
         r = client.get("/api/models/ollama")
@@ -1068,10 +1070,14 @@ class TestFastAPIModels:
                 r = client.get("/api/models/mistral_ocr")
         assert r.status_code == 200
         d = r.json()
-        assert isinstance(d["models"], list)
-        assert len(d["models"]) > 0
+        models = d.get("model_ids", d["models"])
+        assert isinstance(models, list)
+        assert len(models) > 0
         # Les modèles de fallback doivent contenir pixtral ou mistral-ocr
-        model_ids = " ".join(d["models"]).lower()
+        # models peut contenir des strings ou des dicts
+        model_ids = " ".join(
+            m if isinstance(m, str) else m.get("id", str(m)) for m in models
+        ).lower()
         assert "pixtral" in model_ids or "mistral-ocr" in model_ids
 
     def test_models_mistral_ocr_filters_vision_only(self, client):
@@ -1096,12 +1102,14 @@ class TestFastAPIModels:
             with patch("urllib.request.urlopen", return_value=_FakeHTTPResponse()):
                 r = client.get("/api/models/mistral_ocr")
         assert r.status_code == 200
-        models = r.json()["models"]
-        assert "mistral-ocr-latest" in models
-        assert "pixtral-12b-2409" in models
-        assert "pixtral-large-latest" in models
-        assert "mistral-large-latest" not in models
-        assert "mistral-small-latest" not in models
+        model_ids = r.json().get("model_ids", r.json()["models"])
+        # model_ids peut contenir des strings ou des dicts
+        ids = [m if isinstance(m, str) else m.get("id", str(m)) for m in model_ids]
+        assert "mistral-ocr-latest" in ids
+        assert "pixtral-12b-2409" in ids
+        assert "pixtral-large-latest" in ids
+        assert "mistral-large-latest" not in ids
+        assert "mistral-small-latest" not in ids
 
 
 # ===========================================================================
@@ -1124,12 +1132,15 @@ class TestFastAPIBenchmarkRun:
         })
         assert r.status_code == 400
 
-    def test_run_422_missing_ocr_engine(self, client, tmp_corpus):
+    def test_run_missing_ocr_engine_accepted(self, client, tmp_corpus):
+        """ocr_engine est désormais optionnel (vide = post-correction corpus)."""
         r = client.post("/api/benchmark/run", json={
             "corpus_path": str(tmp_corpus),
-            "competitors": [{"ocr_model": "fra"}],   # ocr_engine manquant
+            "competitors": [{"ocr_model": "fra"}],   # ocr_engine vide = valide
         })
-        assert r.status_code == 422
+        # Accepté par Pydantic (200), mais le benchmark échouera à l'exécution
+        # car ni ocr_engine ni llm_provider ne sont définis
+        assert r.status_code == 200
 
     def test_run_returns_job_id(self, client, tmp_corpus):
         r = client.post("/api/benchmark/run", json={
