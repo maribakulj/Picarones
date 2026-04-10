@@ -28,15 +28,17 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from picarones.core.corpus import Corpus, Document
+
+if TYPE_CHECKING:
+    from picarones.core.results import BenchmarkResult
 
 logger = logging.getLogger(__name__)
 

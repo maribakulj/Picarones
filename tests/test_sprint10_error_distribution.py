@@ -11,8 +11,6 @@ TestReportSprint10        (6 tests) — rapport HTML contient les nouvelles mét
 
 from __future__ import annotations
 
-import math
-from pathlib import Path
 
 import pytest
 
@@ -113,7 +111,7 @@ class TestLineMetrics:
         assert len(restored.cer_per_line) == len(result.cer_per_line)
 
     def test_aggregate_line_metrics(self):
-        from picarones.core.line_metrics import compute_line_metrics, aggregate_line_metrics, LineMetrics
+        from picarones.core.line_metrics import compute_line_metrics, aggregate_line_metrics
         r1 = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_PERFECT)
         r2 = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         agg = aggregate_line_metrics([r1, r2])

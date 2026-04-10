@@ -7,7 +7,6 @@ Bug 3 : Divergence runner/rapport → cohérence des métriques
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -153,7 +152,7 @@ class TestMistralAdapterLogging:
         adapter = MistralAdapter(model="ministral-3b-latest")
 
         with caplog.at_level(logging.WARNING, logger="picarones.llm.mistral_adapter"):
-            result = self._run_adapter(adapter, fake_mod, image_b64="fake_b64")
+            self._run_adapter(adapter, fake_mod, image_b64="fake_b64")
 
         # L'appel doit avoir été fait SANS image (modèle text-only)
         call_kwargs = mock_client.chat.complete.call_args
@@ -198,7 +197,6 @@ class TestPipelineEmptyLLMResponse:
 
     def test_warning_on_empty_llm_output(self, tmp_path, caplog):
         """WARNING doit être logu si le LLM retourne une chaîne vide."""
-        import shutil
         # Créer une fausse image
         img_path = tmp_path / "test.png"
         img_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)

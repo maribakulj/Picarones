@@ -27,11 +27,8 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
-import threading
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -214,7 +211,7 @@ class TestHTRUnitedSearch:
         results = htr_catalogue.search(language="French")
         assert len(results) > 0
         for r in results:
-            assert any("french" in l.lower() for l in r.language)
+            assert any("french" in lg.lower() for lg in r.language)
 
     def test_search_by_language_latin(self, htr_catalogue):
         results = htr_catalogue.search(language="Latin")
@@ -271,7 +268,7 @@ class TestHTRUnitedImport:
         from picarones.importers.htr_united import import_htr_united_corpus
         entry = htr_catalogue.entries[0]
         new_dir = tmp_path / "new_subdir" / "corpus"
-        result = import_htr_united_corpus(entry, new_dir, max_samples=5)
+        import_htr_united_corpus(entry, new_dir, max_samples=5)
         assert new_dir.exists()
 
 
@@ -645,7 +642,7 @@ class TestFastAPIHTRUnited:
         assert r.status_code == 200
         d = r.json()
         for e in d["entries"]:
-            assert any("french" in l.lower() for l in e["language"])
+            assert any("french" in lg.lower() for lg in e["language"])
 
     def test_import_valid_entry(self, client, tmp_path):
         # Get first entry id
@@ -919,7 +916,7 @@ class TestRunnerProgressCallback:
         """Le callback est appelé pour chaque document."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.core.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine, EngineResult
+        from picarones.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property

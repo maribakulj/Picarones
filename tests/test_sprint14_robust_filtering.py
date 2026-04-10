@@ -10,10 +10,8 @@ Vérifie :
 """
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -65,7 +63,8 @@ def _make_fake_benchmark():
 def _generate_html(bm=None) -> str:
     """Génère le HTML complet du rapport pour un BenchmarkResult minimal."""
     from picarones.report.generator import ReportGenerator
-    import tempfile, os
+    import tempfile
+    import os
     if bm is None:
         bm = _make_fake_benchmark()
     gen = ReportGenerator(bm)

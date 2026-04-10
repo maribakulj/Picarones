@@ -17,7 +17,6 @@ TestHTMLSprint7Features   (10 tests) — HTML généré contient les nouvelles f
 
 from __future__ import annotations
 
-import math
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -40,7 +39,8 @@ def report_data_s7(sample_benchmark_s7):
 @pytest.fixture
 def html_s7(sample_benchmark_s7):
     from picarones.report.generator import ReportGenerator
-    import tempfile, pathlib
+    import tempfile
+    import pathlib
     gen = ReportGenerator(sample_benchmark_s7)
     with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as f:
         path = gen.generate(f.name)

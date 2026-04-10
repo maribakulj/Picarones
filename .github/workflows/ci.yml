@@ -197,8 +197,8 @@ jobs:
 
       - name: Run ruff
         run: |
-          ruff check picarones/ --select=E,W,F --ignore=E501
-          ruff check tests/ --select=E,W,F --ignore=E501
+          ruff check picarones/ --select=E,W,F --ignore=E501,E402
+          ruff check tests/ --select=E,W,F --ignore=E501,E402
 
   # ──────────────────────────────────────────────────────────────────
   # Job 5 : CI/CD — Détection de régression CER (optionnel)

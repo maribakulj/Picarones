@@ -29,7 +29,11 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from picarones.core.corpus import Corpus, Document
+    from picarones.engines.base import BaseOCREngine
 
 logger = logging.getLogger(__name__)
 
@@ -465,7 +469,7 @@ class RobustnessAnalyzer:
         for engine in self.engines:
             for deg_type in self.degradation_types:
                 levels = self.levels[deg_type]
-                labels = DEGRADATION_LABELS.get(deg_type, [str(l) for l in levels])
+                labels = DEGRADATION_LABELS.get(deg_type, [str(lv) for lv in levels])
 
                 cer_per_level: list[Optional[float]] = []
 

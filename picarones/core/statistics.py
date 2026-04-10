@@ -14,8 +14,8 @@ from __future__ import annotations
 import math
 import random
 import re
-from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from typing import Optional
 
 # Import optionnel de scipy — utilisé pour le test de Wilcoxon si disponible

@@ -189,7 +189,6 @@ def _analyze_with_pillow(path: Path, Image) -> ImageQualityResult:
         contrast = 0.0
 
     # Netteté approximée : variance globale des pixels
-    mean_pix = statistics.mean(pixels)
     try:
         variance = statistics.variance(pixels)
     except statistics.StatisticsError:
@@ -213,14 +212,7 @@ def _analyze_with_pillow(path: Path, Image) -> ImageQualityResult:
 
 def _laplacian_variance_numpy(arr, np) -> float:
     """Calcule la variance du laplacien (mesure de netteté)."""
-    # Filtre laplacien 3x3
-    laplacian_kernel = np.array([
-        [0,  1, 0],
-        [1, -4, 1],
-        [0,  1, 0],
-    ], dtype=np.float32)
-
-    # Convolution manuelle simplifiée (bordures ignorées)
+    # Convolution laplacien 3x3 via slicing (bordures ignorées)
     h, w = arr.shape
     if h < 3 or w < 3:
         return float(np.var(arr))
@@ -343,8 +335,6 @@ def generate_mock_quality_scores(
     rng = random.Random(seed or hash(doc_id) % 2**32)
 
     # Générer une qualité cohérente : certains docs sont plus difficiles
-    # doc_id finissant par un chiffre impair → qualité variable
-    last_char = doc_id[-1] if doc_id else "0"
     base_quality = 0.3 + rng.random() * 0.6  # 0.3 à 0.9
 
     sharpness = max(0.1, min(1.0, base_quality + rng.gauss(0, 0.1)))
