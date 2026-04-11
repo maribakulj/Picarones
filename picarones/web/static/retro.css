@@ -634,9 +634,283 @@ tr:hover td { background: #d0d0f0; }
 
 /* ── Scrollbar (webkit) ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 16px; }
-::-webkit-scrollbar-track { background: #c0c0c0; border-left: 1px solid #808080; }
+::-webkit-scrollbar-track {
+  background: repeating-linear-gradient(
+    0deg, #c0c0c0, #c0c0c0 1px, #ffffff 1px, #ffffff 2px
+  );
+  border-left: 1px solid #808080;
+}
 ::-webkit-scrollbar-thumb {
   background: #c0c0c0;
   border: 2px outset #c0c0c0;
+  background-image: linear-gradient(#d8d8d8, #b0b0b0);
 }
-::-webkit-scrollbar-button { display: block; height: 16px; background: #c0c0c0; border: 2px outset #c0c0c0; }
+::-webkit-scrollbar-button {
+  display: block;
+  height: 16px;
+  background: #c0c0c0;
+  border: 2px outset #c0c0c0;
+}
+
+
+/* ==========================================================================
+   Sprint UI-2 — Composants spécialisés & polish
+   ========================================================================== */
+
+/* ── Modal (System 7 Alert Dialog) ───────────────────────────────────────── */
+#import-modal {
+  background: rgba(0,0,0,0.3) !important;
+}
+#import-modal > .card {
+  border: 3px solid var(--border);
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.4);
+  position: relative;
+}
+#import-modal > .card::before {
+  content: '!';
+  position: absolute;
+  top: 42px;
+  left: 14px;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  background: #ffcc00;
+  font-family: var(--font-ui);
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 26px;
+  z-index: 1;
+}
+#import-modal .form-group {
+  margin-left: 48px;
+}
+#import-modal .btn {
+  min-width: 80px;
+  text-align: center;
+  justify-content: center;
+}
+/* Default button highlight (System 7 style thick border) */
+#import-modal .btn-primary {
+  border: 3px solid var(--border);
+  padding: 3px 20px;
+}
+
+/* ── File browser Finder polish ──────────────────────────────────────────── */
+#file-browser .fb-item:nth-child(even) {
+  background: #e8e8e8;
+}
+#file-browser .fb-item:hover {
+  background: var(--win-title);
+  color: var(--win-title-text);
+}
+/* Folder icon styling */
+.fb-icon::before {
+  font-size: 12px;
+}
+
+/* ── Provider rows polish ────────────────────────────────────────────────── */
+.provider-row {
+  border: 2px solid #a0a0a0;
+  border-top-color: #ffffff;
+  border-left-color: #ffffff;
+}
+.provider-row:hover {
+  background: #d8d8f0;
+}
+
+/* ── Competitor cards polish ─────────────────────────────────────────────── */
+.competitor-card {
+  border: 2px solid var(--border);
+  border-top-color: #ffffff;
+  border-left-color: #ffffff;
+  border-bottom-color: #555555;
+  border-right-color: #555555;
+}
+.competitor-card:hover {
+  background: #d0d0f0;
+  border-color: var(--accent);
+}
+.competitor-badge {
+  background: #000080;
+  color: #ffffff;
+  border: 1px solid #000;
+  font-weight: 700;
+}
+
+/* ── Upload dropzone polish ──────────────────────────────────────────────── */
+.upload-dropzone {
+  background: #e0e0e0;
+  border: 2px dashed #808080;
+  position: relative;
+}
+.upload-dropzone .upload-icon {
+  font-size: 32px;
+  filter: grayscale(50%);
+}
+.upload-dropzone.dragover {
+  background: #d0d0f0;
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+/* ── Upload progress bar retro ───────────────────────────────────────────── */
+#upload-progress-container .progress-bar-outer {
+  height: 20px;
+  border: 2px inset var(--win-bg);
+}
+#upload-progress-container .progress-bar-inner,
+#upload-progress-bar {
+  background: repeating-linear-gradient(
+    -45deg,
+    #000080,
+    #000080 5px,
+    #4444cc 5px,
+    #4444cc 10px
+  ) !important;
+}
+
+/* ── Results table polish ────────────────────────────────────────────────── */
+#results-section table {
+  border: 2px solid var(--border);
+}
+#results-section th {
+  background: var(--win-title);
+  color: var(--win-title-text);
+  border-bottom: 2px solid var(--border);
+  padding: 5px 8px;
+}
+#results-section td {
+  border-bottom: 1px solid #a0a0a0;
+}
+#results-section tr:hover td {
+  background: #d0d0f0;
+}
+
+/* ── Dataset cards (Extension Manager style) ─────────────────────────────── */
+.ds-card {
+  border: 2px solid var(--border);
+  border-top-color: #ffffff;
+  border-left-color: #ffffff;
+  border-bottom-color: #555555;
+  border-right-color: #555555;
+  background: var(--win-bg);
+}
+.ds-card:hover {
+  background: #d0d0d0;
+}
+.ds-card h4 {
+  border-bottom: 1px solid #a0a0a0;
+  padding-bottom: 3px;
+  margin-bottom: 5px;
+}
+.ds-tag {
+  background: #000080;
+  color: #ffffff;
+  border: 1px solid #000;
+  padding: 1px 8px;
+}
+
+/* ── Corpus preview polish ───────────────────────────────────────────────── */
+.corpus-preview {
+  border: 2px inset var(--win-bg);
+}
+.corpus-preview-header {
+  background: var(--win-title);
+  color: var(--win-title-text);
+  border-bottom: 2px solid var(--border);
+}
+.corpus-preview-pair:nth-child(even) {
+  background: #e8e8e8;
+}
+
+/* ── Menu bar hover feedback ─────────────────────────────────────────────── */
+#header {
+  border-top: 1px solid #ffffff;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+}
+.nav-btn {
+  padding: 2px 12px;
+  margin: 0 1px;
+}
+.nav-btn:hover, .nav-btn.active {
+  background: var(--win-title);
+  color: var(--win-title-text);
+  outline: 1px solid var(--win-title);
+}
+
+/* ── Mode toggle (retro radio group) ─────────────────────────────────────── */
+.mode-toggle {
+  border: 2px groove var(--win-bg);
+  background: #d0d0d0;
+}
+.mode-toggle label {
+  padding: 2px 6px;
+}
+.mode-toggle input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* ── Form group inside cards — padding fix ───────────────────────────────── */
+.card > div:not(h2) .form-group,
+.card > .composer-row,
+.card > .mode-toggle,
+.card > .form-row,
+.card > div > .form-group {
+  font-family: var(--font-ui);
+}
+
+/* ── Upload corpus list polish ───────────────────────────────────────────── */
+.upload-corpus-item {
+  border: 2px solid #a0a0a0;
+  border-top-color: #ffffff;
+  border-left-color: #ffffff;
+  border-bottom-color: #555555;
+  border-right-color: #555555;
+}
+
+/* ── Log box terminal scanlines effect ───────────────────────────────────── */
+.log-box {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,50,0,0.15) 2px,
+      rgba(0,50,0,0.15) 4px
+    ),
+    #000000;
+  text-shadow: 0 0 4px rgba(0,255,0,0.3);
+}
+
+/* ── Checkbox retro style ────────────────────────────────────────────────── */
+.checkbox-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 2px inset var(--win-bg);
+  background: #ffffff;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.checkbox-item input[type="checkbox"]:checked {
+  background: #ffffff;
+}
+.checkbox-item input[type="checkbox"]:checked::after {
+  content: 'X';
+  position: absolute;
+  top: -3px;
+  left: 1px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Selection highlight (Finder style) ──────────────────────────────────── */
+::selection {
+  background: var(--win-title);
+  color: var(--win-title-text);
+}
