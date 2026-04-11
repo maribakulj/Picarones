@@ -430,6 +430,12 @@ _MISTRAL_TEXT_ONLY = frozenset({
     "mistral-small-latest", "mistral-small-2409",
 })
 
+# Préfixes de modèles Mistral qui sont text-only (pas de support vision)
+_MISTRAL_TEXT_ONLY_PREFIXES = (
+    "ministral", "open-mistral", "open-mixtral", "codestral",
+    "mistral-embed", "mistral-tiny",
+)
+
 # Familles Ollama multimodales connues
 _OLLAMA_VISION_FAMILIES = frozenset({
     "llava", "bakllava", "moondream", "minicpm-v", "llama3.2-vision",
@@ -444,12 +450,17 @@ def _model_entry(model_id: str, capabilities: list[str]) -> dict:
 
 def _infer_mistral_capabilities(model_id: str) -> list[str]:
     mid = model_id.lower()
-    if mid in _MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in ("ministral", "open-mistral", "open-mixtral")):
-        return ["text"]
-    if "pixtral" in mid or "mistral-ocr" in mid:
+    # Modèles explicitement vision (Pixtral)
+    if "pixtral" in mid:
         return ["text", "vision"]
-    # Mistral Large et autres modèles récents supportent la vision
-    return ["text", "vision"]
+    # Modèles explicitement text-only
+    if mid in _MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in _MISTRAL_TEXT_ONLY_PREFIXES):
+        return ["text"]
+    # Mistral Large et modèles récents non-identifiés → vision par défaut
+    if "mistral-large" in mid or "mistral-medium" in mid:
+        return ["text", "vision"]
+    # Par défaut, marquer comme text-only (plus sûr que de supposer vision)
+    return ["text"]
 
 
 def _infer_openai_capabilities(model_id: str) -> list[str]:
@@ -575,15 +586,19 @@ async def api_models(
                 "https://api.mistral.ai/v1/models",
                 {"Authorization": f"Bearer {api_key}"},
             )
+            # Inclure TOUS les modèles Mistral (y compris Pixtral pour la vision)
+            # sauf mistral-ocr qui est un endpoint OCR dédié, pas un LLM chat
             models = [
                 _model_entry(m["id"], _infer_mistral_capabilities(m["id"]))
                 for m in data.get("data", [])
-                if "pixtral" not in m["id"].lower() and "mistral-ocr" not in m["id"].lower()
+                if "mistral-ocr" not in m["id"].lower()
             ]
             return _filter_and_format(sorted(models, key=lambda m: m["id"]))
         except Exception as exc:
             fallback = [
                 _model_entry("mistral-large-latest", ["text", "vision"]),
+                _model_entry("pixtral-large-latest", ["text", "vision"]),
+                _model_entry("pixtral-12b-2409", ["text", "vision"]),
                 _model_entry("mistral-small-latest", ["text"]),
             ]
             return {**_filter_and_format(fallback), "error": str(exc)}
