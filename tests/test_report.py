@@ -2,10 +2,9 @@
 
 import json
 import pytest
-from pathlib import Path
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.generator import ReportGenerator, _build_report_data, _cer_color, _cer_bg
+from picarones.report.generator import ReportGenerator, _build_report_data, _cer_color
 
 
 # ---------------------------------------------------------------------------

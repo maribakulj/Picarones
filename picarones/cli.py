@@ -26,10 +26,14 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
 from picarones import __version__
+
+if TYPE_CHECKING:
+    from picarones.engines.base import BaseOCREngine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -330,7 +334,7 @@ def report_cmd(results: str, output: str, verbose: bool) -> None:
         click.echo(f"Erreur lors du chargement : {exc}", err=True)
         sys.exit(1)
 
-    click.echo(f"Génération du rapport HTML…")
+    click.echo("Génération du rapport HTML…")
     path = gen.generate(output)
     click.echo(f"Rapport généré : {path}")
     click.echo(f"Ouvrez-le dans un navigateur : file://{path}")
@@ -563,7 +567,7 @@ def import_iiif_cmd(
             "les fichiers .gt.txt sont vides (à remplir manuellement ou via OCR)."
         )
 
-    click.echo(f"\nPour lancer un benchmark sur ce corpus :")
+    click.echo("\nPour lancer un benchmark sur ce corpus :")
     click.echo(f"  picarones run --corpus {output} --engines tesseract")
 
 
@@ -613,9 +617,9 @@ def serve_cmd(host: str, port: int, reload: bool, verbose: bool) -> None:
         sys.exit(1)
 
     url = f"http://{host}:{port}"
-    click.echo(f"Picarones — Interface web locale")
+    click.echo("Picarones — Interface web locale")
     click.echo(f"Démarrage du serveur sur {url}")
-    click.echo(f"Appuyez sur Ctrl+C pour arrêter.\n")
+    click.echo("Appuyez sur Ctrl+C pour arrêter.\n")
 
     log_level = "debug" if verbose else "info"
     uvicorn.run(
@@ -939,7 +943,7 @@ def robustness_cmd(
                 )
             )
         else:
-            click.echo(click.style(f"    Robuste jusqu'au niveau max.", fg="green"))
+            click.echo(click.style("    Robuste jusqu'au niveau max.", fg="green"))
 
     # Résumé
     click.echo("\n── Résumé ──────────────────────────────────────────")

@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 
-from picarones.core.corpus import load_corpus_from_directory, Corpus, Document
+from picarones.core.corpus import load_corpus_from_directory, Document
 
 
 @pytest.fixture

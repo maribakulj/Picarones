@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import difflib
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -102,8 +101,8 @@ def analyze_structure(ground_truth: str, hypothesis: str) -> StructureResult:
     -------
     StructureResult
     """
-    gt_lines = [l for l in ground_truth.splitlines() if l.strip()]
-    ocr_lines = [l for l in hypothesis.splitlines() if l.strip()]
+    gt_lines = [ln for ln in ground_truth.splitlines() if ln.strip()]
+    ocr_lines = [ln for ln in hypothesis.splitlines() if ln.strip()]
 
     n_gt = len(gt_lines)
     n_ocr = len(ocr_lines)
@@ -138,8 +137,8 @@ def _count_line_changes(gt_lines: list[str], ocr_lines: list[str]) -> tuple[int,
     # Aligner les lignes par contenu
     matcher = difflib.SequenceMatcher(
         None,
-        [l.strip()[:30] for l in gt_lines],  # fingerprint court pour la comparaison
-        [l.strip()[:30] for l in ocr_lines],
+        [ln.strip()[:30] for ln in gt_lines],  # fingerprint court pour la comparaison
+        [ln.strip()[:30] for ln in ocr_lines],
         autojunk=False,
     )
 

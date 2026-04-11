@@ -2,7 +2,6 @@
 
 import json
 import pytest
-from pathlib import Path
 
 from picarones.core.metrics import MetricsResult
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport

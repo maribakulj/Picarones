@@ -18,7 +18,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-import math
 from pathlib import Path
 from typing import Optional
 
@@ -46,7 +45,7 @@ from picarones.core.statistics import (
     cluster_errors,
     bootstrap_ci,
 )
-from picarones.core.difficulty import compute_all_difficulties, difficulty_label, difficulty_color
+from picarones.core.difficulty import compute_all_difficulties, difficulty_label
 
 
 # ---------------------------------------------------------------------------

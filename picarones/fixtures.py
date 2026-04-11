@@ -12,10 +12,8 @@ import base64
 import random
 import struct
 import zlib
-from pathlib import Path
-from typing import Optional
 
-from picarones.core.metrics import MetricsResult, aggregate_metrics
+from picarones.core.metrics import MetricsResult
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
 from picarones.pipelines.over_normalization import detect_over_normalization
 # Sprint 5 — métriques avancées

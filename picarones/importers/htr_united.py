@@ -19,14 +19,15 @@ Exemple
 from __future__ import annotations
 
 import json
-import os
+import logging
 import re
-import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Catalogue remote URL
@@ -292,7 +293,7 @@ class HTRUnitedCatalogue:
             lang_lower = language.lower()
             results = [
                 e for e in results
-                if any(lang_lower in l.lower() for l in e.language)
+                if any(lang_lower in lg.lower() for lg in e.language)
             ]
 
         if script:

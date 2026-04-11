@@ -18,7 +18,7 @@ import inspect
 import json
 import math
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -310,7 +310,7 @@ class TestRunnerPartialResults:
     def test_partial_load_skips_already_done_docs(self, tmp_corpus, tmp_path):
         """La reprise depuis un fichier partiel doit sauter les documents déjà traités."""
         from picarones.core.corpus import load_corpus_from_directory
-        from picarones.core.runner import _load_partial, _partial_path, _sanitize_filename
+        from picarones.core.runner import _load_partial, _partial_path
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
         corpus_name = corpus.name
@@ -518,7 +518,7 @@ class TestWilcoxonScipyIntegration:
 
     def test_scipy_and_native_agree_on_significance(self):
         """Scipy et l'implémentation native doivent s'accorder sur la significativité."""
-        from picarones.core.statistics import wilcoxon_test, _SCIPY_AVAILABLE, _native_p_value
+        from picarones.core.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if not _SCIPY_AVAILABLE:
             pytest.skip("scipy non disponible")
 

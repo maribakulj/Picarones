@@ -1,6 +1,5 @@
 """Tests pour picarones.report.diff_utils."""
 
-import pytest
 from picarones.report.diff_utils import compute_word_diff, compute_char_diff, diff_stats
 
 

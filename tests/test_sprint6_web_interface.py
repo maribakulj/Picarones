@@ -27,11 +27,8 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
-import threading
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -214,7 +211,7 @@ class TestHTRUnitedSearch:
         results = htr_catalogue.search(language="French")
         assert len(results) > 0
         for r in results:
-            assert any("french" in l.lower() for l in r.language)
+            assert any("french" in lg.lower() for lg in r.language)
 
     def test_search_by_language_latin(self, htr_catalogue):
         results = htr_catalogue.search(language="Latin")
@@ -271,7 +268,7 @@ class TestHTRUnitedImport:
         from picarones.importers.htr_united import import_htr_united_corpus
         entry = htr_catalogue.entries[0]
         new_dir = tmp_path / "new_subdir" / "corpus"
-        result = import_htr_united_corpus(entry, new_dir, max_samples=5)
+        import_htr_united_corpus(entry, new_dir, max_samples=5)
         assert new_dir.exists()
 
 
@@ -645,7 +642,7 @@ class TestFastAPIHTRUnited:
         assert r.status_code == 200
         d = r.json()
         for e in d["entries"]:
-            assert any("french" in l.lower() for l in e["language"])
+            assert any("french" in lg.lower() for lg in e["language"])
 
     def test_import_valid_entry(self, client, tmp_path):
         # Get first entry id
@@ -919,7 +916,7 @@ class TestRunnerProgressCallback:
         """Le callback est appelé pour chaque document."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.core.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine, EngineResult
+        from picarones.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -1009,12 +1006,14 @@ class TestFastAPIModels:
     def test_models_google_vision_200(self, client):
         r = client.get("/api/models/google_vision")
         assert r.status_code == 200
-        assert "document_text_detection" in r.json()["models"]
+        model_ids = r.json().get("model_ids", r.json()["models"])
+        assert "document_text_detection" in model_ids
 
     def test_models_azure_doc_intel_200(self, client):
         r = client.get("/api/models/azure_doc_intel")
         assert r.status_code == 200
-        assert "prebuilt-document" in r.json()["models"]
+        model_ids = r.json().get("model_ids", r.json()["models"])
+        assert "prebuilt-document" in model_ids
 
     def test_models_ollama_200(self, client):
         r = client.get("/api/models/ollama")
@@ -1068,10 +1067,14 @@ class TestFastAPIModels:
                 r = client.get("/api/models/mistral_ocr")
         assert r.status_code == 200
         d = r.json()
-        assert isinstance(d["models"], list)
-        assert len(d["models"]) > 0
+        models = d.get("model_ids", d["models"])
+        assert isinstance(models, list)
+        assert len(models) > 0
         # Les modèles de fallback doivent contenir pixtral ou mistral-ocr
-        model_ids = " ".join(d["models"]).lower()
+        # models peut contenir des strings ou des dicts
+        model_ids = " ".join(
+            m if isinstance(m, str) else m.get("id", str(m)) for m in models
+        ).lower()
         assert "pixtral" in model_ids or "mistral-ocr" in model_ids
 
     def test_models_mistral_ocr_filters_vision_only(self, client):
@@ -1096,12 +1099,14 @@ class TestFastAPIModels:
             with patch("urllib.request.urlopen", return_value=_FakeHTTPResponse()):
                 r = client.get("/api/models/mistral_ocr")
         assert r.status_code == 200
-        models = r.json()["models"]
-        assert "mistral-ocr-latest" in models
-        assert "pixtral-12b-2409" in models
-        assert "pixtral-large-latest" in models
-        assert "mistral-large-latest" not in models
-        assert "mistral-small-latest" not in models
+        model_ids = r.json().get("model_ids", r.json()["models"])
+        # model_ids peut contenir des strings ou des dicts
+        ids = [m if isinstance(m, str) else m.get("id", str(m)) for m in model_ids]
+        assert "mistral-ocr-latest" in ids
+        assert "pixtral-12b-2409" in ids
+        assert "pixtral-large-latest" in ids
+        assert "mistral-large-latest" not in ids
+        assert "mistral-small-latest" not in ids
 
 
 # ===========================================================================
@@ -1124,12 +1129,15 @@ class TestFastAPIBenchmarkRun:
         })
         assert r.status_code == 400
 
-    def test_run_422_missing_ocr_engine(self, client, tmp_corpus):
+    def test_run_missing_ocr_engine_accepted(self, client, tmp_corpus):
+        """ocr_engine est désormais optionnel (vide = post-correction corpus)."""
         r = client.post("/api/benchmark/run", json={
             "corpus_path": str(tmp_corpus),
-            "competitors": [{"ocr_model": "fra"}],   # ocr_engine manquant
+            "competitors": [{"ocr_model": "fra"}],   # ocr_engine vide = valide
         })
-        assert r.status_code == 422
+        # Accepté par Pydantic (200), mais le benchmark échouera à l'exécution
+        # car ni ocr_engine ni llm_provider ne sont définis
+        assert r.status_code == 200
 
     def test_run_returns_job_id(self, client, tmp_corpus):
         r = client.post("/api/benchmark/run", json={

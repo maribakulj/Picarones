@@ -23,7 +23,6 @@ Usage
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import time
@@ -31,11 +30,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Optional
 
-from picarones.core.corpus import Corpus, Document
+from picarones.core.corpus import Corpus
 
 logger = logging.getLogger(__name__)
 

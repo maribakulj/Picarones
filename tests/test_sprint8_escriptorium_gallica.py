@@ -17,9 +17,12 @@ TestCLIRobustness            (6 tests)  — commande picarones robustness
 from __future__ import annotations
 
 import json
-import unittest
-from unittest.mock import MagicMock, patch
+from typing import TYPE_CHECKING
+from unittest.mock import patch
 import pytest
+
+if TYPE_CHECKING:
+    from picarones.core.results import BenchmarkResult
 
 
 # ===========================================================================
@@ -491,7 +494,6 @@ class TestGallicaOCR:
         assert "gallica.bnf.fr" in g._GALLICA_BASE
 
     def test_ark_normalization_in_import(self):
-        from picarones.importers.gallica import import_gallica_document, GallicaClient
         import re
         # Tester que l'ARK est normalisé depuis une URL complète
         full_url = "https://gallica.bnf.fr/ark:/12148/btv1b8453561w"
@@ -556,7 +558,9 @@ class TestCLIHistory:
     def test_history_empty_db(self):
         from click.testing import CliRunner
         from picarones.cli import cli
-        import gc, tempfile, os
+        import gc
+        import tempfile
+        import os
         runner = CliRunner()
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -590,7 +594,8 @@ class TestCLIHistory:
     def test_history_export_json(self):
         from click.testing import CliRunner
         from picarones.cli import cli
-        import tempfile, os
+        import tempfile
+        import os
         runner = CliRunner()
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             json_path = f.name
@@ -619,10 +624,10 @@ class TestCLIRobustness:
     def test_robustness_demo_mode(self):
         from click.testing import CliRunner
         from picarones.cli import cli
-        import tempfile
         runner = CliRunner()
         with runner.isolated_filesystem():
-            import os; os.makedirs("corpus")
+            import os
+            os.makedirs("corpus")
             result = runner.invoke(cli, [
                 "robustness", "--corpus", "corpus", "--engine", "tesseract", "--demo"
             ])
@@ -631,10 +636,10 @@ class TestCLIRobustness:
     def test_robustness_invalid_degradation(self):
         from click.testing import CliRunner
         from picarones.cli import cli
-        import tempfile
         runner = CliRunner()
         with runner.isolated_filesystem():
-            import os; os.makedirs("corpus")
+            import os
+            os.makedirs("corpus")
             result = runner.invoke(cli, [
                 "robustness", "--corpus", "corpus", "--engine", "tesseract",
                 "--degradations", "invalid_type", "--demo"
@@ -646,7 +651,8 @@ class TestCLIRobustness:
         from picarones.cli import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
-            import os; os.makedirs("corpus")
+            import os
+            os.makedirs("corpus")
             result = runner.invoke(cli, [
                 "robustness", "--corpus", "corpus", "--engine", "tesseract",
                 "--demo", "--degradations", "noise"
@@ -659,7 +665,8 @@ class TestCLIRobustness:
         from picarones.cli import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
-            import os; os.makedirs("corpus")
+            import os
+            os.makedirs("corpus")
             result = runner.invoke(cli, [
                 "robustness", "--corpus", "corpus", "--engine", "tesseract",
                 "--demo", "--output-json", "robustness.json"
@@ -674,7 +681,8 @@ class TestCLIRobustness:
         from picarones.cli import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
-            import os; os.makedirs("corpus")
+            import os
+            os.makedirs("corpus")
             result = runner.invoke(cli, [
                 "robustness", "--corpus", "corpus", "--engine", "tesseract",
                 "--demo", "--degradations", "blur"

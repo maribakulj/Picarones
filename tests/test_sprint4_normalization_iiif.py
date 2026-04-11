@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-import json
-import os
 import pytest
 
 from picarones.core.normalization import (
     NormalizationProfile,
-    DIPLOMATIC_FR_MEDIEVAL,
-    DIPLOMATIC_FR_EARLY_MODERN,
-    DIPLOMATIC_LATIN_MEDIEVAL,
-    DIPLOMATIC_MINIMAL,
     DEFAULT_DIPLOMATIC_PROFILE,
     _apply_diplomatic_table,
     get_builtin_profile,
@@ -19,7 +13,6 @@ from picarones.core.normalization import (
 from picarones.core.metrics import compute_metrics, aggregate_metrics, MetricsResult
 from picarones.importers.iiif import (
     IIIFManifestParser,
-    IIIFCanvas,
     parse_page_selector,
     _extract_label,
     _best_image_url_v2,

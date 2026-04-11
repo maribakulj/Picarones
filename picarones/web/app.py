@@ -31,8 +31,8 @@ import json
 import logging
 import os
 import shutil
+import tempfile
 import threading
-import time
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
 from fastapi import Cookie, FastAPI, File, HTTPException, Query, Response, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from picarones import __version__
@@ -387,7 +387,8 @@ def _check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
 
 def _fetch_ollama_info() -> tuple[bool, list[str]]:
     """Vérifie la disponibilité d'Ollama et liste ses modèles en un seul appel HTTP."""
-    import urllib.error, urllib.request
+    import urllib.error
+    import urllib.request
     try:
         with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2) as r:
             if r.status != 200:
@@ -413,7 +414,7 @@ def _get_tesseract_langs() -> list[str]:
     try:
         import pytesseract
         langs = pytesseract.get_languages(config="")
-        return sorted(l for l in langs if l != "osd")
+        return sorted(lg for lg in langs if lg != "osd")
     except Exception:
         return ["fra", "lat", "eng", "deu", "ita", "spa"]
 
@@ -479,7 +480,6 @@ async def api_models(
     Le paramètre ``capability`` filtre les résultats (ex : ``?capability=vision``
     ne retourne que les modèles supportant la vision).
     """
-    import urllib.error
     import urllib.request as _urlreq
 
     def _fetch_json(url: str, headers: dict) -> dict:
@@ -625,7 +625,23 @@ async def api_models(
 # API — corpus browse
 # ---------------------------------------------------------------------------
 
-_BROWSE_ROOTS = [Path(".").resolve(), _UPLOADS_DIR.resolve(), Path("/workspaces").resolve()]
+_BROWSE_ROOTS = [
+    Path(".").resolve(),
+    _UPLOADS_DIR.resolve(),
+    Path("/workspaces").resolve(),
+    Path(tempfile.gettempdir()).resolve(),
+]
+
+
+def _is_path_allowed(target: Path) -> bool:
+    """Vérifie qu'un chemin résolu est sous un des répertoires autorisés (cross-plateforme)."""
+    for root in _BROWSE_ROOTS:
+        try:
+            if target == root or target.is_relative_to(root):
+                return True
+        except (ValueError, TypeError):
+            continue
+    return False
 
 
 @app.get("/api/corpus/browse")
@@ -634,7 +650,7 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin �
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail=f"Dossier non trouvé : {path}")
     # Sécurité : restreindre la navigation aux répertoires autorisés
-    if not any(target == root or str(target).startswith(str(root) + "/") for root in _BROWSE_ROOTS):
+    if not _is_path_allowed(target):
         raise HTTPException(status_code=403, detail="Accès refusé : chemin hors des répertoires autorisés")
 
     items = []
@@ -1304,7 +1320,6 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
 def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None:
     """Exécute un benchmark à partir d'une liste de CompetitorConfig."""
-    import time
 
     job.status = "running"
     job.started_at = _iso_now()
@@ -1404,7 +1419,6 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
 
 def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     """Exécute le benchmark dans un thread et envoie des événements SSE."""
-    import time
 
     job.status = "running"
     job.started_at = _iso_now()
@@ -1451,8 +1465,6 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         total_steps = job.total_docs * n_engines
 
         step_counter = [0]
-
-        original_engine_names = [e.name for e in ocr_engines]
 
         def _progress_callback(engine_name: str, doc_idx: int, doc_id: str) -> None:
             if job.status == "cancelled":

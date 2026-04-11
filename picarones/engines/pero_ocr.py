@@ -17,7 +17,6 @@ cuda: false                        # utiliser le GPU si disponible
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 from typing import Optional
 

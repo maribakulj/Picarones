@@ -24,7 +24,6 @@ from __future__ import annotations
 import difflib
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 # ---------------------------------------------------------------------------

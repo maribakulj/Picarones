@@ -18,7 +18,6 @@ import pytest
 # ===========================================================================
 
 from picarones.core.confusion import (
-    ConfusionMatrix,
     EMPTY_CHAR,
     build_confusion_matrix,
     aggregate_confusion_matrices,
@@ -149,15 +148,12 @@ class TestTopConfusedChars:
 
 from picarones.core.char_scores import (
     LIGATURE_TABLE,
-    DIACRITIC_MAP,
     LigatureScore,
     DiacriticScore,
     compute_ligature_score,
     compute_diacritic_score,
     aggregate_ligature_scores,
     aggregate_diacritic_scores,
-    _ALL_LIGATURES,
-    _ALL_DIACRITICS,
 )
 
 
@@ -297,7 +293,6 @@ from picarones.core.taxonomy import (
     ERROR_CLASSES,
     classify_errors,
     aggregate_taxonomy,
-    VISUAL_CONFUSIONS,
 )
 
 

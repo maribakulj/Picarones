@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 try:
-    from picarones.engines.pero_ocr import PeroOCREngine
+    from picarones.engines.pero_ocr import PeroOCREngine  # noqa: F401
 
     __all__.append("PeroOCREngine")
 except ImportError:

@@ -267,7 +267,7 @@ class HuggingFaceImporter:
                     or q in ds.description.lower()
                     or q in ds.dataset_id.lower()
                     or any(q in t.lower() for t in ds.tags)
-                    or any(q in l.lower() for l in ds.language))
+                    or any(q in lg.lower() for lg in ds.language))
             ]
 
         if tags:
@@ -282,7 +282,7 @@ class HuggingFaceImporter:
             lang_lower = language.lower()
             datasets = [
                 ds for ds in datasets
-                if any(lang_lower in l.lower() for l in ds.language)
+                if any(lang_lower in lg.lower() for lg in ds.language)
             ]
 
         return datasets

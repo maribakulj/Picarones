@@ -10,8 +10,6 @@ Ces tests couvrent :
 
 from __future__ import annotations
 
-import json
-import re
 from pathlib import Path
 
 import pytest
@@ -196,7 +194,6 @@ class TestLLMAdapters:
         assert r_err.success is False
 
     def test_missing_api_key_raises(self):
-        import os
         from picarones.llm.openai_adapter import OpenAIAdapter
         adapter = OpenAIAdapter()
         adapter._api_key = None  # simuler clé manquante
