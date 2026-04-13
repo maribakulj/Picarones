@@ -3,4 +3,5 @@ include README.md
 include CHANGELOG.md
 include CLAUDE.md
 recursive-include picarones/prompts *.txt
+recursive-include picarones/web/static *.css
 recursive-include picarones *.json *.yaml *.yml
