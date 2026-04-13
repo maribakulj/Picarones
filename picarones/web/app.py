@@ -1560,7 +1560,7 @@ async def index(picarones_lang: str = Cookie(default="fr")) -> HTMLResponse:
         "<head>",
         f'<head>\n<meta name="picarones-lang" content="{lang}">',
         1,
-    )
+    ).replace("__VERSION__", __version__)
     return HTMLResponse(content=page)
 
 
@@ -1582,7 +1582,7 @@ _HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Picarones — OCR Benchmark</title>
-<link rel="stylesheet" href="/static/retro.css">
+<link rel="stylesheet" href="/static/retro.css?v=__VERSION__">
 <style>
 /* Overrides locaux minimaux — le gros du CSS est dans /static/retro.css */
 </style>

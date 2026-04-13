@@ -73,6 +73,9 @@ picarones = "picarones.cli:cli"
 where = ["."]
 include = ["picarones*"]
 
+[tool.setuptools.package-data]
+picarones = ["prompts/*.txt", "web/static/*.css"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
