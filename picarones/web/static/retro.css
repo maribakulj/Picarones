@@ -48,6 +48,38 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* ── ASCII Art Banner ────────────────────────────────────────────────────── */
+#ascii-banner {
+  background: var(--win-bg);
+  border-bottom: 1px solid var(--border-light);
+  text-align: center;
+  padding: 6px 0 2px;
+  overflow: hidden;
+}
+#ascii-banner pre {
+  font-family: 'Courier New', 'Consolas', monospace;
+  font-size: 6px;
+  line-height: 1.0;
+  margin: 0;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  display: inline-block;
+  user-select: none;
+}
+#ascii-banner .ascii-subtitle {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+@media (max-width: 768px) {
+  #ascii-banner { display: none; }
+}
+
 /* ── Menu Bar ────────────────────────────────────────────────────────────── */
 #header {
   background: var(--win-bg);
