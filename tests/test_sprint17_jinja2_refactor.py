@@ -186,7 +186,7 @@ class TestTemplateContent:
 
     def test_app_js_starts_with_use_strict(self):
         js = (_TEMPLATES_DIR / "_app.js").read_text(encoding="utf-8")
-        first_nonblank = next((l for l in js.splitlines() if l.strip()), "")
+        first_nonblank = next((line for line in js.splitlines() if line.strip()), "")
         assert "'use strict'" in first_nonblank
 
     def test_app_js_has_no_residual_script_tag(self):

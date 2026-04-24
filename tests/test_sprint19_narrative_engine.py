@@ -16,14 +16,11 @@ import re
 import pytest
 
 from picarones.core.narrative import (
-    DetectorRegistry,
     Fact,
     FactImportance,
     FactType,
     build_synthesis,
-    detect_all,
     extract_numbers,
-    register_default_detectors,
     render_fact,
     render_synthesis,
     select_facts,

@@ -328,7 +328,7 @@ class TestReportIntegration:
         assert "cd-tie" in html
 
     def test_report_json_contains_friedman_and_nemenyi(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator, _build_report_data
+        from picarones.report.generator import _build_report_data
         data = _build_report_data(benchmark_result, images_b64={})
         stats = data.get("statistics", {})
         assert "friedman" in stats

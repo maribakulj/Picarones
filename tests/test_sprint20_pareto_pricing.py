@@ -22,7 +22,6 @@ from picarones.core.narrative.detectors import (
 )
 from picarones.core.narrative.facts import FactType
 from picarones.core.pricing import (
-    EngineCost,
     build_costs_for_benchmark,
     estimate_cost,
     load_pricing_database,
