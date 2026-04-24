@@ -20,3 +20,6 @@ rapports/
 corpus_*/
 corpus/
 uploads/
+
+# Exceptions : fichiers HTML sources du package (templates Jinja2, pas rapports)
+!picarones/report/templates/*.html

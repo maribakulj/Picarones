@@ -103,6 +103,8 @@ class DocumentResult:
         self.taxonomy = None
         self.structure = None
         self.image_quality = None
+        self.line_metrics = None
+        self.hallucination_metrics = None
 
 
 @dataclass

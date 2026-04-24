@@ -934,8 +934,11 @@ async def api_corpus_uploads() -> dict:
                 "doc_count": summary["doc_count"],
                 "has_missing_gt": summary["has_missing_gt"],
             })
-        except Exception:
-            pass
+        except Exception as e:
+            _logger.warning(
+                "[api_corpus_uploads] upload '%s' ignoré — inspection impossible : %s",
+                d.name, e,
+            )
     return {"uploads": uploads}
 
 

@@ -84,15 +84,17 @@ test-sprint9:  ## Tests Sprint 9 uniquement
 # Qualité du code
 # ──────────────────────────────────────────────────────────────────
 
-lint:  ## Vérifie le style du code (ruff si disponible, sinon flake8)
+lint:  ## Vérifie le style du code (configuration lue depuis pyproject.toml)
+	@# La config ruff vit dans [tool.ruff] de pyproject.toml : cette cible,
+	@# le job CI et une invocation directe `ruff check` produisent le même
+	@# résultat. Lancez avant tout push pour éviter un échec en PR.
 	@if command -v ruff > /dev/null 2>&1; then \
 	  ruff check $(PACKAGE)/ tests/; \
 	elif $(VENV_BIN)/python -m ruff --version > /dev/null 2>&1; then \
 	  $(VENV_BIN)/python -m ruff check $(PACKAGE)/ tests/; \
-	elif command -v flake8 > /dev/null 2>&1; then \
-	  flake8 $(PACKAGE)/ tests/ --max-line-length=100 --ignore=E501,W503; \
 	else \
-	  echo "Aucun linter disponible (installez ruff : pip install ruff)"; \
+	  echo "ruff non installé — installation : pip install ruff"; \
+	  exit 1; \
 	fi
 
 typecheck:  ## Vérification de types avec mypy (si installé)

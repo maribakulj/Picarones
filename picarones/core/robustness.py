@@ -265,10 +265,12 @@ def _degrade_pillow(png_bytes: bytes, degradation_type: str, level: float) -> by
     if degradation_type == "noise":
         if level > 0:
             import random
-            data = list(img.getdata())
+            # RGB : 3 octets par pixel, tobytes() reste stable Pillow 10 → 14+
+            raw = img.tobytes()
             rng = random.Random(0)
             noisy = []
-            for r, g, b in data:
+            for i in range(0, len(raw), 3):
+                r, g, b = raw[i], raw[i + 1], raw[i + 2]
                 noisy.append((
                     max(0, min(255, int(r + rng.gauss(0, level)))),
                     max(0, min(255, int(g + rng.gauss(0, level)))),

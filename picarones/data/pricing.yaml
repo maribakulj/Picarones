@@ -1,0 +1,136 @@
+# Base de prix indicative des moteurs OCR/HTR et des LLM utilisés dans les
+# pipelines OCR+LLM. Sert uniquement à la vue Pareto coût/qualité du rapport.
+#
+# AVERTISSEMENT
+# -------------
+# Ces prix sont des estimations datées et vieillissent vite. Ils sont donnés
+# à titre indicatif et ne remplacent pas une négociation commerciale ou un
+# relevé sur facture. Toute institution menant un benchmark avec un budget
+# réel doit surcharger ces valeurs via ``ReportGenerator(..., pricing=...)``.
+#
+# CONVENTIONS
+# -----------
+# - Unité monétaire : EUR (conversion indicative depuis USD quand applicable)
+# - Prix exprimé par 1000 pages traitées (1 page = 1 document moyen patrimonial,
+#   environ 1 500 caractères ou ~2 000 tokens LLM).
+# - kWh par 1000 pages : estimation énergétique pour le calcul carbone optionnel.
+# - Intensité carbone du réseau (g CO2 / kWh) : dépend du mix électrique de la
+#   région où le moteur est exécuté (France ≈ 58, US moyen ≈ 400, Irlande ≈ 350).
+#
+# CATÉGORIES
+# ----------
+# - ``type: local`` : moteur open-source tournant sur machine de l'utilisateur.
+#   Coût effectif = temps d'inférence × taux horaire paramétré.
+# - ``type: cloud_api`` : service facturé à la page ou au token.
+
+meta:
+  last_updated: "2026-04-01"
+  currency: EUR
+  default_hourly_rate_local_cpu_eur: 0.08  # machine locale amortie
+  default_hourly_rate_local_gpu_eur: 1.20  # g4dn.xlarge ou équivalent
+  default_grid_intensity_g_co2_per_kwh: 58  # France 2025 (mix bas carbone)
+  cloud_grid_intensity_g_co2_per_kwh: 380    # moyenne cloud hyperscalers
+
+engines:
+  # ── OCR classiques locaux ─────────────────────────────────────────
+  tesseract:
+    type: local
+    local_mean_seconds_per_page: 2.0
+    kwh_per_1k_pages: 0.012
+    notes: "Open-source, CPU uniquement. Rapide mais moins précis sur écriture manuscrite."
+
+  pero_ocr:
+    type: local
+    local_mean_seconds_per_page: 18.0
+    kwh_per_1k_pages: 0.300
+    hourly_rate_override_eur: 1.20  # GPU
+    notes: "HTR deep learning, GPU recommandé. Best-in-class sur documents historiques."
+
+  kraken:
+    type: local
+    local_mean_seconds_per_page: 8.0
+    kwh_per_1k_pages: 0.150
+    hourly_rate_override_eur: 1.20
+    notes: "HTR open-source, GPU recommandé. Modèles pré-entraînés via HTR-United."
+
+  calamari:
+    type: local
+    local_mean_seconds_per_page: 6.0
+    kwh_per_1k_pages: 0.100
+    hourly_rate_override_eur: 1.20
+
+  # ── APIs OCR cloud ────────────────────────────────────────────────
+  mistral_ocr:
+    type: cloud_api
+    api_price_per_1k_pages: 0.90  # ≈ 0.001 USD / page, endpoint /v1/ocr dédié
+    pricing_source_url: "https://mistral.ai/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.120
+    notes: "Endpoint /v1/ocr dédié (pas chat/completions)."
+
+  google_vision:
+    type: cloud_api
+    api_price_per_1k_pages: 1.40  # Document Text Detection, 1-1000 = $1.50/1k
+    pricing_source_url: "https://cloud.google.com/vision/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.120
+
+  azure_doc_intel:
+    type: cloud_api
+    api_price_per_1k_pages: 9.50  # Read S1 tier
+    pricing_source_url: "https://azure.microsoft.com/pricing/details/ai-document-intelligence/"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.120
+
+  # ── LLM pour pipelines OCR+LLM ────────────────────────────────────
+  # Estimation par page : prompt ~500 tokens + réponse ~1500 tokens = 2k tokens.
+  # Les VLM consomment en plus des tokens image (~1k tokens pour une page A4).
+  "gpt-4o":
+    type: cloud_api
+    api_price_per_1k_pages: 7.50  # approx 2.5k tokens text + 1k image
+    pricing_source_url: "https://openai.com/api/pricing/"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.200
+
+  "gpt-4o-mini":
+    type: cloud_api
+    api_price_per_1k_pages: 0.45
+    pricing_source_url: "https://openai.com/api/pricing/"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.060
+
+  "claude-sonnet-4-6":
+    type: cloud_api
+    api_price_per_1k_pages: 6.00
+    pricing_source_url: "https://www.anthropic.com/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.180
+
+  "claude-haiku-4-5":
+    type: cloud_api
+    api_price_per_1k_pages: 0.80
+    pricing_source_url: "https://www.anthropic.com/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.070
+
+  "mistral-large-latest":
+    type: cloud_api
+    api_price_per_1k_pages: 2.40
+    pricing_source_url: "https://mistral.ai/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.150
+
+  "ministral-3b-latest":
+    type: cloud_api
+    api_price_per_1k_pages: 0.08
+    pricing_source_url: "https://mistral.ai/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.040
+    notes: "Text-only, ne supporte pas le mode multimodal."
+
+  "pixtral-large-latest":
+    type: cloud_api
+    api_price_per_1k_pages: 3.00
+    pricing_source_url: "https://mistral.ai/pricing"
+    pricing_date: "2026-01"
+    kwh_per_1k_pages: 0.170

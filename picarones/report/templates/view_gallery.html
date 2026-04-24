@@ -1,0 +1,36 @@
+
+<!-- ════ Vue 2 : Galerie ═══════════════════════════════════════════ -->
+<div id="view-gallery" class="view">
+  <div class="card">
+    <h2 data-i18n="h_gallery">Galerie des documents</h2>
+    <div class="gallery-controls">
+      <label><span data-i18n="gallery_sort_label">Trier par :</span>
+        <select id="gallery-sort" onchange="renderGallery()">
+          <option value="doc_id" data-i18n-opt="gallery_sort_id">Identifiant</option>
+          <option value="mean_cer" data-i18n-opt="gallery_sort_cer">CER moyen</option>
+          <option value="difficulty_score" data-i18n-opt="gallery_sort_difficulty">Difficulté</option>
+          <option value="best_engine" data-i18n-opt="gallery_sort_best">Meilleur moteur</option>
+        </select>
+      </label>
+      <label><span data-i18n="gallery_filter_cer_label">Filtrer CER &gt;</span>
+        <input type="number" id="gallery-filter-cer" min="0" max="100" value="0" step="1"
+          style="width:60px" onchange="renderGallery()"> %
+      </label>
+      <label><span data-i18n="gallery_filter_engine_label">Moteur :</span>
+        <select id="gallery-engine-select" onchange="renderGallery()">
+          <option value="" data-i18n-opt="gallery_filter_all">Tous</option>
+        </select>
+      </label>
+      <button class="btn-secondary" onclick="resetGalleryExclusions()" id="gallery-reset-btn"
+        title="Réinitialiser toutes les exclusions manuelles" style="display:none">
+        ↺ Réinitialiser exclusions
+      </button>
+    </div>
+    <div id="gallery-exclusion-info" style="font-size:.82rem;color:var(--text-muted);margin:.4rem 0;display:none"></div>
+    <div id="gallery-grid" class="gallery-grid"></div>
+    <div id="gallery-empty" class="empty-state" style="display:none" data-i18n="gallery_empty">
+      Aucun document ne correspond aux filtres.
+    </div>
+  </div>
+</div>
+

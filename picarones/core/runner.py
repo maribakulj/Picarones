@@ -157,6 +157,8 @@ def _compute_document_result(
     taxonomy_data = None
     structure_data = None
     image_quality_data = None
+    line_metrics_data = None
+    hallucination_data = None
 
     if ocr_result.success:
         try:
@@ -188,6 +190,20 @@ def _compute_document_result(
         except Exception as e:
             _logger.warning("[structure] fonctionnalité dégradée : %s", e)
 
+        try:
+            from picarones.core.line_metrics import compute_line_metrics
+            lm = compute_line_metrics(ground_truth, ocr_result.text)
+            line_metrics_data = lm.as_dict()
+        except Exception as e:
+            _logger.warning("[line_metrics] fonctionnalité dégradée : %s", e)
+
+        try:
+            from picarones.core.hallucination import compute_hallucination_metrics
+            hm = compute_hallucination_metrics(ground_truth, ocr_result.text)
+            hallucination_data = hm.as_dict()
+        except Exception as e:
+            _logger.warning("[hallucination] fonctionnalité dégradée : %s", e)
+
     try:
         from picarones.core.image_quality import analyze_image_quality
         iq = analyze_image_quality(image_path)
@@ -211,6 +227,8 @@ def _compute_document_result(
         taxonomy=taxonomy_data,
         structure=structure_data,
         image_quality=image_quality_data,
+        line_metrics=line_metrics_data,
+        hallucination_metrics=hallucination_data,
     )
 
 
@@ -327,6 +345,8 @@ def _load_partial(
                     taxonomy=d.get("taxonomy"),
                     structure=d.get("structure"),
                     image_quality=d.get("image_quality"),
+                    line_metrics=d.get("line_metrics"),
+                    hallucination_metrics=d.get("hallucination_metrics"),
                 ))
     except Exception as e:
         logger.warning("Impossible de charger les résultats partiels '%s' : %s", path, e)
@@ -608,6 +628,8 @@ def run_benchmark(
         agg_taxonomy = _aggregate_taxonomy(document_results)
         agg_structure = _aggregate_structure(document_results)
         agg_image_quality = _aggregate_image_quality(document_results)
+        agg_line_metrics = _aggregate_line_metrics(document_results)
+        agg_hallucination = _aggregate_hallucination(document_results)
 
         report = EngineReport(
             engine_name=engine.name,
@@ -620,6 +642,8 @@ def run_benchmark(
             aggregated_taxonomy=agg_taxonomy,
             aggregated_structure=agg_structure,
             aggregated_image_quality=agg_image_quality,
+            aggregated_line_metrics=agg_line_metrics,
+            aggregated_hallucination=agg_hallucination,
         )
         engine_reports.append(report)
         logger.info(
@@ -786,4 +810,38 @@ def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
         return aggregate_image_quality(results)
     except Exception as e:
         logger.warning("[aggregate_image_quality] fonctionnalité dégradée : %s", e)
+        return None
+
+
+def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
+    """Agrège la distribution CER par ligne (Gini, percentiles, heatmap)."""
+    try:
+        from picarones.core.line_metrics import aggregate_line_metrics, LineMetrics
+        results = [
+            LineMetrics.from_dict(dr.line_metrics)
+            for dr in doc_results
+            if dr.line_metrics is not None
+        ]
+        if not results:
+            return None
+        return aggregate_line_metrics(results)
+    except Exception as e:
+        logger.warning("[aggregate_line_metrics] fonctionnalité dégradée : %s", e)
+        return None
+
+
+def _aggregate_hallucination(doc_results: list) -> Optional[dict]:
+    """Agrège les métriques de détection d'hallucinations VLM."""
+    try:
+        from picarones.core.hallucination import aggregate_hallucination_metrics, HallucinationMetrics
+        results = [
+            HallucinationMetrics.from_dict(dr.hallucination_metrics)
+            for dr in doc_results
+            if dr.hallucination_metrics is not None
+        ]
+        if not results:
+            return None
+        return aggregate_hallucination_metrics(results)
+    except Exception as e:
+        logger.warning("[aggregate_hallucination] fonctionnalité dégradée : %s", e)
         return None

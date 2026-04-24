@@ -1,0 +1,59 @@
+# Templates de rendu narratif — français.
+#
+# Chaque clé correspond à une valeur de ``FactType``. La valeur est un template
+# Python ``.format()`` qui consomme les champs du ``Fact.payload``.
+#
+# Règle anti-hallucination : n'introduire aucune valeur numérique ou nom
+# d'entité qui ne soit pas dans le ``payload``. Les tests parsent la synthèse
+# rendue et vérifient la traçabilité.
+
+global_leader_cer: >-
+  Sur ce corpus de {n_docs} documents, {engine} obtient le CER moyen le plus
+  bas ({cer_pct} %).
+
+statistical_tie: >-
+  Les moteurs {engines_list} ne sont pas statistiquement distinguables
+  (Friedman-Nemenyi, α = {alpha}, n = {n_blocks} documents, CD = {critical_distance}).
+
+significant_gap: >-
+  L'écart entre {leader} et {runner_up} est statistiquement significatif
+  (Wilcoxon, p = {p_value:.4f}, Δ CER = {delta_cer_pct} points sur {n_pairs} paires).
+
+stratum_winner: >-
+  Sur la strate « {stratum} » ({n_docs_stratum} documents), {engine} domine
+  nettement avec un CER de {cer_pct} % contre {second_cer_pct} % pour {second_engine}.
+
+stratum_collapse: >-
+  {engine} est globalement compétitif ({global_cer_pct} %) mais s'effondre sur
+  la strate « {stratum} » ({local_cer_pct} % sur {n_docs_stratum} documents,
+  soit {delta_cer_pct} points au-dessus de sa moyenne).
+
+error_profile_outlier: >-
+  Le profil d'erreurs de {engine} est atypique : {proportion_pct} % de la
+  classe « {error_class} », contre une médiane de {median_proportion_pct} %
+  sur les autres moteurs (ratio ×{ratio_to_median}).
+
+llm_hallucination_flag: >-
+  Signal d'hallucination sur {engine} ({reasons_list}) —
+  {hallucinating_rate_pct} % de documents au-dessus des seuils d'alerte.
+
+robustness_fragile: >-
+  {engine} est fragile à la dégradation « {degradation} » : son CER passe de
+  {cer_baseline_pct} % à {cer_degraded_pct} % au niveau maximal (ratio ×{ratio}).
+
+speed_winner: >-
+  {engine} est le plus rapide ({mean_duration} s / doc, ×{speedup} plus vite
+  que la médiane) pour un CER comparable ({cer_pct} %).
+
+confidence_warning: >-
+  Classement fragile : l'intervalle de confiance à 95 % de {engine} s'étend
+  sur {ci_width_pct} points de CER, à comparer à l'écart de {gap_to_runner_up_pct} points avec le second.
+
+pareto_alternative: >-
+  À coût sensiblement inférieur, {engine} offre un compromis intéressant
+  ({cer_pct} % de CER pour {cost} €/1000 pages, contre {leader_cer_pct} % /
+  {leader_cost} € pour {leader}, soit ×{cost_saving_ratio} moins cher).
+
+cost_outlier: >-
+  Coût disproportionné pour {engine} ({cost} €/1000 pages, ×{ratio_to_median}
+  la médiane) sans avantage de qualité compensatoire (CER {cer_pct} %).

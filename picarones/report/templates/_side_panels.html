@@ -1,0 +1,61 @@
+<!-- ── Panneau latéral glossaire (Sprint 20) ─────────────────────── -->
+<aside id="glossary-panel" class="side-panel" hidden aria-hidden="true"
+       aria-labelledby="glossary-panel-title">
+  <header class="side-panel-header">
+    <h3 id="glossary-panel-title" class="side-panel-title">Glossaire</h3>
+    <button type="button" class="side-panel-close" aria-label="Fermer"
+            onclick="closeGlossary()">×</button>
+  </header>
+  <div id="glossary-panel-body" class="side-panel-body"></div>
+</aside>
+
+<!-- ── Panneau latéral personnalisation (Sprint 20) ──────────────── -->
+<aside id="customize-panel" class="side-panel" hidden aria-hidden="true"
+       aria-labelledby="customize-panel-title">
+  <header class="side-panel-header">
+    <h3 id="customize-panel-title" class="side-panel-title"
+        data-i18n="customize_title">Mode avancé — personnalisation</h3>
+    <button type="button" class="side-panel-close" aria-label="Fermer"
+            onclick="closeCustomize()">×</button>
+  </header>
+  <div class="side-panel-body">
+
+    <section class="custom-section">
+      <h4 data-i18n="customize_columns">Colonnes visibles</h4>
+      <div id="customize-columns-list" class="custom-col-list"></div>
+    </section>
+
+    <section class="custom-section">
+      <h4 data-i18n="customize_filters">Filtres par strate</h4>
+      <div id="customize-filters-list" class="custom-filters-list">
+        <p class="custom-note" data-i18n="customize_filters_empty">
+          Aucune strate détectée dans les métadonnées du corpus.
+        </p>
+      </div>
+    </section>
+
+    <section class="custom-section">
+      <h4>
+        <span data-i18n="customize_weights">Score composite personnel</span>
+        <button type="button" class="custom-weights-toggle" id="custom-weights-toggle"
+                onclick="toggleCustomWeights()" data-i18n="customize_weights_enable">
+          Activer
+        </button>
+      </h4>
+      <p class="custom-warning" data-i18n="customize_weights_warning">
+        Ces poids reflètent votre cas d'usage. Il n'existe pas de pondération
+        universellement valide — Picarones ne suggère aucune pondération par défaut.
+      </p>
+      <div id="custom-weights-controls" hidden>
+        <div id="custom-weights-list"></div>
+        <div class="custom-formula" id="custom-formula"></div>
+      </div>
+    </section>
+
+    <section class="custom-section">
+      <button type="button" class="custom-reset" onclick="resetCustomization()"
+              data-i18n="customize_reset">Réinitialiser la vue</button>
+    </section>
+
+  </div>
+</aside>

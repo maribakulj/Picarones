@@ -1,0 +1,55 @@
+# Narrative rendering templates — English.
+# Anti-hallucination rule: never introduce a number or entity name that is not
+# already in the Fact ``payload``. Tests verify traceability of every number
+# appearing in the rendered synthesis.
+
+global_leader_cer: >-
+  On this corpus of {n_docs} documents, {engine} achieves the lowest mean CER
+  ({cer_pct} %).
+
+statistical_tie: >-
+  Engines {engines_list} are not statistically distinguishable
+  (Friedman-Nemenyi, α = {alpha}, n = {n_blocks} documents, CD = {critical_distance}).
+
+significant_gap: >-
+  The gap between {leader} and {runner_up} is statistically significant
+  (Wilcoxon, p = {p_value:.4f}, Δ CER = {delta_cer_pct} points over {n_pairs} pairs).
+
+stratum_winner: >-
+  On stratum "{stratum}" ({n_docs_stratum} documents), {engine} clearly
+  dominates with a CER of {cer_pct} % vs. {second_cer_pct} % for {second_engine}.
+
+stratum_collapse: >-
+  {engine} is globally competitive ({global_cer_pct} %) but collapses on
+  stratum "{stratum}" ({local_cer_pct} % over {n_docs_stratum} documents,
+  i.e. {delta_cer_pct} points above its own average).
+
+error_profile_outlier: >-
+  {engine} has an atypical error profile: {proportion_pct} % of errors fall
+  into class "{error_class}", vs. a median of {median_proportion_pct} % across
+  other engines (×{ratio_to_median} the median).
+
+llm_hallucination_flag: >-
+  Hallucination signal on {engine} ({reasons_list}) —
+  {hallucinating_rate_pct} % of documents above alert thresholds.
+
+robustness_fragile: >-
+  {engine} is fragile under "{degradation}" degradation: its CER rises from
+  {cer_baseline_pct} % to {cer_degraded_pct} % at maximum level (×{ratio}).
+
+speed_winner: >-
+  {engine} is the fastest ({mean_duration} s/doc, ×{speedup} faster than the
+  median) for comparable quality (CER {cer_pct} %).
+
+confidence_warning: >-
+  Ranking is fragile: the 95 % confidence interval of {engine} spans
+  {ci_width_pct} CER points, compared with a gap of {gap_to_runner_up_pct} points to the runner-up.
+
+pareto_alternative: >-
+  At much lower cost, {engine} offers an interesting trade-off ({cer_pct} %
+  CER for {cost} €/1000 pages, vs {leader_cer_pct} % / {leader_cost} € for
+  {leader}, i.e. ×{cost_saving_ratio} cheaper).
+
+cost_outlier: >-
+  Disproportionate cost for {engine} ({cost} €/1000 pages, ×{ratio_to_median}
+  the median) without a compensating quality advantage (CER {cer_pct} %).

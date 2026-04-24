@@ -1,0 +1,171 @@
+
+<!-- ════ Vue 4 : Analyses ══════════════════════════════════════════ -->
+<div id="view-analyses" class="view">
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <h3 data-i18n="h_cer_dist">Distribution du CER par moteur</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-cer-hist"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_radar">Profil des moteurs (radar)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-radar"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem" data-i18n="radar_note">
+        Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_cer_doc">CER par document (tous moteurs)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-cer-doc"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_duration">Temps d'exécution moyen (secondes/document)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-duration"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_quality_cer">Qualité image ↔ CER (scatter plot)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-quality-cer"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="quality_cer_note">
+        Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.
+      </div>
+    </div>
+
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_taxonomy">Taxonomie des erreurs par moteur</h3>
+      <div class="chart-canvas-wrap" style="max-height:300px">
+        <canvas id="chart-taxonomy"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="taxonomy_note">
+        Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Courbe de fiabilité -->
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_reliability">Courbes de fiabilité</h3>
+      <div class="chart-canvas-wrap" style="max-height:300px">
+        <canvas id="chart-reliability"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="reliability_note">
+        Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ?
+        Une courbe basse = moteur performant même sur les documents faciles.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Intervalles de confiance -->
+    <div class="chart-card">
+      <h3 data-i18n="h_bootstrap">Intervalles de confiance à 95 % (bootstrap)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-bootstrap-ci"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="bootstrap_note">
+        IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Diagramme de Venn -->
+    <div class="chart-card">
+      <h3 data-i18n="h_venn">Erreurs communes / exclusives (Venn)</h3>
+      <div id="venn-container" style="min-height:260px;display:flex;align-items:center;justify-content:center"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical" data-i18n="venn_note">
+        Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents.
+        Erreurs communes = segments partagés.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Tests de Wilcoxon -->
+    <div class="chart-card technical">
+      <h3 data-i18n="h_pairwise">Tests de Wilcoxon — comparaisons par paires</h3>
+      <div id="wilcoxon-table-container" style="overflow-x:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="pairwise_note">
+        Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Clustering des erreurs -->
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_clusters">Clustering des patterns d'erreurs</h3>
+      <div id="error-clusters-container"></div>
+    </div>
+
+    <!-- Sprint 10 — Scatter Gini vs CER moyen -->
+    <div class="chart-card">
+      <h3 data-i18n="h_gini_cer">Gini vs CER moyen <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="gini_cer_ideal">— idéal : bas-gauche</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-gini-cer"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="gini_cer_note">
+        Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).
+      </div>
+    </div>
+
+    <!-- Sprint 10 — Scatter ratio longueur vs ancrage -->
+    <div class="chart-card">
+      <h3 data-i18n="h_ratio_anchor">Ratio longueur vs ancrage <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="ratio_anchor_subtitle">— hallucinations VLM</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-ratio-anchor"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="ratio_anchor_note">
+        Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT.
+        Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.
+      </div>
+    </div>
+
+    <!-- Sprint 19 — Vue Pareto coût/qualité ────────────────────────── -->
+    <div class="chart-card pareto-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_pareto">Compromis qualité / coût</h3>
+      <div class="pareto-toolbar">
+        <button class="pareto-toggle active" data-axis="cost" onclick="setParetoAxis('cost')"
+                data-i18n="pareto_axis_cost">Coût € / 1000 pages</button>
+        <button class="pareto-toggle" data-axis="speed" onclick="setParetoAxis('speed')"
+                data-i18n="pareto_axis_speed">Vitesse (s / page)</button>
+        <button class="pareto-toggle pareto-experimental" data-axis="co2"
+                onclick="setParetoAxis('co2')" data-i18n="pareto_axis_co2"
+                title="Estimation expérimentale">Carbone (g CO₂)</button>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="pareto-chart"></canvas></div>
+      <div id="pareto-method-note" class="pareto-note" data-i18n="pareto_note">
+        Les moteurs sur la frontière de Pareto (en évidence) sont ceux pour
+        lesquels aucun autre moteur n'offre simultanément un meilleur CER ET
+        un meilleur coût. Prix indicatifs (table interne, datée). Le mode
+        carbone est expérimental.
+      </div>
+      <details class="pareto-assumptions">
+        <summary data-i18n="pareto_assumptions_summary">Hypothèses détaillées par moteur</summary>
+        <ul id="pareto-assumptions-list"></ul>
+      </details>
+    </div>
+
+    <!-- Sprint 7 — Matrice de corrélation -->
+    <div class="chart-card technical" style="grid-column:1/-1">
+      <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>
+      <div style="margin-bottom:.5rem">
+        <label style="font-size:.82rem;font-weight:600"><span data-i18n="corr_engine_label">Moteur :</span>
+          <select id="corr-engine-select" onchange="renderCorrelationMatrix()"
+            style="padding:.25rem .5rem;border-radius:6px;border:1px solid var(--border);margin-left:.25rem"></select>
+        </label>
+      </div>
+      <div id="corr-matrix-container" style="overflow-x:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="corr_note">
+        Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques.
+        Vert = corrélation positive, Rouge = corrélation négative.
+      </div>
+    </div>
+
+  </div>
+</div>
+

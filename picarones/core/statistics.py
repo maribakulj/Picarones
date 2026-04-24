@@ -2,11 +2,17 @@
 
 Fonctions fournies
 ------------------
-- wilcoxon_test(a, b)          : test de Wilcoxon signé-rangé entre deux séries de CER
-- bootstrap_ci(values, ...)    : intervalle de confiance à 95 % par bootstrap
-- compute_pairwise_stats(...)  : matrice de tests de Wilcoxon entre tous les concurrents
-- cluster_errors(...)          : regroupement des patterns d'erreurs en clusters
-- compute_correlation_matrix(...)  : matrice de corrélation entre toutes les métriques
+- wilcoxon_test(a, b)                  : Wilcoxon signé-rangé (2 moteurs appariés)
+- bootstrap_ci(values, ...)            : intervalle de confiance à 95 % par bootstrap
+- compute_pairwise_stats(...)          : matrice de Wilcoxon entre toutes les paires
+- friedman_test(engine_cer_map)        : Friedman (k moteurs, n documents)       [Sprint 17]
+- nemenyi_posthoc(engine_cer_map)      : post-hoc Nemenyi avec critical distance [Sprint 17]
+- build_critical_difference_svg(...)   : rendu SVG du CDD (Demšar 2006)          [Sprint 17]
+- compute_pareto_front(points, ...)    : frontière de Pareto multi-objectifs     [Sprint 19]
+- cluster_errors(...)                  : regroupement des patterns d'erreurs
+- compute_correlation_matrix(...)      : matrice de corrélation des métriques
+- compute_reliability_curve(...)       : courbe CER vs. % docs les plus faciles
+- compute_venn_data(...)               : diagramme de Venn 2/3 moteurs
 """
 
 from __future__ import annotations
@@ -261,6 +267,574 @@ def compute_pairwise_stats(
                 **res,
             })
     return results
+
+
+# ---------------------------------------------------------------------------
+# Test de Friedman + post-hoc Nemenyi (Sprint 17)
+# ---------------------------------------------------------------------------
+#
+# Référence : Demšar, J. (2006), "Statistical Comparisons of Classifiers over
+# Multiple Data Sets", Journal of Machine Learning Research 7:1-30. Standard
+# de facto pour comparer plusieurs systèmes sur plusieurs datasets — ici :
+# plusieurs moteurs OCR sur plusieurs documents. Le CDD (critical difference
+# diagram) issu de Nemenyi est le rendu canonique.
+
+# Valeurs critiques de la distribution du Studentized Range divisées par √2,
+# pour df = ∞ (approximation usuelle pour Nemenyi). Source : tables de Tukey.
+# Clé : nombre de traitements k ; valeur : q_α pour α ∈ {0.05, 0.01}.
+_NEMENYI_Q_TABLE = {
+    # k   q_0.05   q_0.01
+    2:  (1.960, 2.576),
+    3:  (2.343, 2.913),
+    4:  (2.569, 3.113),
+    5:  (2.728, 3.255),
+    6:  (2.850, 3.364),
+    7:  (2.949, 3.452),
+    8:  (3.031, 3.526),
+    9:  (3.102, 3.590),
+    10: (3.164, 3.646),
+    11: (3.219, 3.696),
+    12: (3.268, 3.741),
+    13: (3.313, 3.781),
+    14: (3.354, 3.818),
+    15: (3.391, 3.853),
+    16: (3.426, 3.886),
+    17: (3.458, 3.916),
+    18: (3.489, 3.944),
+    19: (3.517, 3.970),
+    20: (3.544, 3.995),
+    25: (3.658, 4.095),
+    30: (3.739, 4.167),
+    40: (3.858, 4.272),
+    50: (3.945, 4.349),
+}
+
+
+def _chi_square_sf(x: float, df: int) -> float:
+    """Survival function de la loi chi², 1 - CDF(x).
+
+    Utilise scipy si disponible (méthode exacte), sinon Wilson-Hilferty
+    (approximation normale précise dès df ≥ 3).
+    """
+    if x <= 0 or df <= 0:
+        return 1.0
+    try:
+        from scipy.stats import chi2 as _chi2  # type: ignore[import-untyped]
+        return float(_chi2.sf(x, df))
+    except ImportError:
+        pass
+    # Wilson-Hilferty : transforme chi² en approximation normale
+    z = (((x / df) ** (1.0 / 3.0)) - (1.0 - 2.0 / (9.0 * df))) / math.sqrt(2.0 / (9.0 * df))
+    return _normal_sf(z)
+
+
+def _rank_row(values: list[float]) -> list[float]:
+    """Rangs d'une ligne — petit = rang 1. Ex-aequo : rangs moyens."""
+    n = len(values)
+    indexed = sorted(range(n), key=lambda i: values[i])
+    ranks = [0.0] * n
+    i = 0
+    while i < n:
+        j = i
+        while j < n and values[indexed[j]] == values[indexed[i]]:
+            j += 1
+        avg_rank = (i + j + 1) / 2.0  # 1-based
+        for k in range(i, j):
+            ranks[indexed[k]] = avg_rank
+        i = j
+    return ranks
+
+
+def _aligned_cer_matrix(
+    engine_cer_map: dict[str, list[float]],
+) -> tuple[list[str], list[list[float]]]:
+    """Construit la matrice (k moteurs × n documents) alignée sur la longueur
+    minimale. Retourne ``(noms, matrice_colonne_par_moteur)``.
+
+    Friedman exige des blocs (documents) complets : si les moteurs n'ont pas
+    tous été exécutés sur les mêmes documents, on tronque à la longueur
+    minimale, documentée dans le résultat via ``n_blocks``.
+    """
+    names = list(engine_cer_map.keys())
+    if not names:
+        return [], []
+    min_len = min(len(v) for v in engine_cer_map.values())
+    if min_len == 0:
+        return names, []
+    matrix = [engine_cer_map[n][:min_len] for n in names]
+    return names, matrix
+
+
+def friedman_test(engine_cer_map: dict[str, list[float]]) -> dict:
+    """Test de Friedman — k moteurs sur n documents appariés.
+
+    Test non-paramétrique équivalent à l'ANOVA à mesures répétées pour des
+    données ordinales. Hypothèse nulle : tous les moteurs ont la même
+    performance moyenne. Rejet → au moins un moteur diffère des autres.
+
+    Parameters
+    ----------
+    engine_cer_map:
+        Dict ``{engine_name → [cer_doc1, cer_doc2, ...]}``. Tous les moteurs
+        doivent avoir été évalués sur les mêmes documents (dans le même ordre).
+
+    Returns
+    -------
+    dict avec :
+      - ``statistic``     : Q corrigé pour les ex-aequo
+      - ``p_value``       : p-value (scipy si dispo, sinon Wilson-Hilferty)
+      - ``significant``   : bool, p < 0.05
+      - ``df``            : degrés de liberté = k - 1
+      - ``n_blocks``      : nombre de documents (blocs) utilisés
+      - ``n_engines``     : nombre de moteurs (k)
+      - ``mean_ranks``    : dict ``{engine: rang_moyen}``
+      - ``interpretation``: phrase lisible
+      - ``error``         : message si le test n'est pas applicable
+    """
+    names, matrix = _aligned_cer_matrix(engine_cer_map)
+    k = len(names)
+    n = len(matrix[0]) if matrix else 0
+
+    if k < 2:
+        return {
+            "statistic": 0.0, "p_value": 1.0, "significant": False,
+            "df": 0, "n_blocks": n, "n_engines": k,
+            "mean_ranks": {names[0]: 1.0} if k == 1 else {},
+            "interpretation": "Test de Friedman non applicable : il faut au moins 2 moteurs.",
+            "error": "not_enough_engines",
+        }
+    if n < 2:
+        return {
+            "statistic": 0.0, "p_value": 1.0, "significant": False,
+            "df": k - 1, "n_blocks": n, "n_engines": k,
+            "mean_ranks": {name: 1.0 for name in names},
+            "interpretation": "Test de Friedman non applicable : il faut au moins 2 documents communs.",
+            "error": "not_enough_blocks",
+        }
+
+    # Rangs par bloc (document) : pour chaque doc, ranger les k moteurs
+    ranks_by_engine: list[list[float]] = [[] for _ in range(k)]
+    for j in range(n):
+        row = [matrix[i][j] for i in range(k)]
+        row_ranks = _rank_row(row)
+        for i in range(k):
+            ranks_by_engine[i].append(row_ranks[i])
+
+    rank_sums = [sum(r) for r in ranks_by_engine]
+    mean_ranks = {names[i]: rank_sums[i] / n for i in range(k)}
+
+    # Statistique Q non-corrigée (sans ex-aequo)
+    #   Q = 12 / (n·k·(k+1)) · Σ R_j² − 3·n·(k+1)
+    Q = (12.0 / (n * k * (k + 1))) * sum(rs ** 2 for rs in rank_sums) - 3.0 * n * (k + 1)
+
+    # Correction pour les ex-aequo (ties factor) — ajuste si des rangs sont
+    # partagés dans certains blocs. Formule : Q_corr = Q / (1 - T/(n·(k³−k)))
+    # où T = Σ (tⱼ³ − tⱼ) sur tous les groupes d'ex-aequo.
+    tie_correction = 0.0
+    for j in range(n):
+        row = [matrix[i][j] for i in range(k)]
+        sorted_row = sorted(row)
+        i = 0
+        while i < len(sorted_row):
+            count = 1
+            while i + count < len(sorted_row) and sorted_row[i + count] == sorted_row[i]:
+                count += 1
+            if count > 1:
+                tie_correction += count ** 3 - count
+            i += count
+    denom = 1.0 - tie_correction / (n * (k ** 3 - k)) if k >= 2 else 1.0
+    if denom > 0:
+        Q = Q / denom
+
+    df = k - 1
+    p_value = _chi_square_sf(Q, df)
+    significant = p_value < 0.05
+
+    if significant:
+        interpretation = (
+            f"Test de Friedman significatif (Q = {Q:.3f}, df = {df}, p = {p_value:.4f}). "
+            f"Au moins un moteur diffère des autres — utiliser le post-hoc Nemenyi "
+            f"pour identifier les paires distinguables."
+        )
+    else:
+        interpretation = (
+            f"Test de Friedman non significatif (Q = {Q:.3f}, df = {df}, p = {p_value:.4f}). "
+            f"Aucune différence globale détectée entre les moteurs sur ce corpus."
+        )
+
+    return {
+        "statistic": round(Q, 4),
+        "p_value": round(p_value, 6),
+        "significant": significant,
+        "df": df,
+        "n_blocks": n,
+        "n_engines": k,
+        "mean_ranks": {k_: round(v, 4) for k_, v in mean_ranks.items()},
+        "interpretation": interpretation,
+    }
+
+
+def _nemenyi_critical_value(k: int, alpha: float = 0.05) -> Optional[float]:
+    """Valeur critique q_α pour k traitements, df = ∞.
+
+    Retourne ``None`` si k est hors table (< 2 ou > 50).
+    """
+    if k < 2:
+        return None
+    if k in _NEMENYI_Q_TABLE:
+        q05, q01 = _NEMENYI_Q_TABLE[k]
+        return q05 if alpha == 0.05 else q01 if alpha == 0.01 else q05
+    # Au-delà de la table : borne supérieure (conservateur)
+    max_k = max(_NEMENYI_Q_TABLE.keys())
+    if k > max_k:
+        q05, q01 = _NEMENYI_Q_TABLE[max_k]
+        return q05 if alpha == 0.05 else q01
+    # Entre deux clés : interpolation linéaire
+    keys = sorted(_NEMENYI_Q_TABLE.keys())
+    for i in range(len(keys) - 1):
+        if keys[i] < k < keys[i + 1]:
+            lo, hi = keys[i], keys[i + 1]
+            q_lo = _NEMENYI_Q_TABLE[lo][0 if alpha == 0.05 else 1]
+            q_hi = _NEMENYI_Q_TABLE[hi][0 if alpha == 0.05 else 1]
+            frac = (k - lo) / (hi - lo)
+            return q_lo + frac * (q_hi - q_lo)
+    return None
+
+
+def nemenyi_posthoc(
+    engine_cer_map: dict[str, list[float]],
+    alpha: float = 0.05,
+) -> dict:
+    """Post-hoc de Nemenyi — identifie les paires de moteurs statistiquement
+    indiscernables après un test de Friedman.
+
+    Calcule la *critical distance* CD = q_α · √(k·(k+1) / (6·n)). Deux moteurs
+    dont les rangs moyens diffèrent de moins que CD ne sont **pas**
+    statistiquement distinguables au seuil α.
+
+    Returns
+    -------
+    dict avec :
+      - ``alpha``               : seuil utilisé
+      - ``critical_distance``   : CD calculée
+      - ``q_alpha``             : valeur critique q_α issue de la table
+      - ``n_blocks``, ``n_engines``
+      - ``mean_ranks``          : rangs moyens par moteur (dict)
+      - ``engines_sorted``      : liste des moteurs triés par rang croissant
+      - ``significant_matrix``  : matrice bool (list[list[bool]]),
+                                  ``True`` = paire significativement différente
+      - ``tied_groups``         : liste de listes de moteurs indiscernables
+                                  (groupes maximaux d'ex-aequo pratiques)
+      - ``error``               : présent si le test n'est pas applicable
+    """
+    names, matrix = _aligned_cer_matrix(engine_cer_map)
+    k = len(names)
+    n = len(matrix[0]) if matrix else 0
+
+    if k < 2 or n < 2:
+        return {
+            "alpha": alpha,
+            "critical_distance": 0.0,
+            "q_alpha": 0.0,
+            "n_blocks": n,
+            "n_engines": k,
+            "mean_ranks": {name: 1.0 for name in names},
+            "engines_sorted": list(names),
+            "significant_matrix": [[False] * k for _ in range(k)],
+            "tied_groups": [list(names)] if names else [],
+            "error": "not_enough_data",
+        }
+
+    # Friedman fournit les rangs moyens — on les recalcule ici pour rester
+    # autonome (sans forcer l'utilisateur à chaîner les deux appels).
+    ranks_by_engine: list[list[float]] = [[] for _ in range(k)]
+    for j in range(n):
+        row = [matrix[i][j] for i in range(k)]
+        row_ranks = _rank_row(row)
+        for i in range(k):
+            ranks_by_engine[i].append(row_ranks[i])
+
+    mean_ranks_list = [sum(r) / n for r in ranks_by_engine]
+    mean_ranks = {names[i]: round(mean_ranks_list[i], 4) for i in range(k)}
+
+    q_alpha = _nemenyi_critical_value(k, alpha) or 0.0
+    critical_distance = q_alpha * math.sqrt(k * (k + 1) / (6.0 * n))
+
+    # Matrice de significativité : paire (i,j) significative si |R_i - R_j| > CD
+    significant_matrix = [
+        [
+            (i != j) and (abs(mean_ranks_list[i] - mean_ranks_list[j]) > critical_distance)
+            for j in range(k)
+        ]
+        for i in range(k)
+    ]
+
+    # Groupes d'ex-aequo pratiques : fenêtre glissante sur les rangs triés.
+    # Deux moteurs sont dans le même groupe si leur écart ≤ CD.
+    order = sorted(range(k), key=lambda i: mean_ranks_list[i])
+    sorted_names = [names[i] for i in order]
+    sorted_ranks = [mean_ranks_list[i] for i in order]
+
+    tied_groups: list[list[str]] = []
+    i = 0
+    while i < len(sorted_names):
+        # étendre le groupe tant que le moteur suivant est à ≤ CD du premier du groupe
+        j = i
+        while j + 1 < len(sorted_names) and (sorted_ranks[j + 1] - sorted_ranks[i]) <= critical_distance:
+            j += 1
+        tied_groups.append(sorted_names[i:j + 1])
+        i = j + 1 if j > i else i + 1
+
+    return {
+        "alpha": alpha,
+        "critical_distance": round(critical_distance, 4),
+        "q_alpha": round(q_alpha, 4),
+        "n_blocks": n,
+        "n_engines": k,
+        "mean_ranks": mean_ranks,
+        "engines_sorted": sorted_names,
+        "significant_matrix": significant_matrix,
+        "tied_groups": tied_groups,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Critical Difference Diagram — rendu SVG (Sprint 17)
+# ---------------------------------------------------------------------------
+
+def build_critical_difference_svg(
+    nemenyi_result: dict,
+    width: int = 780,
+    row_height: int = 22,
+) -> str:
+    """Génère le SVG du Critical Difference Diagram (Demšar 2006).
+
+    Le diagramme montre :
+      * un axe horizontal des rangs moyens (1 à k),
+      * chaque moteur positionné sur l'axe à son rang moyen,
+      * des barres horizontales épaisses reliant les moteurs statistiquement
+        indiscernables (distance ≤ CD),
+      * la longueur de CD affichée au-dessus de l'axe en référence.
+
+    Parameters
+    ----------
+    nemenyi_result:
+        Résultat de ``nemenyi_posthoc``.
+    width:
+        Largeur totale du SVG en pixels.
+    row_height:
+        Hauteur de chaque ligne d'étiquette moteur (auto-adaptatif).
+
+    Returns
+    -------
+    Chaîne contenant le SVG (balise racine ``<svg>…</svg>``).
+    """
+    k = nemenyi_result.get("n_engines", 0)
+    if k < 2 or nemenyi_result.get("error"):
+        return (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="40" '
+            'role="img" aria-label="Critical Difference Diagram indisponible">'
+            '<text x="10" y="24" font-family="sans-serif" font-size="12" fill="#666">'
+            'Critical Difference Diagram non calculable — données insuffisantes.'
+            '</text></svg>'
+        )
+
+    engines_sorted: list[str] = list(nemenyi_result.get("engines_sorted", []))
+    mean_ranks: dict[str, float] = dict(nemenyi_result.get("mean_ranks", {}))
+    tied_groups: list[list[str]] = list(nemenyi_result.get("tied_groups", []))
+    cd: float = float(nemenyi_result.get("critical_distance", 0.0))
+
+    # Dimensions
+    left_pad, right_pad = 40, 40
+    top_pad = 50   # espace pour l'affichage CD
+    axis_y = top_pad + 10
+    bars_start_y = axis_y + 20  # première barre d'ex-aequo sous l'axe
+    # Empiler une ligne par groupe + une ligne par étiquette
+    label_rows = k  # chaque moteur a sa propre ligne de label
+    bars_count = len(tied_groups)
+    total_h = bars_start_y + bars_count * 10 + label_rows * row_height + 20
+
+    axis_x0, axis_x1 = left_pad, width - right_pad
+    axis_width = axis_x1 - axis_x0
+
+    def x_for_rank(r: float) -> float:
+        # Rang 1 à gauche, rang k à droite
+        if k <= 1:
+            return axis_x0
+        return axis_x0 + (r - 1.0) / (k - 1.0) * axis_width
+
+    parts: list[str] = []
+    parts.append(
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 {width} {total_h}" '
+        f'role="img" aria-label="Critical Difference Diagram (Friedman-Nemenyi)" '
+        f'font-family="system-ui, -apple-system, sans-serif">'
+    )
+    parts.append('<style>.cd-axis{stroke:#334155;stroke-width:1.5}.cd-tick{stroke:#334155;stroke-width:1}'
+                 '.cd-label{fill:#0f172a;font-size:11px}'
+                 '.cd-tie{stroke:#0f172a;stroke-width:4;stroke-linecap:round}'
+                 '.cd-cd-bar{stroke:#dc2626;stroke-width:2}'
+                 '.cd-cd-txt{fill:#dc2626;font-size:11px;font-weight:600}'
+                 '.cd-name{fill:#0f172a;font-size:12px}'
+                 '.cd-rank{fill:#64748b;font-size:10px}'
+                 '</style>')
+
+    # Barre CD de référence (en haut, à gauche de l'axe)
+    if cd > 0 and k >= 2:
+        cd_bar_x0 = axis_x0
+        cd_bar_x1 = axis_x0 + (cd / max(1, k - 1)) * axis_width
+        cd_y = top_pad - 20
+        parts.append(f'<line class="cd-cd-bar" x1="{cd_bar_x0:.1f}" y1="{cd_y}" '
+                     f'x2="{cd_bar_x1:.1f}" y2="{cd_y}"/>')
+        parts.append(f'<line class="cd-cd-bar" x1="{cd_bar_x0:.1f}" y1="{cd_y - 4}" '
+                     f'x2="{cd_bar_x0:.1f}" y2="{cd_y + 4}"/>')
+        parts.append(f'<line class="cd-cd-bar" x1="{cd_bar_x1:.1f}" y1="{cd_y - 4}" '
+                     f'x2="{cd_bar_x1:.1f}" y2="{cd_y + 4}"/>')
+        parts.append(f'<text class="cd-cd-txt" x="{(cd_bar_x0 + cd_bar_x1)/2:.1f}" y="{cd_y - 8}" '
+                     f'text-anchor="middle">CD = {cd:.3f}</text>')
+
+    # Axe principal
+    parts.append(f'<line class="cd-axis" x1="{axis_x0}" y1="{axis_y}" '
+                 f'x2="{axis_x1}" y2="{axis_y}"/>')
+    # Ticks entiers
+    for r in range(1, k + 1):
+        xt = x_for_rank(r)
+        parts.append(f'<line class="cd-tick" x1="{xt:.1f}" y1="{axis_y - 5}" '
+                     f'x2="{xt:.1f}" y2="{axis_y + 5}"/>')
+        parts.append(f'<text class="cd-label" x="{xt:.1f}" y="{axis_y - 9}" '
+                     f'text-anchor="middle">{r}</text>')
+
+    # Barres reliant les groupes indiscernables
+    for i, group in enumerate(tied_groups):
+        if len(group) < 2:
+            continue
+        rs = [mean_ranks[n] for n in group]
+        x0 = x_for_rank(min(rs))
+        x1 = x_for_rank(max(rs))
+        y_bar = bars_start_y + i * 10
+        parts.append(f'<line class="cd-tie" x1="{x0 - 3:.1f}" y1="{y_bar}" '
+                     f'x2="{x1 + 3:.1f}" y2="{y_bar}"/>')
+
+    # Étiquettes des moteurs : la moitié la plus basse à gauche, l'autre à droite
+    labels_y_base = bars_start_y + bars_count * 10 + 15
+    half = (len(engines_sorted) + 1) // 2
+    left_engines = engines_sorted[:half]
+    right_engines = engines_sorted[half:]
+
+    for idx, name in enumerate(left_engines):
+        r = mean_ranks[name]
+        x = x_for_rank(r)
+        y_label = labels_y_base + idx * row_height
+        # Ligne du moteur vers axe
+        parts.append(f'<line class="cd-tick" x1="{x:.1f}" y1="{axis_y + 6}" '
+                     f'x2="{x:.1f}" y2="{y_label - 4}"/>')
+        parts.append(f'<line class="cd-tick" x1="{x:.1f}" y1="{y_label - 4}" '
+                     f'x2="{axis_x0 - 4:.1f}" y2="{y_label - 4}"/>')
+        parts.append(f'<text class="cd-name" x="{axis_x0 - 6:.1f}" y="{y_label}" '
+                     f'text-anchor="end">{_svg_escape(name)} '
+                     f'<tspan class="cd-rank">({r:.2f})</tspan></text>')
+
+    for idx, name in enumerate(right_engines):
+        r = mean_ranks[name]
+        x = x_for_rank(r)
+        y_label = labels_y_base + idx * row_height
+        parts.append(f'<line class="cd-tick" x1="{x:.1f}" y1="{axis_y + 6}" '
+                     f'x2="{x:.1f}" y2="{y_label - 4}"/>')
+        parts.append(f'<line class="cd-tick" x1="{x:.1f}" y1="{y_label - 4}" '
+                     f'x2="{axis_x1 + 4:.1f}" y2="{y_label - 4}"/>')
+        parts.append(f'<text class="cd-name" x="{axis_x1 + 6:.1f}" y="{y_label}" '
+                     f'text-anchor="start">{_svg_escape(name)} '
+                     f'<tspan class="cd-rank">({r:.2f})</tspan></text>')
+
+    parts.append('</svg>')
+    return "".join(parts)
+
+
+def _svg_escape(text: str) -> str:
+    """Échappe un texte pour inclusion sûre dans un nœud SVG/XML."""
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#39;"))
+
+
+# ---------------------------------------------------------------------------
+# Frontière de Pareto (Sprint 19)
+# ---------------------------------------------------------------------------
+
+def compute_pareto_front(
+    points: list[dict],
+    objectives: tuple[str, ...] = ("cer", "cost"),
+    name_key: str = "engine",
+    minimize: Optional[tuple[bool, ...]] = None,
+) -> list[str]:
+    """Calcule la frontière de Pareto sur ``len(objectives)`` dimensions.
+
+    Un point ``p`` est Pareto-dominant si aucun autre point n'a, pour TOUS
+    les objectifs, une valeur au moins aussi bonne ET au moins une valeur
+    strictement meilleure.
+
+    Parameters
+    ----------
+    points:
+        Liste de dicts. Chaque dict doit contenir ``name_key`` et toutes les
+        clés de ``objectives``. Les points dont une valeur d'objectif est
+        ``None`` sont ignorés (pas de comparaison possible).
+    objectives:
+        Clés des objectifs à minimiser/maximiser.
+    name_key:
+        Clé identifiant le point (par défaut ``"engine"``).
+    minimize:
+        Pour chaque objectif, ``True`` = minimiser (ex. CER, coût),
+        ``False`` = maximiser (ex. ancrage). Doit avoir la même longueur
+        que ``objectives``.
+
+    Returns
+    -------
+    Liste des ``name`` des points sur le front Pareto, ordre stable depuis
+    ``points``.
+    """
+    if minimize is None:
+        minimize = tuple(True for _ in objectives)
+    if len(minimize) != len(objectives):
+        raise ValueError("`minimize` doit avoir la même longueur que `objectives`")
+
+    valid = []
+    for p in points:
+        try:
+            vals = tuple(float(p[k]) for k in objectives)
+        except (KeyError, TypeError, ValueError):
+            continue
+        valid.append((p[name_key], vals))
+
+    front: list[str] = []
+    for name_a, vals_a in valid:
+        dominated = False
+        for name_b, vals_b in valid:
+            if name_a == name_b:
+                continue
+            # B domine A si B est ≥ aussi bon partout ET strictement meilleur quelque part
+            better_or_equal_everywhere = True
+            strictly_better_somewhere = False
+            for va, vb, mini in zip(vals_a, vals_b, minimize):
+                if mini:
+                    if vb > va:
+                        better_or_equal_everywhere = False
+                        break
+                    if vb < va:
+                        strictly_better_somewhere = True
+                else:  # maximiser
+                    if vb < va:
+                        better_or_equal_everywhere = False
+                        break
+                    if vb > va:
+                        strictly_better_somewhere = True
+            if better_or_equal_everywhere and strictly_better_somewhere:
+                dominated = True
+                break
+        if not dominated:
+            front.append(name_a)
+    return front
 
 
 # ---------------------------------------------------------------------------

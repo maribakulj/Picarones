@@ -30,6 +30,7 @@ dependencies = [
     "pytesseract>=0.3.10",
     "tqdm>=4.66.0",
     "numpy>=1.24.0",
+    "jinja2>=3.1.0",
 ]
 
 [project.urls]
@@ -44,6 +45,9 @@ Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
 dev = ["pytest>=7.4.0", "pytest-cov>=4.1.0", "httpx>=0.27.0", "fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "python-multipart>=0.0.9"]
 # Interface web FastAPI
 web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0", "python-multipart>=0.0.9"]
+# Tests statistiques avancés (Wilcoxon exact, Friedman chi² exact, Nemenyi)
+# Sinon fallback pur Python (approximations normale / Wilson-Hilferty).
+stats = ["scipy>=1.11.0"]
 # Import HuggingFace Datasets
 hf = ["datasets>=2.19.0"]
 # Moteurs OCR optionnels
@@ -74,8 +78,32 @@ where = ["."]
 include = ["picarones*"]
 
 [tool.setuptools.package-data]
-picarones = ["prompts/*.txt", "web/static/*.css"]
+picarones = [
+    "prompts/*.txt",
+    "web/static/*.css",
+    "report/templates/*.j2",
+    "report/templates/*.html",
+    "report/templates/*.css",
+    "report/templates/*.js",
+    "report/i18n/*.json",
+    "core/narrative/templates/*.yaml",
+    "data/*.yaml",
+    "report/glossary/*.yaml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.ruff]
+# Configuration centralisée pour que `ruff check`, `make lint` et le job CI
+# produisent exactement les mêmes résultats sans flags en ligne de commande.
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes. On conserve les mêmes règles que le CI
+# d'origine (avant Sprint 22), qui excluait les lignes longues (E501) et les
+# imports non-top (E402, parfois utiles pour imports conditionnels).
+select = ["E", "W", "F"]
+ignore = ["E501", "E402"]

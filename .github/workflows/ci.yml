@@ -175,12 +175,14 @@ jobs:
           retention-days: 30
 
   # ──────────────────────────────────────────────────────────────────
-  # Job 4 : Vérification de la qualité du code (optionnel)
+  # Job 4 : Vérification de la qualité du code
+  # La config ruff est centralisée dans pyproject.toml ([tool.ruff]),
+  # donc CI, Makefile et invocations locales produisent exactement les
+  # mêmes résultats — pas de divergence possible entre flags.
   # ──────────────────────────────────────────────────────────────────
   lint:
     name: Code quality
     runs-on: ubuntu-latest
-    continue-on-error: true  # Ne bloque pas le CI si le lint échoue
 
     steps:
       - name: Checkout
@@ -196,9 +198,7 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff
-        run: |
-          ruff check picarones/ --select=E,W,F --ignore=E501,E402
-          ruff check tests/ --select=E,W,F --ignore=E501,E402
+        run: ruff check picarones/ tests/
 
   # ──────────────────────────────────────────────────────────────────
   # Job 5 : CI/CD — Détection de régression CER (optionnel)

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picarones — {{ corpus_name }}</title>
+
+<!-- Chart.js (vendorisé inline) -->
+<script>{{ chartjs_inline | safe }}</script>
+
+<style>
+{% include '_styles.css' %}
+</style>
+</head>
+
+<body>
+
+{% include '_header.html' %}
+
+{% include '_narrative_summary.html' %}
+
+{% include '_critical_difference.html' %}
+
+{% include 'view_ranking.html' %}
+
+{% include 'view_gallery.html' %}
+
+{% include 'view_document.html' %}
+
+{% include 'view_analyses.html' %}
+
+{% include 'view_characters.html' %}
+
+{% include '_footer.html' %}
+
+{% include '_side_panels.html' %}
+
+<!-- ── Données embarquées ──────────────────────────────────────────── -->
+<script>
+const DATA = {{ report_data_json | safe }};
+const I18N = {{ i18n_json | safe }};
+const GLOSSARY = {{ glossary_json | safe }};
+</script>
+
+<!-- ── Application ────────────────────────────────────────────────── -->
+<script>
+{% include '_app.js' %}
+</script>
+</body>
+</html>

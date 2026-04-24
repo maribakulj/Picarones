@@ -1,0 +1,30 @@
+
+<!-- ── Navigation ─────────────────────────────────────────────────── -->
+<nav>
+  <div class="brand">
+    Picarones
+    <span data-i18n="nav_report">| rapport OCR</span>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showView('ranking')" data-i18n="tab_ranking">Classement</button>
+    <button class="tab-btn" onclick="showView('gallery')" data-i18n="tab_gallery">Galerie</button>
+    <button class="tab-btn" onclick="showView('document')" data-i18n="tab_document">Document</button>
+    <button class="tab-btn" onclick="showView('characters')" data-i18n="tab_characters">Caractères</button>
+    <button class="tab-btn" onclick="showView('analyses')" data-i18n="tab_analyses">Analyses</button>
+  </div>
+  <div class="meta" id="nav-meta">—</div>
+  <button class="btn-export-csv" onclick="exportCSV()" title="⬇ CSV">⬇ CSV</button>
+  <button class="btn-customize" id="btn-customize" onclick="openCustomize()"
+          title="Mode avancé" data-i18n="btn_customize">⚙ Avancé</button>
+  <button class="btn-present" id="btn-present" onclick="togglePresentMode()" data-i18n="btn_present">⊞ Présentation</button>
+</nav>
+
+<!-- ── Bandeau exclusion globale ───────────────────────────────────── -->
+<div id="global-exclusion-banner" style="display:none;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:.5rem 1.5rem;font-size:.85rem;font-weight:600;color:#92400e;text-align:center">
+  <span id="global-exclusion-text"></span>
+  <button onclick="resetAllExclusions()" style="margin-left:1rem;font-size:.75rem;padding:.15rem .5rem;border:1px solid #d97706;background:#fff;border-radius:.25rem;cursor:pointer">Réinitialiser</button>
+</div>
+
+<!-- ── Main ───────────────────────────────────────────────────────── -->
+<main>
+
