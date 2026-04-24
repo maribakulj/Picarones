@@ -8,6 +8,7 @@ Fonctions fournies
 - friedman_test(engine_cer_map)        : Friedman (k moteurs, n documents)       [Sprint 17]
 - nemenyi_posthoc(engine_cer_map)      : post-hoc Nemenyi avec critical distance [Sprint 17]
 - build_critical_difference_svg(...)   : rendu SVG du CDD (Demšar 2006)          [Sprint 17]
+- compute_pareto_front(points, ...)    : frontière de Pareto multi-objectifs     [Sprint 19]
 - cluster_errors(...)                  : regroupement des patterns d'erreurs
 - compute_correlation_matrix(...)      : matrice de corrélation des métriques
 - compute_reliability_curve(...)       : courbe CER vs. % docs les plus faciles
@@ -755,6 +756,85 @@ def _svg_escape(text: str) -> str:
                 .replace(">", "&gt;")
                 .replace('"', "&quot;")
                 .replace("'", "&#39;"))
+
+
+# ---------------------------------------------------------------------------
+# Frontière de Pareto (Sprint 19)
+# ---------------------------------------------------------------------------
+
+def compute_pareto_front(
+    points: list[dict],
+    objectives: tuple[str, ...] = ("cer", "cost"),
+    name_key: str = "engine",
+    minimize: Optional[tuple[bool, ...]] = None,
+) -> list[str]:
+    """Calcule la frontière de Pareto sur ``len(objectives)`` dimensions.
+
+    Un point ``p`` est Pareto-dominant si aucun autre point n'a, pour TOUS
+    les objectifs, une valeur au moins aussi bonne ET au moins une valeur
+    strictement meilleure.
+
+    Parameters
+    ----------
+    points:
+        Liste de dicts. Chaque dict doit contenir ``name_key`` et toutes les
+        clés de ``objectives``. Les points dont une valeur d'objectif est
+        ``None`` sont ignorés (pas de comparaison possible).
+    objectives:
+        Clés des objectifs à minimiser/maximiser.
+    name_key:
+        Clé identifiant le point (par défaut ``"engine"``).
+    minimize:
+        Pour chaque objectif, ``True`` = minimiser (ex. CER, coût),
+        ``False`` = maximiser (ex. ancrage). Doit avoir la même longueur
+        que ``objectives``.
+
+    Returns
+    -------
+    Liste des ``name`` des points sur le front Pareto, ordre stable depuis
+    ``points``.
+    """
+    if minimize is None:
+        minimize = tuple(True for _ in objectives)
+    if len(minimize) != len(objectives):
+        raise ValueError("`minimize` doit avoir la même longueur que `objectives`")
+
+    valid = []
+    for p in points:
+        try:
+            vals = tuple(float(p[k]) for k in objectives)
+        except (KeyError, TypeError, ValueError):
+            continue
+        valid.append((p[name_key], vals))
+
+    front: list[str] = []
+    for name_a, vals_a in valid:
+        dominated = False
+        for name_b, vals_b in valid:
+            if name_a == name_b:
+                continue
+            # B domine A si B est ≥ aussi bon partout ET strictement meilleur quelque part
+            better_or_equal_everywhere = True
+            strictly_better_somewhere = False
+            for va, vb, mini in zip(vals_a, vals_b, minimize):
+                if mini:
+                    if vb > va:
+                        better_or_equal_everywhere = False
+                        break
+                    if vb < va:
+                        strictly_better_somewhere = True
+                else:  # maximiser
+                    if vb < va:
+                        better_or_equal_everywhere = False
+                        break
+                    if vb > va:
+                        strictly_better_somewhere = True
+            if better_or_equal_everywhere and strictly_better_somewhere:
+                dominated = True
+                break
+        if not dominated:
+            front.append(name_a)
+    return front
 
 
 # ---------------------------------------------------------------------------

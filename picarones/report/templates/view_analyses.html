@@ -125,6 +125,31 @@
       </div>
     </div>
 
+    <!-- Sprint 19 — Vue Pareto coût/qualité ────────────────────────── -->
+    <div class="chart-card pareto-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_pareto">Compromis qualité / coût</h3>
+      <div class="pareto-toolbar">
+        <button class="pareto-toggle active" data-axis="cost" onclick="setParetoAxis('cost')"
+                data-i18n="pareto_axis_cost">Coût € / 1000 pages</button>
+        <button class="pareto-toggle" data-axis="speed" onclick="setParetoAxis('speed')"
+                data-i18n="pareto_axis_speed">Vitesse (s / page)</button>
+        <button class="pareto-toggle pareto-experimental" data-axis="co2"
+                onclick="setParetoAxis('co2')" data-i18n="pareto_axis_co2"
+                title="Estimation expérimentale">Carbone (g CO₂)</button>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="pareto-chart"></canvas></div>
+      <div id="pareto-method-note" class="pareto-note" data-i18n="pareto_note">
+        Les moteurs sur la frontière de Pareto (en évidence) sont ceux pour
+        lesquels aucun autre moteur n'offre simultanément un meilleur CER ET
+        un meilleur coût. Prix indicatifs (table interne, datée). Le mode
+        carbone est expérimental.
+      </div>
+      <details class="pareto-assumptions">
+        <summary data-i18n="pareto_assumptions_summary">Hypothèses détaillées par moteur</summary>
+        <ul id="pareto-assumptions-list"></ul>
+      </details>
+    </div>
+
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
       <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>

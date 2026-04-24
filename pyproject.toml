@@ -87,6 +87,7 @@ picarones = [
     "report/templates/*.js",
     "report/i18n/*.json",
     "core/narrative/templates/*.yaml",
+    "data/*.yaml",
 ]
 
 [tool.pytest.ini_options]

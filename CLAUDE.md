@@ -194,6 +194,7 @@ AZURE_DOC_INTEL_KEY=...
 | 17 | **Sprint 2 du plan rapport** : refactor de `generator.py` (3690 → 617 lignes) via Jinja2. Le monolithe `_HTML_TEMPLATE` est découpé en 10 fichiers externes dans `picarones/report/templates/` (base + 5 vues + header/footer + CSS + JS). L'i18n `i18n.py` (dict Python 101 clés) migré vers `picarones/report/i18n/{fr,en}.json` chargés à l'import. Ajout de 16 tests de non-régression (structure, déterminisme, i18n, garde-fous contre balises dupliquées). |
 | 18 | **Sprint 3 du plan rapport** : test de Friedman multi-moteurs + post-hoc Nemenyi + Critical Difference Diagram (Demšar 2006). Nouveau module `core/statistics.py` : `friedman_test`, `nemenyi_posthoc`, `build_critical_difference_svg` avec table Nemenyi (k=2 à 50, α=0,05 et 0,01), fallback pur Python (Wilson-Hilferty pour chi²), support scipy optionnel (extra `stats`). Partial `_critical_difference.html` inséré en tête du rapport, SVG rendu server-side (pas de JS), i18n FR/EN pour les aides. Détecteur narratif `detect_statistical_tie` activé (lit `nemenyi.tied_groups`). 41 tests ajoutés (cas canoniques, dégénérés, SVG, intégration rapport). |
 | 19 | **Sprint 4 du plan rapport** : moteur narratif complet + synthèse factuelle en tête. 9 détecteurs implémentés (global_leader_cer, significant_gap, stratum_winner/collapse, error_profile_outlier, llm_hallucination_flag, robustness_fragile, speed_winner, confidence_warning). Arbitre (`arbiter.py`) avec tri par importance, non-redondance, suppression des contradictions Wilcoxon/Nemenyi. Renderer (`renderer.py`) lit templates YAML `core/narrative/templates/{fr,en}.yaml` (10 templates par langue) et rend par `str.format_map` déterministe. Nouveau partial `_narrative_summary.html` placé en tête du rapport (entre header et CDD). Garde-fou anti-hallucination testé : chaque nombre rendu est traçable au payload du Fact associé. 32 tests (détecteurs unitaires, arbitre, renderer, E2E, traçabilité, intégration HTML). `pareto_alternative` et `cost_outlier` restent stubs pour Sprint 5. |
+| 20 | **Sprint 5 du plan rapport** : modélisation coût + vue Pareto. Nouveau module `core/pricing.py` (`EngineCost`, `estimate_cost`, `build_costs_for_benchmark`) lit la table indicative `picarones/data/pricing.yaml` (OCR locaux + APIs cloud + LLM). Nouvel algo `compute_pareto_front` dans `statistics.py`, multi-objectifs (min/max), N dimensions. Vue Chart.js dans `view_analyses.html` avec front Pareto en surbrillance et 3 toggles d'axe : coût € / vitesse / carbone (dernier étiqueté ⚗ expérimental). Détecteurs `pareto_alternative` et `cost_outlier` activés. Templates FR/EN ajoutés. Bloc "hypothèses détaillées" replié sous le graphique avec liens vers les sources de prix. 28 tests (pricing local vs cloud, override taux horaire, pareto canonique/dégénéré/3D, détecteurs, intégration HTML). |
 
 ---
 
@@ -219,12 +220,12 @@ parse la synthèse rendue et vérifie que chaque nombre est traçable au payload
 (via `_numbers_in_payload`) augmenté d'une liste blanche limitative de constantes
 de template (`95`, `100`).
 
-**Détecteurs activés dans le registre par défaut (Sprint 19)** :
+**Détecteurs activés dans le registre par défaut (Sprint 20)** — les 12 sont opérationnels :
 - Sprint 3 : `statistical_tie`
 - Sprint 4 : `global_leader_cer`, `significant_gap`, `stratum_winner`, `stratum_collapse`,
   `error_profile_outlier`, `llm_hallucination_flag`, `robustness_fragile`,
   `speed_winner`, `confidence_warning`
-- Sprint 5 : `pareto_alternative`, `cost_outlier` — stubs (retournent `[]`)
+- Sprint 5 : `pareto_alternative`, `cost_outlier`
 
 **Règle anti-contradiction** (arbitre) : si `SIGNIFICANT_GAP` (Wilcoxon non corrigé)
 et `STATISTICAL_TIE` (Nemenyi corrigé) concernent les mêmes moteurs, Nemenyi
@@ -240,7 +241,7 @@ au template `_narrative_summary.html` (placé entre `_header.html` et `_critical
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces (`/workspaces/Picarones`), Python 3.12
-- **Tests** : 1174 passed, 2 skipped (Sprint 19)
+- **Tests** : 1202 passed, 2 skipped (Sprint 20)
 - **Branche active** : `claude/review-picarones-benchmarks-E3J42`
 - **Transcript de la conversation de développement** :
   `/mnt/transcripts/2026-03-11-14-01-41-picarones-ocr-bench-project.txt`

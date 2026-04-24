@@ -47,7 +47,9 @@ from picarones.core.statistics import (
     friedman_test,
     nemenyi_posthoc,
     build_critical_difference_svg,
+    compute_pareto_front,
 )
+from picarones.core.pricing import build_costs_for_benchmark, load_pricing_database
 from picarones.core.difficulty import compute_all_difficulties, difficulty_label
 
 
@@ -439,6 +441,88 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
                 "is_pipeline": report.is_pipeline,
             })
 
+    # ── Sprint 19 — Coûts et frontière de Pareto ────────────────────────
+    # Durée moyenne mesurée par moteur sur le benchmark courant (sec/page)
+    durations_by_engine: dict[str, float] = {}
+    for report in benchmark.engine_reports:
+        durs = [dr.duration_seconds for dr in report.document_results
+                if dr.duration_seconds is not None]
+        if durs:
+            durations_by_engine[report.engine_name] = sum(durs) / len(durs)
+
+    pricing_defaults, _ = load_pricing_database()
+    costs_by_engine = build_costs_for_benchmark(
+        engines_summary, durations_by_engine,
+    )
+    # Annoter chaque résumé moteur avec son coût et sa durée
+    for entry in engines_summary:
+        name = entry["name"]
+        entry["mean_duration_seconds"] = round(durations_by_engine.get(name, 0.0), 4) \
+            if name in durations_by_engine else None
+        entry["cost"] = costs_by_engine.get(name)
+
+    # Front Pareto sur (CER moyen, coût €/1000 pages) — moteurs avec les deux dispos
+    pareto_points = []
+    for entry in engines_summary:
+        cer = entry.get("cer")
+        cost = (entry.get("cost") or {}).get("cost_per_1k_pages_eur")
+        if cer is None or cost is None:
+            continue
+        pareto_points.append({"engine": entry["name"], "cer": cer, "cost": cost})
+    pareto_front_engines = compute_pareto_front(
+        pareto_points, objectives=("cer", "cost"),
+    )
+
+    # Front Pareto secondaire (CER, vitesse) pour le toggle "vitesse"
+    pareto_speed_points = []
+    for entry in engines_summary:
+        cer = entry.get("cer")
+        dur = entry.get("mean_duration_seconds")
+        if cer is None or dur is None:
+            continue
+        pareto_speed_points.append({"engine": entry["name"], "cer": cer, "dur": dur})
+    pareto_front_speed = compute_pareto_front(
+        pareto_speed_points, objectives=("cer", "dur"),
+    )
+
+    # Front Pareto carbone (CER, g CO2 / 1000 pages) — étiqueté expérimental
+    pareto_co2_points = []
+    for entry in engines_summary:
+        cer = entry.get("cer")
+        co2 = (entry.get("cost") or {}).get("co2_per_1k_pages_g")
+        if cer is None or co2 is None:
+            continue
+        pareto_co2_points.append({"engine": entry["name"], "cer": cer, "co2": co2})
+    pareto_front_co2 = compute_pareto_front(
+        pareto_co2_points, objectives=("cer", "co2"),
+    )
+
+    pareto_data = {
+        "cost": {
+            "points": pareto_points,
+            "front": pareto_front_engines,
+            "axis_label": "Coût (€ / 1000 pages)",
+        },
+        "speed": {
+            "points": pareto_speed_points,
+            "front": pareto_front_speed,
+            "axis_label": "Temps moyen (s / page)",
+        },
+        "co2": {
+            "points": pareto_co2_points,
+            "front": pareto_front_co2,
+            "axis_label": "Empreinte carbone (g CO₂ / 1000 pages, expérimental)",
+        },
+        "pricing_meta": {
+            "last_updated": pricing_defaults.last_updated,
+            "currency": pricing_defaults.currency,
+            "hourly_rate_local_cpu_eur": pricing_defaults.hourly_rate_local_cpu_eur,
+            "hourly_rate_local_gpu_eur": pricing_defaults.hourly_rate_local_gpu_eur,
+            "grid_intensity_local": pricing_defaults.grid_intensity_local,
+            "grid_intensity_cloud": pricing_defaults.grid_intensity_cloud,
+        },
+    }
+
     # Scatter 2 : ratio longueur vs score d'ancrage (moteurs)
     ratio_vs_anchor = []
     for report in benchmark.engine_reports:
@@ -478,6 +562,8 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         # Sprint 10
         "gini_vs_cer": gini_vs_cer,
         "ratio_vs_anchor": ratio_vs_anchor,
+        # Sprint 19 — vue Pareto coût/qualité avec variantes d'axe
+        "pareto": pareto_data,
     }
 
 

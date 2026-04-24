@@ -1704,6 +1704,122 @@ function toggleCDDHelp() {
   el.hidden = !el.hidden;
 }
 
+// ── Sprint 19 — Vue Pareto coût/qualité ─────────────────────────
+let _paretoChart = null;
+let _paretoAxis = 'cost';
+
+function setParetoAxis(axis) {
+  _paretoAxis = axis;
+  document.querySelectorAll('.pareto-toggle').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.axis === axis);
+  });
+  renderParetoChart();
+  renderParetoAssumptions();
+}
+
+function _paretoAxisConfig(axis) {
+  const pareto = (DATA.pareto || {})[axis] || {};
+  const xKey = axis === 'cost' ? 'cost' : (axis === 'speed' ? 'dur' : 'co2');
+  const xLabel = pareto.axis_label ||
+    (I18N['pareto_axis_' + axis] || axis);
+  return { pareto, xKey, xLabel };
+}
+
+function renderParetoChart() {
+  const canvas = document.getElementById('pareto-chart');
+  if (!canvas || !window.Chart || !DATA.pareto) return;
+
+  const { pareto, xKey, xLabel } = _paretoAxisConfig(_paretoAxis);
+  const points = pareto.points || [];
+  const frontNames = new Set(pareto.front || []);
+
+  if (_paretoChart) { _paretoChart.destroy(); _paretoChart = null; }
+  if (points.length === 0) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.fillText(I18N.pareto_empty || 'Données insuffisantes pour cette vue.', 10, 30);
+    return;
+  }
+
+  const frontPts = points.filter(p => frontNames.has(p.engine));
+  const otherPts = points.filter(p => !frontNames.has(p.engine));
+
+  _paretoChart = new Chart(canvas.getContext('2d'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: I18N.pareto_front_label || 'Front Pareto',
+          data: frontPts.map(p => ({ x: p[xKey], y: p.cer * 100, engine: p.engine })),
+          backgroundColor: '#16a34a',
+          borderColor: '#166534',
+          pointRadius: 8,
+          pointHoverRadius: 10,
+        },
+        {
+          label: I18N.pareto_dominated_label || 'Dominés',
+          data: otherPts.map(p => ({ x: p[xKey], y: p.cer * 100, engine: p.engine })),
+          backgroundColor: '#94a3b8',
+          borderColor: '#64748b',
+          pointRadius: 6,
+          pointHoverRadius: 8,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const p = ctx.raw;
+              return p.engine + ' — CER ' + p.y.toFixed(2) + ' %, ' +
+                     xLabel + ' : ' + p.x.toFixed(2);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: _paretoAxis === 'cost' ? 'logarithmic' : 'linear',
+          title: { display: true, text: xLabel },
+        },
+        y: {
+          title: { display: true, text: I18N.col_cer || 'CER (%)' },
+          ticks: { callback: v => v + ' %' },
+        },
+      },
+    },
+  });
+}
+
+function renderParetoAssumptions() {
+  const ul = document.getElementById('pareto-assumptions-list');
+  if (!ul) return;
+  ul.innerHTML = '';
+  (DATA.engines || []).forEach(e => {
+    const c = e.cost || {};
+    const parts = [];
+    if (c.cost_per_1k_pages_eur != null) {
+      parts.push((c.cost_per_1k_pages_eur).toFixed(2) + ' €/1000 pages');
+    }
+    if (c.type) parts.push(c.type);
+    if (c.pricing_source_url) {
+      parts.push('<a href="' + c.pricing_source_url + '" target="_blank" rel="noopener">' +
+                 (c.pricing_date || 'source') + '</a>');
+    }
+    const assumptions = (c.assumptions || []).join(' ');
+    const li = document.createElement('li');
+    li.innerHTML = '<strong>' + e.name + '</strong> — ' + parts.join(' · ') +
+                   (assumptions ? ' <em>' + assumptions + '</em>' : '');
+    ul.appendChild(li);
+  });
+}
+
 // ── Sprint 7 — Mode présentation ────────────────────────────────
 let presentMode = false;
 function togglePresentMode() {
@@ -2071,6 +2187,8 @@ function init() {
   renderRobustMetrics();
   renderGallery();
   buildDocList();
+  renderParetoChart();
+  renderParetoAssumptions();
 
   // Restaurer l'état depuis l'URL
   const { view, params } = readURLState();

@@ -669,3 +669,56 @@ body.present-mode .cdd-help { display: none !important; }
 .synth-list li::marker { color: #2563eb; }
 
 body.present-mode .synth-hint { display: none; }
+
+/* ── Sprint 19 — Vue Pareto coût/qualité ────────────────────── */
+.pareto-card {
+  border-left: 4px solid #16a34a;
+}
+.pareto-toolbar {
+  display: flex; gap: .5rem; flex-wrap: wrap;
+  margin: .5rem 0 .75rem;
+}
+.pareto-toggle {
+  border: 1px solid var(--border, #e2e8f0);
+  background: #fff;
+  padding: .35rem .75rem;
+  border-radius: 6px;
+  font-size: .82rem;
+  cursor: pointer;
+  color: var(--text, #0f172a);
+}
+.pareto-toggle:hover { background: #f1f5f9; }
+.pareto-toggle.active {
+  background: #16a34a; color: #fff; border-color: #166534;
+}
+.pareto-toggle.pareto-experimental::after {
+  content: " ⚗";
+  color: #f59e0b;
+  margin-left: .15rem;
+}
+.chart-canvas-wrap {
+  position: relative;
+  height: 360px;
+}
+.pareto-note {
+  font-size: .75rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+  margin-top: .5rem;
+  line-height: 1.4;
+}
+.pareto-assumptions {
+  margin-top: .5rem;
+  font-size: .78rem;
+  color: var(--text, #0f172a);
+}
+.pareto-assumptions summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+.pareto-assumptions ul {
+  margin: .4rem 0 0;
+  padding-left: 1.1rem;
+}
+.pareto-assumptions li { margin: .2rem 0; line-height: 1.4; }
