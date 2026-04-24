@@ -45,7 +45,10 @@ picarones/
 │   ├── hallucination.py    # Détection hallucinations VLM (score ancrage, ratio longueur)
 │   ├── line_metrics.py     # Distribution erreurs par ligne (Gini, percentiles)
 │   ├── history.py          # Suivi longitudinal SQLite
-│   └── robustness.py       # Analyse robustesse (bruit, flou, rotation, résolution)
+│   ├── robustness.py       # Analyse robustesse (bruit, flou, rotation, résolution)
+│   └── narrative/          # Moteur narratif factuel (Sprint 16) — modèle Fact + registre
+│       ├── facts.py        # Fact, FactType (12 types), FactImportance, DetectorRegistry
+│       └── detectors.py    # Stubs des 12 détecteurs, implémentations par sprint
 ├── engines/
 │   ├── base.py             # BaseEngine avec execution_mode ("io" ou "cpu")
 │   ├── tesseract.py        # execution_mode = "cpu"
@@ -55,12 +58,12 @@ picarones/
 │   └── azure_doc_intel.py
 ├── llm/
 │   ├── base.py
-│   ├── mistral_adapter.py  # POST /v1/chat/completions — BUG ACTIF : sortie vide à corriger
+│   ├── mistral_adapter.py
 │   ├── openai_adapter.py
 │   ├── anthropic_adapter.py
 │   └── ollama_adapter.py
 ├── pipelines/
-│   ├── base.py             # OCRLLMPipeline — BUG ACTIF : résultats 0/0 documents
+│   ├── base.py             # OCRLLMPipeline (interface BaseOCREngine)
 │   └── over_normalization.py
 ├── prompts/                # 8 fichiers .txt FR+EN
 │   ├── medieval_french.txt
@@ -72,8 +75,17 @@ picarones/
 │   ├── medieval_latin.txt
 │   └── zero_shot.txt
 ├── report/
-│   ├── generator.py        # Rapport HTML auto-contenu (Chart.js + diff2html)
-│   └── diff_utils.py
+│   ├── generator.py        # Orchestration Jinja2 (617 lignes depuis Sprint 17)
+│   ├── diff_utils.py
+│   ├── templates/          # Templates Jinja2 (Sprint 17)
+│   │   ├── base.html.j2    # assemble tout via {% include %}
+│   │   ├── _header.html, _footer.html, _styles.css, _app.js
+│   │   └── view_ranking.html, view_gallery.html, view_document.html,
+│   │       view_analyses.html, view_characters.html
+│   ├── i18n/               # Traductions FR/EN (Sprint 17 — extraites de i18n.py)
+│   │   ├── fr.json
+│   │   └── en.json
+│   └── vendor/             # Chart.js vendorisé
 ├── web/
 │   └── app.py              # FastAPI, SSE, upload corpus ZIP, endpoints modèles dynamiques
 └── importers/
@@ -179,6 +191,7 @@ AZURE_DOC_INTEL_KEY=...
 | 14 | Filtrage robuste des moteurs, validation corpus |
 | 15 | Correction du bug pipeline OCR+LLM sortie vide (normalisation ContentChunk Mistral, logs finish_reason/tokens) |
 | 16 | **Sprint 1 du plan rapport** : câblage de `line_metrics` et `hallucination` dans le runner et l'agrégation `EngineReport`, fondations du moteur narratif (`core/narrative/` avec modèle `Fact` et registre de détecteurs), correctifs qualité (deprecation Pillow `getdata` → `tobytes`, deux `except Exception: pass` remplacés par warnings explicites) |
+| 17 | **Sprint 2 du plan rapport** : refactor de `generator.py` (3690 → 617 lignes) via Jinja2. Le monolithe `_HTML_TEMPLATE` est découpé en 10 fichiers externes dans `picarones/report/templates/` (base + 5 vues + header/footer + CSS + JS). L'i18n `i18n.py` (dict Python 101 clés) migré vers `picarones/report/i18n/{fr,en}.json` chargés à l'import. Ajout de 16 tests de non-régression (structure, déterminisme, i18n, garde-fous contre balises dupliquées). |
 
 ---
 
@@ -211,7 +224,7 @@ défaut se fait sprint par sprint au fur et à mesure de leur implémentation :
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces (`/workspaces/Picarones`), Python 3.12
-- **Tests** : 1072 passed, 2 skipped (Sprint 16)
+- **Tests** : 1101 passed, 2 skipped (Sprint 17)
 - **Branche active** : `claude/review-picarones-benchmarks-E3J42`
 - **Transcript de la conversation de développement** :
   `/mnt/transcripts/2026-03-11-14-01-41-picarones-ocr-bench-project.txt`
