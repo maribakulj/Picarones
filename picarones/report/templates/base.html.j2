@@ -33,10 +33,13 @@
 
 {% include '_footer.html' %}
 
+{% include '_side_panels.html' %}
+
 <!-- ── Données embarquées ──────────────────────────────────────────── -->
 <script>
 const DATA = {{ report_data_json | safe }};
 const I18N = {{ i18n_json | safe }};
+const GLOSSARY = {{ glossary_json | safe }};
 </script>
 
 <!-- ── Application ────────────────────────────────────────────────── -->

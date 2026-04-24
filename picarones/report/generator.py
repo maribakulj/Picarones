@@ -676,6 +676,11 @@ class ReportGenerator:
         from picarones.core.narrative import build_synthesis
         synthesis = build_synthesis(report_data, lang=self.lang)
 
+        # Sprint 20 — glossaire contextuel chargé depuis YAML
+        from picarones.report.glossary import load_glossary
+        glossary = load_glossary(self.lang)
+        glossary_json = json.dumps(glossary, ensure_ascii=False, separators=(",", ":"))
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -688,6 +693,7 @@ class ReportGenerator:
             critical_difference_svg=cdd_svg,
             friedman=report_data.get("statistics", {}).get("friedman", {}),
             synthesis=synthesis,
+            glossary_json=glossary_json,
         )
 
         output_path.write_text(html, encoding="utf-8")

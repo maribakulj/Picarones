@@ -262,7 +262,7 @@ function renderRanking() {
       anchorCell = `<td>${_scoreBadge(av, 'Ancrage trigrammes')}${hallBadge}</td>`;
     }
 
-    return `<tr>
+    return `<tr data-engine="${esc(e.name)}">
       <td><span class="${badgeClass}">${rank}</span></td>
       <td>
         <span class="engine-name">${esc(e.name)}</span>
@@ -271,18 +271,18 @@ function renderRanking() {
         <span class="engine-version">v${esc(e.version)}</span>
         ${pipelineStepsHtml}
       </td>
-      <td>
+      <td data-col="cer">
         <span class="bar" style="width:${barW}px;background:${cerC}"></span>
         <span class="cer-badge" style="color:${cerC};background:${cerB}">${pct(e.cer)}</span>
       </td>
-      ${diploCerCell}
-      <td>${pct(e.wer)}</td>
-      <td>${pct(e.mer)}</td>
-      <td>${pct(e.wil)}</td>
-      <td>${_scoreBadge(e.ligature_score, 'Ligatures')}</td>
-      <td>${_scoreBadge(e.diacritic_score, 'Diacritiques')}</td>
-      ${giniCell}
-      ${anchorCell}
+      ${diploCerCell.replace('<td', '<td data-col="cer_diplomatic"')}
+      <td data-col="wer">${pct(e.wer)}</td>
+      <td data-col="mer">${pct(e.mer)}</td>
+      <td data-col="wil">${pct(e.wil)}</td>
+      <td data-col="ligature_score">${_scoreBadge(e.ligature_score, 'Ligatures')}</td>
+      <td data-col="diacritic_score">${_scoreBadge(e.diacritic_score, 'Diacritiques')}</td>
+      ${giniCell.replace('<td', '<td data-col="gini"')}
+      ${anchorCell.replace('<td', '<td data-col="anchor_score"')}
       <td style="color:var(--text-muted)">${pct(e.cer_median)}</td>
       <td style="color:var(--text-muted)">${pct(e.cer_min)}</td>
       <td style="color:var(--text-muted)">${pct(e.cer_max)}</td>
@@ -1704,6 +1704,361 @@ function toggleCDDHelp() {
   el.hidden = !el.hidden;
 }
 
+// ── Sprint 20 — Glossaire contextuel (panneau latéral) ──────────
+function openGlossary(termKey) {
+  if (!window.GLOSSARY) return;
+  const entry = GLOSSARY[termKey];
+  const panel = document.getElementById('glossary-panel');
+  const title = document.getElementById('glossary-panel-title');
+  const body = document.getElementById('glossary-panel-body');
+  if (!panel || !title || !body) return;
+
+  if (!entry) {
+    title.textContent = termKey;
+    body.innerHTML = '<p class="glossary-empty">' +
+      (I18N.glossary_empty || 'Aucune entrée pour ce terme.') + '</p>';
+  } else {
+    title.textContent = entry.title || termKey;
+    body.innerHTML = '';
+    const fields = [
+      ['definition', I18N.glossary_definition || 'Définition'],
+      ['measures',   I18N.glossary_measures   || 'Ce que la métrique mesure'],
+      ['usage',      I18N.glossary_usage      || "Cas d'usage"],
+      ['limits',     I18N.glossary_limits     || 'Limites'],
+      ['reference',  I18N.glossary_reference  || 'Référence'],
+    ];
+    fields.forEach(([k, label]) => {
+      if (!entry[k]) return;
+      const h = document.createElement('h4'); h.textContent = label;
+      const p = document.createElement('p'); p.textContent = entry[k];
+      body.appendChild(h); body.appendChild(p);
+    });
+  }
+  panel.hidden = false;
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('side-panel-open');
+}
+
+function closeGlossary() {
+  const panel = document.getElementById('glossary-panel');
+  if (!panel) return;
+  panel.hidden = true;
+  panel.setAttribute('aria-hidden', 'true');
+  if (!document.querySelector('.side-panel:not([hidden])')) {
+    document.body.classList.remove('side-panel-open');
+  }
+}
+
+function injectGlossaryButtons() {
+  if (!window.GLOSSARY) return;
+  document.querySelectorAll('th[data-glossary-key]').forEach(th => {
+    if (th.querySelector('.glossary-btn')) return;
+    const key = th.getAttribute('data-glossary-key');
+    if (!GLOSSARY[key]) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'glossary-btn';
+    btn.textContent = '?';
+    btn.title = (I18N.glossary_tooltip || 'Définition');
+    btn.setAttribute('aria-label', btn.title);
+    btn.onclick = (ev) => {
+      ev.stopPropagation();  // ne pas déclencher le tri de colonne
+      openGlossary(key);
+    };
+    th.appendChild(btn);
+  });
+}
+
+// ── Sprint 20 — Panneau "Mode avancé" (personnalisation) ────────
+const _CUSTOM_COLS = [
+  'cer', 'cer_diplomatic', 'wer', 'mer', 'wil',
+  'ligature_score', 'diacritic_score', 'gini', 'anchor_score',
+];
+let _CUSTOM_STATE = {
+  hiddenColumns: new Set(),
+  strataFilter: {},
+  weightsEnabled: false,
+  weights: {},
+};
+
+function openCustomize() {
+  const panel = document.getElementById('customize-panel');
+  if (!panel) return;
+  _populateCustomize();
+  panel.hidden = false;
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('side-panel-open');
+}
+
+function closeCustomize() {
+  const panel = document.getElementById('customize-panel');
+  if (!panel) return;
+  panel.hidden = true;
+  panel.setAttribute('aria-hidden', 'true');
+  if (!document.querySelector('.side-panel:not([hidden])')) {
+    document.body.classList.remove('side-panel-open');
+  }
+}
+
+function _populateCustomize() {
+  const colList = document.getElementById('customize-columns-list');
+  colList.innerHTML = '';
+  _CUSTOM_COLS.forEach(col => {
+    const label = (I18N['col_' + col] || col);
+    const id = 'custom-col-' + col;
+    const wrap = document.createElement('label');
+    wrap.className = 'custom-col-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = id;
+    cb.checked = !_CUSTOM_STATE.hiddenColumns.has(col);
+    cb.addEventListener('change', () => {
+      if (cb.checked) _CUSTOM_STATE.hiddenColumns.delete(col);
+      else _CUSTOM_STATE.hiddenColumns.add(col);
+      applyColumnVisibility();
+      updateCustomURL();
+    });
+    wrap.appendChild(cb);
+    wrap.appendChild(document.createTextNode(' ' + label));
+    colList.appendChild(wrap);
+  });
+
+  // Strates : détection sur documents[].script_type
+  const strata = {};
+  (DATA.documents || []).forEach(d => {
+    const s = d.script_type;
+    if (!s) return;
+    strata[s] = (strata[s] || 0) + 1;
+  });
+  const filtersList = document.getElementById('customize-filters-list');
+  filtersList.innerHTML = '';
+  const keys = Object.keys(strata);
+  if (keys.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'custom-note';
+    p.textContent = I18N.customize_filters_empty ||
+      'Aucune strate détectée dans les métadonnées du corpus.';
+    filtersList.appendChild(p);
+  } else {
+    keys.sort().forEach(k => {
+      const wrap = document.createElement('label');
+      wrap.className = 'custom-col-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = _CUSTOM_STATE.strataFilter[k] !== false;
+      cb.addEventListener('change', () => {
+        _CUSTOM_STATE.strataFilter[k] = cb.checked;
+        applyStrataFilter();
+        updateCustomURL();
+      });
+      wrap.appendChild(cb);
+      wrap.appendChild(document.createTextNode(
+        ' ' + k + ' (' + strata[k] + ')'
+      ));
+      filtersList.appendChild(wrap);
+    });
+  }
+
+  _renderCustomWeightsControls();
+}
+
+function toggleCustomWeights() {
+  _CUSTOM_STATE.weightsEnabled = !_CUSTOM_STATE.weightsEnabled;
+  _renderCustomWeightsControls();
+  applyCompositeScore();
+  updateCustomURL();
+}
+
+function _renderCustomWeightsControls() {
+  const container = document.getElementById('custom-weights-controls');
+  const toggle = document.getElementById('custom-weights-toggle');
+  const list = document.getElementById('custom-weights-list');
+  const formula = document.getElementById('custom-formula');
+  if (!container || !list || !formula || !toggle) return;
+
+  toggle.textContent = _CUSTOM_STATE.weightsEnabled
+    ? (I18N.customize_weights_disable || 'Désactiver')
+    : (I18N.customize_weights_enable  || 'Activer');
+  container.hidden = !_CUSTOM_STATE.weightsEnabled;
+  if (!_CUSTOM_STATE.weightsEnabled) return;
+
+  list.innerHTML = '';
+  const metrics = ['cer', 'wer', 'mer', 'wil',
+                   'ligature_score', 'diacritic_score',
+                   'gini', 'anchor_score'];
+  metrics.forEach(m => {
+    const w = _CUSTOM_STATE.weights[m] || 0;
+    const row = document.createElement('div');
+    row.className = 'custom-weight-row';
+    row.innerHTML = '<span>' + (I18N['col_' + m] || m) + '</span>' +
+      '<input type="range" min="0" max="100" step="5" value="' + w * 100 + '" ' +
+      'data-metric="' + m + '">' +
+      '<output>' + (w * 100).toFixed(0) + ' %</output>';
+    const slider = row.querySelector('input');
+    const output = row.querySelector('output');
+    slider.addEventListener('input', () => {
+      const v = parseFloat(slider.value) / 100;
+      _CUSTOM_STATE.weights[m] = v;
+      output.textContent = slider.value + ' %';
+      renderCompositeFormula();
+      applyCompositeScore();
+      updateCustomURL();
+    });
+    list.appendChild(row);
+  });
+  renderCompositeFormula();
+}
+
+function renderCompositeFormula() {
+  const formula = document.getElementById('custom-formula');
+  if (!formula) return;
+  const terms = [];
+  Object.keys(_CUSTOM_STATE.weights).forEach(m => {
+    const w = _CUSTOM_STATE.weights[m];
+    if (w && w > 0) {
+      terms.push(w.toFixed(2) + ' × ' + m);
+    }
+  });
+  if (terms.length === 0) {
+    formula.innerHTML = '<em>' + (I18N.customize_weights_none || 'Aucun poids non nul — score composite inactif.') + '</em>';
+  } else {
+    formula.innerHTML = '<code>score = ' + terms.join(' + ') + '</code>';
+  }
+}
+
+function applyColumnVisibility() {
+  _CUSTOM_COLS.forEach(col => {
+    const hidden = _CUSTOM_STATE.hiddenColumns.has(col);
+    document.querySelectorAll('th[data-col="' + col + '"], td[data-col="' + col + '"]').forEach(el => {
+      el.style.display = hidden ? 'none' : '';
+    });
+  });
+}
+
+function applyStrataFilter() {
+  // Effet : cache les documents dont le script_type est désactivé dans la galerie
+  const active = new Set(Object.keys(_CUSTOM_STATE.strataFilter)
+    .filter(k => _CUSTOM_STATE.strataFilter[k] !== false));
+  // Si rien n'est filtré, pas de traitement
+  if (active.size === 0) return;
+  document.querySelectorAll('.gallery-card').forEach(card => {
+    const s = card.dataset.scriptType;
+    if (!s) return;
+    card.style.display = active.has(s) ? '' : 'none';
+  });
+}
+
+function applyCompositeScore() {
+  const headTh = document.querySelector('th[data-col="composite"]');
+  if (!_CUSTOM_STATE.weightsEnabled) {
+    // Retirer colonne si présente
+    if (headTh) headTh.remove();
+    document.querySelectorAll('td[data-col="composite"]').forEach(td => td.remove());
+    return;
+  }
+
+  const weights = _CUSTOM_STATE.weights;
+  const weightKeys = Object.keys(weights).filter(k => weights[k] > 0);
+  if (weightKeys.length === 0) {
+    if (headTh) headTh.remove();
+    document.querySelectorAll('td[data-col="composite"]').forEach(td => td.remove());
+    return;
+  }
+
+  // Injecter colonne dans le tableau si absente
+  const tbl = document.querySelector('#view-ranking table');
+  if (!tbl) return;
+  const thead = tbl.querySelector('thead tr');
+  if (thead && !thead.querySelector('th[data-col="composite"]')) {
+    const th = document.createElement('th');
+    th.dataset.col = 'composite';
+    th.className = 'sortable';
+    th.innerHTML = (I18N.customize_composite_col || 'Score') +
+      '<i class="sort-icon">↕</i>';
+    thead.appendChild(th);
+  }
+
+  // Calculer le score pour chaque ligne moteur
+  const rows = tbl.querySelectorAll('tbody tr');
+  rows.forEach(tr => {
+    const name = tr.dataset.engine;
+    const engine = (DATA.engines || []).find(e => e.name === name);
+    if (!engine) return;
+    let score = 0;
+    weightKeys.forEach(k => {
+      const v = engine[k];
+      if (v == null) return;
+      // Pour les métriques "plus petit = mieux" (CER, WER…), on inverse
+      const invert = ['cer', 'wer', 'mer', 'wil', 'gini', 'length_ratio'].includes(k);
+      const val = invert ? (1 - Math.min(1, v)) : v;
+      score += weights[k] * val;
+    });
+    let td = tr.querySelector('td[data-col="composite"]');
+    if (!td) {
+      td = document.createElement('td');
+      td.dataset.col = 'composite';
+      tr.appendChild(td);
+    }
+    td.textContent = score.toFixed(3);
+  });
+}
+
+function resetCustomization() {
+  _CUSTOM_STATE = {
+    hiddenColumns: new Set(),
+    strataFilter: {},
+    weightsEnabled: false,
+    weights: {},
+  };
+  applyColumnVisibility();
+  applyStrataFilter();
+  applyCompositeScore();
+  _populateCustomize();
+  updateCustomURL();
+}
+
+function updateCustomURL() {
+  // Sérialise _CUSTOM_STATE dans l'URL (paramètre ``view`` existant)
+  const params = new URLSearchParams(window.location.search);
+  const hc = [..._CUSTOM_STATE.hiddenColumns].join(',');
+  if (hc) params.set('hidden', hc); else params.delete('hidden');
+  const inactive = Object.keys(_CUSTOM_STATE.strataFilter)
+    .filter(k => _CUSTOM_STATE.strataFilter[k] === false).join(',');
+  if (inactive) params.set('strata_off', inactive);
+  else params.delete('strata_off');
+  const w = Object.entries(_CUSTOM_STATE.weights)
+    .filter(([, v]) => v > 0)
+    .map(([k, v]) => k + ':' + v.toFixed(2));
+  if (_CUSTOM_STATE.weightsEnabled && w.length) {
+    params.set('w', w.join(','));
+  } else {
+    params.delete('w');
+  }
+  const newUrl = window.location.pathname + '?' + params.toString() + window.location.hash;
+  window.history.replaceState({}, '', newUrl);
+}
+
+function restoreCustomFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const hc = params.get('hidden');
+  if (hc) hc.split(',').filter(Boolean).forEach(c => _CUSTOM_STATE.hiddenColumns.add(c));
+  const strataOff = params.get('strata_off');
+  if (strataOff) strataOff.split(',').filter(Boolean).forEach(s => {
+    _CUSTOM_STATE.strataFilter[s] = false;
+  });
+  const w = params.get('w');
+  if (w) {
+    w.split(',').forEach(pair => {
+      const [k, v] = pair.split(':');
+      const num = parseFloat(v);
+      if (k && !isNaN(num) && num > 0) _CUSTOM_STATE.weights[k] = num;
+    });
+    if (Object.keys(_CUSTOM_STATE.weights).length > 0) {
+      _CUSTOM_STATE.weightsEnabled = true;
+    }
+  }
+}
+
 // ── Sprint 19 — Vue Pareto coût/qualité ─────────────────────────
 let _paretoChart = null;
 let _paretoAxis = 'cost';
@@ -2189,6 +2544,11 @@ function init() {
   buildDocList();
   renderParetoChart();
   renderParetoAssumptions();
+  injectGlossaryButtons();
+  restoreCustomFromURL();
+  applyColumnVisibility();
+  applyStrataFilter();
+  applyCompositeScore();
 
   // Restaurer l'état depuis l'URL
   const { view, params } = readURLState();

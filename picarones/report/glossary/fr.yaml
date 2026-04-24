@@ -1,0 +1,453 @@
+# Glossaire contextuel — français.
+#
+# Chaque entrée est affichée dans un panneau latéral quand l'utilisateur
+# clique sur le petit "?" à côté d'une en-tête de métrique du rapport.
+#
+# Structure par entrée :
+#   title        : titre court affiché en haut du panneau
+#   definition   : 2-3 phrases de définition formelle
+#   measures     : ce que la métrique mesure concrètement
+#   usage        : cas d'usage factuels (pas prescriptifs)
+#   limits       : limites connues, pièges fréquents
+#   reference    : référence bibliographique canonique
+
+cer:
+  title: "CER — Character Error Rate"
+  definition: >-
+    Taux d'erreur au niveau caractère, calculé comme le rapport entre la
+    distance de Levenshtein (substitutions + insertions + suppressions) et
+    la longueur de la chaîne de référence. Exprimé en %.
+  measures: >-
+    La fidélité caractère-à-caractère entre la transcription prédite et la
+    vérité terrain, sans normalisation.
+  usage: >-
+    Métrique la plus courante en évaluation OCR/HTR, adoptée par les
+    compétitions ICDAR depuis les années 2000.
+  limits: >-
+    Insensible aux variantes graphiques (ſ vs s, u vs v) qui peuvent être
+    codifiées dans la GT d'un corpus patrimonial — voir CER diplomatique.
+  reference: >-
+    Kay, M. (2007). "Optical Character Recognition". Handbook of Natural
+    Language Processing, 2e éd.
+
+cer_nfc:
+  title: "CER NFC"
+  definition: >-
+    CER calculé après normalisation Unicode NFC (Canonical Decomposition,
+    followed by Canonical Composition) sur la référence et l'hypothèse.
+  measures: >-
+    La fidélité texte en ignorant les différences de représentation Unicode
+    équivalentes (ex. é composé vs é décomposé).
+  usage: >-
+    Indispensable quand la GT et la sortie OCR utilisent des formes Unicode
+    différentes mais sémantiquement équivalentes.
+  limits: >-
+    Ne règle pas les variantes graphiques signifiantes (ſ, ligatures non
+    décomposables).
+  reference: >-
+    Unicode Technical Report #15 — Unicode Normalization Forms.
+
+cer_caseless:
+  title: "CER insensible à la casse"
+  definition: >-
+    CER calculé après conversion en minuscules (``casefold``) de la
+    référence et de l'hypothèse.
+  measures: >-
+    La fidélité texte en ignorant les différences majuscules/minuscules.
+  usage: >-
+    Utile pour les corpus où la casse n'est pas jugée signifiante
+    (nombreux imprimés anciens, titres en capitales inconsistantes).
+  limits: >-
+    Masque les choix éditoriaux relatifs aux noms propres et aux débuts de
+    phrase.
+  reference: >-
+    Ibid. — CER.
+
+cer_diplomatic:
+  title: "CER diplomatique"
+  definition: >-
+    CER calculé après normalisation diplomatique d'un corpus patrimonial :
+    fusion ``ſ=s``, ``u=v``, ``i=j``, développement des abréviations, etc.
+  measures: >-
+    Les erreurs substantielles, en ignorant les variantes graphiques
+    codifiées par des conventions éditoriales (diplomatique vs normalisée).
+  usage: >-
+    Souvent utilisé en évaluation d'OCR/HTR de corpus pré-XIXᵉ où la GT
+    conserve les graphies anciennes non pertinentes pour la recherche.
+  limits: >-
+    Masque les choix éditoriaux pertinents en philologie stricte. Le profil
+    appliqué dépend de conventions (MUFI, Capitains…) qui varient selon les
+    communautés.
+  reference: >-
+    Pierazzo, E. (2015). "Digital Scholarly Editing". Ashgate.
+
+wer:
+  title: "WER — Word Error Rate"
+  definition: >-
+    Taux d'erreur au niveau mot, calculé comme la distance de Levenshtein
+    mot-à-mot divisée par le nombre de mots de la référence.
+  measures: >-
+    La fidélité mot-à-mot, sensible à la segmentation (un espace mal placé
+    compte comme deux erreurs).
+  usage: >-
+    Standard historique en reconnaissance de la parole, repris en OCR/HTR
+    pour évaluer l'utilisabilité du texte pour la recherche plein-texte.
+  limits: >-
+    Très sensible à la segmentation. Un CER à 5 % peut correspondre à un
+    WER à 20 % si les erreurs touchent des mots différents à chaque fois.
+  reference: >-
+    Morris, A. C., Maier, V., & Green, P. (2004). "From WER and RIL to MER
+    and WIL". ICSLP.
+
+mer:
+  title: "MER — Match Error Rate"
+  definition: >-
+    Variante du WER qui borne l'erreur à 1 en tenant compte des
+    insertions (WER peut dépasser 1, MER non).
+  measures: >-
+    Une version plus stable du WER, bornée en [0, 1].
+  usage: >-
+    Proposé par Morris et al. (2004) pour corriger l'asymétrie du WER en
+    présence d'insertions excessives.
+  limits: >-
+    Moins répandu que le WER — les tables comparatives historiques
+    utilisent souvent WER et non MER.
+  reference: >-
+    Morris, A. C., Maier, V., & Green, P. (2004). Ibid.
+
+wil:
+  title: "WIL — Word Information Lost"
+  definition: >-
+    Mesure la perte d'information mot ; tient compte à la fois de ce qui
+    a été correctement reconnu et du bruit introduit.
+  measures: >-
+    La quantité d'information sémantique perdue au niveau mot.
+  usage: >-
+    Utile en complément du WER pour diagnostiquer des hypothèses bruitées
+    (beaucoup d'insertions sans rapport).
+  limits: >-
+    Interprétation moins intuitive qu'un simple taux d'erreur.
+  reference: >-
+    Morris, A. C., Maier, V., & Green, P. (2004). Ibid.
+
+ligature_score:
+  title: "Score de ligatures"
+  definition: >-
+    Taux de ligatures (``fi``, ``fl``, ``œ``, ``æ``, ``ꝑ``, ``ꝓ``…)
+    correctement restituées par le moteur.
+  measures: >-
+    La capacité du moteur à reconnaître les formes soudées caractéristiques
+    des documents imprimés anciens et manuscrits médiévaux.
+  usage: >-
+    Indicateur fort pour l'édition critique et la philologie.
+  limits: >-
+    Dépend de la table de ligatures reconnue par Picarones — certaines
+    ligatures rares peuvent être absentes.
+  reference: >-
+    MUFI — Medieval Unicode Font Initiative, Recommendations v4.
+
+diacritic_score:
+  title: "Score de diacritiques"
+  definition: >-
+    Taux de conservation des diacritiques (accents aigus, graves, tildes,
+    cédilles, trémas…) entre la GT et la sortie OCR.
+  measures: >-
+    La fidélité diacritique, mesurée après décomposition NFD.
+  usage: >-
+    Important pour les corpus multilingues et les transcriptions
+    philologiques où les diacritiques sont signifiants.
+  limits: >-
+    Un moteur peut afficher un diacritique sur la mauvaise lettre — cette
+    métrique seule ne le détecte pas.
+  reference: >-
+    Unicode Technical Report #15.
+
+taxonomy:
+  title: "Taxonomie des erreurs (9 classes)"
+  definition: >-
+    Classification systématique de chaque erreur en 9 catégories : confusion
+    visuelle, erreur diacritique, erreur de casse, erreur de ligature,
+    abréviation, hapax, segmentation, caractère OOV, lacune.
+  measures: >-
+    Le profil d'erreurs d'un moteur — permet d'identifier ses faiblesses
+    spécifiques.
+  usage: >-
+    Diagnostic fin sur un moteur donné, utile pour décider de changer de
+    modèle ou d'ajuster un prompt de post-correction LLM.
+  limits: >-
+    La classification par ``difflib`` est heuristique ; un caractère peut
+    tomber dans plusieurs classes simultanément.
+  reference: >-
+    Clausner, C., Antonacopoulos, A., Pletschacher, S. (2020). "ICDAR 2019
+    Competition on Recognition of Historical Arabic Scientific Manuscripts".
+
+confusion_matrix:
+  title: "Matrice de confusion Unicode"
+  definition: >-
+    Tableau croisé recensant les substitutions (caractère GT → caractère OCR)
+    et leur fréquence sur l'ensemble du corpus.
+  measures: >-
+    Les patterns de substitution caractère-à-caractère, symétriquement
+    lisibles (quel caractère GT a été confondu avec quoi ?).
+  usage: >-
+    Comparer le "signe génétique" de deux moteurs : s'ils confondent les
+    mêmes caractères, ils ont probablement été entraînés sur des données
+    similaires.
+  limits: >-
+    Ne capture pas les erreurs de segmentation (espaces) ni les insertions
+    sans correspondance GT.
+  reference: >-
+    Pletschacher, S., Clausner, C., Antonacopoulos, A. (2015). "Performance
+    Analysis Framework for Layout Analysis Methods".
+
+gini:
+  title: "Coefficient de Gini des erreurs"
+  definition: >-
+    Mesure la concentration des erreurs sur un document (entre 0 = erreurs
+    uniformes sur toutes les lignes et 1 = toutes les erreurs concentrées
+    sur une seule ligne).
+  measures: >-
+    La distribution inégale des erreurs dans un document — un Gini élevé
+    signale qu'une petite fraction des lignes concentre la majorité des
+    erreurs.
+  usage: >-
+    Permet d'identifier les zones difficiles (lignes marginales, notes,
+    passages dégradés) qui tireraient bénéfice d'une correction ciblée.
+  limits: >-
+    Sensible au nombre de lignes — peu informatif sur un document très
+    court.
+  reference: >-
+    Gini, C. (1912). "Variabilità e mutabilità".
+
+hallucination_score:
+  title: "Score d'hallucination (LLM/VLM)"
+  definition: >-
+    Indicateur composite combinant ancrage trigrammes (part de trigrammes
+    hypothèse présents dans le GT) et ratio de longueur sortie/GT pour
+    détecter les hallucinations des pipelines LLM et VLM.
+  measures: >-
+    La probabilité que le modèle ait inventé du texte plutôt que l'ait lu
+    sur l'image.
+  usage: >-
+    Essentiel pour les pipelines OCR+LLM et les VLM en zero-shot, où le
+    CER seul est trompeur (un CER faible peut masquer une paraphrase
+    hallucinée).
+  limits: >-
+    Une paraphrase fidèle au sens mais différente en forme peut être
+    faussement flaguée.
+  reference: >-
+    Wiland, A. et al. (2024). "Hallucination Detection for Visual Language
+    Models on Historical Documents". DHd.
+
+anchor_score:
+  title: "Score d'ancrage trigrammes"
+  definition: >-
+    Proportion des trigrammes de mots de l'hypothèse OCR qui existent
+    également dans la GT.
+  measures: >-
+    À quel point la sortie est "ancrée" dans le texte source. Un score
+    élevé indique une transcription fidèle ; un score faible signale des
+    hallucinations.
+  usage: >-
+    Complémentaire du CER pour les pipelines LLM/VLM.
+  limits: >-
+    Sur de très courtes sorties, le score peut être bruité (peu de
+    trigrammes disponibles).
+  reference: >-
+    Wiland, A. et al. (2024). Ibid.
+
+length_ratio:
+  title: "Ratio de longueur"
+  definition: >-
+    Rapport entre la longueur (caractères) de l'hypothèse et celle de la GT.
+    Un ratio > 1,2 ou < 0,8 est un signal d'alerte.
+  measures: >-
+    L'excès ou le déficit de texte produit par le moteur.
+  usage: >-
+    Utilisé avec l'ancrage pour flaguer les hallucinations (LLM trop verbeux)
+    ou les omissions (LLM qui abandonne les passages difficiles).
+  limits: >-
+    Dépend fortement du style de la GT (abrégé vs développé).
+  reference: >-
+    Wiland, A. et al. (2024). Ibid.
+
+bootstrap_ci:
+  title: "Intervalle de confiance bootstrap"
+  definition: >-
+    Intervalle de confiance à 95 % du CER moyen, calculé par
+    rééchantillonnage avec remise sur les documents (1000 itérations par
+    défaut).
+  measures: >-
+    L'incertitude associée à la moyenne de CER — plus l'intervalle est
+    large, moins le classement ordinal est fiable.
+  usage: >-
+    Indispensable pour accompagner tout CER moyen ; particulièrement
+    important sur les petits corpus (< 30 documents).
+  limits: >-
+    Assume que les documents sont indépendants — pas vrai sur des séries
+    (même scribe, même manuscrit).
+  reference: >-
+    Efron, B. (1979). "Bootstrap Methods: Another Look at the Jackknife".
+    Annals of Statistics.
+
+wilcoxon:
+  title: "Test de Wilcoxon signé-rangé"
+  definition: >-
+    Test non-paramétrique d'égalité entre deux séries de mesures appariées
+    (mêmes documents, deux moteurs différents).
+  measures: >-
+    La significativité statistique d'un écart observé entre deux moteurs
+    sans supposer la normalité des distributions.
+  usage: >-
+    Comparaison pairwise de deux moteurs sur un corpus.
+  limits: >-
+    Appliqué de façon répétée entre toutes les paires sur k moteurs, le
+    risque d'erreur de type I augmente — préférer Friedman-Nemenyi pour
+    comparer plus de deux moteurs.
+  reference: >-
+    Wilcoxon, F. (1945). "Individual Comparisons by Ranking Methods".
+    Biometrics Bulletin.
+
+friedman:
+  title: "Test de Friedman"
+  definition: >-
+    Équivalent non-paramétrique de l'ANOVA à mesures répétées : teste si
+    au moins un moteur parmi k diffère des autres sur n documents.
+  measures: >-
+    Une différence globale entre k moteurs sur n blocs (documents).
+  usage: >-
+    Préambule au post-hoc de Nemenyi. Recommandé dès qu'on compare plus
+    de deux moteurs pour contrôler le risque multi-comparaison.
+  limits: >-
+    Ne dit pas quelles paires diffèrent — le post-hoc est nécessaire.
+  reference: >-
+    Friedman, M. (1937). "The Use of Ranks to Avoid the Assumption of
+    Normality Implicit in the Analysis of Variance".
+
+nemenyi:
+  title: "Post-hoc de Nemenyi"
+  definition: >-
+    Test post-hoc appliqué après un test de Friedman pour identifier les
+    paires de moteurs distinguables. Calcule une ``critical distance`` (CD)
+    dépendant du nombre de moteurs et de documents.
+  measures: >-
+    Les paires de moteurs dont les rangs moyens diffèrent significativement.
+  usage: >-
+    Base du Critical Difference Diagram (Demšar 2006).
+  limits: >-
+    Conservateur par construction (corrige pour comparaisons multiples) ;
+    peut manquer des différences réelles mais subtiles.
+  reference: >-
+    Nemenyi, P. (1963). "Distribution-free Multiple Comparisons".
+
+cdd:
+  title: "Critical Difference Diagram"
+  definition: >-
+    Rendu graphique des résultats Friedman-Nemenyi : moteurs placés sur un
+    axe horizontal (rang moyen), reliés par une barre s'ils ne sont pas
+    statistiquement distinguables au seuil α.
+  measures: >-
+    L'ordonnancement global des moteurs et les groupes d'indiscernabilité.
+  usage: >-
+    Standard de facto en ML depuis Demšar 2006 pour comparer plusieurs
+    systèmes sur plusieurs datasets.
+  limits: >-
+    Peut être difficile à lire quand plusieurs groupes se chevauchent
+    partiellement.
+  reference: >-
+    Demšar, J. (2006). "Statistical Comparisons of Classifiers over
+    Multiple Data Sets". JMLR 7:1-30.
+
+pareto_front:
+  title: "Frontière de Pareto"
+  definition: >-
+    Ensemble des moteurs pour lesquels aucun autre n'offre simultanément
+    une meilleure qualité ET un meilleur coût (ou une autre paire
+    d'objectifs).
+  measures: >-
+    Les compromis "non dominés" — choisir en dehors du front Pareto est
+    toujours sous-optimal, mais choisir sur le front dépend des priorités
+    propres à l'institution.
+  usage: >-
+    Cœur de la vue qualité/coût du rapport. Utilisable aussi pour
+    qualité/vitesse ou qualité/carbone.
+  limits: >-
+    Les coûts utilisés sont indicatifs (voir table ``pricing.yaml``) et
+    vieillissent. Toujours revalider avec les factures réelles avant
+    décision d'achat.
+  reference: >-
+    Pareto, V. (1906). "Manuale di economia politica".
+
+difficulty_score:
+  title: "Score de difficulté intrinsèque"
+  definition: >-
+    Score [0, 1] combinant la variance inter-moteurs des CER, la qualité
+    d'image et la densité de caractères spéciaux patrimoniaux.
+  measures: >-
+    À quel point un document est intrinsèquement difficile, indépendamment
+    de l'instrument d'évaluation.
+  usage: >-
+    Permet de stratifier le rapport (documents faciles vs difficiles) et
+    d'interpréter un CER global en tenant compte du corpus.
+  limits: >-
+    Les poids par défaut (0.4, 0.35, 0.25) sont heuristiques et peuvent
+    être ajustés selon le contexte.
+  reference: >-
+    Stutzmann, D. (2017). "Clustering of medieval scripts through
+    computer image analysis".
+
+normalization_profile:
+  title: "Profil de normalisation"
+  definition: >-
+    Ensemble de règles de transformation appliquées à la GT et à
+    l'hypothèse avant calcul du CER : fusion ſ=s, u=v, i=j, développement
+    d'abréviations, exclusion de caractères, etc.
+  measures: >-
+    Le choix d'une convention éditoriale pour le calcul de CER — n'affecte
+    pas les données sources.
+  usage: >-
+    Picarones fournit 9 profils préconfigurés (medieval_french,
+    early_modern_english, medieval_latin…). D'autres profils peuvent être
+    chargés via YAML.
+  limits: >-
+    Un profil trop agressif masque les vraies erreurs ; un profil trop
+    strict sur-estime l'erreur.
+  reference: >-
+    Voir ``picarones/core/normalization.py`` pour la liste des profils.
+
+structure:
+  title: "Scores structurels"
+  definition: >-
+    Ensemble de mesures au niveau structurel : taux de fusion de lignes,
+    taux de fragmentation, ordre de lecture (LCS), conservation des
+    paragraphes.
+  measures: >-
+    L'intégrité de la mise en page reconstruite, au-delà du texte
+    caractère-à-caractère.
+  usage: >-
+    Crucial pour les documents multi-colonnes (journaux, bibles glosées)
+    où un CER bas peut cacher un ordre de lecture brisé.
+  limits: >-
+    Dépend d'annotations de structure dans la GT — pas toujours disponibles.
+  reference: >-
+    Antonacopoulos, A. et al. (2015). "ICDAR 2015 Competition on Text
+    Line Detection in Historical Documents".
+
+image_quality:
+  title: "Qualité d'image"
+  definition: >-
+    Score composite [0, 1] combinant netteté (variance du laplacien),
+    niveau de bruit, contraste, et estimation d'angle de rotation.
+  measures: >-
+    Les caractéristiques physiques de l'image source susceptibles de
+    dégrader la reconnaissance.
+  usage: >-
+    Sert à stratifier les résultats (images "bonnes" vs "mauvaises") et à
+    identifier les documents qui nécessiteraient un rescannage.
+  limits: >-
+    Score purement intrinsèque à l'image ; ne capture pas les difficultés
+    paléographiques (écriture cursive, abréviations denses).
+  reference: >-
+    Antonacopoulos, A., Bridson, D., Papadopoulos, C., Pletschacher, S.
+    (2009). "A Realistic Dataset for Performance Evaluation of Document
+    Layout Analysis".
