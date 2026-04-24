@@ -15,7 +15,7 @@ from typing import Iterable
 
 import yaml
 
-from picarones.core.narrative.facts import Fact, FactType
+from picarones.core.narrative.facts import Fact
 
 logger = logging.getLogger(__name__)
 
