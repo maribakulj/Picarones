@@ -94,3 +94,16 @@ picarones = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.ruff]
+# Configuration centralisée pour que `ruff check`, `make lint` et le job CI
+# produisent exactement les mêmes résultats sans flags en ligne de commande.
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes. On conserve les mêmes règles que le CI
+# d'origine (avant Sprint 22), qui excluait les lignes longues (E501) et les
+# imports non-top (E402, parfois utiles pour imports conditionnels).
+select = ["E", "W", "F"]
+ignore = ["E501", "E402"]

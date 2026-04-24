@@ -128,6 +128,11 @@ correspondants (`test_sprint15_llm_pipeline_bugs.py`, `test_sprint8_escriptorium
   `logger.warning("[module] fonctionnalité dégradée : %s", e)`.
 - **Toujours utiliser `logger.warning` avec message explicite** quand une fonctionnalité optionnelle
   échoue (confusion, taxonomy, structure, image_quality, etc.).
+- **Avant tout push, lancer `make lint`** (ou `ruff check picarones/ tests/`).
+  La config est centralisée dans `pyproject.toml` sous `[tool.ruff]`, donc
+  CI, Makefile et invocation directe produisent le même résultat. Le job
+  `lint` du CI est bloquant — un F401 (import inutilisé) ou un E741
+  (variable ambiguë) fait échouer la PR, par design.
 - **Les profils de normalisation** sont dans `picarones/core/normalization.py` — l'endpoint
   `/api/normalization/profiles` doit les lire dynamiquement depuis ce fichier, pas depuis une
   liste statique.
