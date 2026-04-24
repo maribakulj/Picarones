@@ -20,11 +20,14 @@ sont générées via `generate_mock_quality_scores()`.
 
 from __future__ import annotations
 
+import logging
 import math
 import statistics
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -174,7 +177,7 @@ def _analyze_with_numpy(path: Path, np, Image) -> ImageQualityResult:
 def _analyze_with_pillow(path: Path, Image) -> ImageQualityResult:
     """Analyse simplifiée avec Pillow seul (sans NumPy)."""
     img = Image.open(path).convert("L")
-    pixels = list(img.getdata())
+    pixels = list(img.tobytes())  # mode "L" = 1 byte/pixel
     w, h = img.size
 
     if not pixels:
@@ -278,8 +281,11 @@ def _estimate_rotation_numpy(arr, np) -> float:
             if var > best_var:
                 best_var = var
                 best_angle = float(angle_deg)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "[image_quality] projection à %d° indisponible : %s",
+                angle_deg, e,
+            )
 
     return best_angle
 

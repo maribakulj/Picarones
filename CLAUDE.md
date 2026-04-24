@@ -86,36 +86,24 @@ picarones/
 
 ---
 
-## Bugs actifs à corriger en priorité
+## État des tests et bugs historiques
 
-### 🔴 BUG CRITIQUE — Pipeline OCR+LLM sortie vide
-**Symptôme** : le pipeline `tesseract → mistral:ministral-3b-latest` s'exécute (15s de traitement
-visible dans les logs) mais produit une sortie vide `""` pour chaque document. Le rapport affiche
-CER 100% avec "Aucune sortie" et 0/0 documents.
+**État actuel (Sprint 16)** : `pytest tests/` → **1072 passed, 2 skipped, 0 failed**.
+Les deux tests skip sont volontaires (dépendance scipy optionnelle).
 
-**Localisation probable** :
-- `picarones/llm/mistral_adapter.py` : vérifier que `choices[0].message.content` est bien extrait
-- `picarones/pipelines/base.py` : vérifier que `result.hypothesis` est bien mis à jour après
-  l'appel LLM, et que les DocumentResult sont bien collectés par le runner
-- Le modèle `ministral-3b-latest` supporte bien `POST /v1/chat/completions`
+### Bugs documentés antérieurement — tous résolus
 
-**À faire** : ajouter des logs DEBUG (prompt envoyé tronqué, statut HTTP, contenu brut réponse)
-pour diagnostiquer sans modifier le comportement.
+| Bug | Statut | Sprint de résolution |
+|-----|--------|---------------------|
+| Pipeline OCR+LLM sortie vide (`tesseract → ministral-3b-latest`) | ✅ Résolu | Sprint 15 — adapter Mistral logue `finish_reason`, `completion_tokens`, normalise les ContentChunk |
+| CI `python-multipart` manquant | ✅ Résolu | `pyproject.toml` expose `python-multipart>=0.0.9` dans les extras `dev` ET `web`; `ci.yml:71` installe `.[dev,web]` |
+| Tests fixtures post-Sprint 10 (counts moteurs, flag `is_pipeline`) | ✅ Résolu | Fixtures mises à jour |
+| Test Windows SQLite `test_history_empty_db` | ✅ Résolu | `try/except OSError` + `gc.collect()` avant `unlink` |
+| Test HuggingFace `test_search_language_filter` | ✅ Résolu | Assertion corrigée |
 
-### 🟡 CI — python-multipart
-**Symptôme** : 114 tests ERROR car `python-multipart` absent lors de l'import de `web/app.py`.
-**Fix** : dans `.github/workflows/ci.yml`, remplacer `pip install -e ".[dev]"` par
-`pip install -e ".[dev,web]"`.
-
-### 🟡 Tests fixtures post-Sprint 10
-5 tests échouent : counts de moteurs (4→5) et flag `is_pipeline` pour `gpt-4o-vision`.
-
-### 🟡 Test Windows SQLite
-`TestCLIHistory::test_history_empty_db` — PermissionError sur Windows (fichier encore ouvert
-lors du `os.unlink`). À corriger avec `try/except` autour du `unlink`.
-
-### 🟡 Test HuggingFace language filter
-`TestHuggingFaceImporter::test_search_language_filter` — assertion sur `ds.language`.
+En cas de régression sur un de ces bugs, chercher les fichiers de test
+correspondants (`test_sprint15_llm_pipeline_bugs.py`, `test_sprint8_escriptorium_gallica.py`,
+`test_sprint6_web_interface.py`) avant de ré-ouvrir une enquête.
 
 ---
 
@@ -188,13 +176,42 @@ AZURE_DOC_INTEL_KEY=...
 | 11 | Internationalisation FR/EN, profils normalisation anglais (early_modern, medieval, secretary_hand) |
 | 12 | Upload ZIP depuis navigateur, filtrage fichiers macOS `._*`, profils exclusion caractères, sélecteur modèles dynamique |
 | 13 | Nettoyage pyproject.toml, exceptions silencieuses → warnings, parallélisation runner (ThreadPool/ProcessPool), timeout par doc, résultats partiels NDJSON, validation statistique Wilcoxon |
+| 14 | Filtrage robuste des moteurs, validation corpus |
+| 15 | Correction du bug pipeline OCR+LLM sortie vide (normalisation ContentChunk Mistral, logs finish_reason/tokens) |
+| 16 | **Sprint 1 du plan rapport** : câblage de `line_metrics` et `hallucination` dans le runner et l'agrégation `EngineReport`, fondations du moteur narratif (`core/narrative/` avec modèle `Fact` et registre de détecteurs), correctifs qualité (deprecation Pillow `getdata` → `tobytes`, deux `except Exception: pass` remplacés par warnings explicites) |
+
+---
+
+## Moteur narratif (Sprint 16)
+
+Fondations en place dans `picarones/core/narrative/` :
+
+```
+core/narrative/
+├── __init__.py              # API publique : Fact, FactType, FactImportance, DetectorRegistry, detect_all
+├── facts.py                 # Modèle de données : Fact dataclass, 12 FactType, 4 FactImportance, DetectorRegistry
+└── detectors.py             # Stubs des 12 détecteurs (implémentations sprint par sprint)
+```
+
+**Principe anti-hallucination** : chaque valeur numérique ou nom d'entité dans le
+`payload` d'un `Fact` doit provenir directement du JSON d'entrée du benchmark.
+Test unitaire à ajouter au Sprint 4 : parser la synthèse rendue et vérifier que
+tous les nombres qu'elle contient sont traçables au JSON source.
+
+**Détecteurs** : les 12 stubs sont en place. L'activation dans le registre par
+défaut se fait sprint par sprint au fur et à mesure de leur implémentation :
+- Sprint 3 : `statistical_tie` (après Friedman-Nemenyi)
+- Sprint 4 : `global_leader_cer`, `significant_gap`, `stratum_winner`, `stratum_collapse`,
+  `error_profile_outlier`, `llm_hallucination_flag`, `robustness_fragile`, `speed_winner`,
+  `confidence_warning`
+- Sprint 5 : `pareto_alternative`, `cost_outlier`
 
 ---
 
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces (`/workspaces/Picarones`), Python 3.12
-- **Tests** : ~1020 tests (après sprint 13)
-- **Branche active** : `main` (ou `claude/setup-picarones-project-FKKns` selon le contexte)
+- **Tests** : 1072 passed, 2 skipped (Sprint 16)
+- **Branche active** : `claude/review-picarones-benchmarks-E3J42`
 - **Transcript de la conversation de développement** :
   `/mnt/transcripts/2026-03-11-14-01-41-picarones-ocr-bench-project.txt`
