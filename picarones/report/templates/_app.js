@@ -1697,6 +1697,13 @@ function readURLState() {
   return { view: view || 'ranking', params };
 }
 
+// ── Sprint 17 — Aide Critical Difference Diagram ────────────────
+function toggleCDDHelp() {
+  const el = document.getElementById('cdd-help');
+  if (!el) return;
+  el.hidden = !el.hidden;
+}
+
 // ── Sprint 7 — Mode présentation ────────────────────────────────
 let presentMode = false;
 function togglePresentMode() {

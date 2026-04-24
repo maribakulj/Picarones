@@ -562,3 +562,73 @@ body.present-mode nav .meta { display: none; }
 }
 .pct-bar-fill { height: 100%; border-radius: 4px; }
 .pct-bar-val { width: 3rem; color: var(--text); font-weight: 600; }
+
+/* ── Sprint 17 — Critical Difference Diagram ───────────────────── */
+.cdd-card {
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 1rem 1.5rem 1.25rem;
+  margin: 1rem 1.5rem 0;
+}
+.cdd-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .5rem;
+}
+.cdd-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+}
+.cdd-info-btn {
+  border: 1px solid var(--border, #e2e8f0);
+  background: #fff;
+  width: 1.5rem; height: 1.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: .75rem;
+  color: var(--text-muted, #64748b);
+}
+.cdd-info-btn:hover { background: #f1f5f9; }
+.cdd-friedman {
+  font-size: .82rem;
+  color: var(--text-muted, #64748b);
+  margin: .25rem 0 .5rem;
+}
+.cdd-friedman strong { color: var(--text, #0f172a); }
+.cdd-badge {
+  display: inline-block;
+  padding: .05rem .4rem;
+  border-radius: 3px;
+  font-size: .72rem;
+  font-weight: 600;
+  margin-left: .4rem;
+  vertical-align: middle;
+}
+.cdd-badge-sig { background: #dcfce7; color: #166534; }
+.cdd-badge-nsig { background: #f1f5f9; color: #475569; }
+.cdd-note-muted {
+  font-style: italic;
+  color: var(--text-muted, #64748b);
+  font-size: .85rem;
+}
+.cdd-svg-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: .25rem;
+}
+.cdd-help {
+  margin-top: .75rem;
+  padding: .75rem 1rem;
+  background: #f8fafc;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  font-size: .82rem;
+  color: var(--text, #0f172a);
+}
+.cdd-help ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+.cdd-help li { margin: .15rem 0; }
+
+body.present-mode .cdd-info-btn,
+body.present-mode .cdd-help { display: none !important; }

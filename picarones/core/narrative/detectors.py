@@ -29,10 +29,47 @@ def detect_global_leader_cer(benchmark_data: dict) -> list[Fact]:
 def detect_statistical_tie(benchmark_data: dict) -> list[Fact]:
     """Détecte les groupes de moteurs statistiquement indiscernables.
 
-    Implémentation Sprint 4, utilisant les résultats Nemenyi du Sprint 3
-    (champ ``benchmark_data["statistics"]["nemenyi"]``).
+    Lit les résultats Nemenyi du Sprint 3
+    (``benchmark_data["statistics"]["nemenyi"]``) et émet un ``Fact`` pour
+    chaque groupe d'ex-aequo non trivial (≥ 2 moteurs). La présence du fait
+    est un signal important pour la synthèse : "les moteurs X, Y, Z sont
+    statistiquement indiscernables au seuil α = 0,05".
     """
-    return []
+    nemenyi = benchmark_data.get("statistics", {}).get("nemenyi", {})
+    if not nemenyi or nemenyi.get("error"):
+        return []
+
+    tied_groups = nemenyi.get("tied_groups", [])
+    mean_ranks = nemenyi.get("mean_ranks", {})
+    cd = nemenyi.get("critical_distance", 0.0)
+    alpha = nemenyi.get("alpha", 0.05)
+    n_blocks = nemenyi.get("n_blocks", 0)
+
+    facts: list[Fact] = []
+    for group in tied_groups:
+        if len(group) < 2:
+            continue  # singletons n'ont pas besoin de fait dédié
+        # Importance : un groupe incluant le leader (rang le plus bas) est critique
+        # (il nuance fortement le classement ordinal), les autres sont HIGH.
+        is_leader_tie = min(mean_ranks.get(n, 999) for n in group) == min(
+            mean_ranks.values(), default=0
+        )
+        importance = FactImportance.CRITICAL if is_leader_tie else FactImportance.HIGH
+
+        facts.append(Fact(
+            type=FactType.STATISTICAL_TIE,
+            importance=importance,
+            payload={
+                "engines": list(group),
+                "mean_ranks": {n: mean_ranks.get(n) for n in group},
+                "critical_distance": cd,
+                "alpha": alpha,
+                "n_blocks": n_blocks,
+                "includes_leader": is_leader_tie,
+            },
+            engines_involved=tuple(group),
+        ))
+    return facts
 
 
 def detect_significant_gap(benchmark_data: dict) -> list[Fact]:

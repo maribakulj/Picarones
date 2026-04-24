@@ -1,6 +1,12 @@
 {
   "bootstrap_note": "95% CI on mean CER per engine (1000 bootstrap iterations).",
   "btn_present": "⊞ Presentation",
+  "cdd_help_axis": "The horizontal axis shows the mean rank of each engine (1 = best, k = worst).",
+  "cdd_help_bars": "Thick horizontal bars connect engines that are statistically indistinguishable at the α = 0.05 level (Nemenyi post-hoc test).",
+  "cdd_help_cd": "The red CD bar in the upper-left area shows the critical distance: two engines whose mean ranks differ by less than CD cannot be distinguished.",
+  "cdd_help_ref": "Reference: Demšar (2006), Statistical Comparisons of Classifiers over Multiple Data Sets, JMLR 7:1-30.",
+  "cdd_help_title": "How to read this diagram?",
+  "cdd_title": "Multi-engine test — Friedman & Nemenyi",
   "char_engine_label": "Engine:",
   "class_col": "Class",
   "col_anchor": "Anchor",

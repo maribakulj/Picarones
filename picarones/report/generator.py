@@ -44,6 +44,9 @@ from picarones.core.statistics import (
     compute_venn_data,
     cluster_errors,
     bootstrap_ci,
+    friedman_test,
+    nemenyi_posthoc,
+    build_critical_difference_svg,
 )
 from picarones.core.difficulty import compute_all_difficulties, difficulty_label
 
@@ -316,6 +319,36 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
 
     pairwise_stats = compute_pairwise_stats(engine_cer_map_stats)
 
+    # ── Sprint 17 — Friedman + Nemenyi ──────────────────────────────────
+    # Alignement strict sur le même ordre de documents : on reconstruit la
+    # map à partir des documents communs à tous les moteurs, sinon Friedman
+    # n'est pas applicable.
+    engine_cer_aligned: dict[str, list[float]] = {}
+    common_doc_ids: Optional[set[str]] = None
+    for report in benchmark.engine_reports:
+        doc_ids = {dr.doc_id for dr in report.document_results if dr.metrics.error is None}
+        common_doc_ids = doc_ids if common_doc_ids is None else common_doc_ids & doc_ids
+    if common_doc_ids:
+        ordered_common = [d for d in doc_ids_ordered if d in common_doc_ids]
+        for report in benchmark.engine_reports:
+            dr_by_id = {dr.doc_id: dr for dr in report.document_results}
+            engine_cer_aligned[report.engine_name] = [
+                _safe(dr_by_id[d].metrics.cer) for d in ordered_common
+            ]
+
+    friedman = friedman_test(engine_cer_aligned) if engine_cer_aligned else {
+        "statistic": 0.0, "p_value": 1.0, "significant": False,
+        "df": 0, "n_blocks": 0, "n_engines": 0, "mean_ranks": {},
+        "interpretation": "Test de Friedman non calculé — aucun document commun.",
+        "error": "no_common_documents",
+    }
+    nemenyi = nemenyi_posthoc(engine_cer_aligned) if engine_cer_aligned else {
+        "alpha": 0.05, "critical_distance": 0.0, "q_alpha": 0.0,
+        "n_blocks": 0, "n_engines": 0, "mean_ranks": {},
+        "engines_sorted": [], "significant_matrix": [], "tied_groups": [],
+        "error": "no_common_documents",
+    }
+
     bootstrap_cis: list[dict] = []
     for engine_name, vals in engine_cer_map_stats.items():
         lo, hi = bootstrap_ci(vals)
@@ -434,6 +467,9 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         "statistics": {
             "pairwise_wilcoxon": pairwise_stats,
             "bootstrap_cis": bootstrap_cis,
+            # Sprint 17 — Friedman multi-moteurs + post-hoc Nemenyi + CDD
+            "friedman": friedman,
+            "nemenyi": nemenyi,
         },
         "reliability_curves": reliability_curves,
         "venn_data": venn_data,
@@ -543,6 +579,11 @@ class ReportGenerator:
         i18n_json = json.dumps(labels, ensure_ascii=False, separators=(",", ":"))
         chartjs_js = _load_vendor_js("chart.umd.min.js")
 
+        # Sprint 17 — rendu SVG du CDD côté serveur (statique, pas de JS)
+        cdd_svg = build_critical_difference_svg(
+            report_data.get("statistics", {}).get("nemenyi", {}),
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -552,6 +593,8 @@ class ReportGenerator:
             i18n_json=i18n_json,
             html_lang=labels.get("html_lang", "fr"),
             chartjs_inline=chartjs_js,
+            critical_difference_svg=cdd_svg,
+            friedman=report_data.get("statistics", {}).get("friedman", {}),
         )
 
         output_path.write_text(html, encoding="utf-8")

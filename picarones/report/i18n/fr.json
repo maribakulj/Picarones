@@ -1,6 +1,12 @@
 {
   "bootstrap_note": "IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).",
   "btn_present": "⊞ Présentation",
+  "cdd_help_axis": "L'axe horizontal montre le rang moyen de chaque moteur (1 = meilleur, k = pire).",
+  "cdd_help_bars": "Les barres horizontales épaisses relient les moteurs statistiquement indiscernables au seuil α = 0,05 (test post-hoc de Nemenyi).",
+  "cdd_help_cd": "La barre rouge CD en haut à gauche donne la distance critique de référence : deux moteurs dont les rangs moyens diffèrent de moins que CD ne peuvent pas être distingués.",
+  "cdd_help_ref": "Référence : Demšar (2006), Statistical Comparisons of Classifiers over Multiple Data Sets, JMLR 7:1-30.",
+  "cdd_help_title": "Comment lire ce diagramme ?",
+  "cdd_title": "Test multi-moteurs — Friedman & Nemenyi",
   "char_engine_label": "Moteur :",
   "class_col": "Classe",
   "col_anchor": "Ancrage",

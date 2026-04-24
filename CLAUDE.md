@@ -192,6 +192,7 @@ AZURE_DOC_INTEL_KEY=...
 | 15 | Correction du bug pipeline OCR+LLM sortie vide (normalisation ContentChunk Mistral, logs finish_reason/tokens) |
 | 16 | **Sprint 1 du plan rapport** : câblage de `line_metrics` et `hallucination` dans le runner et l'agrégation `EngineReport`, fondations du moteur narratif (`core/narrative/` avec modèle `Fact` et registre de détecteurs), correctifs qualité (deprecation Pillow `getdata` → `tobytes`, deux `except Exception: pass` remplacés par warnings explicites) |
 | 17 | **Sprint 2 du plan rapport** : refactor de `generator.py` (3690 → 617 lignes) via Jinja2. Le monolithe `_HTML_TEMPLATE` est découpé en 10 fichiers externes dans `picarones/report/templates/` (base + 5 vues + header/footer + CSS + JS). L'i18n `i18n.py` (dict Python 101 clés) migré vers `picarones/report/i18n/{fr,en}.json` chargés à l'import. Ajout de 16 tests de non-régression (structure, déterminisme, i18n, garde-fous contre balises dupliquées). |
+| 18 | **Sprint 3 du plan rapport** : test de Friedman multi-moteurs + post-hoc Nemenyi + Critical Difference Diagram (Demšar 2006). Nouveau module `core/statistics.py` : `friedman_test`, `nemenyi_posthoc`, `build_critical_difference_svg` avec table Nemenyi (k=2 à 50, α=0,05 et 0,01), fallback pur Python (Wilson-Hilferty pour chi²), support scipy optionnel (extra `stats`). Partial `_critical_difference.html` inséré en tête du rapport, SVG rendu server-side (pas de JS), i18n FR/EN pour les aides. Détecteur narratif `detect_statistical_tie` activé (lit `nemenyi.tied_groups`). 41 tests ajoutés (cas canoniques, dégénérés, SVG, intégration rapport). |
 
 ---
 
@@ -213,10 +214,10 @@ tous les nombres qu'elle contient sont traçables au JSON source.
 
 **Détecteurs** : les 12 stubs sont en place. L'activation dans le registre par
 défaut se fait sprint par sprint au fur et à mesure de leur implémentation :
-- Sprint 3 : `statistical_tie` (après Friedman-Nemenyi)
+- Sprint 3 : `statistical_tie` — **implémenté** (lit `nemenyi.tied_groups`)
 - Sprint 4 : `global_leader_cer`, `significant_gap`, `stratum_winner`, `stratum_collapse`,
   `error_profile_outlier`, `llm_hallucination_flag`, `robustness_fragile`, `speed_winner`,
-  `confidence_warning`
+  `confidence_warning` + activation dans le registre par défaut + rendu templates Jinja2
 - Sprint 5 : `pareto_alternative`, `cost_outlier`
 
 ---
@@ -224,7 +225,7 @@ défaut se fait sprint par sprint au fur et à mesure de leur implémentation :
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces (`/workspaces/Picarones`), Python 3.12
-- **Tests** : 1101 passed, 2 skipped (Sprint 17)
+- **Tests** : 1142 passed, 2 skipped (Sprint 18)
 - **Branche active** : `claude/review-picarones-benchmarks-E3J42`
 - **Transcript de la conversation de développement** :
   `/mnt/transcripts/2026-03-11-14-01-41-picarones-ocr-bench-project.txt`
