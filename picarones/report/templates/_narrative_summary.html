@@ -1,0 +1,16 @@
+<!-- ── Synthèse factuelle (Sprint 18) ─────────────────────────────── -->
+{% if synthesis and synthesis.sentences %}
+<section class="synth-card" aria-labelledby="synth-title">
+  <header class="synth-header">
+    <h2 id="synth-title" data-i18n="synth_title">Synthèse factuelle</h2>
+    <span class="synth-hint" data-i18n="synth_hint">
+      Générée mécaniquement depuis les résultats — aucun LLM, reproductible.
+    </span>
+  </header>
+  <ul class="synth-list">
+    {% for sentence in synthesis.sentences %}
+    <li>{{ sentence }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

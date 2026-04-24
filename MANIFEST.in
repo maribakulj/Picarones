@@ -7,3 +7,4 @@ recursive-include picarones/web/static *.css
 recursive-include picarones *.json *.yaml *.yml
 recursive-include picarones/report/templates *.j2 *.html *.css *.js
 recursive-include picarones/report/i18n *.json
+recursive-include picarones/core/narrative/templates *.yaml

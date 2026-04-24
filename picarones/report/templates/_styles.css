@@ -632,3 +632,40 @@ body.present-mode nav .meta { display: none; }
 
 body.present-mode .cdd-info-btn,
 body.present-mode .cdd-help { display: none !important; }
+
+/* ── Sprint 18 — Synthèse factuelle narrative ──────────────────── */
+.synth-card {
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  padding: 1rem 1.5rem 1.25rem;
+  margin: 1rem 1.5rem 0;
+}
+.synth-header {
+  display: flex; align-items: baseline; gap: .75rem;
+  margin-bottom: .5rem;
+  flex-wrap: wrap;
+}
+.synth-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+}
+.synth-hint {
+  font-size: .75rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+}
+.synth-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+  font-size: .92rem;
+  color: var(--text, #0f172a);
+}
+.synth-list li { margin: .25rem 0; }
+.synth-list li::marker { color: #2563eb; }
+
+body.present-mode .synth-hint { display: none; }

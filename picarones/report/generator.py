@@ -495,14 +495,16 @@ _TEMPLATES_DIR = Path(__file__).parent / "templates"
 def _build_jinja_env():
     """Construit l'Environment Jinja2 pour le rapport.
 
-    Import différé : jinja2 est une dépendance runtime depuis le Sprint 16,
-    mais le différer évite un coût d'import si le module est chargé sans
-    qu'aucun rapport ne soit effectivement généré.
+    Autoescape désactivé : le comportement est équivalent à celui du
+    ``_HTML_TEMPLATE.format()`` historique. Les variables injectées
+    (JSON embarqué, SVG généré, synthèse narrative issue de templates
+    internes) sont toutes produites par le code Picarones et ne nécessitent
+    pas d'échappement HTML.
     """
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    from jinja2 import Environment, FileSystemLoader
     env = Environment(
         loader=FileSystemLoader(str(_TEMPLATES_DIR)),
-        autoescape=select_autoescape(disabled_extensions=("j2", "html", "css", "js")),
+        autoescape=False,
         keep_trailing_newline=True,
     )
     return env
@@ -584,6 +586,10 @@ class ReportGenerator:
             report_data.get("statistics", {}).get("nemenyi", {}),
         )
 
+        # Sprint 18 — synthèse factuelle narrative (déterministe, sans LLM)
+        from picarones.core.narrative import build_synthesis
+        synthesis = build_synthesis(report_data, lang=self.lang)
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -595,6 +601,7 @@ class ReportGenerator:
             chartjs_inline=chartjs_js,
             critical_difference_svg=cdd_svg,
             friedman=report_data.get("statistics", {}).get("friedman", {}),
+            synthesis=synthesis,
         )
 
         output_path.write_text(html, encoding="utf-8")

@@ -193,6 +193,7 @@ AZURE_DOC_INTEL_KEY=...
 | 16 | **Sprint 1 du plan rapport** : câblage de `line_metrics` et `hallucination` dans le runner et l'agrégation `EngineReport`, fondations du moteur narratif (`core/narrative/` avec modèle `Fact` et registre de détecteurs), correctifs qualité (deprecation Pillow `getdata` → `tobytes`, deux `except Exception: pass` remplacés par warnings explicites) |
 | 17 | **Sprint 2 du plan rapport** : refactor de `generator.py` (3690 → 617 lignes) via Jinja2. Le monolithe `_HTML_TEMPLATE` est découpé en 10 fichiers externes dans `picarones/report/templates/` (base + 5 vues + header/footer + CSS + JS). L'i18n `i18n.py` (dict Python 101 clés) migré vers `picarones/report/i18n/{fr,en}.json` chargés à l'import. Ajout de 16 tests de non-régression (structure, déterminisme, i18n, garde-fous contre balises dupliquées). |
 | 18 | **Sprint 3 du plan rapport** : test de Friedman multi-moteurs + post-hoc Nemenyi + Critical Difference Diagram (Demšar 2006). Nouveau module `core/statistics.py` : `friedman_test`, `nemenyi_posthoc`, `build_critical_difference_svg` avec table Nemenyi (k=2 à 50, α=0,05 et 0,01), fallback pur Python (Wilson-Hilferty pour chi²), support scipy optionnel (extra `stats`). Partial `_critical_difference.html` inséré en tête du rapport, SVG rendu server-side (pas de JS), i18n FR/EN pour les aides. Détecteur narratif `detect_statistical_tie` activé (lit `nemenyi.tied_groups`). 41 tests ajoutés (cas canoniques, dégénérés, SVG, intégration rapport). |
+| 19 | **Sprint 4 du plan rapport** : moteur narratif complet + synthèse factuelle en tête. 9 détecteurs implémentés (global_leader_cer, significant_gap, stratum_winner/collapse, error_profile_outlier, llm_hallucination_flag, robustness_fragile, speed_winner, confidence_warning). Arbitre (`arbiter.py`) avec tri par importance, non-redondance, suppression des contradictions Wilcoxon/Nemenyi. Renderer (`renderer.py`) lit templates YAML `core/narrative/templates/{fr,en}.yaml` (10 templates par langue) et rend par `str.format_map` déterministe. Nouveau partial `_narrative_summary.html` placé en tête du rapport (entre header et CDD). Garde-fou anti-hallucination testé : chaque nombre rendu est traçable au payload du Fact associé. 32 tests (détecteurs unitaires, arbitre, renderer, E2E, traçabilité, intégration HTML). `pareto_alternative` et `cost_outlier` restent stubs pour Sprint 5. |
 
 ---
 
@@ -202,30 +203,44 @@ Fondations en place dans `picarones/core/narrative/` :
 
 ```
 core/narrative/
-├── __init__.py              # API publique : Fact, FactType, FactImportance, DetectorRegistry, detect_all
-├── facts.py                 # Modèle de données : Fact dataclass, 12 FactType, 4 FactImportance, DetectorRegistry
-└── detectors.py             # Stubs des 12 détecteurs (implémentations sprint par sprint)
+├── __init__.py              # API publique + pipeline build_synthesis
+├── facts.py                 # Modèle Fact, FactType (12 types), FactImportance, DetectorRegistry
+├── detectors.py             # 10 détecteurs implémentés (Sprint 19) + 2 stubs (Sprint 5)
+├── arbiter.py               # Tri par importance, non-redondance, anti-contradiction
+├── renderer.py              # Rendu templates YAML par str.format_map (déterministe)
+└── templates/
+    ├── fr.yaml              # 10 templates français
+    └── en.yaml              # 10 templates anglais
 ```
 
 **Principe anti-hallucination** : chaque valeur numérique ou nom d'entité dans le
-`payload` d'un `Fact` doit provenir directement du JSON d'entrée du benchmark.
-Test unitaire à ajouter au Sprint 4 : parser la synthèse rendue et vérifier que
-tous les nombres qu'elle contient sont traçables au JSON source.
+`payload` d'un `Fact` doit provenir du JSON d'entrée. Test `test_sprint19_narrative_engine.py`
+parse la synthèse rendue et vérifie que chaque nombre est traçable au payload
+(via `_numbers_in_payload`) augmenté d'une liste blanche limitative de constantes
+de template (`95`, `100`).
 
-**Détecteurs** : les 12 stubs sont en place. L'activation dans le registre par
-défaut se fait sprint par sprint au fur et à mesure de leur implémentation :
-- Sprint 3 : `statistical_tie` — **implémenté** (lit `nemenyi.tied_groups`)
+**Détecteurs activés dans le registre par défaut (Sprint 19)** :
+- Sprint 3 : `statistical_tie`
 - Sprint 4 : `global_leader_cer`, `significant_gap`, `stratum_winner`, `stratum_collapse`,
-  `error_profile_outlier`, `llm_hallucination_flag`, `robustness_fragile`, `speed_winner`,
-  `confidence_warning` + activation dans le registre par défaut + rendu templates Jinja2
-- Sprint 5 : `pareto_alternative`, `cost_outlier`
+  `error_profile_outlier`, `llm_hallucination_flag`, `robustness_fragile`,
+  `speed_winner`, `confidence_warning`
+- Sprint 5 : `pareto_alternative`, `cost_outlier` — stubs (retournent `[]`)
+
+**Règle anti-contradiction** (arbitre) : si `SIGNIFICANT_GAP` (Wilcoxon non corrigé)
+et `STATISTICAL_TIE` (Nemenyi corrigé) concernent les mêmes moteurs, Nemenyi
+l'emporte — on ne veut pas dire en même temps "A bat B significativement" ET
+"A et B sont indiscernables".
+
+**Pipeline** : `build_synthesis(benchmark_data, lang, max_facts=5)` détecte,
+arbitre, rend. Le `ReportGenerator.generate` l'appelle et passe le résultat
+au template `_narrative_summary.html` (placé entre `_header.html` et `_critical_difference.html`).
 
 ---
 
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces (`/workspaces/Picarones`), Python 3.12
-- **Tests** : 1142 passed, 2 skipped (Sprint 18)
+- **Tests** : 1174 passed, 2 skipped (Sprint 19)
 - **Branche active** : `claude/review-picarones-benchmarks-E3J42`
 - **Transcript de la conversation de développement** :
   `/mnt/transcripts/2026-03-11-14-01-41-picarones-ocr-bench-project.txt`
