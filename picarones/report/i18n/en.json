@@ -125,6 +125,7 @@
   "ratio_anchor_note": "X-axis = trigram anchor score [0–1]. Y-axis = output/GT length ratio. ⚠️ Zone: anchor &lt; 0.5 or ratio &gt; 1.2 → probable hallucinations.",
   "ratio_anchor_subtitle": "— VLM hallucinations",
   "reliability_note": "For the X% easiest documents (sorted by ascending CER), what is the cumulative mean CER? A low curve = engine performing well even on easy documents.",
+  "synth_cases_link": "To see how other teams reasoned through similar problems, see the case studies.",
   "synth_hint": "Generated mechanically from results — no LLM, reproducible.",
   "synth_title": "Factual summary",
   "tab_analyses": "Analyses",

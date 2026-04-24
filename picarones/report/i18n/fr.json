@@ -125,6 +125,7 @@
   "ratio_anchor_note": "Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT. Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.",
   "ratio_anchor_subtitle": "— hallucinations VLM",
   "reliability_note": "Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ? Une courbe basse = moteur performant même sur les documents faciles.",
+  "synth_cases_link": "Pour comprendre comment d'autres équipes ont raisonné sur des problèmes similaires, voir les études de cas.",
   "synth_hint": "Générée mécaniquement depuis les résultats — aucun LLM, reproductible.",
   "synth_title": "Synthèse factuelle",
   "tab_analyses": "Analyses",

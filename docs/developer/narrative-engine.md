@@ -1,0 +1,163 @@
+# Étendre le moteur narratif
+
+Ce guide explique comment ajouter un nouveau type de **fait détecté** à
+la synthèse factuelle en tête du rapport.
+
+## Architecture
+
+```
+picarones/core/narrative/
+├── __init__.py              # API publique + pipeline build_synthesis
+├── facts.py                 # Modèle Fact, FactType, FactImportance, DetectorRegistry
+├── detectors.py             # 12 détecteurs (un par FactType)
+├── arbiter.py               # Tri par importance, non-redondance, anti-contradiction
+├── renderer.py              # Rendu str.format_map sur templates YAML
+└── templates/
+    ├── fr.yaml              # Templates français (1 par FactType)
+    └── en.yaml              # Templates anglais
+```
+
+## Ajouter un détecteur
+
+### 1. Déclarer le type de fait
+
+Dans `facts.py`, ajoutez une valeur à `FactType` :
+
+```python
+class FactType(str, Enum):
+    ...
+    NEW_THING = "new_thing"
+```
+
+### 2. Implémenter le détecteur
+
+Dans `detectors.py`, ajoutez une fonction pure qui prend le dict
+`benchmark_data` (le JSON de résultats du rapport) et retourne une
+liste de `Fact`. Le détecteur ne doit **jamais lever d'exception** —
+le `DetectorRegistry` capte les erreurs en `logger.warning` mais c'est
+une protection, pas une excuse.
+
+```python
+def detect_new_thing(benchmark_data: dict) -> list[Fact]:
+    """Doc explicite : qu'est-ce qui déclenche ce fait ?"""
+    # Exemple : flag les moteurs où une métrique X dépasse un seuil
+    facts: list[Fact] = []
+    for engine in benchmark_data.get("engines") or []:
+        if (engine.get("some_metric") or 0) > 0.5:
+            facts.append(Fact(
+                type=FactType.NEW_THING,
+                importance=FactImportance.HIGH,
+                payload={
+                    "engine": engine["name"],
+                    "value": round(engine["some_metric"], 4),
+                    "value_pct": round(engine["some_metric"] * 100, 1),
+                },
+                engines_involved=(engine["name"],),
+            ))
+    return facts
+```
+
+**Règle d'or anti-hallucination** : chaque champ que vous mettez dans
+`payload` doit être **calculé à partir de** valeurs présentes dans
+`benchmark_data`. Pas de constante ni de calcul invraisemblable.
+
+### 3. Enregistrer dans la table
+
+Toujours dans `detectors.py`, ajoutez au dict `DETECTORS_BY_TYPE` :
+
+```python
+DETECTORS_BY_TYPE = {
+    ...
+    FactType.NEW_THING: detect_new_thing,
+}
+```
+
+`register_default_detectors(registry)` parcourt ce dict et l'enregistre
+automatiquement. Aucune action supplémentaire requise.
+
+### 4. Ajouter les templates FR/EN
+
+Dans `templates/fr.yaml` et `templates/en.yaml`, ajoutez une entrée par
+type, avec le nom de la valeur enum (ici `new_thing`) :
+
+```yaml
+new_thing: >-
+  Le moteur {engine} dépasse le seuil de la métrique X
+  ({value_pct} %).
+```
+
+Les placeholders `{engine}`, `{value_pct}` etc. doivent **exactement**
+correspondre aux clés du `payload` du détecteur. Si vous oubliez un
+champ, le rendu utilisera `?` (et logguera un warning) plutôt que de
+crasher — mais les tests doivent attraper ça.
+
+### 5. Ajuster l'arbitre si besoin
+
+Dans `arbiter.py`, deux choses à considérer :
+
+- **Ordre canonique** : ajoutez votre type dans `_TYPE_ORDER` à la
+  position appropriée. Cet ordre départage les ex-aequo à importance
+  égale et garantit le déterminisme.
+- **Paires complémentaires** : par défaut, l'arbitre supprime les
+  doublons sur le même moteur. Si votre nouveau type est complémentaire
+  d'un autre type pour le même moteur (ex. leader + speed), ajoutez la
+  paire dans `_COMPLEMENTARY_PAIRS`.
+- **Règles anti-contradiction** : si votre fait peut contredire un autre
+  (ex. Nemenyi vs Wilcoxon), implémentez la règle dans
+  `_remove_contradictions`.
+
+### 6. Tests
+
+Ajoutez au minimum :
+
+- Un test unitaire dans `tests/test_sprint19_narrative_engine.py` (ou
+  un nouveau fichier) :
+
+```python
+class TestNewThingDetector:
+    def test_emits_when_threshold_crossed(self):
+        data = _minimal_data(engines=[
+            {"name": "X", "some_metric": 0.7},
+        ])
+        facts = detect_new_thing(data)
+        assert len(facts) == 1
+        assert facts[0].payload["engine"] == "X"
+
+    def test_empty_when_under_threshold(self):
+        data = _minimal_data(engines=[
+            {"name": "X", "some_metric": 0.3},
+        ])
+        assert detect_new_thing(data) == []
+```
+
+- Le test global de traçabilité
+  (`test_every_number_in_synthesis_is_traceable`) couvrira automatiquement
+  votre détecteur dès que vous l'ajoutez à la synthèse.
+
+## Ajouter une langue
+
+Pour ajouter une nouvelle langue (ex. allemand) :
+
+1. Créez `templates/de.yaml` en copiant la structure de `fr.yaml` et en
+   traduisant chaque entrée.
+2. Ajoutez `de.json` dans `picarones/report/i18n/` pour les libellés
+   d'interface.
+3. Ajoutez `de.yaml` dans `picarones/report/glossary/` pour le glossaire.
+4. Le code détecte automatiquement la langue via `load_glossary("de")`,
+   `get_labels("de")`, et `_load_templates("de")` — aucun code à modifier.
+
+## Tester votre changement
+
+```bash
+pytest tests/ -q --tb=short
+picarones demo --output /tmp/demo.html --docs 8
+# Ouvrir /tmp/demo.html et vérifier que la synthèse contient votre fait
+```
+
+Si la synthèse ne contient pas votre fait, vérifiez :
+1. Que votre détecteur retourne bien quelque chose sur les données de
+   démo (`grep -A 20 "def generate_sample_benchmark" picarones/fixtures.py`).
+2. Que l'importance est suffisante (> `MEDIUM`) pour passer le filtre
+   par défaut de l'arbitre.
+3. Que votre type n'est pas en collision avec un autre déjà retenu pour
+   le même moteur (cf. `_is_redundant`).

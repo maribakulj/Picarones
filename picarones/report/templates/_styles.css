@@ -885,3 +885,16 @@ body.present-mode .synth-hint { display: none; }
 body.side-panel-open .view { padding-right: 0; }
 body.present-mode .glossary-btn,
 body.present-mode .btn-customize { display: none !important; }
+
+/* ── Sprint 21 — Lien études de cas sous la synthèse ────────────── */
+.synth-cases-link {
+  margin-top: .5rem;
+  font-size: .78rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+}
+.synth-cases-link a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+body.present-mode .synth-cases-link { display: none; }
