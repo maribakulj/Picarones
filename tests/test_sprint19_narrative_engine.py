@@ -493,10 +493,13 @@ def _numbers_in_payload(payload: dict) -> set[str]:
     return out
 
 
-# Constantes littérales autorisées dans les templates (non traçables au
-# payload car ce sont des éléments typographiques — seuil 95 % correspondant
-# à α = 0,05, etc.). Ajouter ici rend la règle explicite.
-_TEMPLATE_CONSTANTS = {"95", "100"}
+# Sprint 23 : whitelist vidée. Tout nombre rendu dans la synthèse doit
+# venir du payload d'un Fact. Le seuil de confiance (95) est désormais
+# propagé via ``confidence_level`` dans le payload de
+# ``FactType.CONFIDENCE_WARNING`` et l'unité du coût (1000 pages) via
+# ``cost_unit_pages`` dans ``PARETO_ALTERNATIVE`` / ``COST_OUTLIER``.
+# Aucun littéral hors-payload n'est plus autorisé.
+_TEMPLATE_CONSTANTS: frozenset[str] = frozenset()
 
 
 class TestAntiHallucinationTraceability:

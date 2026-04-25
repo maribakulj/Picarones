@@ -19,13 +19,19 @@ pas mais peut limiter par type.
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from picarones.core.narrative.facts import Fact, FactImportance, FactType
 
 
 # Ordre canonique des types pour départager les ex-aequo à l'importance égale.
-_TYPE_ORDER: tuple[FactType, ...] = (
+#
+# Politique éditoriale (Sprint 23) — exposée et documentée :
+# voir ``docs/developer/narrative-engine.md`` § Editorial policy.
+# L'ordre encode quels faits sont remontés en priorité quand plusieurs ont
+# la même ``FactImportance`` ; il peut être surchargé via le paramètre
+# ``type_order`` de ``select_facts`` sans patcher le code.
+DEFAULT_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.GLOBAL_LEADER_CER,
     FactType.STATISTICAL_TIE,
     FactType.SIGNIFICANT_GAP,
@@ -39,7 +45,10 @@ _TYPE_ORDER: tuple[FactType, ...] = (
     FactType.COST_OUTLIER,
     FactType.CONFIDENCE_WARNING,
 )
-_TYPE_INDEX: dict[FactType, int] = {t: i for i, t in enumerate(_TYPE_ORDER)}
+# Alias rétro-compatible — l'ancien nom privé reste exporté pour
+# les tests et le code utilisateur qui s'y appuyaient.
+_TYPE_ORDER = DEFAULT_TYPE_ORDER
+_TYPE_INDEX: dict[FactType, int] = {t: i for i, t in enumerate(DEFAULT_TYPE_ORDER)}
 
 
 # Paires de types qui ne sont PAS considérées comme redondantes même quand
@@ -53,11 +62,11 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
 })
 
 
-def _sort_key(fact: Fact) -> tuple:
+def _sort_key(fact: Fact, type_index: dict[FactType, int]) -> tuple:
     """Clé de tri stable : importance (desc), type canonique, moteurs."""
     return (
         -int(fact.importance),
-        _TYPE_INDEX.get(fact.type, len(_TYPE_ORDER)),
+        type_index.get(fact.type, len(type_index)),
         tuple(sorted(fact.engines_involved)),
         fact.stratum or "",
     )
@@ -106,6 +115,7 @@ def select_facts(
     facts: Iterable[Fact],
     max_facts: int = 5,
     min_importance: FactImportance = FactImportance.MEDIUM,
+    type_order: Sequence[FactType] | None = None,
 ) -> list[Fact]:
     """Sélectionne la synthèse finale à partir d'une liste brute de faits.
 
@@ -117,14 +127,24 @@ def select_facts(
         Nombre maximal de faits retenus (défaut : 5).
     min_importance:
         Seuil minimal d'importance. Les faits ``LOW`` sont exclus par défaut.
+    type_order:
+        Surcharge optionnelle de l'ordre canonique des types pour départager
+        les faits d'égale importance. ``None`` (défaut) utilise
+        ``DEFAULT_TYPE_ORDER``. Une institution peut passer son propre ordre
+        sans patcher le code — voir ``docs/developer/narrative-engine.md``.
 
     Returns
     -------
     Liste ordonnée, prête à être rendue. Toujours ≤ ``max_facts``.
     """
+    if type_order is None:
+        type_index = _TYPE_INDEX
+    else:
+        type_index = {t: i for i, t in enumerate(type_order)}
+
     facts_list = [f for f in facts if int(f.importance) >= int(min_importance)]
     facts_list = _remove_contradictions(facts_list)
-    ranked = sorted(facts_list, key=_sort_key)
+    ranked = sorted(facts_list, key=lambda f: _sort_key(f, type_index))
 
     selected: list[Fact] = []
     for fact in ranked:

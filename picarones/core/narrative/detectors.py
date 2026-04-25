@@ -216,6 +216,9 @@ def detect_pareto_alternative(benchmark_data: dict) -> list[Fact]:
             "leader_cost": round(leader_cost, 2),
             "cost_saving_ratio": round(leader_cost / alt_cost, 1) if alt_cost > 0 else None,
             "delta_cer_pct": round((alt_cer - leader_cer) * 100, 2),
+            # Unité du coût — propagée pour traçabilité (le template ne
+            # hardcode plus "1000 pages").
+            "cost_unit_pages": 1000,
         },
         engines_involved=(alt["engine"],),
     )]
@@ -519,6 +522,7 @@ def detect_cost_outlier(benchmark_data: dict) -> list[Fact]:
                 "median_cost": round(median_cost, 2),
                 "ratio_to_median": round(c / median_cost, 1),
                 "cer_pct": round(float(p.get("cer") or 0.0) * 100, 2),
+                "cost_unit_pages": 1000,
             },
             engines_involved=(p["engine"],),
         ))
@@ -642,6 +646,9 @@ def detect_confidence_warning(benchmark_data: dict) -> list[Fact]:
                     "mean_cer": round(float(ci.get("mean") or 0.0), 4),
                     "mean_cer_pct": round(float(ci.get("mean") or 0.0) * 100, 2),
                     "gap_to_runner_up_pct": round(gap * 100, 2),
+                    # Niveau de confiance des bornes — propagé pour traçabilité
+                    # anti-hallucination (le template ne hardcode plus "95 %").
+                    "confidence_level": 95,
                 },
                 engines_involved=(engine_name,),
             ))

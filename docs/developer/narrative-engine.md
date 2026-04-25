@@ -161,3 +161,90 @@ Si la synthèse ne contient pas votre fait, vérifiez :
    par défaut de l'arbitre.
 3. Que votre type n'est pas en collision avec un autre déjà retenu pour
    le même moteur (cf. `_is_redundant`).
+
+---
+
+## Politique éditoriale (Sprint 23)
+
+L'arbitre départage les faits d'**égale importance** par un ordre canonique
+des types : c'est un choix éditorial qui répond à la question *« quand A et
+B sont aussi importants l'un que l'autre, lequel parle en premier ? »*.
+
+L'ordre par défaut est défini dans `arbiter.py` sous le nom
+`DEFAULT_TYPE_ORDER` :
+
+```python
+DEFAULT_TYPE_ORDER = (
+    FactType.GLOBAL_LEADER_CER,      # 1. Qui gagne globalement
+    FactType.STATISTICAL_TIE,        # 2. Y a-t-il un ex-aequo
+    FactType.SIGNIFICANT_GAP,        # 3. À quel point l'écart est solide
+    FactType.STRATUM_WINNER,         # 4. Qui domine sur quel sous-corpus
+    FactType.STRATUM_COLLAPSE,       # 5. Qui s'effondre sur quoi
+    FactType.ERROR_PROFILE_OUTLIER,  # 6. Qui se trompe différemment
+    FactType.LLM_HALLUCINATION_FLAG, # 7. Hallucinations VLM
+    FactType.ROBUSTNESS_FRAGILE,     # 8. Sensibilité aux dégradations
+    FactType.PARETO_ALTERNATIVE,     # 9. Y a-t-il un compromis coût/qualité
+    FactType.SPEED_WINNER,           # 10. Vitesse
+    FactType.COST_OUTLIER,           # 11. Coût aberrant
+    FactType.CONFIDENCE_WARNING,     # 12. Mise en garde sur la fiabilité
+)
+```
+
+**Hypothèse implicite** : un lecteur d'institution patrimoniale veut
+d'abord savoir *qui gagne* puis *à quel point cette victoire est solide*,
+avant de découvrir des considérations de coût ou de vitesse. Une équipe
+DevOps cherchant à industrialiser une chaîne aurait probablement l'ordre
+inverse — vitesse et coût d'abord, qualité ensuite.
+
+### Surcharger l'ordre sans patcher le code
+
+Depuis le Sprint 23, `select_facts` accepte un argument optionnel
+`type_order` :
+
+```python
+from picarones.core.narrative import build_synthesis
+from picarones.core.narrative.arbiter import select_facts, DEFAULT_TYPE_ORDER
+from picarones.core.narrative.facts import FactType
+
+# Réordonnancement : on remonte vitesse et coût avant qualité.
+custom = (
+    FactType.SPEED_WINNER,
+    FactType.COST_OUTLIER,
+    FactType.PARETO_ALTERNATIVE,
+    FactType.GLOBAL_LEADER_CER,
+    # ... compléter avec les autres types ; ceux qui manquent sont
+    #     relégués à la fin sans crash.
+)
+
+facts = detect_all(benchmark_data)
+selected = select_facts(facts, max_facts=5, type_order=custom)
+```
+
+Cas d'usage typiques :
+
+- **Atelier MOOC** : promouvoir `STRATUM_COLLAPSE` et
+  `ERROR_PROFILE_OUTLIER` en tête pour mettre l'accent sur la lecture
+  diagnostique des erreurs.
+- **Comité technique** : promouvoir `CONFIDENCE_WARNING` en tête pour
+  forcer la discussion sur la fiabilité avant les classements.
+- **Évaluation budgétaire** : promouvoir `COST_OUTLIER` et
+  `PARETO_ALTERNATIVE` en tête.
+
+### Règle anti-hallucination renforcée (Sprint 23)
+
+Avant le Sprint 23, le test de traçabilité des nombres tolérait deux
+littéraux non-traçables au payload (`95` pour le seuil de l'IC, `100`
+comme tolérance numérique). Cette whitelist est désormais vide :
+
+- Le seuil de confiance est propagé via `confidence_level` dans le
+  payload des `Fact` de type `CONFIDENCE_WARNING`.
+- L'unité du coût (`/1000 pages`) est propagée via `cost_unit_pages`
+  dans `PARETO_ALTERNATIVE` et `COST_OUTLIER`.
+
+**Si vous ajoutez un détecteur dont le template référence un nombre
+constant** (ex. *« seuil α = 0,05 »*), vous devez **systématiquement**
+le mettre dans le `payload`. Le test
+`test_sprint19_narrative_engine.py::test_every_number_in_synthesis_is_traceable`
+plus le test
+`test_sprint23_anti_hallucination.py::TestTemplatesNoHardcodedLiterals`
+échoueront sinon.
