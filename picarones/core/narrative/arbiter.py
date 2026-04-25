@@ -19,13 +19,38 @@ pas mais peut limiter par type.
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from picarones.core.narrative.facts import Fact, FactImportance, FactType
 
 
 # Ordre canonique des types pour départager les ex-aequo à l'importance égale.
-_TYPE_ORDER: tuple[FactType, ...] = (
+#
+# Politique éditoriale — exposée et documentée dans
+# ``docs/developer/narrative-engine.md`` § Editorial policy.
+# L'ordre encode quels faits sont remontés en priorité quand plusieurs ont
+# la même ``FactImportance``. Surchargeable via le paramètre ``type_order``
+# de ``select_facts`` sans patcher le code.
+#
+# Sprint 29 : la valeur n'est plus codée en dur ici — elle est dérivée du
+# registre déclaratif (``@register_detector(..., priority=N)``). Ajouter
+# un détecteur en bonne position se fait donc en éditant **un seul**
+# fichier (``detectors.py``) au lieu de quatre comme avant.
+def _compute_default_type_order() -> tuple[FactType, ...]:
+    # Import local pour éviter la dépendance circulaire au chargement.
+    from picarones.core.narrative.registry import default_type_order
+    order = default_type_order()
+    # Filet de sécurité : tant que les détecteurs n'ont pas été importés
+    # (cas des tests qui mockent le registre), on retombe sur un ordre
+    # canonique gravé pour ne pas planter ``select_facts``.
+    if not order:
+        return _FALLBACK_TYPE_ORDER
+    return order
+
+
+# Ordre statique gardé en mémoire : utilisé si jamais le registre est vide
+# au moment où ``arbiter`` est chargé (chargement partiel par les tests).
+_FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.GLOBAL_LEADER_CER,
     FactType.STATISTICAL_TIE,
     FactType.SIGNIFICANT_GAP,
@@ -39,7 +64,17 @@ _TYPE_ORDER: tuple[FactType, ...] = (
     FactType.COST_OUTLIER,
     FactType.CONFIDENCE_WARNING,
 )
-_TYPE_INDEX: dict[FactType, int] = {t: i for i, t in enumerate(_TYPE_ORDER)}
+
+
+# ``DEFAULT_TYPE_ORDER`` reste un attribut module accessible. On le calcule
+# à l'import si possible, sinon on prend le fallback ; ``select_facts``
+# recalcule à chaque appel pour absorber les ajouts de détecteurs après
+# l'import initial (extensions tierces).
+DEFAULT_TYPE_ORDER: tuple[FactType, ...] = _compute_default_type_order()
+
+# Alias rétro-compatible.
+_TYPE_ORDER = DEFAULT_TYPE_ORDER
+_TYPE_INDEX: dict[FactType, int] = {t: i for i, t in enumerate(DEFAULT_TYPE_ORDER)}
 
 
 # Paires de types qui ne sont PAS considérées comme redondantes même quand
@@ -53,11 +88,11 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
 })
 
 
-def _sort_key(fact: Fact) -> tuple:
+def _sort_key(fact: Fact, type_index: dict[FactType, int]) -> tuple:
     """Clé de tri stable : importance (desc), type canonique, moteurs."""
     return (
         -int(fact.importance),
-        _TYPE_INDEX.get(fact.type, len(_TYPE_ORDER)),
+        type_index.get(fact.type, len(type_index)),
         tuple(sorted(fact.engines_involved)),
         fact.stratum or "",
     )
@@ -106,6 +141,7 @@ def select_facts(
     facts: Iterable[Fact],
     max_facts: int = 5,
     min_importance: FactImportance = FactImportance.MEDIUM,
+    type_order: Sequence[FactType] | None = None,
 ) -> list[Fact]:
     """Sélectionne la synthèse finale à partir d'une liste brute de faits.
 
@@ -117,14 +153,29 @@ def select_facts(
         Nombre maximal de faits retenus (défaut : 5).
     min_importance:
         Seuil minimal d'importance. Les faits ``LOW`` sont exclus par défaut.
+    type_order:
+        Surcharge optionnelle de l'ordre canonique des types pour départager
+        les faits d'égale importance. ``None`` (défaut) utilise
+        ``DEFAULT_TYPE_ORDER``. Une institution peut passer son propre ordre
+        sans patcher le code — voir ``docs/developer/narrative-engine.md``.
 
     Returns
     -------
     Liste ordonnée, prête à être rendue. Toujours ≤ ``max_facts``.
     """
+    if type_order is None:
+        # Sprint 29 — recalcul à chaque appel pour absorber les détecteurs
+        # enregistrés après l'import d'arbiter (extensions tierces qui
+        # font ``@register_detector`` dans un module utilisateur).
+        from picarones.core.narrative.registry import default_type_order
+        live_order = default_type_order() or _FALLBACK_TYPE_ORDER
+        type_index = {t: i for i, t in enumerate(live_order)}
+    else:
+        type_index = {t: i for i, t in enumerate(type_order)}
+
     facts_list = [f for f in facts if int(f.importance) >= int(min_importance)]
     facts_list = _remove_contradictions(facts_list)
-    ranked = sorted(facts_list, key=_sort_key)
+    ranked = sorted(facts_list, key=lambda f: _sort_key(f, type_index))
 
     selected: list[Fact] = []
     for fact in ranked:

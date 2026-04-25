@@ -86,9 +86,18 @@ class BaseOCREngine(ABC):
         )
 
     def _safe_version(self) -> str:
+        # Sprint 30 — log la stacktrace en DEBUG pour aider au diagnostic
+        # quand un moteur retourne ``"unknown"`` (utilisateur qui se
+        # demande pourquoi). Ne pollue pas l'output normal (INFO+).
         try:
             return self.version()
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).debug(
+                "[%s._safe_version] retourne 'unknown' suite à %s: %s",
+                self.__class__.__name__, type(exc).__name__, exc,
+                exc_info=True,
+            )
             return "unknown"
 
     def __repr__(self) -> str:

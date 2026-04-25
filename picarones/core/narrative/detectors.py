@@ -17,6 +17,7 @@ import statistics as _stats
 from typing import Optional
 
 from picarones.core.narrative.facts import Fact, FactImportance, FactType
+from picarones.core.narrative.registry import register_detector
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,11 @@ def _n_docs(data: dict) -> int:
 # Sprint 4 — Détecteurs implémentés
 # ---------------------------------------------------------------------------
 
+@register_detector(
+    FactType.GLOBAL_LEADER_CER,
+    priority=10,
+    importance=FactImportance.CRITICAL,
+)
 def detect_global_leader_cer(benchmark_data: dict) -> list[Fact]:
     """Moteur avec le CER moyen le plus bas sur l'ensemble du corpus.
 
@@ -79,6 +85,11 @@ def detect_global_leader_cer(benchmark_data: dict) -> list[Fact]:
     )]
 
 
+@register_detector(
+    FactType.STATISTICAL_TIE,
+    priority=20,
+    importance=FactImportance.CRITICAL,
+)
 def detect_statistical_tie(benchmark_data: dict) -> list[Fact]:
     """Groupes de moteurs statistiquement indiscernables (Nemenyi)."""
     nemenyi = benchmark_data.get("statistics", {}).get("nemenyi", {})
@@ -118,6 +129,11 @@ def detect_statistical_tie(benchmark_data: dict) -> list[Fact]:
     return facts
 
 
+@register_detector(
+    FactType.SIGNIFICANT_GAP,
+    priority=30,
+    importance=FactImportance.HIGH,
+)
 def detect_significant_gap(benchmark_data: dict) -> list[Fact]:
     """Écart statistiquement significatif entre le 1ᵉʳ et le 2ᵉ du classement.
 
@@ -161,6 +177,11 @@ def detect_significant_gap(benchmark_data: dict) -> list[Fact]:
     )]
 
 
+@register_detector(
+    FactType.PARETO_ALTERNATIVE,
+    priority=90,
+    importance=FactImportance.HIGH,
+)
 def detect_pareto_alternative(benchmark_data: dict) -> list[Fact]:
     """Moteur Pareto-dominant différent du leader CER.
 
@@ -216,6 +237,9 @@ def detect_pareto_alternative(benchmark_data: dict) -> list[Fact]:
             "leader_cost": round(leader_cost, 2),
             "cost_saving_ratio": round(leader_cost / alt_cost, 1) if alt_cost > 0 else None,
             "delta_cer_pct": round((alt_cer - leader_cer) * 100, 2),
+            # Unité du coût — propagée pour traçabilité (le template ne
+            # hardcode plus "1000 pages").
+            "cost_unit_pages": 1000,
         },
         engines_involved=(alt["engine"],),
     )]
@@ -243,6 +267,11 @@ def _stratum_cer_by_engine(benchmark_data: dict) -> dict[str, dict[str, list[flo
     return out
 
 
+@register_detector(
+    FactType.STRATUM_WINNER,
+    priority=40,
+    importance=FactImportance.MEDIUM,
+)
 def detect_stratum_winner(benchmark_data: dict) -> list[Fact]:
     """Moteur qui domine nettement sur une strate (≥ 3 documents, CER
     au moins 25 % plus bas que le second sur cette strate).
@@ -288,6 +317,11 @@ def detect_stratum_winner(benchmark_data: dict) -> list[Fact]:
     return facts
 
 
+@register_detector(
+    FactType.STRATUM_COLLAPSE,
+    priority=50,
+    importance=FactImportance.HIGH,
+)
 def detect_stratum_collapse(benchmark_data: dict) -> list[Fact]:
     """Moteur globalement compétitif qui s'effondre sur une strate.
 
@@ -331,6 +365,11 @@ def detect_stratum_collapse(benchmark_data: dict) -> list[Fact]:
     return facts
 
 
+@register_detector(
+    FactType.ERROR_PROFILE_OUTLIER,
+    priority=60,
+    importance=FactImportance.MEDIUM,
+)
 def detect_error_profile_outlier(benchmark_data: dict) -> list[Fact]:
     """Moteur au profil taxonomique atypique.
 
@@ -385,6 +424,11 @@ def detect_error_profile_outlier(benchmark_data: dict) -> list[Fact]:
     return facts
 
 
+@register_detector(
+    FactType.LLM_HALLUCINATION_FLAG,
+    priority=70,
+    importance=FactImportance.HIGH,
+)
 def detect_llm_hallucination_flag(benchmark_data: dict) -> list[Fact]:
     """LLM/VLM au taux d'hallucination notablement élevé.
 
@@ -435,6 +479,11 @@ def detect_llm_hallucination_flag(benchmark_data: dict) -> list[Fact]:
     return facts
 
 
+@register_detector(
+    FactType.ROBUSTNESS_FRAGILE,
+    priority=80,
+    importance=FactImportance.MEDIUM,
+)
 def detect_robustness_fragile(benchmark_data: dict) -> list[Fact]:
     """Moteur qui dégrade fortement au-dessus d'un seuil de bruit/flou.
 
@@ -484,6 +533,11 @@ def detect_robustness_fragile(benchmark_data: dict) -> list[Fact]:
     return facts
 
 
+@register_detector(
+    FactType.COST_OUTLIER,
+    priority=110,
+    importance=FactImportance.MEDIUM,
+)
 def detect_cost_outlier(benchmark_data: dict) -> list[Fact]:
     """Moteur dont le coût est très disproportionné par rapport à son apport.
 
@@ -519,6 +573,7 @@ def detect_cost_outlier(benchmark_data: dict) -> list[Fact]:
                 "median_cost": round(median_cost, 2),
                 "ratio_to_median": round(c / median_cost, 1),
                 "cer_pct": round(float(p.get("cer") or 0.0) * 100, 2),
+                "cost_unit_pages": 1000,
             },
             engines_involved=(p["engine"],),
         ))
@@ -537,6 +592,11 @@ def _mean_duration_per_engine(benchmark_data: dict) -> dict[str, float]:
     return {k: sum(v) / len(v) for k, v in durations.items() if v}
 
 
+@register_detector(
+    FactType.SPEED_WINNER,
+    priority=100,
+    importance=FactImportance.MEDIUM,
+)
 def detect_speed_winner(benchmark_data: dict) -> list[Fact]:
     """Moteur significativement plus rapide pour une qualité comparable.
 
@@ -597,6 +657,11 @@ def detect_speed_winner(benchmark_data: dict) -> list[Fact]:
     return facts[:1]  # seulement le plus rapide — éviter le bruit
 
 
+@register_detector(
+    FactType.CONFIDENCE_WARNING,
+    priority=120,
+    importance=FactImportance.MEDIUM,
+)
 def detect_confidence_warning(benchmark_data: dict) -> list[Fact]:
     """Intervalle de confiance large → classement peu fiable.
 
@@ -642,6 +707,9 @@ def detect_confidence_warning(benchmark_data: dict) -> list[Fact]:
                     "mean_cer": round(float(ci.get("mean") or 0.0), 4),
                     "mean_cer_pct": round(float(ci.get("mean") or 0.0) * 100, 2),
                     "gap_to_runner_up_pct": round(gap * 100, 2),
+                    # Niveau de confiance des bornes — propagé pour traçabilité
+                    # anti-hallucination (le template ne hardcode plus "95 %").
+                    "confidence_level": 95,
                 },
                 engines_involved=(engine_name,),
             ))
@@ -650,31 +718,39 @@ def detect_confidence_warning(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
-# Enregistrement par défaut — activé au Sprint 4
+# Enregistrement par défaut — Sprint 29
 # ---------------------------------------------------------------------------
+#
+# Depuis Sprint 29, l'enregistrement passe par ``@register_detector``
+# directement sur la définition de chaque fonction (cf. ``registry.py``).
+# ``DETECTORS_BY_TYPE`` reste exposé en tant qu'**alias dérivé** pour les
+# consommateurs externes qui s'appuient sur le mapping historique
+# ``{FactType: callable}``.
 
-DETECTORS_BY_TYPE = {
-    FactType.GLOBAL_LEADER_CER: detect_global_leader_cer,
-    FactType.STATISTICAL_TIE: detect_statistical_tie,
-    FactType.SIGNIFICANT_GAP: detect_significant_gap,
-    FactType.PARETO_ALTERNATIVE: detect_pareto_alternative,
-    FactType.STRATUM_WINNER: detect_stratum_winner,
-    FactType.STRATUM_COLLAPSE: detect_stratum_collapse,
-    FactType.ERROR_PROFILE_OUTLIER: detect_error_profile_outlier,
-    FactType.LLM_HALLUCINATION_FLAG: detect_llm_hallucination_flag,
-    FactType.ROBUSTNESS_FRAGILE: detect_robustness_fragile,
-    FactType.COST_OUTLIER: detect_cost_outlier,
-    FactType.SPEED_WINNER: detect_speed_winner,
-    FactType.CONFIDENCE_WARNING: detect_confidence_warning,
-}
+from picarones.core.narrative.facts import DetectorFn  # noqa: E402, F401
+from picarones.core.narrative.registry import (  # noqa: E402
+    iter_detectors as _iter_detectors,
+    populate_legacy_registry as _populate_legacy_registry,
+)
+
+
+def _build_detectors_by_type() -> dict[FactType, DetectorFn]:
+    """Snapshot du registre déclaratif vers un dict ``{type: fn}``."""
+    return {entry.fact_type: entry.fn for entry in _iter_detectors()}
+
+
+# Vue figée à l'import — utile pour les tests qui parcourent les types
+# enregistrés sans instancier un ``DetectorRegistry``.
+DETECTORS_BY_TYPE = _build_detectors_by_type()
 
 
 def register_default_detectors(registry) -> None:
-    """Enregistre les détecteurs du Sprint 4 dans un ``DetectorRegistry``.
+    """Enregistre les détecteurs du registre déclaratif dans un
+    ``DetectorRegistry`` historique.
 
-    Les types ``PARETO_ALTERNATIVE`` et ``COST_OUTLIER`` restent des stubs
-    jusqu'au Sprint 5 : les enregistrer maintenant ne fait rien de visible
-    (liste vide toujours retournée), ce qui est sûr et simplifie le parcours.
+    Sprint 29 : la source de vérité est maintenant le décorateur
+    ``@register_detector`` ; cette fonction se contente de pousser
+    le contenu du registre vers l'objet ``DetectorRegistry`` que les
+    consommateurs externes (``DetectorRegistry.run``) instancient.
     """
-    for fact_type, fn in DETECTORS_BY_TYPE.items():
-        registry.register(fact_type, fn)
+    _populate_legacy_registry(registry)

@@ -7,6 +7,119 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [1.1.x] — Sprints 23-30 — 2026-04
+
+### Ajouté
+
+- **Sprint 23** — intégrité anti-hallucination du moteur narratif :
+  whitelist `{"95", "100"}` vidée, `confidence_level=95` propagé dans
+  `CONFIDENCE_WARNING`, `cost_unit_pages=1000` propagé dans
+  `PARETO_ALTERNATIVE`/`COST_OUTLIER`, paramètre `select_facts(..., type_order=...)`,
+  test stabilité bootstrap (±0,5 pp inter-seeds), test E2E synthèse EN.
+  Doc « Politique éditoriale » dans `docs/developer/narrative-engine.md`.
+- **Sprint 24** — durcissement sécurité institutionnelle : mode public
+  (`PICARONES_PUBLIC_MODE=1`), `PICARONES_BROWSE_ROOTS`, validation Pillow
+  sur upload (CVE-2023-50447), rate limit + sémaphore concurrence,
+  middleware CSP + en-têtes durcis, `SECURITY.md` à la racine.
+- **Sprint 25** — refactor frontend en Jinja2 : `_HTML_TEMPLATE` (3000 L)
+  → 8 partials `picarones/web/templates/` + `static/web-app.js`. CSP
+  durcie en partie (script externalisé).
+- **Sprint 26** — persistance jobs SQLite : `picarones/core/jobs.py`,
+  `JobStore` thread-safe (WAL), `BenchmarkJob` persiste chaque event,
+  endpoint SSE supporte `Last-Event-ID`, jobs orphelins marqués
+  `interrupted` au boot, fallback DB sur `/api/benchmark/{id}/status`.
+- **Sprint 27** — snapshots de reproductibilité dans le rapport HTML :
+  `picarones/report/snapshot.py` embarque YAML brut de `pricing.yaml`,
+  glossaire trié, profil de normalisation, version Picarones+Python+
+  commit+deps figées.
+- **Sprint 28** — UX : save/load config (`/api/config/save|load`),
+  comparaison de runs (`picarones compare`, exit code 2 si régression),
+  synthesis preview (`/api/benchmark/{id}/synthesis_preview`),
+  `/api/history/regressions` qui surface l'infra Sprint 8.
+- **Sprint 29** — registre déclaratif des détecteurs narratifs :
+  `@register_detector(fact_type, priority, importance)` ;
+  `DEFAULT_TYPE_ORDER` dérivé du registre. Ajouter un détecteur passe
+  de 4 fichiers à 2.
+- **Sprint 30** — polish/accessibilité/DX : `.pre-commit-config.yaml`
+  avec ruff + check YAML/JSON/secrets, badges CER WCAG (icône + bordure
+  pattern + `aria-label`), `i18n.py` thread-safe avec `lru_cache`,
+  `_safe_version` log la stacktrace en DEBUG, backport CHANGELOG
+  Sprints 10-22, mise à jour SPECS pour narrative/Pareto/glossaire.
+
+### Tests
+
+- 1242 → 1426 tests (+184 sur les Sprints 23-30).
+
+---
+
+## [1.0.x] — Sprints 10-22 — 2025-04 → 2026-03
+
+### Ajouté
+
+- **Sprint 10** — distribution erreurs par ligne (Gini, percentiles)
+  dans `picarones/core/line_metrics.py`, détection hallucinations VLM
+  dans `picarones/core/hallucination.py` (anchor score, length ratio).
+- **Sprint 11** — internationalisation FR/EN, profils de normalisation
+  anglais (`early_modern_english`, `medieval_english`, `secretary_hand`).
+- **Sprint 12** — upload ZIP depuis le navigateur, filtrage fichiers
+  macOS `._*`, profils d'exclusion de caractères (`sans_ponctuation`,
+  `sans_apostrophes`), sélecteur dynamique de modèles via
+  `/api/models/{provider}`.
+- **Sprint 13** — nettoyage `pyproject.toml`, parallélisation runner
+  (ThreadPool/ProcessPool selon `execution_mode`), timeout par doc,
+  résultats partiels NDJSON, validation statistique Wilcoxon.
+- **Sprint 14** — filtrage robuste des moteurs côté CLI/web, validation
+  corpus avant lancement.
+- **Sprint 15** — fix bug pipeline OCR+LLM sortie vide : `mistral_adapter`
+  normalise les `ContentChunk`, log `finish_reason` + tokens.
+- **Sprint 16** — câblage de `line_metrics` et `hallucination` dans
+  `runner` et l'agrégation `EngineReport` ; fondations du moteur
+  narratif (`core/narrative/` avec `Fact`/`DetectorRegistry`) ;
+  Pillow `getdata()` → `tobytes()` ; deux `except: pass` → warnings.
+- **Sprint 17** — refactor du rapport monolithique : `generator.py`
+  3690 → 617 lignes via Jinja2, 10 fichiers externes dans
+  `picarones/report/templates/`, i18n migrée vers
+  `report/i18n/{fr,en}.json`. +16 tests de non-régression.
+- **Sprint 18** — test de Friedman multi-moteurs + Nemenyi post-hoc +
+  Critical Difference Diagram (Demšar 2006) ; `core/statistics.py`
+  étendu, fallback pur Python, scipy optionnel via extra `[stats]`.
+  Détecteur narratif `STATISTICAL_TIE` activé. +41 tests.
+- **Sprint 19** — moteur narratif complet : 9 détecteurs implémentés
+  (global_leader_cer, significant_gap, stratum_winner/collapse,
+  error_profile_outlier, llm_hallucination_flag, robustness_fragile,
+  speed_winner, confidence_warning), arbitre, renderer YAML,
+  `_narrative_summary.html`. Garde-fou anti-hallucination testé.
+  +32 tests.
+- **Sprint 20** — modélisation coût + vue Pareto : `core/pricing.py`,
+  `data/pricing.yaml`, `compute_pareto_front` multi-objectifs,
+  Chart.js Pareto avec axes coût/vitesse/carbone. Détecteurs
+  `pareto_alternative` + `cost_outlier` activés. +28 tests.
+- **Sprint 21** — glossaire contextuel (25 entrées bilingues) +
+  panneau « Mode avancé » : choix de colonnes, filtres par strate,
+  vue opt-in « score composite personnel » avec curseurs à 0 par défaut
+  et formule visible. État persisté en URL. +21 tests.
+- **Sprint 22** — études de cas (`docs/case-studies/`),
+  `docs/user/reading-a-report.md`, trois guides développeur dans
+  `docs/developer/`. Garde-fou « pas de fausses études prétendant
+  être réelles ». +18 tests.
+
+### Modifié
+
+- `pyproject.toml` : extras `[stats]`, `[hf]`, mises à jour de
+  `dev`/`web` pour `python-multipart`.
+- `picarones/core/runner.py` : refactor pour gérer le `execution_mode`
+  des moteurs (IO-bound vs CPU-bound).
+
+### Corrigé
+
+- `python-multipart` durablement présent dans `[dev]` et `[web]`
+  (FastAPI vérifie l'import au décorateur `@app.post`).
+- Tests Windows SQLite `test_history_empty_db` (gc.collect avant
+  unlink).
+- `test_search_language_filter` (HuggingFace) — assertion corrigée.
+
+---
+
 ## [1.0.0] — Sprint 9 — 2025-03
 
 ### Ajouté

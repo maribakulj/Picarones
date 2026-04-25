@@ -1,0 +1,38 @@
+# Pre-commit hooks Picarones (Sprint 30).
+#
+# Pour activer : ``pip install pre-commit && pre-commit install``.
+# Voir CONTRIBUTING.md § "Pre-commit hooks" pour les détails.
+#
+# Les hooks tournent localement avant chaque ``git commit`` et
+# reproduisent l'étape ``lint`` du job CI ``ci.yml`` — un développeur
+# qui pousse une PR n'apprend plus l'erreur F401 après push, mais
+# avant.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Version alignée sur celle utilisée dans le job CI ``lint``.
+    # En cas de mise à jour, mettre à jour aussi ``.github/workflows/ci.yml``.
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--config, pyproject.toml]
+        # On ne lance ruff que sur les fichiers Python staged ;
+        # le job CI complète avec un ``ruff check picarones/ tests/``
+        # global pour attraper les régressions inter-fichiers.
+        types: [python]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        # Les templates Jinja2 contiennent volontairement des ``{%`` qui
+        # cassent le parser YAML — on les exclut.
+        exclude: '\.j2$'
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=500]

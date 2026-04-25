@@ -81,6 +81,9 @@ include = ["picarones*"]
 picarones = [
     "prompts/*.txt",
     "web/static/*.css",
+    "web/static/*.js",
+    "web/templates/*.j2",
+    "web/templates/*.html",
     "report/templates/*.j2",
     "report/templates/*.html",
     "report/templates/*.css",

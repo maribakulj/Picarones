@@ -46,14 +46,14 @@ speed_winner: >-
   que la médiane) pour un CER comparable ({cer_pct} %).
 
 confidence_warning: >-
-  Classement fragile : l'intervalle de confiance à 95 % de {engine} s'étend
+  Classement fragile : l'intervalle de confiance à {confidence_level} % de {engine} s'étend
   sur {ci_width_pct} points de CER, à comparer à l'écart de {gap_to_runner_up_pct} points avec le second.
 
 pareto_alternative: >-
   À coût sensiblement inférieur, {engine} offre un compromis intéressant
-  ({cer_pct} % de CER pour {cost} €/1000 pages, contre {leader_cer_pct} % /
+  ({cer_pct} % de CER pour {cost} €/{cost_unit_pages} pages, contre {leader_cer_pct} % /
   {leader_cost} € pour {leader}, soit ×{cost_saving_ratio} moins cher).
 
 cost_outlier: >-
-  Coût disproportionné pour {engine} ({cost} €/1000 pages, ×{ratio_to_median}
+  Coût disproportionné pour {engine} ({cost} €/{cost_unit_pages} pages, ×{ratio_to_median}
   la médiane) sans avantage de qualité compensatoire (CER {cer_pct} %).
