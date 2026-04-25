@@ -1,0 +1,200 @@
+  <!-- ===== VUE BENCHMARK ===== -->
+  <div id="view-benchmark" class="view active">
+
+    <div class="card">
+      <h2 data-i18n="bench_corpus_title">1. Corpus</h2>
+
+      <!-- Tab bar -->
+      <div class="corpus-tabs">
+        <button class="corpus-tab active" id="ctab-browse" onclick="switchCorpusTab('browse')" data-i18n="corpus_tab_browse">📁 Parcourir</button>
+        <button class="corpus-tab" id="ctab-upload" onclick="switchCorpusTab('upload')" data-i18n="corpus_tab_upload">⬆ Uploader</button>
+      </div>
+
+      <!-- Browse tab -->
+      <div id="corpus-tab-browse">
+        <div class="form-group">
+          <label data-i18n="bench_corpus_label">Chemin vers le dossier corpus (paires image/.gt.txt)</label>
+          <div class="path-input-row">
+            <input type="text" id="corpus-path" placeholder="./corpus/" value="" />
+            <button class="btn btn-secondary btn-sm" onclick="openFileBrowser()" data-i18n="bench_browse">Parcourir</button>
+          </div>
+        </div>
+        <div id="file-browser-container" style="display:none; margin-top:10px;">
+          <div class="fb-path" id="fb-current-path">.</div>
+          <div id="file-browser"></div>
+        </div>
+      </div>
+
+      <!-- Upload tab -->
+      <div id="corpus-tab-upload" style="display:none;">
+        <div class="upload-mode-row">
+          <label><input type="radio" name="upload-mode" value="zip" checked onchange="onUploadModeChange()"> 🗜 <span data-i18n="upload_zip_mode">Archive ZIP</span></label>
+          <label><input type="radio" name="upload-mode" value="files" onchange="onUploadModeChange()"> 🖼 <span data-i18n="upload_files_mode">Fichiers individuels</span></label>
+        </div>
+        <!-- Drop zone -->
+        <div id="upload-dropzone" class="upload-dropzone"
+             onclick="document.getElementById('upload-file-input').click()"
+             ondragover="event.preventDefault(); this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="onDropFiles(event)">
+          <span class="upload-icon">⬆</span>
+          <span id="upload-dropzone-text" data-i18n="upload_drop_zip">Glissez un .zip ici ou cliquez pour sélectionner</span>
+          <input type="file" id="upload-file-input" style="display:none" accept=".zip" onchange="onFileInputChange(event)" />
+        </div>
+        <!-- Progress -->
+        <div id="upload-progress-container" style="display:none; margin-top:10px;">
+          <div class="progress-bar-outer">
+            <div class="progress-bar-inner" id="upload-progress-bar" style="width:0%; transition:width 0.2s;"></div>
+          </div>
+          <div id="upload-progress-text" style="font-size:12px; color:var(--text-muted); margin-top:4px;"></div>
+        </div>
+        <!-- Preview after upload -->
+        <div id="upload-preview" style="margin-top:10px;"></div>
+        <!-- Previously uploaded corpora -->
+        <div id="uploads-list" style="margin-top:14px;"></div>
+      </div>
+
+      <div id="corpus-info" style="margin-top:8px; font-size:12px; color: var(--text-muted);"></div>
+    </div>
+
+    <!-- ── Section 1 : Moteurs OCR ─────────────────────────────────── -->
+    <div class="card">
+      <h2 data-i18n="bench_ocr_title">2. Moteurs OCR</h2>
+      <div id="ocr-engines-status-list">
+        <div style="color: var(--text-muted); font-size: 12px;"><span class="spinner"></span> Chargement…</div>
+      </div>
+    </div>
+
+    <!-- ── Section 2 : Modèles LLM ──────────────────────────────────── -->
+    <div class="card">
+      <h2 data-i18n="bench_llm_title">3. Modèles LLM</h2>
+      <div id="llm-status-list">
+        <div style="color: var(--text-muted); font-size: 12px;"><span class="spinner"></span> Chargement…</div>
+      </div>
+    </div>
+
+    <!-- ── Section 3 : Composition des concurrents ──────────────────── -->
+    <div class="card">
+      <h2 data-i18n="bench_compose_title">4. Concurrents à benchmarker</h2>
+
+      <div class="mode-toggle">
+        <label><input type="radio" name="compose-mode" value="ocr" checked onchange="onComposeModeChange()"> 🔍 <span data-i18n="compose_ocr_only">OCR seul</span></label>
+        <label><input type="radio" name="compose-mode" value="pipeline" onchange="onComposeModeChange()"> ⛓ <span data-i18n="compose_pipeline">Pipeline OCR+LLM</span></label>
+        <label><input type="radio" name="compose-mode" value="postcorrection" onchange="onComposeModeChange()"> 📝 <span data-i18n="compose_postcorrection">Post-correction (corpus OCR)</span></label>
+      </div>
+
+      <div id="corpus-ocr-notice" style="display:none; margin:8px 0; padding:8px 12px; background:var(--bg-highlight,#f0fdf4); border-radius:6px; font-size:12px; color:var(--success,#16a34a);">
+        📝 <span data-i18n="corpus_has_ocr">Ce corpus contient des fichiers OCR pré-calculés (.ocr.txt) — post-correction disponible.</span>
+      </div>
+
+      <div id="compose-ocr-section" class="composer-row">
+        <div class="form-group">
+          <label data-i18n="compose_ocr_engine">Moteur OCR</label>
+          <select id="compose-ocr-engine" onchange="onComposeOCRChange()">
+            <option value="tesseract">Tesseract</option>
+            <option value="mistral_ocr">Mistral OCR</option>
+            <option value="google_vision">Google Vision</option>
+            <option value="azure_doc_intel">Azure Doc Intel</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label data-i18n="compose_ocr_model">Modèle / Langue <span class="spinner" id="sp-ocr-model" style="display:none"></span></label>
+          <select id="compose-ocr-model"></select>
+        </div>
+      </div>
+
+      <div id="compose-pipeline-section" style="display:none;">
+        <div class="composer-row">
+          <div class="form-group">
+            <label data-i18n="compose_llm_provider">Provider LLM</label>
+            <select id="compose-llm-provider" onchange="onComposeLLMChange()">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="mistral">Mistral LLM</option>
+              <option value="ollama">Ollama</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label data-i18n="compose_llm_model">Modèle LLM <span class="spinner" id="sp-llm-model" style="display:none"></span></label>
+            <select id="compose-llm-model"></select>
+          </div>
+        </div>
+        <div class="composer-row">
+          <div class="form-group">
+            <label data-i18n="compose_mode">Mode pipeline</label>
+            <select id="compose-pipeline-mode" onchange="onComposePipelineModeChange()">
+              <option value="text_only" data-i18n="mode_text_only">Post-correction texte</option>
+              <option value="text_and_image" data-i18n="mode_text_image">Post-correction image+texte</option>
+              <option value="zero_shot" data-i18n="mode_zero_shot">Zero-shot</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label data-i18n="compose_prompt">Prompt <span class="spinner" id="sp-prompt" style="display:none"></span></label>
+            <select id="compose-prompt"></select>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+        <button class="btn btn-primary btn-sm" onclick="addCompetitor()" data-i18n="compose_add">+ Ajouter</button>
+        <span id="compose-error" style="color: var(--danger); font-size:12px;"></span>
+      </div>
+
+      <div id="competitors-list" style="margin-top:14px;">
+        <div style="color: var(--text-muted); font-size:12px;" data-i18n="compose_empty">Aucun concurrent ajouté.</div>
+      </div>
+    </div>
+
+    <!-- ── 5. Options ─────────────────────────────────────────────────── -->
+    <div class="card">
+      <h2 data-i18n="bench_options_title">5. Options</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label data-i18n="bench_norm_label">Profil de normalisation</label>
+          <select id="norm-profile">
+            <option value="nfc">NFC (standard)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="bench_char_exclude_label">Caractères à ignorer <span style="color:var(--text-muted);font-size:.75rem">(séparés par virgule, ex : ', -, –)</span></label>
+          <input type="text" id="char-exclude" placeholder="ex: ', -, –, ." style="font-family:monospace" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="bench_output_label">Dossier de sortie</label>
+          <input type="text" id="output-dir" value="./rapports/" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="bench_name_label">Nom du rapport (optionnel)</label>
+          <input type="text" id="report-name" placeholder="rapport_2024_01_15" />
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:16px;">
+      <button class="btn btn-primary" id="start-btn" onclick="startBenchmark()" data-i18n="bench_start">▶ Lancer le benchmark</button>
+      <button class="btn btn-secondary" id="cancel-btn" style="display:none;" onclick="cancelBenchmark()" data-i18n="bench_cancel">✕ Annuler</button>
+      <span id="bench-status-text" style="font-size:12px; color: var(--text-muted);"></span>
+    </div>
+
+    <div id="bench-progress-section" style="display:none;">
+      <div class="card">
+        <h2 data-i18n="bench_progress_title">Progression</h2>
+        <div id="engine-progress-list"></div>
+        <div style="margin-top: 12px;">
+          <label style="font-size:12px; color: var(--text-muted); display:block; margin-bottom:4px;" data-i18n="bench_log">Journal</label>
+          <div class="log-box" id="bench-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="bench-result-section" style="display:none;">
+      <div class="card">
+        <h2 data-i18n="bench_result_title">Résultats</h2>
+        <div id="bench-ranking-table"></div>
+        <div style="margin-top:12px;">
+          <a id="bench-report-link" href="#" class="btn btn-primary" target="_blank" data-i18n="bench_open_report">Ouvrir le rapport</a>
+        </div>
+      </div>
+    </div>
+  </div>
+

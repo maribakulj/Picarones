@@ -1,0 +1,60 @@
+  <!-- ===== VUE IMPORT ===== -->
+  <div id="view-import" class="view">
+
+    <!-- HTR-United -->
+    <div class="card">
+      <h2 data-i18n="import_htr_title">Import HTR-United</h2>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;" data-i18n="import_htr_desc">
+        Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.
+      </p>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label data-i18n="import_search_label">Recherche</label>
+          <input type="text" id="htr-search" placeholder="médiéval, latin, manuscrits…" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="import_lang_filter">Langue</label>
+          <select id="htr-lang-filter">
+            <option value="" data-i18n="all">Toutes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="import_script_filter">Type d'écriture</label>
+          <select id="htr-script-filter">
+            <option value="" data-i18n="all">Tous</option>
+          </select>
+        </div>
+        <div class="form-group" style="justify-content: flex-end; padding-top: 18px;">
+          <button class="btn btn-primary btn-sm" onclick="searchHTRUnited()" data-i18n="search">Rechercher</button>
+        </div>
+      </div>
+      <div id="htr-results" class="ds-grid"></div>
+    </div>
+
+    <!-- HuggingFace -->
+    <div class="card">
+      <h2 data-i18n="import_hf_title">Import HuggingFace Datasets</h2>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;" data-i18n="import_hf_desc">
+        Datasets OCR/HTR publics depuis HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).
+      </p>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label data-i18n="import_search_label">Recherche</label>
+          <input type="text" id="hf-search" placeholder="medieval OCR, IAM, RIMES…" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="import_lang_filter">Langue</label>
+          <input type="text" id="hf-lang-filter" placeholder="French, Latin…" />
+        </div>
+        <div class="form-group">
+          <label data-i18n="import_tag_filter">Tags</label>
+          <input type="text" id="hf-tags" placeholder="ocr, htr, historical…" />
+        </div>
+        <div class="form-group" style="justify-content: flex-end; padding-top: 18px;">
+          <button class="btn btn-primary btn-sm" onclick="searchHuggingFace()" data-i18n="search">Rechercher</button>
+        </div>
+      </div>
+      <div id="hf-results" class="ds-grid"></div>
+    </div>
+
+  </div><!-- end view-import -->

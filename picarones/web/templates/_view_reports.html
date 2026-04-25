@@ -1,0 +1,19 @@
+  <!-- ===== VUE RAPPORTS ===== -->
+  <div id="view-reports" class="view">
+    <div class="card">
+      <h2 data-i18n="reports_title">Rapports générés</h2>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="max-width:320px;">
+          <label data-i18n="reports_dir_label">Dossier de rapports</label>
+          <div class="path-input-row">
+            <input type="text" id="reports-dir" value="." />
+            <button class="btn btn-secondary btn-sm" onclick="loadReports()" data-i18n="reports_refresh">Rafraîchir</button>
+          </div>
+        </div>
+      </div>
+      <div id="reports-list">
+        <div style="color: var(--text-muted); font-size: 12px;" data-i18n="loading">Chargement…</div>
+      </div>
+    </div>
+  </div>
+
