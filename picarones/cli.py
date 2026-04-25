@@ -341,6 +341,103 @@ def report_cmd(results: str, output: str, verbose: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
+# picarones compare (Sprint 28)
+# ---------------------------------------------------------------------------
+
+@cli.command("compare")
+@click.argument("run_a", type=click.Path(exists=True, dir_okay=False, resolve_path=True))
+@click.argument("run_b", type=click.Path(exists=True, dir_okay=False, resolve_path=True))
+@click.option(
+    "--output", "-o",
+    default="comparaison.html",
+    show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Fichier HTML de sortie pour le rapport de comparaison",
+)
+@click.option(
+    "--threshold",
+    default=0.005,
+    show_default=True,
+    type=float,
+    help="Seuil régression / amélioration (CER absolu, ex. 0.005 = 0,5 pp)",
+)
+@click.option(
+    "--label-a",
+    default="A",
+    show_default=True,
+    help="Étiquette du premier run dans le rapport",
+)
+@click.option(
+    "--label-b",
+    default="B",
+    show_default=True,
+    help="Étiquette du second run dans le rapport",
+)
+@click.option(
+    "--json", "json_only", is_flag=True, default=False,
+    help="Sortie JSON sur stdout au lieu du rapport HTML",
+)
+@click.option("--verbose", "-v", is_flag=True, default=False, help="Mode verbeux")
+def compare_cmd(
+    run_a: str,
+    run_b: str,
+    output: str,
+    threshold: float,
+    label_a: str,
+    label_b: str,
+    json_only: bool,
+    verbose: bool,
+) -> None:
+    """Compare deux runs de benchmark JSON et signale les régressions.
+
+    Convention : un Δ CER positif signifie que ``B`` est moins bon que
+    ``A``. Un moteur dont |Δ CER| > ``--threshold`` est marqué comme
+    régression ou amélioration.
+
+    \b
+    Exemples :
+        picarones compare run_v1.json run_v2.json -o diff.html
+        picarones compare run_v1.json run_v2.json --json
+        picarones compare run_v1.json run_v2.json --threshold 0.01 --label-a v1 --label-b v2
+    """
+    _setup_logging(verbose)
+
+    from picarones.report.comparison import (
+        compare_benchmarks,
+        detect_regressions,
+        render_comparison_html,
+    )
+
+    diff = compare_benchmarks(
+        run_a, run_b,
+        threshold=threshold,
+        label_a=label_a,
+        label_b=label_b,
+    )
+    regressions = detect_regressions(diff)
+
+    if json_only:
+        click.echo(json.dumps(diff.as_dict(), ensure_ascii=False, indent=2))
+        if regressions:
+            sys.exit(2)  # exit code 2 → régression détectée (utile en CI)
+        return
+
+    out = render_comparison_html(diff, output)
+    click.echo(f"Rapport de comparaison : {out}")
+    click.echo(f"Moteurs comparés : {len(diff.deltas)}")
+    click.echo(f"Régressions     : {len(regressions)}")
+    click.echo(f"Améliorations   : {sum(1 for d in diff.deltas if d.is_improvement)}")
+    if regressions:
+        click.echo("\n— Régressions détectées —")
+        for d in regressions:
+            click.echo(
+                f"  ⚠ {d.engine} : "
+                f"{d.cer_a:.3f} → {d.cer_b:.3f} (Δ +{d.delta_cer:.3f})"
+            )
+        sys.exit(2)
+
+
+# ---------------------------------------------------------------------------
 # picarones demo
 # ---------------------------------------------------------------------------
 

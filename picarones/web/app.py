@@ -1115,6 +1115,251 @@ async def api_normalization_profiles() -> dict:
 # API — reports
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# API — config save/load (Sprint 28)
+# ---------------------------------------------------------------------------
+
+#: Schéma versionné des configs utilisateur. Si on change le format,
+#: bumpez ce nombre et rajoutez un upgrade path dans ``_upgrade_config``.
+_CONFIG_SCHEMA_VERSION = 1
+
+#: Champs autorisés dans une config sauvegardée. On filtre explicitement
+#: pour ne pas embarquer des secrets ou des clefs serveur si le client
+#: pousse un dict trop riche.
+_ALLOWED_CONFIG_FIELDS: frozenset[str] = frozenset({
+    "schema_version",
+    "saved_at",
+    "label",
+    "corpus_path",
+    "engines",
+    "normalization_profile",
+    "char_exclude",
+    "lang",
+    "report_lang",
+    "output_dir",
+    "report_name",
+    "competitors",
+})
+
+
+def _filter_config(payload: dict) -> dict:
+    """Ne garde que les champs autorisés, dans un ordre stable pour les diffs."""
+    out: dict[str, Any] = {}
+    for k in sorted(_ALLOWED_CONFIG_FIELDS):
+        if k in payload:
+            out[k] = payload[k]
+    return out
+
+
+def _upgrade_config(payload: dict) -> dict:
+    """Migre les anciennes configs vers le schéma courant.
+
+    Schéma 1 (Sprint 28) : pas de migration nécessaire — on retourne tel quel.
+    """
+    return payload
+
+
+@app.post("/api/config/save")
+async def api_config_save(payload: dict) -> Response:
+    """Sérialise un dict de config en JSON téléchargeable.
+
+    Sprint 28 — supprime la friction *« reconfigurer chaque session »*.
+    Le client envoie sa config courante (engines, profil, options),
+    le serveur retourne un fichier JSON à télécharger ; un autre
+    utilisateur peut le réimporter via ``/api/config/load``.
+    """
+    cleaned = _filter_config(payload or {})
+    cleaned["schema_version"] = _CONFIG_SCHEMA_VERSION
+    cleaned["saved_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    body = json.dumps(cleaned, ensure_ascii=False, indent=2, sort_keys=True)
+    label = str(cleaned.get("label") or "picarones-config")
+    # Sanitisation du nom : pas de "/" ni "..", longueur bornée
+    safe_label = "".join(c for c in label if c.isalnum() or c in "-_") or "picarones-config"
+    safe_label = safe_label[:80]
+    filename = f"{safe_label}-v{_CONFIG_SCHEMA_VERSION}.json"
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@app.post("/api/config/load")
+async def api_config_load(payload: dict) -> dict:
+    """Valide et normalise une config uploadée.
+
+    Le client envoie le contenu JSON déjà parsé (le frontend lit le
+    fichier via ``FileReader``). On filtre les champs autorisés,
+    applique l'upgrade path éventuel, et retourne le dict normalisé.
+    """
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Le corps doit être un objet JSON.")
+
+    schema = payload.get("schema_version")
+    if not isinstance(schema, int) or schema < 1 or schema > _CONFIG_SCHEMA_VERSION:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"schema_version invalide ({schema!r}) — "
+                f"attendu entre 1 et {_CONFIG_SCHEMA_VERSION}."
+            ),
+        )
+
+    upgraded = _upgrade_config(payload)
+    return {
+        "config": _filter_config(upgraded),
+        "schema_version": _CONFIG_SCHEMA_VERSION,
+    }
+
+
+# ---------------------------------------------------------------------------
+# API — synthèse narrative en preview (Sprint 28)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/benchmark/{job_id}/synthesis_preview")
+async def api_benchmark_synthesis_preview(job_id: str, lang: str = "fr") -> dict:
+    """Rend la synthèse narrative d'un job terminé sans rouvrir le HTML.
+
+    Sprint 28 — un chercheur attend 20 minutes la fin d'un benchmark
+    et veut savoir d'un coup d'œil *« le moteur narratif a-t-il quelque
+    chose d'intéressant à dire ? »* avant d'ouvrir le rapport HTML
+    complet. Cet endpoint :
+
+    1. Charge le ``BenchmarkJob`` (RAM ou DB) ;
+    2. Lit le JSON de résultats associé via ``output_path`` ;
+    3. Appelle ``build_synthesis()`` côté serveur ;
+    4. Retourne ``{sentences, facts, lang}``.
+
+    Renvoie ``409 Conflict`` si le job n'est pas terminé, ``404`` si
+    introuvable, ``422`` si le JSON associé est manquant ou cassé.
+    """
+    if lang not in _SUPPORTED_LANGS:
+        lang = "fr"
+
+    # 1. Statut courant : RAM si dispo, sinon DB.
+    ram_job = _JOBS.get(job_id)
+    db_job = _JOB_STORE.get_job(job_id)
+    if ram_job is None and db_job is None:
+        raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
+
+    status = ram_job.status if ram_job is not None else db_job["status"]
+    if status not in ("complete",):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Synthèse indisponible : statut courant = {status!r} (attendu 'complete').",
+        )
+
+    output_path = (
+        ram_job.output_path if ram_job is not None
+        else (db_job or {}).get("output_path", "")
+    )
+    if not output_path:
+        raise HTTPException(status_code=422, detail="Aucun rapport produit pour ce job.")
+
+    # 2. Le HTML est à ``output_path`` ; le JSON associé est à côté
+    # (convention ``picarones run -o results.json --output-html``).
+    html_path = Path(output_path)
+    json_candidates = [
+        html_path.with_suffix(".json"),
+        html_path.with_name(html_path.stem + "_results.json"),
+        html_path.parent / "results.json",
+    ]
+    json_path: Optional[Path] = next((p for p in json_candidates if p.exists()), None)
+    if json_path is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "JSON de résultats introuvable à côté du rapport HTML. "
+                f"Cherché : {[str(p) for p in json_candidates]}"
+            ),
+        )
+
+    try:
+        report_json = json.loads(json_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail=f"Lecture JSON échouée : {exc}")
+
+    from picarones.core.narrative import build_synthesis
+
+    synthesis = build_synthesis(report_json, lang=lang)
+    return {
+        "job_id": job_id,
+        "lang": lang,
+        "source_json": str(json_path),
+        "sentences": synthesis.get("sentences", []),
+        "facts": synthesis.get("facts", []),
+    }
+
+
+# ---------------------------------------------------------------------------
+# API — historique des régressions (Sprint 28)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/history/regressions")
+async def api_history_regressions(
+    engine: Optional[str] = Query(default=None, description="Filtre par moteur"),
+    threshold: float = Query(default=0.01, description="Seuil régression CER absolu"),
+    db_path: Optional[str] = Query(default=None, description="Chemin SQLite history"),
+) -> dict:
+    """Liste les régressions détectées dans l'historique longitudinal.
+
+    Sprint 28 — surface de l'infrastructure ``BenchmarkHistory`` du
+    Sprint 8, qui était limitée au CLI ``picarones history --regression``.
+    Le rapport HTML peut désormais consommer cet endpoint pour afficher
+    un encart *« ⚠ Tesseract a régressé de 0,8 pp depuis le 12 janvier »*
+    en tête de page.
+    """
+    from picarones.core.history import BenchmarkHistory
+
+    try:
+        history = BenchmarkHistory(db_path) if db_path else BenchmarkHistory()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Ouverture historique échouée : {exc}")
+
+    # Si aucun moteur n'est passé, on liste tous les moteurs présents
+    # dans l'historique et on tente une détection sur chacun.
+    if engine:
+        targets = [engine]
+    else:
+        # Récupération des engines distincts via la query publique.
+        try:
+            entries = history.query(limit=10000)
+            targets = sorted({e.engine for e in entries if e.engine})
+        except Exception:
+            targets = []
+
+    out: list[dict[str, Any]] = []
+    for eng in targets:
+        try:
+            res = history.detect_regression(engine=eng, threshold=threshold)
+        except Exception as exc:
+            _logger.warning("[regressions] detect_regression(%s) échoué : %s", eng, exc)
+            continue
+        if res is None:
+            continue
+        d = {
+            "engine": eng,
+            "is_regression": getattr(res, "is_regression", False),
+            "delta_cer": getattr(res, "delta_cer", None),
+            "current_cer": getattr(res, "current_cer", None),
+            "baseline_cer": getattr(res, "baseline_cer", None),
+            "current_run_id": getattr(res, "current_run_id", None),
+            "baseline_run_id": getattr(res, "baseline_run_id", None),
+        }
+        if d["is_regression"]:
+            out.append(d)
+
+    return {
+        "threshold": float(threshold),
+        "regressions": out,
+        "count": len(out),
+    }
+
+
 @app.get("/api/reports")
 async def api_reports(reports_dir: str = Query(default=".", description="Dossier rapports")) -> dict:
     target = Path(reports_dir).resolve()
