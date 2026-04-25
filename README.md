@@ -10,6 +10,7 @@ pinned: false
 # Picarones
 
 > **OCR/HTR Benchmarking Platform for Heritage Documents**
+> Plateforme d'Inspection Comparative et d'Audit Rigoureux d'OCR pour Numérisations et Etudes Scientifiques
 
 [![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
