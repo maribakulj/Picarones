@@ -19,7 +19,7 @@ import base64
 import io
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 # ---------------------------------------------------------------------------
 # Ressources vendor (embarquées dans le rapport HTML)
@@ -618,6 +618,7 @@ class ReportGenerator:
         benchmark: BenchmarkResult,
         images_b64: Optional[dict[str, str]] = None,
         lang: str = "fr",
+        normalization_profile: Any = None,
     ) -> None:
         """
         Parameters
@@ -629,14 +630,24 @@ class ReportGenerator:
             Si None, le générateur cherche dans ``benchmark.metadata["_images_b64"]``.
         lang:
             Code langue du rapport : ``"fr"`` (défaut) ou ``"en"``.
+        normalization_profile:
+            Profil de normalisation effectivement utilisé (Sprint 27 — pour
+            le snapshot de reproductibilité). ``None`` retombe sur le
+            profil mentionné dans ``benchmark.metadata["normalization_profile"]``
+            s'il est présent, sinon snapshot indisponible.
         """
         self.benchmark = benchmark
         self.images_b64: dict[str, str] = images_b64 or {}
         self.lang = lang
+        self.normalization_profile = normalization_profile
 
         # Récupérer les images embarquées dans les metadata (fixtures)
         if not self.images_b64:
             self.images_b64 = benchmark.metadata.get("_images_b64", {})  # type: ignore[assignment]
+
+        # Sprint 27 — fallback : profil de normalisation depuis les metadata
+        if self.normalization_profile is None:
+            self.normalization_profile = benchmark.metadata.get("normalization_profile")
 
     def generate(self, output_path: str | Path) -> Path:
         """Génère le fichier HTML et le sauvegarde sur disque.
@@ -663,6 +674,17 @@ class ReportGenerator:
 
         labels = get_labels(self.lang)
         report_data = _build_report_data(self.benchmark, images_b64)
+
+        # Sprint 27 — snapshots de reproductibilité (pricing, glossaire,
+        # profil de normalisation, environnement). Embarqués dans le JSON
+        # du rapport pour qu'un lecteur puisse régénérer la synthèse, le
+        # Pareto et le glossaire sans accès au code source.
+        from picarones.report.snapshot import snapshot_all
+        report_data["snapshots"] = snapshot_all(
+            lang=self.lang,
+            normalization_profile=self.normalization_profile,
+        )
+
         report_json = json.dumps(report_data, ensure_ascii=False, separators=(",", ":"))
         i18n_json = json.dumps(labels, ensure_ascii=False, separators=(",", ":"))
         chartjs_js = _load_vendor_js("chart.umd.min.js")
