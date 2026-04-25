@@ -26,12 +26,31 @@ from picarones.core.narrative.facts import Fact, FactImportance, FactType
 
 # Ordre canonique des types pour départager les ex-aequo à l'importance égale.
 #
-# Politique éditoriale (Sprint 23) — exposée et documentée :
-# voir ``docs/developer/narrative-engine.md`` § Editorial policy.
+# Politique éditoriale — exposée et documentée dans
+# ``docs/developer/narrative-engine.md`` § Editorial policy.
 # L'ordre encode quels faits sont remontés en priorité quand plusieurs ont
-# la même ``FactImportance`` ; il peut être surchargé via le paramètre
-# ``type_order`` de ``select_facts`` sans patcher le code.
-DEFAULT_TYPE_ORDER: tuple[FactType, ...] = (
+# la même ``FactImportance``. Surchargeable via le paramètre ``type_order``
+# de ``select_facts`` sans patcher le code.
+#
+# Sprint 29 : la valeur n'est plus codée en dur ici — elle est dérivée du
+# registre déclaratif (``@register_detector(..., priority=N)``). Ajouter
+# un détecteur en bonne position se fait donc en éditant **un seul**
+# fichier (``detectors.py``) au lieu de quatre comme avant.
+def _compute_default_type_order() -> tuple[FactType, ...]:
+    # Import local pour éviter la dépendance circulaire au chargement.
+    from picarones.core.narrative.registry import default_type_order
+    order = default_type_order()
+    # Filet de sécurité : tant que les détecteurs n'ont pas été importés
+    # (cas des tests qui mockent le registre), on retombe sur un ordre
+    # canonique gravé pour ne pas planter ``select_facts``.
+    if not order:
+        return _FALLBACK_TYPE_ORDER
+    return order
+
+
+# Ordre statique gardé en mémoire : utilisé si jamais le registre est vide
+# au moment où ``arbiter`` est chargé (chargement partiel par les tests).
+_FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.GLOBAL_LEADER_CER,
     FactType.STATISTICAL_TIE,
     FactType.SIGNIFICANT_GAP,
@@ -45,8 +64,15 @@ DEFAULT_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.COST_OUTLIER,
     FactType.CONFIDENCE_WARNING,
 )
-# Alias rétro-compatible — l'ancien nom privé reste exporté pour
-# les tests et le code utilisateur qui s'y appuyaient.
+
+
+# ``DEFAULT_TYPE_ORDER`` reste un attribut module accessible. On le calcule
+# à l'import si possible, sinon on prend le fallback ; ``select_facts``
+# recalcule à chaque appel pour absorber les ajouts de détecteurs après
+# l'import initial (extensions tierces).
+DEFAULT_TYPE_ORDER: tuple[FactType, ...] = _compute_default_type_order()
+
+# Alias rétro-compatible.
 _TYPE_ORDER = DEFAULT_TYPE_ORDER
 _TYPE_INDEX: dict[FactType, int] = {t: i for i, t in enumerate(DEFAULT_TYPE_ORDER)}
 
@@ -138,7 +164,12 @@ def select_facts(
     Liste ordonnée, prête à être rendue. Toujours ≤ ``max_facts``.
     """
     if type_order is None:
-        type_index = _TYPE_INDEX
+        # Sprint 29 — recalcul à chaque appel pour absorber les détecteurs
+        # enregistrés après l'import d'arbiter (extensions tierces qui
+        # font ``@register_detector`` dans un module utilisateur).
+        from picarones.core.narrative.registry import default_type_order
+        live_order = default_type_order() or _FALLBACK_TYPE_ORDER
+        type_index = {t: i for i, t in enumerate(live_order)}
     else:
         type_index = {t: i for i, t in enumerate(type_order)}
 

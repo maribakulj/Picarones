@@ -19,6 +19,11 @@ picarones/core/narrative/
 
 ## Ajouter un détecteur
 
+> **Sprint 29** : un nouveau détecteur ne demande plus que **deux**
+> fichiers à toucher (au lieu de quatre avant le sprint). Le décorateur
+> `@register_detector` se charge de l'enregistrement, du tri par
+> priorité, et de l'alimentation de `arbiter.DEFAULT_TYPE_ORDER`.
+
 ### 1. Déclarer le type de fait
 
 Dans `facts.py`, ajoutez une valeur à `FactType` :
@@ -29,12 +34,60 @@ class FactType(str, Enum):
     NEW_THING = "new_thing"
 ```
 
-### 2. Implémenter le détecteur
+### 2. Implémenter et enregistrer le détecteur
 
-Dans `detectors.py`, ajoutez une fonction pure qui prend le dict
-`benchmark_data` (le JSON de résultats du rapport) et retourne une
-liste de `Fact`. Le détecteur ne doit **jamais lever d'exception** —
-le `DetectorRegistry` capte les erreurs en `logger.warning` mais c'est
+Dans `detectors.py`, écrivez une fonction pure qui prend le dict
+`benchmark_data` et retourne une liste de `Fact`, puis décorez-la avec
+`@register_detector` :
+
+```python
+from picarones.core.narrative.facts import Fact, FactImportance, FactType
+from picarones.core.narrative.registry import register_detector
+
+
+@register_detector(
+    FactType.NEW_THING,
+    priority=55,                          # entre STRATUM_COLLAPSE (50) et ERROR_PROFILE_OUTLIER (60)
+    importance=FactImportance.HIGH,
+)
+def detect_new_thing(benchmark_data: dict) -> list[Fact]:
+    ...
+```
+
+Le décorateur :
+- enregistre la fonction dans le registre central trié par `priority` ;
+- alimente automatiquement `arbiter.DEFAULT_TYPE_ORDER` (plus besoin
+  d'éditer `arbiter.py`) ;
+- vérifie qu'aucun autre détecteur n'est déjà enregistré sur le même
+  `FactType` (sinon `ValueError`) ;
+- laisse la fonction utilisable telle quelle (pour les tests unitaires
+  qui l'appellent directement).
+
+### Conventions de priorité
+
+Plus la valeur est petite, plus le fait remonte tôt en synthèse à
+importance égale. Les détecteurs builtin utilisent un pas de **10**
+pour laisser de la place :
+
+| Priority | Type | Question éditoriale |
+|---:|---|---|
+| 10 | `GLOBAL_LEADER_CER`        | Qui gagne globalement ? |
+| 20 | `STATISTICAL_TIE`          | Y a-t-il un ex-aequo ? |
+| 30 | `SIGNIFICANT_GAP`          | À quel point l'écart est solide ? |
+| 40 | `STRATUM_WINNER`           | Qui domine sur quel sous-corpus ? |
+| 50 | `STRATUM_COLLAPSE`         | Qui s'effondre sur quoi ? |
+| 60 | `ERROR_PROFILE_OUTLIER`    | Qui se trompe différemment ? |
+| 70 | `LLM_HALLUCINATION_FLAG`   | Hallucinations VLM ? |
+| 80 | `ROBUSTNESS_FRAGILE`       | Sensibilité aux dégradations ? |
+| 90 | `PARETO_ALTERNATIVE`       | Y a-t-il un compromis coût/qualité ? |
+| 100 | `SPEED_WINNER`            | Vitesse ? |
+| 110 | `COST_OUTLIER`            | Coût aberrant ? |
+| 120 | `CONFIDENCE_WARNING`      | Mise en garde sur la fiabilité. |
+
+### Détails techniques
+
+Le détecteur ne doit **jamais lever d'exception** — le
+`DetectorRegistry` capte les erreurs en `logger.warning` mais c'est
 une protection, pas une excuse.
 
 ```python
