@@ -40,11 +40,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
+from contextlib import asynccontextmanager
+
 from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from picarones import __version__
+from picarones.core.jobs import JobStore, get_default_store
 from picarones.web.security import (
     RateLimiter,
     assert_engines_allowed,
@@ -60,12 +63,30 @@ from picarones.web.security import (
 # App initialization
 # ---------------------------------------------------------------------------
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Lifespan FastAPI — Sprint 26 : marque les jobs orphelins au boot.
+
+    Au démarrage d'un nouveau processus, tous les jobs encore en statut
+    ``pending`` ou ``running`` en base sont forcément orphelins (le
+    processus précédent est mort sans les finir). On les bascule en
+    ``interrupted`` une bonne fois pour toutes pour ne pas laisser
+    d'état mensonger sur le tableau de bord.
+    """
+    try:
+        _JOB_STORE.mark_orphaned_jobs_interrupted()
+    except Exception as exc:  # pragma: no cover — défense en profondeur
+        _logger.warning("[jobs] mark_orphaned_jobs_interrupted échoué : %s", exc)
+    yield
+
+
 app = FastAPI(
     title="Picarones",
     description="Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux",
     version=__version__,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=_lifespan,
 )
 
 # Sprint 24 — middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
@@ -109,7 +130,7 @@ _logger = logging.getLogger(__name__)
 @dataclass
 class BenchmarkJob:
     job_id: str
-    status: str = "pending"   # pending | running | complete | error | cancelled
+    status: str = "pending"   # pending | running | complete | error | cancelled | interrupted
     progress: float = 0.0     # 0.0 – 1.0
     current_engine: str = ""
     total_docs: int = 0
@@ -122,9 +143,33 @@ class BenchmarkJob:
     _subscribers: list[asyncio.Queue] = field(default_factory=list)
     _lock: threading.Lock = field(default_factory=threading.Lock)
     _cancel_event: threading.Event = field(default_factory=threading.Event)
+    # Sprint 26 — store SQLite optionnel injecté à la création.
+    _store: Optional[JobStore] = None
 
     def add_event(self, kind: str, data: Any) -> None:
-        event = {"kind": kind, "data": data, "ts": _iso_now()}
+        # Sprint 26 — persister d'abord dans le store pour récupérer le ``seq``.
+        # Si le store est indisponible, on continue en mémoire seulement.
+        seq: Optional[int] = None
+        if self._store is not None:
+            try:
+                seq = self._store.append_event(self.job_id, kind, data)
+                # Synchronise l'état de progression à chaque événement —
+                # garantit qu'à chaque seq persisté, le snapshot du job
+                # en base est cohérent avec ce que vit le client.
+                self._store.update_progress(
+                    self.job_id,
+                    progress=self.progress,
+                    current_engine=self.current_engine,
+                    total_docs=self.total_docs,
+                    processed_docs=self.processed_docs,
+                    output_path=self.output_path,
+                )
+            except Exception as exc:  # pragma: no cover — défense en profondeur
+                _logger.warning(
+                    "[jobs] persistance d'événement échouée pour %s : %s",
+                    self.job_id, exc,
+                )
+        event = {"kind": kind, "data": data, "ts": _iso_now(), "seq": seq}
         with self._lock:
             self.events.append(event)
             subscribers = list(self._subscribers)
@@ -132,7 +177,31 @@ class BenchmarkJob:
             try:
                 q.put_nowait(event)
             except asyncio.QueueFull:
-                pass
+                # Sprint 26 — la perte ici n'est plus silencieuse sur le
+                # plan applicatif : le client peut reprendre via
+                # Last-Event-ID en relisant le store.
+                _logger.warning(
+                    "[jobs] queue SSE pleine pour job %s — événement déjà persisté seq=%s",
+                    self.job_id, seq,
+                )
+
+    def set_status(self, status: str, error: str = "") -> None:
+        """Met à jour le statut + persiste vers le store (Sprint 26)."""
+        self.status = status
+        if error:
+            self.error = error
+        if status in ("complete", "error", "cancelled", "interrupted"):
+            self.finished_at = _iso_now()
+        if self._store is not None:
+            try:
+                self._store.set_status(
+                    self.job_id, status, error=error or None
+                )
+            except Exception as exc:  # pragma: no cover
+                _logger.warning(
+                    "[jobs] set_status persisté en échec pour %s : %s",
+                    self.job_id, exc,
+                )
 
     def subscribe(self) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=200)
@@ -165,6 +234,11 @@ class BenchmarkJob:
 _JOBS: dict[str, BenchmarkJob] = {}
 _JOBS_MAX = 100  # Nombre max de jobs conservés en mémoire
 _JOBS_LOCK = threading.Lock()
+
+# Sprint 26 — store SQLite singleton, injecté dans chaque BenchmarkJob.
+# Le hook de marquage des orphelins est branché via le ``lifespan`` plus
+# haut dans le fichier (voir ``_lifespan``).
+_JOB_STORE: JobStore = get_default_store()
 
 
 def _cleanup_old_jobs() -> None:
@@ -1196,7 +1270,8 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
         )
 
     job_id = str(uuid.uuid4())
-    job = BenchmarkJob(job_id=job_id)
+    job = BenchmarkJob(job_id=job_id, _store=_JOB_STORE)
+    _JOB_STORE.create_job(job_id)
     _JOBS[job_id] = job
     _cleanup_old_jobs()
 
@@ -1220,9 +1295,25 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
 @app.get("/api/benchmark/{job_id}/status")
 async def api_benchmark_status(job_id: str) -> dict:
     job = _JOBS.get(job_id)
-    if not job:
+    if job is not None:
+        return job.as_dict()
+    # Sprint 26 — fallback DB : le job n'est pas (plus) en RAM dans ce
+    # worker mais peut exister en base (autre worker, ou redémarrage).
+    db_job = _JOB_STORE.get_job(job_id)
+    if db_job is None:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
-    return job.as_dict()
+    return {
+        "job_id": db_job["job_id"],
+        "status": db_job["status"],
+        "progress": db_job["progress"],
+        "current_engine": db_job["current_engine"],
+        "total_docs": db_job["total_docs"],
+        "processed_docs": db_job["processed_docs"],
+        "output_path": db_job["output_path"],
+        "error": db_job["error"],
+        "started_at": None,
+        "finished_at": db_job["finished_at"],
+    }
 
 
 @app.post("/api/benchmark/{job_id}/cancel")
@@ -1232,45 +1323,81 @@ async def api_benchmark_cancel(job_id: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
     if job.status in ("complete", "error"):
         return {"job_id": job_id, "status": job.status, "message": "Job déjà terminé."}
-    job.status = "cancelled"
+    job.set_status("cancelled")
     job._cancel_event.set()  # Signal d'annulation pour run_benchmark
     job.add_event("cancelled", {"message": "Benchmark annulé par l'utilisateur."})
     return {"job_id": job_id, "status": "cancelled"}
 
 
 @app.get("/api/benchmark/{job_id}/stream")
-async def api_benchmark_stream(job_id: str) -> StreamingResponse:
+async def api_benchmark_stream(job_id: str, request: Request) -> StreamingResponse:
+    """SSE de progression d'un benchmark.
+
+    Sprint 26 — supporte la reprise via le header standard
+    ``Last-Event-ID`` (clamped à un ``int``) : le client envoie le dernier
+    ``seq`` reçu, le serveur rejoue tous les événements ``> seq`` puis
+    bascule sur le live. Si le job est terminé (ou orphelin/interrompu),
+    on envoie le backlog puis ``done`` et on ferme la connexion.
+
+    Trois cas :
+      1. Job en RAM ET vivant ⇒ subscribe + backlog DB depuis last_seq.
+      2. Job en RAM mais terminé ⇒ backlog DB + done.
+      3. Job uniquement en DB (orphelin, autre worker) ⇒ backlog DB + done.
+    """
+    last_event_id = request.headers.get("last-event-id", "0").strip()
+    try:
+        last_seq = max(0, int(last_event_id))
+    except ValueError:
+        last_seq = 0
+
     job = _JOBS.get(job_id)
-    if not job:
+    db_job = _JOB_STORE.get_job(job_id)
+    if job is None and db_job is None:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
 
     async def event_generator() -> AsyncIterator[str]:
-        # S'abonner AVANT de lire les événements existants pour ne rien perdre
-        queue = job.subscribe()
+        queue: Optional[asyncio.Queue] = None
+        if job is not None:
+            queue = job.subscribe()
         try:
-            # Envoie les événements déjà produits (snapshot thread-safe)
-            with job._lock:
-                past_events = list(job.events)
-            for event in past_events:
-                yield _sse_format(event["kind"], event["data"])
+            # 1) Backlog depuis la base — l'autorité de vérité (Sprint 26).
+            backlog = _JOB_STORE.get_events_after(job_id, last_seq=last_seq)
+            seen_seqs: set[int] = set()
+            for ev in backlog:
+                seen_seqs.add(ev["seq"])
+                yield _sse_format(ev["kind"], ev["data"], seq=ev["seq"])
 
-            if job.status in ("complete", "error", "cancelled"):
-                yield _sse_format("done", {"status": job.status})
+            # Statut courant : RAM si dispo, sinon DB.
+            current_status = job.status if job is not None else (db_job or {}).get("status", "")
+            if current_status in ("complete", "error", "cancelled", "interrupted"):
+                yield _sse_format("done", {"status": current_status})
                 return
+
+            if queue is None:
+                # Pas de live possible (job pas en RAM dans ce worker) — on
+                # ne peut pas suivre la progression future. Au pire le
+                # client se reconnecte avec le nouveau ``Last-Event-ID``.
+                yield _sse_format("done", {"status": current_status or "unknown"})
+                return
+
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
-                    yield _sse_format(event["kind"], event["data"])
+                    seq = event.get("seq")
+                    if seq is not None and seq in seen_seqs:
+                        # Déjà délivré dans le backlog — éviter le doublon.
+                        continue
+                    yield _sse_format(event["kind"], event["data"], seq=seq)
                     if event["kind"] in ("complete", "error", "cancelled", "done"):
                         break
                 except asyncio.TimeoutError:
-                    # Keepalive
                     yield ": keepalive\n\n"
-                    if job.status in ("complete", "error", "cancelled"):
+                    if job.status in ("complete", "error", "cancelled", "interrupted"):
                         yield _sse_format("done", {"status": job.status})
                         break
         finally:
-            job.unsubscribe(queue)
+            if queue is not None and job is not None:
+                job.unsubscribe(queue)
 
     return StreamingResponse(
         event_generator(),
@@ -1282,9 +1409,17 @@ async def api_benchmark_stream(job_id: str) -> StreamingResponse:
     )
 
 
-def _sse_format(event_type: str, data: Any) -> str:
+def _sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
+    """Format SSE.
+
+    Sprint 26 — émet une ligne ``id: <seq>`` quand le ``seq`` est connu.
+    C'est la valeur que le navigateur renvoie automatiquement dans
+    ``Last-Event-ID`` à la prochaine connexion (cf.
+    https://html.spec.whatwg.org/multipage/server-sent-events.html).
+    """
     payload = json.dumps(data, ensure_ascii=False)
-    return f"event: {event_type}\ndata: {payload}\n\n"
+    head = f"id: {seq}\n" if seq is not None else ""
+    return f"{head}event: {event_type}\ndata: {payload}\n\n"
 
 
 # ---------------------------------------------------------------------------
@@ -1320,7 +1455,8 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
         )
 
     job_id = str(uuid.uuid4())
-    job = BenchmarkJob(job_id=job_id)
+    job = BenchmarkJob(job_id=job_id, _store=_JOB_STORE)
+    _JOB_STORE.create_job(job_id)
     _JOBS[job_id] = job
 
     def _release_after(job_, fn, *args):
@@ -1436,7 +1572,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None:
     """Exécute un benchmark à partir d'une liste de CompetitorConfig."""
 
-    job.status = "running"
+    job.set_status("running")
     job.started_at = _iso_now()
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
@@ -1514,8 +1650,7 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
 
         job.output_path = output_html
         job.progress = 1.0
-        job.status = "complete"
-        job.finished_at = _iso_now()
+        job.set_status("complete")
 
         ranking = result.ranking()
         job.add_event("complete", {
@@ -1526,16 +1661,14 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
         })
 
     except Exception as exc:
-        job.status = "error"
-        job.error = str(exc)
-        job.finished_at = _iso_now()
+        job.set_status("error", error=str(exc))
         job.add_event("error", {"message": f"Erreur : {exc}"})
 
 
 def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     """Exécute le benchmark dans un thread et envoie des événements SSE."""
 
-    job.status = "running"
+    job.set_status("running")
     job.started_at = _iso_now()
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
@@ -1623,8 +1756,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
 
         job.output_path = output_html
         job.progress = 1.0
-        job.status = "complete"
-        job.finished_at = _iso_now()
+        job.set_status("complete")
 
         # Classement final
         ranking = result.ranking()
@@ -1636,9 +1768,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         })
 
     except Exception as exc:
-        job.status = "error"
-        job.error = str(exc)
-        job.finished_at = _iso_now()
+        job.set_status("error", error=str(exc))
         job.add_event("error", {"message": f"Erreur : {exc}"})
 
 

@@ -21,6 +21,12 @@ corpus_*/
 corpus/
 uploads/
 
+# Sprint 26 — store SQLite des jobs (créé au runtime)
+jobs.db
+jobs.db-journal
+jobs.db-shm
+jobs.db-wal
+
 # Exceptions : fichiers HTML sources du package (templates Jinja2, pas rapports)
 !picarones/report/templates/*.html
 !picarones/web/templates/*.html
