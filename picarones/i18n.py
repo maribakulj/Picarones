@@ -5,18 +5,34 @@ Langues supportées
 - ``"fr"`` : français (défaut)
 - ``"en"`` : anglais patrimonial (heritage English)
 
-Depuis le Sprint 16, les traductions sont stockées dans
+Depuis le Sprint 17, les traductions sont stockées dans
 ``picarones/report/i18n/{lang}.json`` et chargées au premier accès.
 ``TRANSLATIONS`` reste exposé comme dict pour compatibilité ascendante.
+
+Sprint 30 — durcissement
+------------------------
+- Chargement lazy + thread-safe via verrou explicite ; les serveurs
+  web sous charge concurrente ne peuvent plus initialiser deux fois.
+- ``reload_translations()`` exposé pour les tests qui modifient les
+  fichiers JSON à la volée.
+- ``get_labels()`` mémoizé via ``functools.lru_cache`` pour absorber
+  le fallback ``lang → fr`` sans relire le dict à chaque appel.
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import threading
+from functools import lru_cache
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 _I18N_DIR = Path(__file__).parent / "report" / "i18n"
+_LOAD_LOCK = threading.Lock()
+_TRANSLATIONS_CACHE: dict[str, dict[str, str]] | None = None
 
 
 def _load_translations() -> dict[str, dict[str, str]]:
@@ -35,14 +51,47 @@ def _load_translations() -> dict[str, dict[str, str]]:
             with path.open(encoding="utf-8") as fh:
                 translations[lang] = json.load(fh)
         except (OSError, json.JSONDecodeError) as e:
-            import logging
-            logging.getLogger(__name__).warning(
-                "[i18n] fichier '%s' ignoré : %s", path, e,
-            )
+            logger.warning("[i18n] fichier '%s' ignoré : %s", path, e)
     return translations
 
 
-TRANSLATIONS: dict[str, dict[str, str]] = _load_translations()
+def _get_translations() -> dict[str, dict[str, str]]:
+    """Retourne le cache de translations, initialisé une seule fois.
+
+    Thread-safe : deux threads qui appellent simultanément en démarrage
+    ne déclencheront qu'une seule lecture disque.
+    """
+    global _TRANSLATIONS_CACHE
+    if _TRANSLATIONS_CACHE is not None:
+        return _TRANSLATIONS_CACHE
+    with _LOAD_LOCK:
+        if _TRANSLATIONS_CACHE is None:
+            _TRANSLATIONS_CACHE = _load_translations()
+    return _TRANSLATIONS_CACHE
+
+
+def reload_translations() -> None:
+    """Force la relecture des fichiers JSON au prochain ``get_labels``.
+
+    Utile pour les tests qui modifient ``report/i18n/*.json`` à la volée.
+    """
+    global _TRANSLATIONS_CACHE
+    with _LOAD_LOCK:
+        _TRANSLATIONS_CACHE = None
+    _get_labels_cached.cache_clear()
+
+
+@lru_cache(maxsize=None)
+def _get_labels_cached(lang: str) -> tuple[tuple[str, str], ...]:
+    """Cache mémoïsé : ``lang -> tuple ordonné des paires``.
+
+    Le retour en tuple permet à ``lru_cache`` de mémoriser sans
+    contrainte de hashabilité, et est trivialement converti en dict
+    par ``get_labels`` à chaque appel (coût O(n)).
+    """
+    translations = _get_translations()
+    labels = translations.get(lang) or translations.get("fr") or {}
+    return tuple(labels.items())
 
 
 def get_labels(lang: str = "fr") -> dict[str, str]:
@@ -60,7 +109,12 @@ def get_labels(lang: str = "fr") -> dict[str, str]:
         Si ``"fr"`` lui-même manque, retourne un dict vide (comportement dégradé
         mais non bloquant).
     """
-    return TRANSLATIONS.get(lang, TRANSLATIONS.get("fr", {}))
+    return dict(_get_labels_cached(lang))
 
 
+# ``TRANSLATIONS`` reste accessible comme attribut module pour les
+# consommateurs externes qui le lisaient directement. Initialisé
+# paresseusement à l'import — n'engendre **pas** de lecture si le
+# module n'est jamais utilisé.
+TRANSLATIONS: dict[str, dict[str, str]] = _get_translations()
 SUPPORTED_LANGS: list[str] = list(TRANSLATIONS.keys())

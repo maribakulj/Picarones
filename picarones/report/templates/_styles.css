@@ -123,6 +123,21 @@ tbody tr:hover { background: #f8fafc; }
   padding: .15rem .5rem; border-radius: 4px;
   font-weight: 600; font-size: .82rem;
 }
+
+/* Sprint 30 — accessibilité WCAG : la couleur seule ne suffit pas
+ * (≈ 8 % des hommes sont daltoniens). On ajoute :
+ *  1. une icône unicode injectée par le JS (cerTierIcon),
+ *  2. une bordure différenciante par tier,
+ *  3. un aria-label porté par chaque badge.
+ *
+ * La règle CSS rend la bordure uniquement quand l'attribut
+ * ``data-cer-tier`` est présent — pas de régression visuelle sur les
+ * badges qui n'ont pas (encore) été migrés.
+ */
+.cer-badge[data-cer-tier="excellent"]  { border: 1.5px solid #16a34a; }
+.cer-badge[data-cer-tier="acceptable"] { border: 1.5px dashed #ca8a04; }
+.cer-badge[data-cer-tier="mediocre"]   { border: 1.5px dotted #ea580c; }
+.cer-badge[data-cer-tier="critical"]   { border: 1.5px double #dc2626; }
 .bar {
   display: inline-block; height: 8px; border-radius: 4px;
   vertical-align: middle; margin-right: .4rem;

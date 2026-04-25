@@ -651,4 +651,111 @@ Risque spécifique aux pipelines OCR+LLM : le LLM "corrige" à tort des graphies
 
 ---
 
+## Addendum — Évolutions Sprints 16-30
+
+Cette section complète les spécifications initiales avec les fonctionnalités
+ajoutées entre les Sprints 16 et 30. Le cœur du document ci-dessus reste
+fidèle au cahier des charges originel ; cet addendum documente les briques
+qui ont enrichi la plateforme depuis.
+
+### Synthèse narrative factuelle (Sprint 19)
+
+Le rapport HTML embarque en tête une **synthèse en langage naturel**
+construite à partir de 12 détecteurs déterministes. Aucun LLM n'intervient :
+chaque nombre ou nom apparaissant dans la synthèse est traçable à un
+``payload`` de ``Fact`` qui provient lui-même du JSON d'entrée. Garantie
+testée en CI (``test_sprint19_narrative_engine.py``).
+
+Les 12 détecteurs couvrent : leader CER, ex-aequo statistique (Nemenyi),
+écart significatif (Wilcoxon), gagnant et effondrement par strate, profil
+d'erreurs atypique, hallucination LLM, fragilité robustesse, alternative
+Pareto, gagnant en vitesse, coût aberrant, avertissement sur la fiabilité.
+
+Politique éditoriale (ordre canonique) documentée dans
+``docs/developer/narrative-engine.md`` et surchargeable via
+``select_facts(..., type_order=...)``. Le registre Sprint 29 permet
+d'ajouter un détecteur en touchant 2 fichiers (au lieu de 4 avant).
+
+### Tests statistiques multi-moteurs (Sprint 18)
+
+Friedman + post-hoc Nemenyi + **Critical Difference Diagram** (Demšar 2006)
+rendu en SVG côté serveur, sans JavaScript. Table Nemenyi pour k = 2 à 50,
+α ∈ {0,01 ; 0,05}. Fallback pur Python (Wilson-Hilferty pour le χ²) avec
+support scipy optionnel via l'extra ``[stats]``.
+
+### Modèle de coût et front Pareto (Sprint 20)
+
+- ``picarones/core/pricing.py`` + ``picarones/data/pricing.yaml``.
+- ``compute_pareto_front(points, objectives)`` — multi-objectifs, N dim.
+- Vue Chart.js avec front Pareto en surbrillance et trois axes :
+  coût € / vitesse / empreinte carbone (étiqueté *expérimental*).
+
+### Glossaire contextuel + panneau avancé (Sprint 21)
+
+- 25 entrées bilingues dans ``picarones/report/glossary/{fr,en}.yaml``.
+- Panneau *« ⚙ Mode avancé »* : choix de colonnes, filtres par strate,
+  score composite opt-in. État persisté en URL.
+
+### Études de cas et documentation (Sprint 22)
+
+``docs/case-studies/`` (deux cas explicitement étiquetés *« Cas d'école »*),
+``docs/user/reading-a-report.md``, trois guides développeur dans
+``docs/developer/``.
+
+### Reproductibilité scientifique (Sprint 27)
+
+Le rapport HTML embarque ``report_data["snapshots"]`` :
+
+- **pricing**       — YAML brut intégral de la table de prix ;
+- **glossary**      — entrées effectivement référencées ;
+- **normalization** — profil sérialisé (``diplomatic_table``,
+                      ``exclude_chars``…) ;
+- **environment**   — version Picarones, Python, plateforme, commit git,
+                      paquets installés.
+
+Un lecteur peut rejouer la synthèse, le Pareto et le glossaire sans
+accès au code source du moment où le rapport a été généré.
+
+### Sécurité institutionnelle (Sprint 24)
+
+Cf. ``SECURITY.md`` à la racine :
+
+- Mode public (``PICARONES_PUBLIC_MODE=1``) refuse les moteurs cloud
+  mutualisés et les pipelines LLM facturés à la clef serveur.
+- Validation Pillow systématique sur les images (CVE-2023-50447 et autres).
+- Browse roots configurables via ``PICARONES_BROWSE_ROOTS``.
+- Rate limiting par IP + sémaphore de jobs concurrents.
+- CSP + en-têtes durcis.
+
+### Persistance des jobs et frontend Jinja2 (Sprints 25-26)
+
+- Sprint 25 : ``_HTML_TEMPLATE`` (3000 L) → 8 partials Jinja2 dans
+  ``picarones/web/templates/`` + ``static/web-app.js``.
+- Sprint 26 : ``picarones/core/jobs.py`` — ``JobStore`` SQLite (WAL,
+  thread-safe). Reprise SSE via ``Last-Event-ID``. Jobs orphelins
+  marqués ``interrupted`` au boot.
+
+### Comparaison de runs et UX (Sprint 28)
+
+- ``picarones compare A.json B.json -o diff.html`` (exit code 2 si
+  régression — branchable sur GitHub Actions).
+- ``/api/config/save`` + ``/api/config/load`` : sérialisation/import
+  d'une configuration de benchmark.
+- ``/api/benchmark/{id}/synthesis_preview`` : synthèse narrative sans
+  rouvrir le HTML.
+- ``/api/history/regressions`` : surface de l'infra Sprint 8.
+
+### Accessibilité (Sprint 30)
+
+Les badges CER du rapport HTML portent un attribut ``data-cer-tier``
+(``excellent`` / ``acceptable`` / ``mediocre`` / ``critical``) et un
+``aria-label``. Le CSS associe une icône unicode (``●``, ``◐``, ``◑``,
+``○``) et un pattern de bordure différenciant à chaque tier — la
+couleur n'est plus la seule information visuelle.
+
+Pre-commit hook installé (``ruff`` + check YAML/JSON/secrets) ; cf.
+``.pre-commit-config.yaml`` et ``CONTRIBUTING.md``.
+
+---
+
 *Picarones est conçu pour devenir la référence open-source de l'évaluation OCR/HTR dans le champ patrimonial — métriques adaptées aux documents historiques, pipelines OCR+LLM, intégration native des standards bibliothéconomiques, rapport interactif exportable.*

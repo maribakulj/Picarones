@@ -45,6 +45,33 @@ function cerBg(v) {
   if (v < 0.30) return '#ffedd5';
   return '#fee2e2';
 }
+// Sprint 30 — accessibilité WCAG : un tier non-couleur permet aux
+// daltoniens et aux lecteurs d'écran de distinguer les paliers.
+// Mappé en CSS sur des patterns visuels (icône + bordure) en plus
+// de la couleur. ``aria-label`` complète pour les lecteurs d'écran.
+function cerTier(v) {
+  if (v < 0.05) return 'excellent';
+  if (v < 0.15) return 'acceptable';
+  if (v < 0.30) return 'mediocre';
+  return 'critical';
+}
+function cerTierIcon(tier) {
+  // Caractères unicode lisibles indépendamment de la couleur.
+  return {
+    excellent:  '●',  // disque plein
+    acceptable: '◐',  // demi-disque
+    mediocre:   '◑',  // demi-disque inverse
+    critical:   '○',  // cercle vide
+  }[tier] || '';
+}
+function cerTierLabel(tier) {
+  return {
+    excellent:  'CER excellent',
+    acceptable: 'CER acceptable',
+    mediocre:   'CER médiocre',
+    critical:   'CER critique',
+  }[tier] || 'CER';
+}
 function esc(s) {
   return String(s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -105,9 +132,15 @@ function renderSideBySide(docId) {
 
   // En-tête OCR : nom moteur + CER
   const c = cerColor(er.cer); const bg = cerBg(er.cer);
+  const tier = cerTier(er.cer);
   document.getElementById('sbs-ocr-engine-name').textContent = er.engine;
   const cerBadgeEl = document.getElementById('sbs-ocr-cer');
-  cerBadgeEl.textContent = pct(er.cer);
+  // Sprint 30 — ajout du tier non-couleur + aria-label (a11y WCAG).
+  // L'icône préfixée distingue les paliers indépendamment de la couleur,
+  // et ``aria-label`` est lu par les lecteurs d'écran.
+  cerBadgeEl.textContent = `${cerTierIcon(tier)} ${pct(er.cer)}`;
+  cerBadgeEl.setAttribute('data-cer-tier', tier);
+  cerBadgeEl.setAttribute('aria-label', `${cerTierLabel(tier)} ${pct(er.cer)}`);
   cerBadgeEl.style.cssText = `color:${c};background:${bg};display:inline-block`;
 
   // Pipeline triple-diff (si applicable)

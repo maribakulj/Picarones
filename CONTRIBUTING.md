@@ -32,9 +32,36 @@ pip install -e ".[dev,web]"
 make test
 # ou : pytest
 
+# Pre-commit hooks (Sprint 30) — recommandé
+pip install pre-commit
+pre-commit install
+# À chaque ``git commit``, ruff + checks YAML/JSON/whitespace tournent
+# automatiquement et bloquent les commits qui auraient cassé le job CI.
+
 # Créer une branche de travail
 git checkout -b feat/mon-nouveau-moteur
 ```
+
+### Pre-commit hooks
+
+Le fichier `.pre-commit-config.yaml` à la racine définit les hooks
+qui tournent avant chaque commit :
+
+| Hook | Effet |
+|------|-------|
+| `ruff` | Reproduit le job `lint` du CI (E, W, F ; ignore E501, E402). |
+| `trailing-whitespace` / `end-of-file-fixer` | Cosmétique — diffs propres. |
+| `check-yaml` / `check-json` / `check-toml` | Refuse les fichiers cassés. |
+| `detect-private-key` | Empêche un push accidentel de clef SSH/SSL. |
+| `check-added-large-files` | Bloque les fichiers > 500 Ko (sauf `*.css/*.js` vendorisés). |
+
+Pour exécuter manuellement sur tout le repo :
+
+```bash
+pre-commit run --all-files
+```
+
+Pour bypasser exceptionnellement (déconseillé) : `git commit --no-verify`.
 
 ---
 
