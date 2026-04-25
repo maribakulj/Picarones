@@ -31,7 +31,6 @@ import json
 import logging
 import os
 import shutil
-import tempfile
 import threading
 import uuid
 import xml.etree.ElementTree as ET
@@ -41,11 +40,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
-from fastapi import Cookie, FastAPI, File, HTTPException, Query, Response, UploadFile
+from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from picarones import __version__
+from picarones.web.security import (
+    RateLimiter,
+    assert_engines_allowed,
+    assert_llm_provider_allowed,
+    compute_browse_roots,
+    csp_middleware,
+    get_max_concurrent_jobs,
+    get_rate_limit_per_hour,
+    validate_image_safe,
+)
 
 # ---------------------------------------------------------------------------
 # App initialization
@@ -59,11 +68,36 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# Sprint 24 — middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
+app.middleware("http")(csp_middleware)
+
 # Fichiers statiques (CSS, icônes…)
 _STATIC_DIR = Path(__file__).parent / "static"
 if _STATIC_DIR.is_dir():
     from fastapi.staticfiles import StaticFiles
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+# Sprint 24 — rate limiter global (no-op si non public ou quota = 0)
+_RATE_LIMITER = RateLimiter(max_per_hour=get_rate_limit_per_hour())
+
+# Sprint 24 — sémaphore borné le nombre de benchmarks concurrents.
+_JOBS_SEMAPHORE = threading.Semaphore(get_max_concurrent_jobs())
+
+
+def _client_ip(request: Request) -> str:
+    """Récupère l'IP client en respectant ``X-Forwarded-For`` derrière un proxy."""
+    fwd = request.headers.get("x-forwarded-for") or ""
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return (request.client.host if request.client else "unknown")
+
+
+def _enforce_rate_limit(request: Request) -> None:
+    """Applique le rate limit ; lève HTTPException 429 si dépassé."""
+    try:
+        _RATE_LIMITER.check(_client_ip(request))
+    except PermissionError as exc:
+        raise HTTPException(status_code=429, detail=str(exc))
 
 # ---------------------------------------------------------------------------
 # Job management
@@ -646,12 +680,9 @@ async def api_models(
 # API — corpus browse
 # ---------------------------------------------------------------------------
 
-_BROWSE_ROOTS = [
-    Path(".").resolve(),
-    _UPLOADS_DIR.resolve(),
-    Path("/workspaces").resolve(),
-    Path(tempfile.gettempdir()).resolve(),
-]
+# Sprint 24 — racines configurables via PICARONES_BROWSE_ROOTS, sinon
+# défaut restreint en mode public, défaut historique en mode dev.
+_BROWSE_ROOTS = compute_browse_roots(_UPLOADS_DIR)
 
 
 def _is_path_allowed(target: Path) -> bool:
@@ -884,16 +915,27 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
     try:
         for uf in files:
             filename = uf.filename or "upload"
+            # Sprint 24 — empêcher la traversée via le nom de fichier reçu
+            # depuis le client (multipart). On garde uniquement ``basename``.
+            safe_name = Path(filename).name
             data = await uf.read()
-            suffix = Path(filename).suffix.lower()
+            suffix = Path(safe_name).suffix.lower()
 
             if suffix == ".zip":
                 # Extraire le ZIP en aplatissant les paires
                 import io
                 with zipfile.ZipFile(io.BytesIO(data)) as zf:
                     _flatten_zip_to_dir(zf, corpus_dir)
-            elif suffix in _IMAGE_EXTS or filename.endswith(".gt.txt") or filename.endswith(".ocr.txt") or suffix in (".txt", ".xml"):
-                (corpus_dir / filename).write_bytes(data)
+            elif suffix in _IMAGE_EXTS:
+                # Sprint 24 — valider l'image avant écriture (Pillow.verify,
+                # taille max, rejet des bombes de décompression).
+                try:
+                    validate_image_safe(data, filename=safe_name)
+                except ValueError as exc:
+                    raise HTTPException(status_code=415, detail=str(exc))
+                (corpus_dir / safe_name).write_bytes(data)
+            elif safe_name.endswith(".gt.txt") or safe_name.endswith(".ocr.txt") or suffix in (".txt", ".xml"):
+                (corpus_dir / safe_name).write_bytes(data)
             # Ignorer les autres types
 
         summary = _analyze_corpus_dir(corpus_dir)
@@ -1131,20 +1173,43 @@ async def api_huggingface_import(req: HuggingFaceImportRequest) -> dict:
 # ---------------------------------------------------------------------------
 
 @app.post("/api/benchmark/start")
-async def api_benchmark_start(req: BenchmarkRequest) -> dict:
+async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
     corpus_path = Path(req.corpus_path)
     if not corpus_path.exists() or not corpus_path.is_dir():
         raise HTTPException(status_code=400, detail=f"Corpus non trouvé : {req.corpus_path}")
+
+    # Sprint 24 — mode public : refuse les moteurs OCR cloud mutualisés.
+    try:
+        assert_engines_allowed(req.engines)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    # Sprint 24 — rate limit + sémaphore concurrents.
+    _enforce_rate_limit(request)
+    if not _JOBS_SEMAPHORE.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Trop de benchmarks concurrents (max "
+                f"{get_max_concurrent_jobs()}). Réessayer plus tard."
+            ),
+        )
 
     job_id = str(uuid.uuid4())
     job = BenchmarkJob(job_id=job_id)
     _JOBS[job_id] = job
     _cleanup_old_jobs()
 
+    def _release_after(job_, fn, *args):
+        try:
+            fn(job_, *args)
+        finally:
+            _JOBS_SEMAPHORE.release()
+
     # Démarrer le benchmark dans un thread séparé
     thread = threading.Thread(
-        target=_run_benchmark_thread,
-        args=(job, req),
+        target=_release_after,
+        args=(job, _run_benchmark_thread, req),
         daemon=True,
     )
     thread.start()
@@ -1227,20 +1292,46 @@ def _sse_format(event_type: str, data: Any) -> str:
 # ---------------------------------------------------------------------------
 
 @app.post("/api/benchmark/run")
-async def api_benchmark_run(req: BenchmarkRunRequest) -> dict:
+async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     corpus_path = Path(req.corpus_path)
     if not corpus_path.exists() or not corpus_path.is_dir():
         raise HTTPException(status_code=400, detail=f"Corpus non trouvé : {req.corpus_path}")
     if not req.competitors:
         raise HTTPException(status_code=400, detail="Aucun concurrent défini.")
 
+    # Sprint 24 — mode public : refuse les pipelines LLM mutualisés et
+    # les moteurs OCR cloud sollicités par n'importe quel concurrent.
+    try:
+        for comp in req.competitors:
+            assert_engines_allowed([comp.ocr_engine] if comp.ocr_engine else [])
+            assert_llm_provider_allowed(comp.llm_provider)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    # Sprint 24 — rate limit + sémaphore concurrents.
+    _enforce_rate_limit(request)
+    if not _JOBS_SEMAPHORE.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Trop de benchmarks concurrents (max "
+                f"{get_max_concurrent_jobs()}). Réessayer plus tard."
+            ),
+        )
+
     job_id = str(uuid.uuid4())
     job = BenchmarkJob(job_id=job_id)
     _JOBS[job_id] = job
 
+    def _release_after(job_, fn, *args):
+        try:
+            fn(job_, *args)
+        finally:
+            _JOBS_SEMAPHORE.release()
+
     thread = threading.Thread(
-        target=_run_benchmark_thread_v2,
-        args=(job, req),
+        target=_release_after,
+        args=(job, _run_benchmark_thread_v2, req),
         daemon=True,
     )
     thread.start()

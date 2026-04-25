@@ -1402,8 +1402,13 @@ class TestFastAPICorpusUpload:
         assert len(d["missing_gt"]) == 1
 
     def test_upload_individual_files(self, client):
+        # Sprint 24 — la validation Pillow exige une image décodable.
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (10, 10), color=(120, 120, 120)).save(buf, format="JPEG")
         files = [
-            ("files", ("img001.jpg", b"\xff\xd8\xff", "image/jpeg")),
+            ("files", ("img001.jpg", buf.getvalue(), "image/jpeg")),
             ("files", ("img001.gt.txt", b"Texte GT", "text/plain")),
         ]
         r = client.post("/api/corpus/upload", files=files)
@@ -1512,8 +1517,13 @@ class TestFastAPICorpusUpload:
         assert d["pairs"][0]["gt_format"] == "ALTO XML"
 
     def test_upload_alto_individual_files(self, client, alto_xml_bytes):
+        # Sprint 24 — la validation Pillow exige un PNG complet.
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (10, 10), color=(120, 120, 120)).save(buf, format="PNG")
         files = [
-            ("files", ("img001.png", b"\x89PNG", "image/png")),
+            ("files", ("img001.png", buf.getvalue(), "image/png")),
             ("files", ("img001.xml", alto_xml_bytes, "application/xml")),
         ]
         r = client.post("/api/corpus/upload", files=files)
