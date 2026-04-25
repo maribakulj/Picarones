@@ -1,0 +1,37 @@
+{# Sprint 25 — base de la SPA Picarones.
+ #
+ # Assemble les partials extraits de l'ancien `_HTML_TEMPLATE` monolithique
+ # de `web/app.py`. Variables attendues (passées par `render_index`) :
+ #   - lang    : code langue ("fr" ou "en")
+ #   - version : version Picarones (cache-busting des statics)
+ #
+ # Le contenu dynamique reste minimal — toute la logique vit dans
+ # `picarones/web/static/web-app.js`. Cette séparation permet à la CSP
+ # de durcir `script-src` à `'self'` sans casser la page.
+#}<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="picarones-lang" content="{{ lang }}">
+<title>Picarones — OCR Benchmark</title>
+<link rel="stylesheet" href="/static/retro.css?v={{ version }}">
+</head>
+<body>
+
+{% include '_ascii_banner.html' %}
+
+{% include '_header_nav.html' %}
+
+<div id="main">
+{% include '_view_benchmark.html' %}
+{% include '_view_reports.html' %}
+{% include '_view_engines.html' %}
+{% include '_view_import.html' %}
+</div><!-- end #main -->
+
+{% include '_modals.html' %}
+
+<script src="/static/web-app.js?v={{ version }}"></script>
+</body>
+</html>

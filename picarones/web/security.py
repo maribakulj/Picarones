@@ -256,9 +256,16 @@ class RateLimiter:
 # CSP middleware
 # ---------------------------------------------------------------------------
 
-#: Politique CSP par défaut. ``unsafe-inline`` reste tant que ``_HTML_TEMPLATE``
-#: n'est pas refactoré (Sprint 25 : extraction des templates web Jinja2). Une
-#: fois le template externe, on resserre à ``script-src 'self'`` + nonces.
+#: Politique CSP par défaut.
+#:
+#: Sprint 25 a extrait tout le JavaScript de la SPA (~1131 lignes) dans
+#: ``picarones/web/static/web-app.js`` — c'est la victoire concrète. Reste
+#: dans le HTML environ 30 ``onclick="..."`` inline qui forcent à conserver
+#: ``'unsafe-inline'`` dans ``script-src``. Leur migration vers
+#: ``addEventListener`` est planifiée (sous-sprint dédié à ne pas mélanger
+#: avec l'extraction des templates pour limiter les risques de régression).
+#: ``style-src`` reste sur ``'unsafe-inline'`` pour les ``style="..."``
+#: sémantiques dans les partials (états vert/rouge/jaune).
 DEFAULT_CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline'; "
