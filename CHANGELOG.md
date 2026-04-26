@@ -16,6 +16,36 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 48 — Adapter Pero OCR : exposition des `token_confidences`
+  natifs.** Suite directe du Sprint 47 (Tesseract). Pero OCR fournit
+  une confidence par ligne (``transcription_confidence``, probabilité
+  CTC moyenne) ; l'adapter la propage à chaque mot de la ligne.
+  - ``PeroOCREngine.run()`` surchargé : un seul appel
+    ``parser.process_page`` produit le ``page_layout`` ; texte ET
+    confidences en sont extraits sans coût supplémentaire (vs
+    Tesseract qui doit faire deux appels distincts).
+  - Refactor : ``_run_pero_pipeline(image_path) -> (text,
+    page_layout)`` centralise l'appel au pipeline ; ``_run_ocr``
+    devient un wrapper trivial pour rétrocompat.
+  - ``_extract_token_confidences_from_layout`` parcourt
+    regions/lines, applique ``transcription_confidence`` à chaque
+    mot de la ligne, ignore les transcriptions vides / confidences
+    None / confidences négatives, retourne ``None`` si aucune ligne
+    n'avait de confidence exploitable.
+  - Nouveau paramètre config ``expose_confidences: false`` (cohérent
+    avec Tesseract Sprint 47).
+  - Pipeline appelé une seule fois → **aucun overhead** par rapport
+    à l'implémentation historique (vs un appel supplémentaire pour
+    Tesseract).
+  - +14 tests dans ``test_sprint48_pero_confidences.py`` couvrant :
+    extraction depuis layout (tokens uniques, multi-lignes,
+    transcription vide, confidence None / négative), flag
+    ``expose_confidences=False``, cas dégénérés (None / regions
+    vides / aucune confidence), surcharge ``run()`` (texte préservé
+    octet par octet, échec du pipeline), intégration runner avec
+    ``calibration_metrics`` correctement calculée, fallback gracieux
+    quand pero-ocr est absent.
+
 - **Sprint 47 — Adapter Tesseract : exposition des `token_confidences`
   natifs.** Premier des engines adaptés au câblage calibration
   (Sprint 42). L'utilisateur qui benchmarke avec Tesseract obtient
@@ -511,18 +541,17 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1873 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1887 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
-  +9 Sprint 47). Aucune régression. **Phase 0 close ; Étape 2 du
-  plan d'évolution : inter-moteurs (A.II.1.c), NER (A.II.1.a),
-  calibration (A.II.1.b) et stratification (A.III) livrés
-  bout-en-bout calcul → runner → HTML ; A.I.2 médiane par défaut
-  livré (Sprint 44) ; Tesseract adapté pour exposer ses
-  `token_confidences` natifs (Sprint 47, première brique de
-  l'adaptation engines). Reste à adapter Pero, Mistral OCR, Google
-  Vision et Azure DI (un sprint par adapter).**
+  +9 Sprint 47, +14 Sprint 48). Aucune régression. **Phase 0
+  close ; Étape 2 du plan d'évolution : inter-moteurs (A.II.1.c),
+  NER (A.II.1.a), calibration (A.II.1.b) et stratification (A.III)
+  livrés bout-en-bout calcul → runner → HTML ; A.I.2 médiane par
+  défaut livré (Sprint 44) ; Tesseract (Sprint 47) et Pero OCR
+  (Sprint 48) adaptés pour exposer leurs `token_confidences`
+  natifs. Reste à adapter Mistral OCR, Google Vision et Azure DI.**
 
 ---
 
