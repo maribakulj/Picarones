@@ -16,6 +16,40 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 45 — A.III stratification par `script_type` : couche
+  d'agrégation backend.** Première brique de la « plus haute valeur
+  ajoutée transversale » du plan d'évolution. Le rapport peut
+  désormais classer les moteurs **par strate** (manuscrit gothique,
+  cursive administrative, imprimé ancien, humanistique…) — la moyenne
+  globale ment quand le corpus est hétérogène.
+  - `BenchmarkResult.doc_strata: Optional[dict[str, str]]` :
+    map ``{doc_id: script_type}`` capturée par le runner avant
+    ``compact()`` (qui efface ``image_quality``).
+  - `BenchmarkResult.available_strata()` : liste triée des strates
+    distinctes, ignore les valeurs vides.
+  - `BenchmarkResult.stratified_ranking()` : retourne
+    ``{stratum: [ranking_entry]}`` avec mean/median CER **recalculés
+    par strate**, tri par médiane (cohérent avec Sprint 44). Inclut
+    les moteurs sans aucun doc dans une strate sous forme d'entrée
+    dégénérée (mean/median = None).
+  - `BenchmarkResult.corpus_homogeneity()` : pour le moteur leader
+    global, retourne l'écart inter-strate de la médiane CER et
+    identifie la paire de strates min/max — base du futur
+    avertissement automatique « ce corpus est hétérogène,
+    consultez la vue stratifiée ».
+  - `as_dict()` expose `doc_strata`, `available_strata`,
+    `stratified_ranking`, `corpus_homogeneity` quand renseignés
+    (rétrocompat stricte sinon — clés absentes).
+  - Le runner peuple `doc_strata` avant compact en lisant
+    ``DocumentResult.image_quality["script_type"]``.
+  - +16 tests dans `test_sprint45_stratification.py` couvrant les
+    fields, available_strata, stratified_ranking (1 entrée/moteur/
+    strate, métriques per-strate, tri par médiane, moteurs absents),
+    corpus_homogeneity (None < 2 strates, calcul d'écart),
+    sérialisation as_dict, et un **test propriété réaliste** : le
+    leader global peut perdre sur une strate (Tesseract domine
+    globalement mais perd sur le manuscrit où Pero gagne).
+
 - **Sprint 44 — A.I.2 : tri par médiane CER par défaut + détecteur
   d'asymétrie.** Réponse à la critique structurelle 2 du plan
   d'évolution : sur les corpus patrimoniaux, la moyenne est facilement
@@ -404,15 +438,17 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1810 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1826 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
-  +43 Sprint 43, +15 Sprint 44). Aucune régression. **Phase 0
-  close ; Étape 2 du plan d'évolution : inter-moteurs (A.II.1.c),
-  NER (A.II.1.a) et calibration (A.II.1.b) livrés bout-en-bout
-  calcul → runner → HTML ; A.I.2 médiane par défaut livré (Sprint 44).
-  Reste l'adaptation effective des engines pour exposer leurs
-  confidences natives (un sprint par adapter).**
+  +43 Sprint 43, +15 Sprint 44, +16 Sprint 45). Aucune régression.
+  **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
+  (A.II.1.c), NER (A.II.1.a) et calibration (A.II.1.b) livrés
+  bout-en-bout calcul → runner → HTML ; A.I.2 médiane par défaut
+  livré (Sprint 44) ; A.III stratification — couche backend livrée
+  (Sprint 45), vue HTML à venir. Reste l'adaptation effective des
+  engines pour exposer leurs confidences natives (un sprint par
+  adapter).**
 
 ---
 

@@ -526,6 +526,9 @@ def run_benchmark(
     # la complémentarité (oracle) en fin de benchmark.
     per_engine_outputs: dict[str, dict[str, str]] = {}
     ground_truths_by_doc: dict[str, str] = {}
+    # Sprint 45 — A.III stratification : capture du ``script_type`` par
+    # document avant ``compact()`` (qui efface ``image_quality``).
+    doc_strata: dict[str, str] = {}
 
     for engine in engines:
         if _is_cancelled():
@@ -745,6 +748,11 @@ def run_benchmark(
         for dr in document_results:
             if dr.doc_id not in ground_truths_by_doc and dr.ground_truth:
                 ground_truths_by_doc[dr.doc_id] = dr.ground_truth
+            # Sprint 45 — capture script_type avant compact()
+            if dr.doc_id not in doc_strata and dr.image_quality:
+                st = dr.image_quality.get("script_type")
+                if st:
+                    doc_strata[dr.doc_id] = str(st)
 
         # Sprint 40 — calcul des métriques NER si :
         #   1. l'utilisateur a fourni un EntityExtractor au runner ;
@@ -798,6 +806,7 @@ def run_benchmark(
         document_count=len(corpus),
         engine_reports=engine_reports,
         inter_engine_analysis=inter_engine_payload,
+        doc_strata=dict(doc_strata) if doc_strata else None,
     )
 
     if output_json:

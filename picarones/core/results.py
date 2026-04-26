@@ -268,6 +268,11 @@ class BenchmarkResult:
     # afin d'avoir accès aux hypothèses brutes.  ``None`` si moins de
     # 2 moteurs ou si le calcul a été désactivé.
     inter_engine_analysis: Optional[dict] = None
+    # Sprint 45 — A.III stratification : map ``{doc_id: script_type}``
+    # capturée avant ``compact()`` (qui efface ``image_quality``).
+    # ``None`` si aucun document n'expose de ``script_type`` dans son
+    # ``image_quality.script_type`` ou ``metadata.script_type``.
+    doc_strata: Optional[dict[str, str]] = None
 
     def ranking(self) -> list[dict]:
         """Retourne le classement des moteurs trié par **médiane CER** croissante.
@@ -308,6 +313,169 @@ class BenchmarkResult:
 
         return sorted(ranked, key=_sort_key)
 
+    # ──────────────────────────────────────────────────────────────────
+    # Sprint 45 — A.III stratification par script_type
+    # ──────────────────────────────────────────────────────────────────
+
+    def available_strata(self) -> list[str]:
+        """Liste triée des strates ``script_type`` distinctes du corpus.
+
+        Vide si ``doc_strata`` est ``None`` ou si aucun document n'a de
+        valeur non vide.  Garantit un ordre stable (tri lexical).
+        """
+        if not self.doc_strata:
+            return []
+        return sorted({s for s in self.doc_strata.values() if s})
+
+    def _doc_ids_in_stratum(self, stratum: str) -> set[str]:
+        """Ensemble des ``doc_id`` dont la strate est ``stratum``."""
+        if not self.doc_strata:
+            return set()
+        return {
+            doc_id for doc_id, st in self.doc_strata.items()
+            if st == stratum
+        }
+
+    def stratified_ranking(self) -> dict[str, list[dict]]:
+        """Retourne un classement séparé par strate ``script_type``.
+
+        Pour chaque strate, recalcule mean/median CER **uniquement sur
+        les documents de la strate** et trie par médiane (cohérent avec
+        ``ranking()`` Sprint 44).
+
+        Returns
+        -------
+        dict[str, list[dict]]
+            ``{stratum_name: [ranking_entry, ...]}``.  Vide si pas de
+            stratification disponible (``doc_strata`` non renseigné).
+            Chaque ``ranking_entry`` a la même structure que
+            ``ranking()`` : ``engine``, ``mean_cer``, ``median_cer``,
+            ``mean_wer``, ``documents``, ``failed``.
+        """
+        strata = self.available_strata()
+        if not strata:
+            return {}
+
+        import statistics as _stats
+
+        result: dict[str, list[dict]] = {}
+        for stratum in strata:
+            doc_ids = self._doc_ids_in_stratum(stratum)
+            if not doc_ids:
+                continue
+
+            entries: list[dict] = []
+            for report in self.engine_reports:
+                cers = [
+                    dr.metrics.cer
+                    for dr in report.document_results
+                    if dr.doc_id in doc_ids
+                    and dr.metrics is not None
+                    and dr.metrics.error is None
+                ]
+                wers = [
+                    dr.metrics.wer
+                    for dr in report.document_results
+                    if dr.doc_id in doc_ids
+                    and dr.metrics is not None
+                    and dr.metrics.error is None
+                ]
+                failed = sum(
+                    1 for dr in report.document_results
+                    if dr.doc_id in doc_ids
+                    and dr.metrics is not None
+                    and dr.metrics.error is not None
+                )
+                if not cers:
+                    entries.append({
+                        "engine": report.engine_name,
+                        "mean_cer": None,
+                        "median_cer": None,
+                        "mean_wer": None,
+                        "documents": 0,
+                        "failed": failed,
+                    })
+                    continue
+                entries.append({
+                    "engine": report.engine_name,
+                    "mean_cer": _stats.mean(cers),
+                    "median_cer": _stats.median(cers),
+                    "mean_wer": _stats.mean(wers) if wers else None,
+                    "documents": len(cers),
+                    "failed": failed,
+                })
+
+            def _sort_key(entry: dict) -> tuple:
+                primary = entry.get("median_cer")
+                if primary is None:
+                    primary = entry.get("mean_cer")
+                return (primary is None, primary if primary is not None else float("inf"))
+
+            result[stratum] = sorted(entries, key=_sort_key)
+        return result
+
+    def corpus_homogeneity(self) -> Optional[dict]:
+        """Mesure d'hétérogénéité du corpus du point de vue NER/OCR.
+
+        Pour chaque moteur, calcule la variance des CER médians par
+        strate.  Une variance élevée signale que le moteur se comporte
+        très différemment selon le type de document — la moyenne globale
+        est alors trompeuse et l'utilisateur doit consulter la vue
+        stratifiée (cf. plan d'évolution A.III).
+
+        Returns
+        -------
+        dict | None
+            ``{
+                "n_strata": int,
+                "max_inter_strata_gap": float,        # plus grand écart sur le top moteur
+                "leader": str,                         # moteur top global
+                "leader_per_stratum_median": {strate: median_cer},
+                "leader_max_gap_strata": [str, str],   # paire de strates qui maximise l'écart
+            }``
+            ``None`` si moins de 2 strates ou pas de leader.
+        """
+        strata_rankings = self.stratified_ranking()
+        if len(strata_rankings) < 2:
+            return None
+
+        global_ranking = self.ranking()
+        valid = [
+            r for r in global_ranking
+            if r.get("median_cer") is not None
+        ]
+        if not valid:
+            return None
+        leader = valid[0]["engine"]
+
+        # CER médian du leader sur chaque strate (où il a au moins 1 doc)
+        per_stratum: dict[str, float] = {}
+        for stratum, entries in strata_rankings.items():
+            for entry in entries:
+                if entry["engine"] != leader:
+                    continue
+                med = entry.get("median_cer")
+                if med is None:
+                    continue
+                per_stratum[stratum] = float(med)
+                break
+
+        if len(per_stratum) < 2:
+            return None
+
+        items = sorted(per_stratum.items(), key=lambda kv: kv[1])
+        min_strata, min_med = items[0]
+        max_strata, max_med = items[-1]
+        max_gap = max_med - min_med
+
+        return {
+            "n_strata": len(strata_rankings),
+            "max_inter_strata_gap": max_gap,
+            "leader": leader,
+            "leader_per_stratum_median": per_stratum,
+            "leader_max_gap_strata": [min_strata, max_strata],
+        }
+
     def as_dict(self) -> dict:
         d = {
             "picarones_version": self.picarones_version,
@@ -323,6 +491,15 @@ class BenchmarkResult:
         }
         if self.inter_engine_analysis is not None:
             d["inter_engine_analysis"] = self.inter_engine_analysis
+        if self.doc_strata:
+            d["doc_strata"] = self.doc_strata
+            d["available_strata"] = self.available_strata()
+            stratified = self.stratified_ranking()
+            if stratified:
+                d["stratified_ranking"] = stratified
+            homogeneity = self.corpus_homogeneity()
+            if homogeneity:
+                d["corpus_homogeneity"] = homogeneity
         return d
 
     def to_json(self, path: str | Path, indent: int = 2) -> Path:
