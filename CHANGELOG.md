@@ -16,6 +16,40 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 41 — A.II.1.a NER : vue HTML dédiée (clôture A.II.1.a).**
+  Suite directe des Sprints 38-40. Le moteur narratif et le runner ont
+  déjà tout ce qu'il faut ; ce sprint rend les chiffres visibles et
+  vérifiables dans le rapport.
+  - Nouveau module `picarones/report/ner_render.py` :
+    - `build_ner_summary_html(engines_summary, labels)` : tableau
+      résumé F1 global / Précision / Rappel / Docs évalués /
+      Hallucinations / Missed par moteur, cellule F1 colorée par
+      gradient rouge → jaune → vert.
+    - `build_ner_per_category_html(engines_summary, labels)` : heatmap
+      moteur × catégorie d'entité (PER, LOC, DATE, ORG, MISC…).
+      Cellules colorées par F1, cellule vide marquée d'un `—` pour
+      les catégories non observées chez ce moteur. Tooltip `support=N`
+      sur chaque cellule.
+    - Rendu strictement serveur-side, déterministe, **pas de
+      JavaScript**.
+    - Anti-injection : noms de moteurs et labels de catégories passés
+      à `html.escape`.
+  - `_build_report_data` expose `aggregated_ner` par moteur dans
+    `engines_summary`. `ReportGenerator.generate` calcule les deux
+    blocs HTML et les passe au template `view_analyses.html` qui les
+    affiche dans une `chart-card` à largeur pleine **uniquement si au
+    moins un moteur a un `aggregated_ner`** (principe du rapport
+    adaptatif).
+  - +12 clés i18n FR/EN (`h_ner`, `ner_note`, `ner_summary_caption`,
+    `ner_per_category_caption`, `ner_engine_label`, `ner_f1_label`,
+    `ner_precision_label`, `ner_recall_label`, `ner_doc_count_label`,
+    `ner_hallucinated_label`, `ner_missed_label`, `ner_no_data_label`).
+  - +38 tests dans `test_sprint41_ner_html.py` couvrant le rendu
+    (résumé, heatmap, multi-moteurs, union des catégories, cellule
+    vide), le masquage adaptatif (3 cas dégénérés), l'anti-injection
+    (engine et label avec balises HTML), l'intégration rapport (FR +
+    EN), et la complétude i18n sur les 12 clés × 2 langues.
+
 - **Sprint 40 — A.II.1.a NER : backend extracteur + câblage runner.**
   Suite directe du Sprint 38 (couche de calcul pure). Le runner peut
   maintenant calculer les métriques NER de bout-en-bout quand le corpus
@@ -265,13 +299,13 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1697 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1735 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
-  +32 Sprint 39, +16 Sprint 40). Aucune régression. **Phase 0 close ;
-  Étape 2 du plan d'évolution : inter-moteurs livrés bout-en-bout
-  (Sprints 35-37) ; NER (A.II.1.a) couche de calcul + backend + câblage
-  runner livrés (Sprints 38-40) ; calibration (A.II.1.b) couche de
-  calcul livrée (Sprint 39).**
+  +32 Sprint 39, +16 Sprint 40, +38 Sprint 41). Aucune régression.
+  **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
+  (A.II.1.c) et NER (A.II.1.a) livrés bout-en-bout calcul → runner
+  → narratif → HTML ; calibration (A.II.1.b) couche de calcul
+  livrée (Sprint 39).**
 
 ---
 

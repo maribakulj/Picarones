@@ -150,6 +150,31 @@
       </details>
     </div>
 
+    <!-- Sprint 41 — Précision sur entités nommées (NER) -->
+    {% if ner_summary_html or ner_per_category_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_ner">Précision sur entités nommées</h3>
+      <div class="ner-grid"
+           style="display:grid;gap:1.2rem;align-items:start">
+        {% if ner_summary_html %}
+        <div>{{ ner_summary_html }}</div>
+        {% endif %}
+        {% if ner_per_category_html %}
+        <div>{{ ner_per_category_html }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="ner_note">
+        F1 calculé par alignement IoU ≥ 0,5 sur les spans (labels
+        case-insensitive). Plus le F1 est haut, plus le moteur restitue
+        fidèlement les entités nommées (personnes, lieux, dates) — ce
+        qui prédit l'utilité aval pour l'indexation prosopographique.
+        Cette métrique mesure conjointement OCR + extracteur NER ; le
+        modèle d'extraction lui-même peut halluciner.
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
     {% if divergence_matrix_html or oracle_gap_html %}
     <div class="chart-card" style="grid-column:1/-1">

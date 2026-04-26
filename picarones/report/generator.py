@@ -191,6 +191,8 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "length_ratio": _safe(report.aggregated_hallucination.get("length_ratio_mean")) if report.aggregated_hallucination else None,
             "hallucinating_doc_rate": _safe(report.aggregated_hallucination.get("hallucinating_doc_rate")) if report.aggregated_hallucination else None,
             "aggregated_hallucination": report.aggregated_hallucination,
+            # Sprint 41 — NER agrégé (None si aucun calcul effectué)
+            "aggregated_ner": report.aggregated_ner,
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
@@ -721,6 +723,21 @@ class ReportGenerator:
             labels=labels,
         )
 
+        # Sprint 41 — section NER (résumé F1 par moteur + heatmap par
+        # catégorie). Vide si aucun moteur n'a de aggregated_ner.
+        from picarones.report.ner_render import (
+            build_ner_per_category_html,
+            build_ner_summary_html,
+        )
+        ner_summary_html = build_ner_summary_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+        ner_per_category_html = build_ner_per_category_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -736,6 +753,8 @@ class ReportGenerator:
             glossary_json=glossary_json,
             divergence_matrix_html=divergence_matrix_html,
             oracle_gap_html=oracle_gap_html,
+            ner_summary_html=ner_summary_html,
+            ner_per_category_html=ner_per_category_html,
         )
 
         output_path.write_text(html, encoding="utf-8")
