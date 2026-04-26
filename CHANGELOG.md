@@ -7,6 +7,42 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [1.2.x] — Sprints 32+ — 2026-04 → ongoing
+
+> Démarrage de la **Phase 0** du [plan d'évolution 2026](docs/roadmap/evolution-2026.md) :
+> fondations communes pour l'enrichissement métrique (axe A) et le banc
+> d'essai de pipelines composées (axe B). Les deux axes restent
+> rétrocompatibles avec le mode benchmark texte historique.
+
+### Ajouté
+
+- **Sprint 32 — Phase 0.1 : modèle de données GT multi-niveaux.**
+  Refonte de `picarones/core/corpus.py` :
+  - Enum `GTLevel` (TEXT, ALTO, PAGE, ENTITIES, READING_ORDER)
+  - Payloads typés `TextGT`, `AltoGT`, `PageGT`, `EntitiesGT`,
+    `ReadingOrderGT` avec `source_path` traçable
+  - Champ `Document.ground_truths: dict[GTLevel, GTPayload]` synchronisé
+    automatiquement avec le champ historique `ground_truth: str`
+    (rétrocompatibilité stricte — toute API publique inchangée)
+  - Détection automatique au chargement des fichiers `.gt.alto.xml`,
+    `.gt.page.xml`, `.gt.entities.json`, `.gt.reading_order.json` à
+    côté de l'image
+  - `Corpus.gt_level_coverage()` et `Corpus.available_gt_levels` pour
+    interroger la couverture par niveau
+  - Erreurs de parse dégradées en `logger.warning` (CLAUDE.md :
+    pas de `except: pass`) — le document conserve les niveaux qui ont
+    pu être chargés
+  - +17 tests dans `tests/test_sprint32_multi_level_gt.py` couvrant
+    rétrocompat, détection, couverture partielle, synchronisation
+    bidirectionnelle, JSON cassé
+
+### Tests
+
+- 1478 → 1495 tests (+17 sur le Sprint 32). Aucune régression sur la
+  suite existante.
+
+---
+
 ## [1.1.x] — Sprints 23-30 — 2026-04
 
 ### Ajouté
