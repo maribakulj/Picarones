@@ -8,19 +8,33 @@ Variables d'environnement requises :
   - ``AZURE_DOC_INTEL_ENDPOINT`` : URL de l'endpoint (ex : https://moninstance.cognitiveservices.azure.com/)
 
 Documentation : https://learn.microsoft.com/azure/ai-services/document-intelligence/
+
+Sprint 51 — exposition des token_confidences
+---------------------------------------------
+La réponse Azure expose ``analyzeResult.pages[].words[]`` avec
+``content`` et ``confidence`` (∈ [0, 1]).  L'adapter parcourt cette
+hiérarchie et émet une entrée par mot au format Sprint 42.
+
+Le texte ``EngineResult.text`` est extrait depuis ``pages[].lines[]``
+(préservation rétrocompat octet par octet).  Les deux chemins (SDK et
+REST) sont normalisés vers une représentation dict unifiée.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-from picarones.engines.base import BaseOCREngine
+from picarones.engines.base import BaseOCREngine, EngineResult
+
+
+logger = logging.getLogger(__name__)
 
 
 class AzureDocIntelEngine(BaseOCREngine):
@@ -36,6 +50,9 @@ class AzureDocIntelEngine(BaseOCREngine):
         Paramètre de locale pour améliorer la précision (ex : ``"fr-FR"``).
     api_version : str
         Version de l'API Azure (défaut : ``"2024-02-29-preview"``).
+    expose_confidences : bool
+        ``True`` (défaut) : extrait ``Word.confidence`` de la réponse
+        Azure (Sprint 51).
     """
 
     @property
@@ -57,6 +74,19 @@ class AzureDocIntelEngine(BaseOCREngine):
         self._api_version: str = self.config.get("api_version", "2024-02-29-preview")
 
     def _run_ocr(self, image_path: Path) -> str:
+        """API rétrocompat : retourne uniquement le texte."""
+        text, _result = self._run_ocr_with_result(image_path)
+        return text
+
+    def _run_ocr_with_result(
+        self, image_path: Path,
+    ) -> tuple[str, Optional[dict]]:
+        """Exécute l'OCR et retourne ``(text, analyze_result_dict)``.
+
+        ``analyze_result_dict`` est la sous-structure
+        ``analyzeResult`` (avec ``pages[].words[]`` portant les
+        confidences) — normalisée entre les chemins SDK et REST.
+        """
         if not self._api_key:
             raise RuntimeError(
                 "Clé API Azure manquante — définissez la variable d'environnement AZURE_DOC_INTEL_KEY"
@@ -66,13 +96,12 @@ class AzureDocIntelEngine(BaseOCREngine):
                 "Endpoint Azure manquant — définissez la variable d'environnement AZURE_DOC_INTEL_ENDPOINT"
             )
 
-        # Essai via SDK Azure si disponible, sinon REST direct
         try:
             return self._run_via_sdk(image_path)
         except ImportError:
             return self._run_via_rest(image_path)
 
-    def _run_via_sdk(self, image_path: Path) -> str:
+    def _run_via_sdk(self, image_path: Path) -> tuple[str, dict]:
         from azure.ai.documentintelligence import DocumentIntelligenceClient
         from azure.core.credentials import AzureKeyCredential
 
@@ -88,13 +117,15 @@ class AzureDocIntelEngine(BaseOCREngine):
                 content_type="application/octet-stream",
             )
         result = poller.result()
-        return "\n".join(
+        text = "\n".join(
             line.content
             for page in result.pages
             for line in (page.lines or [])
         )
+        analyze_result = self._sdk_result_to_dict(result)
+        return text, analyze_result
 
-    def _run_via_rest(self, image_path: Path) -> str:
+    def _run_via_rest(self, image_path: Path) -> tuple[str, Optional[dict]]:
         """Appel REST direct (sans SDK Azure)."""
         image_bytes = image_path.read_bytes()
         analyze_url = (
@@ -132,7 +163,9 @@ class AzureDocIntelEngine(BaseOCREngine):
                 result = json.loads(resp.read().decode("utf-8"))
             status = result.get("status", "")
             if status == "succeeded":
-                return self._extract_text_from_result(result)
+                text = self._extract_text_from_result(result)
+                analyze_result = result.get("analyzeResult") or None
+                return text, analyze_result
             if status in {"failed", "canceled"}:
                 raise RuntimeError(f"Azure Document Intelligence : analyse {status}")
             # status == "running" → continuer à attendre
@@ -150,3 +183,110 @@ class AzureDocIntelEngine(BaseOCREngine):
                 if content:
                     lines.append(content)
         return "\n".join(lines)
+
+    # ──────────────────────────────────────────────────────────────────
+    # Conversion SDK → dict normalisé
+    # ──────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _sdk_result_to_dict(result: Any) -> dict:
+        """Convertit l'objet SDK en dict ``{"pages": [{"words":
+        [{"content", "confidence"}]}]}`` pour traitement uniforme avec
+        le chemin REST."""
+        pages = []
+        for page in getattr(result, "pages", []) or []:
+            words = []
+            for word in getattr(page, "words", []) or []:
+                content = getattr(word, "content", "") or ""
+                conf = getattr(word, "confidence", None)
+                words.append({
+                    "content": content,
+                    "confidence": float(conf) if conf is not None else None,
+                })
+            pages.append({"words": words})
+        return {"pages": pages}
+
+    # ──────────────────────────────────────────────────────────────────
+    # Extraction des token_confidences au format Sprint 42
+    # ──────────────────────────────────────────────────────────────────
+
+    def _extract_token_confidences_from_result(
+        self, analyze_result: Optional[dict],
+    ) -> Optional[list[dict[str, Any]]]:
+        """Parcourt ``pages[].words[]`` et émet
+        ``{"token": str, "confidence": float}`` par mot.
+
+        Filtrage cohérent avec les autres adapters : confidence None /
+        négative ignorée, contenu vide ignoré.
+
+        Retourne ``None`` si :
+        - ``analyze_result`` est ``None``,
+        - ``expose_confidences=False``,
+        - aucun mot exploitable n'a été trouvé (cas peu probable —
+          Azure expose presque toujours les words).
+        """
+        if not self.config.get("expose_confidences", True):
+            return None
+        if not analyze_result or not isinstance(analyze_result, dict):
+            return None
+        try:
+            out: list[dict[str, Any]] = []
+            for page in analyze_result.get("pages") or []:
+                if not isinstance(page, dict):
+                    continue
+                for word in page.get("words") or []:
+                    if not isinstance(word, dict):
+                        continue
+                    content = (word.get("content") or "").strip()
+                    if not content:
+                        continue
+                    conf = word.get("confidence")
+                    if conf is None:
+                        continue
+                    try:
+                        conf_val = float(conf)
+                    except (TypeError, ValueError):
+                        continue
+                    if conf_val < 0:
+                        continue
+                    out.append({"token": content, "confidence": conf_val})
+            return out or None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[azure_doc_intel] extraction des token_confidences dégradée : %s",
+                exc,
+            )
+            return None
+
+    def run(self, image_path: str | Path) -> EngineResult:
+        """Exécute Azure Document Intelligence et expose les
+        ``Word.confidence`` natifs (Sprint 51).
+
+        L'API est appelée une seule fois (avec polling pour Azure
+        asynchrone) ; texte et structure ``analyzeResult`` sont
+        récupérés ensemble.  Aucun overhead vs l'implémentation
+        historique.
+        """
+        image_path = Path(image_path)
+        start = time.perf_counter()
+        text = ""
+        error: Optional[str] = None
+        token_confidences: Optional[list[dict[str, Any]]] = None
+        try:
+            text, analyze_result = self._run_ocr_with_result(image_path)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        else:
+            token_confidences = self._extract_token_confidences_from_result(
+                analyze_result,
+            )
+        duration = time.perf_counter() - start
+        return EngineResult(
+            engine_name=self.name,
+            image_path=str(image_path),
+            text=text,
+            duration_seconds=round(duration, 4),
+            error=error,
+            metadata={"engine_version": self._safe_version()},
+            token_confidences=token_confidences,
+        )

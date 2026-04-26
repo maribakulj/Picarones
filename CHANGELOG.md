@@ -16,6 +16,29 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 51 — Adapter Azure Document Intelligence : exposition de
+  `Word.confidence` (clôture de l'adaptation engines).** Suite directe
+  des Sprints 47-50. Azure DI expose ``analyzeResult.pages[].words[]``
+  avec ``content`` et ``confidence`` ∈ [0, 1]. L'adapter parcourt cette
+  hiérarchie et émet une entrée par mot au format Sprint 42.
+  - Refactor : ``_run_ocr_with_result(image_path) → (text,
+    analyze_result_dict)`` centralise les deux chemins (SDK
+    ``azure-ai-documentintelligence`` et REST direct via ``urllib``
+    avec polling Azure asynchrone).
+  - ``_sdk_result_to_dict`` convertit l'objet SDK en dict normalisé
+    identique à la réponse REST pour traitement uniforme.
+  - ``_extract_token_confidences_from_result`` parcourt
+    ``pages[].words[]``, extrait ``content`` et ``confidence``,
+    filtre les confidences None / négatives et les contenus vides.
+  - Le texte ``EngineResult.text`` est extrait depuis
+    ``pages[].lines[]`` (préservation rétrocompat octet par octet).
+  - Flag config ``expose_confidences: false``.
+  - L'API est appelée une seule fois — aucun overhead.
+  - +16 tests dans ``test_sprint51_azure_confidences.py`` (extraction
+    multi-pages, filtrage 4 cas, cas dégénérés 4 cas, conversion SDK
+    → dict, surcharge ``run()`` avec mock, échec API, intégration
+    runner).
+
 - **Sprint 50 — Adapter Google Vision : exposition de
   `Word.confidence`.** Suite directe des Sprints 47-49.
   ``DOCUMENT_TEXT_DETECTION`` expose ``Word.confidence`` au niveau mot
@@ -605,18 +628,18 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1921 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1937 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
-  +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50).
-  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution :
-  inter-moteurs (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b)
-  et stratification (A.III) livrés bout-en-bout calcul → runner →
-  HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; Tesseract
-  (Sprint 47), Pero OCR (Sprint 48), Mistral OCR (Sprint 49) et
-  Google Vision (Sprint 50) adaptés pour exposer leurs
-  `token_confidences` natifs. Reste à adapter Azure DI.**
+  +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
+  +16 Sprint 51). Aucune régression. **Phase 0 close ; Étape 2
+  du plan d'évolution intégralement livrée :** inter-moteurs
+  (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b) et
+  stratification (A.III) livrés bout-en-bout calcul → runner →
+  HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; **les 5
+  adapters OCR (Tesseract, Pero, Mistral, Google Vision, Azure DI)
+  exposent désormais leurs `token_confidences` natifs**.
 
 ---
 
