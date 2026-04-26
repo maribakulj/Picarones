@@ -16,6 +16,40 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 39 — A.II.1.b Calibration des moteurs : couche de calcul.**
+  Deuxième brique des trois métriques prioritaires de l'Étape 2 (axe A —
+  fiabilité). Stratégie identique aux Sprints 35-38 : couche de calcul
+  pure, exposition des `token_confidences` sur les `EngineResult` et
+  câblage runner+narratif+HTML aux sprints suivants.
+  - Nouveau module `picarones/core/calibration.py` :
+    - dataclass `CalibrationBin(bin_low, bin_high, avg_confidence,
+      accuracy, count)` avec propriété `gap` (renvoie `None` si bin vide)
+    - `reliability_diagram(confidences, is_correct, n_bins=10)` : binning
+      équidistant de la confiance, calcul de la précision moyenne et de
+      la confiance moyenne par bin
+    - `expected_calibration_error` (ECE) : moyenne pondérée par bin de
+      `|conf - accuracy|`, ∈ [0, 1], 0 = calibration parfaite
+    - `maximum_calibration_error` (MCE) : pire écart sur tous les bins
+      non vides
+    - `compute_calibration_metrics` : vue agrégée
+  - **Calcul d'index de bin par multiplication** (`int(c * n_bins)`)
+    plutôt que division, pour éviter les pièges IEEE 754 (`0.6 / 0.1 =
+    5.999…` en flottant). Cas testé.
+  - Aucune dépendance externe ; les listes `confidences` et `is_correct`
+    sont fournies en entrée. L'extraction depuis les engines existants
+    (Tesseract `tsv`, Pero `PageLayout`, Mistral `confidence`, Google
+    Vision `Word.confidence`) est explicitement reportée à un sprint
+    dédié.
+  - +32 tests dans `test_sprint39_calibration.py` couvrant la
+    calibration parfaite (ECE = 0), les cas extrêmes (sur-confiance et
+    sous-confiance → ECE = 0,5), le biais constant (ECE = `|conf - acc|`),
+    le binning correct (bornes équidistantes, c=1.0 dans le dernier bin,
+    affectation correcte y compris pour 0.6), les bins vides
+    (avg/accuracy/gap = `None`), les listes vides, les garde-fous
+    (longueurs incompatibles, conf hors [0, 1], n_bins ≤ 0), `n_bins`
+    paramétrable + monotonie « ECE ne décroît pas avec un binning plus
+    fin ».
+
 - **Sprint 38 — A.II.1.a NER : couche de calcul.** Première brique
   des trois métriques prioritaires de l'Étape 2 du plan d'évolution
   (axe A — utilité aval). Stratégie de découpage analogue à la
@@ -186,11 +220,12 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1649 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
-  +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38). Aucune
-  régression. **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
-  livrés bout-en-bout (Sprints 35-37) ; NER (axe A.II.1.a) couche de
-  calcul livrée (Sprint 38).**
+- 1478 → 1681 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+  +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
+  +32 Sprint 39). Aucune régression. **Phase 0 close ; Étape 2 du plan
+  d'évolution : inter-moteurs livrés bout-en-bout (Sprints 35-37) ;
+  NER (A.II.1.a) et calibration (A.II.1.b) couches de calcul livrées
+  (Sprints 38-39).**
 
 ---
 
