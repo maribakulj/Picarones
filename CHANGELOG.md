@@ -16,6 +16,31 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 35 — Étape 2 du plan d'évolution : métriques inter-moteurs
+  (couche de calcul).** Nouveau module `picarones/core/inter_engine.py`
+  qui expose deux familles de mesures qui ne dépendent que des données
+  déjà produites par le runner :
+  - **Divergence taxonomique** : `kl_divergence`,
+    `jensen_shannon_divergence` (symétrique, bornée dans `[0, 1]`),
+    `taxonomy_divergence_matrix` qui construit la matrice triangulaire
+    inter-moteurs sur les distributions de classes d'erreur (issues de
+    `taxonomy.py`). Lissage epsilon des zéros pour éviter `log(0)`.
+  - **Complémentarité** : `oracle_token_recall` (borne supérieure
+    bag-of-words du recall atteignable par voting), `complementarity_gap`
+    qui retourne aussi `best_single_recall` / `absolute_gap` /
+    `relative_gap` / `best_engine`, `pairwise_disagreement_rate` pour
+    quantifier le potentiel d'ensemble entre deux moteurs spécifiques.
+  - Fonctions pures, sans I/O ni intégration runner — la couche de calcul
+    est livrable indépendamment ; le câblage au moteur narratif
+    (`ENSEMBLE_OPPORTUNITY`) et au rapport HTML (matrice de divergence,
+    badge oracle gap) suit au Sprint 36.
+  - +27 tests dans `tests/test_sprint35_inter_engine.py` couvrant les
+    invariants mathématiques (KL ≥ 0, KL(p,p) = 0, JS symétrique et
+    bornée, oracle ≥ best_single), les cas concrets (moteurs
+    spécialisés ressortent comme candidats à un ensemble, complémentarité
+    parfaite atteint oracle = 1), les garde-fous (référence vide,
+    hypothèses vides, métrique inconnue).
+
 - **Sprint 34 — Phase 0.3 : registre typé de métriques (clôture Phase 0).**
   Nouveaux modules `picarones/core/metric_registry.py` et
   `picarones/core/builtin_metrics.py` :
@@ -83,8 +108,9 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1539 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34). Aucune
-  régression sur la suite existante. **Phase 0 du plan d'évolution close.**
+- 1478 → 1566 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+  +27 Sprint 35). Aucune régression. **Phase 0 close ; Étape 2 démarrée
+  (couche de calcul des métriques inter-moteurs).**
 
 ---
 
