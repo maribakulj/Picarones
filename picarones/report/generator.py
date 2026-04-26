@@ -193,6 +193,9 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "aggregated_hallucination": report.aggregated_hallucination,
             # Sprint 41 — NER agrégé (None si aucun calcul effectué)
             "aggregated_ner": report.aggregated_ner,
+            # Sprint 43 — calibration agrégée (None si aucune confidence
+            # n'a été exposée par le moteur sur ce corpus)
+            "aggregated_calibration": report.aggregated_calibration,
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
@@ -738,6 +741,22 @@ class ReportGenerator:
             labels=labels,
         )
 
+        # Sprint 43 — section calibration (tableau ECE/MCE + grille de
+        # reliability diagrams par moteur). Vide si aucun moteur n'a
+        # de aggregated_calibration.
+        from picarones.report.calibration_render import (
+            build_calibration_summary_html,
+            build_reliability_diagrams_grid_html,
+        )
+        calibration_summary_html = build_calibration_summary_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+        reliability_diagrams_html = build_reliability_diagrams_grid_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -755,6 +774,8 @@ class ReportGenerator:
             oracle_gap_html=oracle_gap_html,
             ner_summary_html=ner_summary_html,
             ner_per_category_html=ner_per_category_html,
+            calibration_summary_html=calibration_summary_html,
+            reliability_diagrams_html=reliability_diagrams_html,
         )
 
         output_path.write_text(html, encoding="utf-8")

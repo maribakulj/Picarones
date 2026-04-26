@@ -16,6 +16,47 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 43 — A.II.1.b Calibration : vue HTML reliability diagram +
+  tableau ECE/MCE (clôture A.II.1.b côté rapport).** Suite directe du
+  Sprint 42 (câblage runner). Les chiffres de calibration sont
+  désormais visibles dans le rapport HTML.
+  - Nouveau module `picarones/report/calibration_render.py` :
+    - `build_calibration_summary_html(engines_summary, labels)` :
+      tableau résumé par moteur (ECE, MCE, Précision moyenne,
+      Confiance moyenne, n_predictions, doc_count). Cellule ECE
+      colorée par gradient vert (bien calibré) → rouge (mal
+      calibré).
+    - `build_reliability_diagram_svg(aggregated_calibration, labels,
+      engine_name)` : SVG d'un reliability diagram avec barres
+      d'accuracy par bin, ligne reliant les points
+      `(avg_confidence, accuracy)`, diagonale de référence en
+      pointillé, axes annotés (graduations 0/0.5/1).
+    - `build_reliability_diagrams_grid_html(engines_summary,
+      labels)` : grille auto-fit, un SVG par moteur ayant un
+      `aggregated_calibration`.
+    - Rendu strictement server-side, déterministe, **pas de
+      JavaScript**, cohérent avec le SVG du CDD (Sprint 18) et les
+      sections inter-moteurs (Sprint 37) et NER (Sprint 41).
+  - `_build_report_data` expose `aggregated_calibration` par moteur
+    dans `engines_summary`. `ReportGenerator.generate` calcule les
+    deux blocs et les passe au template `view_analyses.html` qui les
+    affiche dans une `chart-card` à largeur pleine **uniquement si
+    au moins un moteur a un `aggregated_calibration`** (rapport
+    adaptatif).
+  - +13 clés i18n FR/EN (`h_calibration`, `calibration_note`,
+    `calibration_summary_caption`, `calibration_engine_label`,
+    `calibration_ece_label`, `calibration_mce_label`,
+    `calibration_n_label`, `calibration_acc_label`,
+    `calibration_conf_label`, `calibration_docs_label`,
+    `reliability_diagram_title`, `reliability_x_axis`,
+    `reliability_y_axis`).
+  - +43 tests dans `test_sprint43_calibration_html.py` couvrant le
+    rendu (résumé, SVG avec barres/points/diagonale, grille
+    multi-moteurs), le masquage adaptatif (4 cas dégénérés),
+    l'anti-injection (engine name `<script>` ou `<img>`),
+    l'intégration rapport FR + EN, et la complétude i18n sur les
+    13 clés × 2 langues.
+
 - **Sprint 42 — A.II.1.b Calibration : exposition `token_confidences` +
   câblage runner.** Suite directe du Sprint 39 (couche de calcul). Le
   runner peut maintenant calculer ECE/MCE/reliability dès qu'un moteur
@@ -333,15 +374,14 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1752 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1795 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
-  +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42).
-  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution :
-  inter-moteurs (A.II.1.c) et NER (A.II.1.a) livrés bout-en-bout
-  calcul → runner → narratif → HTML ; calibration (A.II.1.b) couche
-  de calcul + câblage runner livrés (Sprints 39+42), il manque la vue
-  HTML reliability diagram et l'adaptation des engines pour exposer
-  leurs confidences natives.**
+  +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
+  +43 Sprint 43). Aucune régression. **Phase 0 close ; Étape 2 du
+  plan d'évolution : inter-moteurs (A.II.1.c), NER (A.II.1.a) et
+  calibration (A.II.1.b) livrés bout-en-bout calcul → runner → HTML.
+  Reste l'adaptation effective des engines pour exposer leurs
+  confidences natives (un sprint par adapter).**
 
 ---
 

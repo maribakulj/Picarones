@@ -150,6 +150,31 @@
       </details>
     </div>
 
+    <!-- Sprint 43 — Calibration des moteurs (ECE, MCE, reliability diagram) -->
+    {% if calibration_summary_html or reliability_diagrams_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_calibration">Calibration des moteurs</h3>
+      <div class="calibration-grid"
+           style="display:grid;gap:1.2rem;align-items:start">
+        {% if calibration_summary_html %}
+        <div>{{ calibration_summary_html }}</div>
+        {% endif %}
+        {% if reliability_diagrams_html %}
+        <div>{{ reliability_diagrams_html }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="calibration_note">
+        ECE (Expected Calibration Error) : moyenne pondérée des écarts
+        |confiance − précision| par bin. Plus l'ECE est bas, plus le
+        moteur est honnête sur sa fiabilité — la diagonale du diagramme
+        représente la calibration parfaite. Un ECE élevé signale qu'on
+        ne peut pas se fier au score de confiance pour cibler la
+        relecture humaine.
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Sprint 41 — Précision sur entités nommées (NER) -->
     {% if ner_summary_html or ner_per_category_html %}
     <div class="chart-card" style="grid-column:1/-1">
