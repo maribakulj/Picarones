@@ -72,3 +72,11 @@ median_mean_gap_warning: >-
   {relative_gap_pct} %). La moyenne est tirée par quelques documents
   catastrophiques — la médiane (utilisée pour le tri par défaut) est
   plus représentative.
+
+stratification_recommended: >-
+  Corpus hétérogène ({n_strata} strates) : {leader} performe très
+  différemment selon le type de document — médiane CER
+  {min_stratum_cer_pct} % sur « {min_stratum} » contre
+  {max_stratum_cer_pct} % sur « {max_stratum} », soit {gap_pct} points
+  d'écart. Le classement global masque cette disparité ; consulter la
+  vue stratifiée.

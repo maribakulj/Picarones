@@ -55,6 +55,10 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.STATISTICAL_TIE,
     FactType.SIGNIFICANT_GAP,
     FactType.STRATUM_WINNER,
+    # Sprint 46 — priority 45, juste après STRATUM_WINNER (40),
+    # avant STRATUM_COLLAPSE (50). La recommandation de stratification
+    # nuance directement les autres faits par strate.
+    FactType.STRATIFICATION_RECOMMENDED,
     FactType.STRATUM_COLLAPSE,
     FactType.ERROR_PROFILE_OUTLIER,
     FactType.LLM_HALLUCINATION_FLAG,
@@ -90,6 +94,10 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
     # Sprint 44 — l'avertissement d'asymétrie nuance le leader
     # plutôt que de le doubler : on veut les deux phrases ensemble.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.MEDIAN_MEAN_GAP_WARNING}),
+    # Sprint 46 — la recommandation de stratification est un méta-conseil
+    # qui s'ajoute au leader sans le contredire ; les deux peuvent
+    # cohabiter même quand ils concernent le même moteur.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.STRATIFICATION_RECOMMENDED}),
 })
 
 

@@ -16,6 +16,47 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 46 — A.III stratification par `script_type` : vue HTML +
+  détecteur narratif (clôture A.III)**. Suite directe du Sprint 45
+  (couche backend). La vue stratifiée est désormais rendue dans le
+  rapport et un détecteur signale automatiquement les corpus
+  hétérogènes.
+  - Nouveau module `picarones/report/stratification_render.py` :
+    `build_stratified_ranking_html` rend un `<details>` natif
+    (collapsible sans JS) par strate avec tableau moteur × (médiane,
+    moyenne, docs). Cellule médiane colorée par gradient vert (faible
+    CER) → rouge (élevé). Premier `<details>` ouvert par défaut pour
+    donner le contexte. Bandeau d'avertissement en tête si
+    `corpus_homogeneity` fourni (écart inter-strate du leader).
+  - `_build_report_data` expose `available_strata`,
+    `stratified_ranking`, `corpus_homogeneity` au top-level. Le bloc
+    HTML est passé au template `view_ranking.html` qui l'insère après
+    le tableau principal **uniquement si stratification disponible**
+    (rapport adaptatif).
+  - Nouveau `FactType.STRATIFICATION_RECOMMENDED` (priority 45,
+    importance MEDIUM ou HIGH selon le gap) avec détecteur
+    `detect_stratification_recommended` qui lit `corpus_homogeneity`
+    et émet un Fact quand le gap inter-strate du leader dépasse
+    5 points de CER (HIGH au-delà de 10 points). Templates FR/EN
+    sans nombres en dur.
+  - L'arbitre marque la paire `{GLOBAL_LEADER_CER,
+    STRATIFICATION_RECOMMENDED}` comme **complémentaire** : la
+    recommandation peut cohabiter avec la phrase du leader pour
+    nuancer.
+  - +8 clés i18n FR/EN pour la vue stratifiée
+    (`stratification_caption`, `stratification_description`,
+    `stratification_*_label`, `stratification_gap_summary`).
+  - Anti-injection HTML via `html.escape` sur les noms de moteurs et
+    les noms de strates.
+  - +38 tests dans `test_sprint46_stratification_html.py` couvrant
+    le rendu (un `<details>` par strate, métriques visibles, premier
+    ouvert), le bandeau d'hétérogénéité, le masquage adaptatif (4
+    cas), l'anti-injection (engine et stratum avec balises HTML),
+    les seuils du détecteur (4 cas), la traçabilité
+    anti-hallucination FR + EN, l'absence de chiffres en dur dans
+    les templates, l'intégration `ReportGenerator` FR + EN, et la
+    complétude i18n.
+
 - **Sprint 45 — A.III stratification par `script_type` : couche
   d'agrégation backend.** Première brique de la « plus haute valeur
   ajoutée transversale » du plan d'évolution. Le rapport peut
@@ -438,17 +479,16 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1826 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1864 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
-  +43 Sprint 43, +15 Sprint 44, +16 Sprint 45). Aucune régression.
-  **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
-  (A.II.1.c), NER (A.II.1.a) et calibration (A.II.1.b) livrés
-  bout-en-bout calcul → runner → HTML ; A.I.2 médiane par défaut
-  livré (Sprint 44) ; A.III stratification — couche backend livrée
-  (Sprint 45), vue HTML à venir. Reste l'adaptation effective des
-  engines pour exposer leurs confidences natives (un sprint par
-  adapter).**
+  +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46).
+  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution :
+  inter-moteurs (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b)
+  et stratification (A.III) livrés bout-en-bout calcul → runner →
+  HTML ; A.I.2 médiane par défaut livré (Sprint 44). Reste
+  l'adaptation effective des engines pour exposer leurs confidences
+  natives (un sprint par adapter).**
 
 ---
 

@@ -68,3 +68,11 @@ median_mean_gap_warning: >-
   {relative_gap_pct} %). The mean is pulled by a few catastrophic
   documents — the median (now used for default ranking) is more
   representative.
+
+stratification_recommended: >-
+  Heterogeneous corpus ({n_strata} strata): {leader} performs very
+  differently depending on document type — median CER
+  {min_stratum_cer_pct} % on "{min_stratum}" vs
+  {max_stratum_cer_pct} % on "{max_stratum}", a gap of {gap_pct}
+  points. The global ranking hides this disparity; consult the
+  stratified view.

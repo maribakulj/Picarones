@@ -777,6 +777,70 @@ def detect_median_mean_gap_warning(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
+# Détecteur Sprint 46 — stratification recommandée (corpus hétérogène)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.STRATIFICATION_RECOMMENDED,
+    priority=45,  # juste après STRATUM_WINNER (40), avant STRATUM_COLLAPSE (50)
+    importance=FactImportance.HIGH,
+)
+def detect_stratification_recommended(benchmark_data: dict) -> list[Fact]:
+    """Avertit quand le corpus est hétérogène et que la vue stratifiée
+    apporte un éclairage qualitativement différent du classement global.
+
+    Critère : ``corpus_homogeneity.max_inter_strata_gap > 5 points`` de
+    CER médian sur le moteur leader.  Au-delà de 10 points, importance
+    ``HIGH`` (situation très hétérogène où le seul classement global
+    serait trompeur).
+
+    Lit ``benchmark_data["corpus_homogeneity"]`` exposé par
+    ``BenchmarkResult.as_dict()`` (Sprint 45).
+    """
+    homog = benchmark_data.get("corpus_homogeneity")
+    if not homog:
+        return []
+
+    gap = homog.get("max_inter_strata_gap")
+    if gap is None:
+        return []
+
+    gap = float(gap)
+    if gap < 0.05:
+        return []  # 5 points de CER : seuil de pertinence éditoriale
+
+    leader = str(homog.get("leader") or "")
+    n_strata = int(homog.get("n_strata") or 0)
+    pair = homog.get("leader_max_gap_strata") or ["", ""]
+    if len(pair) < 2:
+        return []
+    min_strat, max_strat = str(pair[0]), str(pair[1])
+
+    leader_per_stratum = homog.get("leader_per_stratum_median") or {}
+    min_med = float(leader_per_stratum.get(min_strat, 0.0))
+    max_med = float(leader_per_stratum.get(max_strat, 0.0))
+
+    importance = (
+        FactImportance.HIGH if gap >= 0.10 else FactImportance.MEDIUM
+    )
+
+    return [Fact(
+        type=FactType.STRATIFICATION_RECOMMENDED,
+        importance=importance,
+        payload={
+            "leader": leader,
+            "n_strata": n_strata,
+            "gap_pct": round(gap * 100, 1),
+            "min_stratum": min_strat,
+            "max_stratum": max_strat,
+            "min_stratum_cer_pct": round(min_med * 100, 2),
+            "max_stratum_cer_pct": round(max_med * 100, 2),
+        },
+        engines_involved=(leader,) if leader else (),
+    )]
+
+
+# ---------------------------------------------------------------------------
 # Détecteur Sprint 36 — opportunité d'ensemble (complémentarité)
 # ---------------------------------------------------------------------------
 

@@ -572,6 +572,10 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
         # complémentarité / oracle).  ``None`` si moins de 2 moteurs.
         "inter_engine_analysis": benchmark.inter_engine_analysis,
+        # Sprint 45-46 — stratification par script_type
+        "available_strata": benchmark.available_strata(),
+        "stratified_ranking": benchmark.stratified_ranking() or None,
+        "corpus_homogeneity": benchmark.corpus_homogeneity(),
     }
 
 
@@ -757,6 +761,18 @@ class ReportGenerator:
             labels=labels,
         )
 
+        # Sprint 46 — section stratifiée (tableau par strate). Vide si
+        # aucune strate disponible.
+        from picarones.report.stratification_render import (
+            build_stratified_ranking_html,
+        )
+        stratified_ranking_html = build_stratified_ranking_html(
+            report_data.get("stratified_ranking"),
+            report_data.get("available_strata"),
+            report_data.get("corpus_homogeneity"),
+            labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -776,6 +792,7 @@ class ReportGenerator:
             ner_per_category_html=ner_per_category_html,
             calibration_summary_html=calibration_summary_html,
             reliability_diagrams_html=reliability_diagrams_html,
+            stratified_ranking_html=stratified_ranking_html,
         )
 
         output_path.write_text(html, encoding="utf-8")

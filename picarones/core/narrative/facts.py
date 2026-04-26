@@ -70,6 +70,12 @@ class FactType(str, Enum):
     et masque les performances réelles. La médiane (utilisée pour le tri
     par défaut depuis Sprint 44) est plus représentative."""
 
+    STRATIFICATION_RECOMMENDED = "stratification_recommended"
+    """Le corpus est hétérogène du point de vue script_type : le moteur
+    leader varie fortement selon la strate. Le lecteur doit consulter
+    la vue stratifiée plutôt que de se fier au seul classement global
+    (Sprint 46)."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""
