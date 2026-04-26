@@ -63,6 +63,7 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.SPEED_WINNER,
     FactType.COST_OUTLIER,
     FactType.CONFIDENCE_WARNING,
+    FactType.ENSEMBLE_OPPORTUNITY,
 )
 
 

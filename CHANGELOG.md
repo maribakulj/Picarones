@@ -16,6 +16,32 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 36 — Câblage inter-moteurs au runner et au moteur narratif.**
+  Suite directe du Sprint 35 (couche de calcul) :
+  - `picarones/core/inter_engine.py` gagne `compute_inter_engine_analysis`
+    qui agrège la complémentarité doc par doc (oracle global + recall par
+    moteur + per_doc top 50 trié par gap), et la divergence taxonomique
+    (matrice + paire la plus divergente).
+  - `BenchmarkResult.inter_engine_analysis: Optional[dict]` exposé dans
+    `as_dict()` quand renseigné, absent sinon (rétrocompat stricte).
+  - `runner.run_benchmark` collecte les hypothèses brutes par moteur
+    avant `compact()`, calcule l'analyse inter-moteurs si ≥ 2 moteurs,
+    et stocke le résultat sur le `BenchmarkResult`.
+  - Nouveau `FactType.ENSEMBLE_OPPORTUNITY` + détecteur
+    `detect_ensemble_opportunity` (priority 130, importance MEDIUM/HIGH
+    selon `relative_gap`). Seuil de déclenchement à 25 % du gap relatif
+    pour ne pas bruiter la synthèse.
+  - Templates FR et EN ajoutés à `narrative/templates/{fr,en}.yaml` —
+    aucun nombre en dur (vérifié par test), tout vient du payload.
+  - `_build_report_data` du générateur HTML expose
+    `report_data["inter_engine_analysis"]` afin que le détecteur le
+    voie en mode "rapport".
+  - +22 tests dans `tests/test_sprint36_ensemble_narrative.py`
+    (agrégation, exposition `BenchmarkResult.as_dict`, déclenchement et
+    seuils du détecteur, fallback paire sans taxonomie, intégration
+    `build_synthesis` FR + EN, traçabilité anti-hallucination,
+    template sans chiffres en dur).
+
 - **Sprint 35 — Étape 2 du plan d'évolution : métriques inter-moteurs
   (couche de calcul).** Nouveau module `picarones/core/inter_engine.py`
   qui expose deux familles de mesures qui ne dépendent que des données
@@ -108,9 +134,10 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1566 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
-  +27 Sprint 35). Aucune régression. **Phase 0 close ; Étape 2 démarrée
-  (couche de calcul des métriques inter-moteurs).**
+- 1478 → 1588 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+  +27 Sprint 35, +22 Sprint 36). Aucune régression. **Phase 0 close ;
+  Étape 2 du plan d'évolution : couche de calcul + câblage narratif
+  inter-moteurs livrés.**
 
 ---
 

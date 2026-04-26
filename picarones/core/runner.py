@@ -446,6 +446,11 @@ def run_benchmark(
     def _is_cancelled() -> bool:
         return cancel_event is not None and cancel_event.is_set()
     engine_reports: list[EngineReport] = []
+    # Sprint 36 — collecte des hypothèses brutes par moteur avant
+    # ``compact()`` pour pouvoir calculer la divergence taxonomique et
+    # la complémentarité (oracle) en fin de benchmark.
+    per_engine_outputs: dict[str, dict[str, str]] = {}
+    ground_truths_by_doc: dict[str, str] = {}
 
     for engine in engines:
         if _is_cancelled():
@@ -652,15 +657,60 @@ def run_benchmark(
             (report.mean_cer or 0) * 100,
         )
 
+        # Sprint 36 — capture des hypothèses brutes pour le calcul
+        # inter-moteurs (effectué après la boucle, avant la sérialisation).
+        # On clone les chaînes pour ne pas dépendre de la durée de vie des
+        # DocumentResult après ``compact()``.
+        per_engine_outputs[engine.name] = {
+            dr.doc_id: dr.hypothesis for dr in document_results
+            if dr.engine_error is None
+        }
+        for dr in document_results:
+            if dr.doc_id not in ground_truths_by_doc and dr.ground_truth:
+                ground_truths_by_doc[dr.doc_id] = dr.ground_truth
+
         # Libérer la mémoire des analyses per-document après agrégation
         for dr in document_results:
             dr.compact()
+
+    # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+    # complémentarité / oracle).  N'est calculée qu'à partir de 2
+    # moteurs ; en deçà l'analyse n'a pas de sens.
+    inter_engine_payload: Optional[dict] = None
+    if len(engine_reports) >= 2:
+        try:
+            from picarones.core.inter_engine import compute_inter_engine_analysis
+
+            taxonomy_distros = {
+                report.engine_name: (
+                    report.aggregated_taxonomy.get("class_distribution", {})
+                    if report.aggregated_taxonomy
+                    else {}
+                )
+                for report in engine_reports
+            }
+            # Élimine les moteurs sans distribution taxonomique pour ne pas
+            # polluer la matrice.
+            taxonomy_distros = {
+                name: dist for name, dist in taxonomy_distros.items() if dist
+            }
+            inter_engine_payload = compute_inter_engine_analysis(
+                per_engine_outputs=per_engine_outputs,
+                ground_truths=ground_truths_by_doc,
+                taxonomy_distributions=taxonomy_distros or None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[runner] analyse inter-moteurs dégradée : %s — section omise du rapport",
+                exc,
+            )
 
     benchmark = BenchmarkResult(
         corpus_name=corpus.name,
         corpus_source=corpus.source_path,
         document_count=len(corpus),
         engine_reports=engine_reports,
+        inter_engine_analysis=inter_engine_payload,
     )
 
     if output_json:

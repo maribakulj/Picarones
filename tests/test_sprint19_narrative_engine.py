@@ -580,9 +580,12 @@ class TestReportIntegration:
 
     def test_default_registry_has_all_types_registered(self):
         from picarones.core.narrative import _DEFAULT_REGISTRY
+        from picarones.core.narrative.facts import FactType
+
         registered = set(_DEFAULT_REGISTRY.registered_types())
-        # Tous les 12 types doivent être enregistrés (même ceux encore stubs)
-        assert len(registered) == 12
+        # Tous les types de FactType doivent avoir un détecteur enregistré.
+        # Sprint 36 : ENSEMBLE_OPPORTUNITY a porté le total à 13.
+        assert registered == set(FactType)
 
     def test_english_locale_produces_english_sentences(self, benchmark_result, tmp_path):
         from picarones.report.generator import ReportGenerator

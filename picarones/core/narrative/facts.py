@@ -60,6 +60,10 @@ class FactType(str, Enum):
     CONFIDENCE_WARNING = "confidence_warning"
     """Intervalle de confiance très large : classement peu fiable."""
 
+    ENSEMBLE_OPPORTUNITY = "ensemble_opportunity"
+    """Deux moteurs sont fortement complémentaires : un voting majoritaire
+    pourrait améliorer significativement le CER (Sprint 36)."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

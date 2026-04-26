@@ -57,3 +57,11 @@ pareto_alternative: >-
 cost_outlier: >-
   Coût disproportionné pour {engine} ({cost} €/{cost_unit_pages} pages, ×{ratio_to_median}
   la médiane) sans avantage de qualité compensatoire (CER {cer_pct} %).
+
+ensemble_opportunity: >-
+  Les moteurs {pair_a} et {pair_b} ont des profils d'erreurs divergents
+  ({divergence_metric}={divergence}). Sur ce corpus de {doc_count} documents,
+  {best_engine} préserve {best_recall_pct} % des tokens ; un voting majoritaire
+  entre les moteurs en préserverait {oracle_recall_pct} %, soit
+  {absolute_gap_pct} points récupérables ({relative_gap_pct} % des erreurs
+  du meilleur moteur).

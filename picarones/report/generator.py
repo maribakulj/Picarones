@@ -564,6 +564,9 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         "ratio_vs_anchor": ratio_vs_anchor,
         # Sprint 19 — vue Pareto coût/qualité avec variantes d'axe
         "pareto": pareto_data,
+        # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+        # complémentarité / oracle).  ``None`` si moins de 2 moteurs.
+        "inter_engine_analysis": benchmark.inter_engine_analysis,
     }
 
 

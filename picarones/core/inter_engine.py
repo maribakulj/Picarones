@@ -306,6 +306,173 @@ def pairwise_disagreement_rate(
     return disagree / total
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# Agrégation au niveau benchmark (Sprint 36)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def compute_inter_engine_analysis(
+    *,
+    per_engine_outputs: dict[str, dict[str, str]],
+    ground_truths: dict[str, str],
+    taxonomy_distributions: dict[str, dict[str, float]] | None = None,
+    divergence_metric: str = "js",
+) -> dict:
+    """Agrège les métriques inter-moteurs sur l'ensemble du corpus.
+
+    Parameters
+    ----------
+    per_engine_outputs:
+        ``{engine_name: {doc_id: hypothesis_text}}``.  Une entrée par
+        moteur, avec une hypothèse par document.  Les documents absents
+        d'un moteur (échecs, timeouts) sont simplement ignorés pour ce
+        moteur — l'oracle est calculé sur les moteurs qui ont produit
+        une sortie pour le doc.
+    ground_truths:
+        ``{doc_id: ground_truth_text}``.  La GT est la même pour tous
+        les moteurs ; on la passe une seule fois.
+    taxonomy_distributions:
+        ``{engine_name: {error_class: probability}}`` — typiquement
+        ``EngineReport.aggregated_taxonomy["class_distribution"]``.  Si
+        ``None`` ou vide, la divergence taxonomique n'est pas calculée.
+    divergence_metric:
+        ``"js"`` (défaut, symétrique) ou ``"kl"``.
+
+    Returns
+    -------
+    dict
+        Structure stable consommable par les détecteurs narratifs et le
+        rapport HTML :
+        ``{
+            "complementarity": {
+                "oracle_recall": float,
+                "best_single_recall": float,
+                "best_engine": str,
+                "absolute_gap": float,
+                "relative_gap": float,
+                "doc_count": int,
+                "per_doc": [{doc_id, oracle, best, gap}, ...]   # max 50 docs
+            },
+            "taxonomy_divergence": {
+                "metric": "js"|"kl",
+                "matrix": {engine_a: {engine_b: divergence}},
+                "max_pair": [engine_a, engine_b, value]   # paire la plus divergente
+            } | None,
+            "engines": [...],   # liste des moteurs analysés (ordre stable)
+        }``
+    """
+    engines = sorted(per_engine_outputs.keys())
+    result: dict = {"engines": engines}
+
+    # ── Complémentarité agrégée doc par doc ──────────────────────────────
+    if not engines:
+        result["complementarity"] = None
+    else:
+        total_oracle_preserved = 0
+        total_ref_tokens = 0
+        per_engine_preserved: dict[str, int] = {name: 0 for name in engines}
+        per_doc_records: list[dict] = []
+
+        for doc_id, gt in ground_truths.items():
+            ref_counter = _word_multiset(gt)
+            ref_total = sum(ref_counter.values())
+            if not ref_total:
+                continue
+            total_ref_tokens += ref_total
+
+            doc_hyps: dict[str, str] = {}
+            for name in engines:
+                hyp = per_engine_outputs.get(name, {}).get(doc_id)
+                if hyp is not None:
+                    doc_hyps[name] = hyp
+
+            if not doc_hyps:
+                continue
+
+            hyp_counters = {n: _word_multiset(h) for n, h in doc_hyps.items()}
+
+            doc_oracle = 0
+            doc_best_per_engine: dict[str, int] = {n: 0 for n in doc_hyps}
+            for tok, gt_count in ref_counter.items():
+                # Oracle : meilleur des moteurs sur ce token
+                best_for_token = 0
+                for name, hc in hyp_counters.items():
+                    preserved = min(gt_count, hc.get(tok, 0))
+                    doc_best_per_engine[name] += preserved
+                    if preserved > best_for_token:
+                        best_for_token = preserved
+                doc_oracle += best_for_token
+
+            total_oracle_preserved += doc_oracle
+            for name, count in doc_best_per_engine.items():
+                per_engine_preserved[name] += count
+
+            doc_best = max(doc_best_per_engine.values()) if doc_best_per_engine else 0
+            per_doc_records.append({
+                "doc_id": doc_id,
+                "oracle_recall": doc_oracle / ref_total,
+                "best_single_recall": doc_best / ref_total,
+                "absolute_gap": (doc_oracle - doc_best) / ref_total,
+            })
+
+        if total_ref_tokens == 0:
+            result["complementarity"] = None
+        else:
+            oracle_recall = total_oracle_preserved / total_ref_tokens
+            recalls = {
+                name: per_engine_preserved[name] / total_ref_tokens
+                for name in engines
+            }
+            best_engine, best_recall = max(recalls.items(), key=lambda kv: kv[1])
+            absolute_gap = max(0.0, oracle_recall - best_recall)
+            headroom = max(1.0 - best_recall, 1e-12)
+            relative_gap = min(1.0, absolute_gap / headroom)
+
+            # Garder les ``per_doc_records`` les plus instructifs : tri par
+            # gap absolu décroissant, top 50.  Les détecteurs narratifs
+            # n'en consomment que quelques-uns.
+            per_doc_records.sort(key=lambda r: r["absolute_gap"], reverse=True)
+            per_doc_top = per_doc_records[:50]
+
+            result["complementarity"] = {
+                "oracle_recall": oracle_recall,
+                "best_single_recall": best_recall,
+                "best_engine": best_engine,
+                "absolute_gap": absolute_gap,
+                "relative_gap": relative_gap,
+                "doc_count": len(per_doc_records),
+                "per_engine_recall": recalls,
+                "per_doc": per_doc_top,
+            }
+
+    # ── Divergence taxonomique ─────────────────────────────────────────
+    if not taxonomy_distributions:
+        result["taxonomy_divergence"] = None
+    else:
+        matrix = taxonomy_divergence_matrix(
+            taxonomy_distributions,
+            metric=divergence_metric,
+        )
+        # Cherche la paire la plus divergente (utile pour la synthèse
+        # narrative qui veut nommer les deux moteurs candidats à
+        # l'ensemble).
+        max_pair: tuple[str, str, float] = ("", "", 0.0)
+        names = sorted(matrix.keys())
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                v = matrix[a][b]
+                if v > max_pair[2]:
+                    max_pair = (a, b, v)
+
+        result["taxonomy_divergence"] = {
+            "metric": divergence_metric,
+            "matrix": matrix,
+            "max_pair": list(max_pair) if max_pair[2] > 0 else None,
+        }
+
+    return result
+
+
 __all__ = [
     "kl_divergence",
     "jensen_shannon_divergence",
@@ -313,4 +480,5 @@ __all__ = [
     "oracle_token_recall",
     "complementarity_gap",
     "pairwise_disagreement_rate",
+    "compute_inter_engine_analysis",
 ]

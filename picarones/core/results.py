@@ -211,6 +211,11 @@ class BenchmarkResult:
     run_date: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
     picarones_version: str = __version__
     metadata: dict = field(default_factory=dict)
+    # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+    # complémentarité / oracle).  Calculée par le runner avant compact()
+    # afin d'avoir accès aux hypothèses brutes.  ``None`` si moins de
+    # 2 moteurs ou si le calcul a été désactivé.
+    inter_engine_analysis: Optional[dict] = None
 
     def ranking(self) -> list[dict]:
         """Retourne le classement des moteurs trié par CER croissant."""
@@ -231,7 +236,7 @@ class BenchmarkResult:
         )
 
     def as_dict(self) -> dict:
-        return {
+        d = {
             "picarones_version": self.picarones_version,
             "run_date": self.run_date,
             "corpus": {
@@ -243,6 +248,9 @@ class BenchmarkResult:
             "engine_reports": [r.as_dict() for r in self.engine_reports],
             "metadata": self.metadata,
         }
+        if self.inter_engine_analysis is not None:
+            d["inter_engine_analysis"] = self.inter_engine_analysis
+        return d
 
     def to_json(self, path: str | Path, indent: int = 2) -> Path:
         """Sérialise le benchmark en JSON et l'écrit sur disque.
