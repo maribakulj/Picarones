@@ -16,6 +16,31 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 37 — Section inter-moteurs dans le rapport HTML.** Suite directe
+  des Sprints 35-36 : la couche de calcul est maintenant visible côté
+  rapport.
+  - Nouveau module `picarones/report/inter_engine_render.py` :
+    `build_divergence_matrix_html` (table HTML colorée — heatmap CSS
+    inline, gradient blanc → rouge proportionnel au max hors-diagonale,
+    diagonale étiquetée et grisée, paire la plus divergente annoncée
+    en sous-titre) et `build_oracle_gap_html` (encart factuel avec
+    best engine, recall préservé, oracle, gap absolu/relatif, doc count).
+    Rendu strictement serveur-side, **pas de JavaScript** — déterministe
+    comme le SVG du CDD (Sprint 18).
+  - `ReportGenerator.generate` calcule les deux blocs et les passe au
+    template `view_analyses.html` qui les insère dans une nouvelle
+    `chart-card` à largeur pleine, **uniquement si présents**
+    (principe du rapport adaptatif : moins de 2 moteurs ou taxonomie
+    absente → section omise sans laisser de trace).
+  - +14 clés i18n FR/EN (`h_inter_engine`, `inter_engine_note`,
+    `divergence_*`, `oracle_*`).
+  - Anti-injection HTML : tous les noms de moteurs et étiquettes sont
+    passés à `html.escape` avant insertion.
+  - +42 tests dans `test_sprint37_inter_engine_html.py` (rendu de la
+    matrice avec valeurs et paire max, masquage adaptatif sur 4 cas
+    dégénérés, anti-injection sur engine name `<script>`, intégration
+    rapport FR + EN, complétude i18n sur les 14 clés × 2 langues).
+
 - **Sprint 36 — Câblage inter-moteurs au runner et au moteur narratif.**
   Suite directe du Sprint 35 (couche de calcul) :
   - `picarones/core/inter_engine.py` gagne `compute_inter_engine_analysis`
@@ -134,10 +159,11 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1588 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
-  +27 Sprint 35, +22 Sprint 36). Aucune régression. **Phase 0 close ;
-  Étape 2 du plan d'évolution : couche de calcul + câblage narratif
-  inter-moteurs livrés.**
+- 1478 → 1630 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+  +27 Sprint 35, +22 Sprint 36, +42 Sprint 37). Aucune régression.
+  **Phase 0 close ; Étape 2 du plan d'évolution : couche de calcul,
+  câblage narratif et vue HTML inter-moteurs livrés (matrice de
+  divergence + encart oracle dans la vue analyses).**
 
 ---
 

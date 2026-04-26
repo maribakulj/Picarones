@@ -150,6 +150,29 @@
       </details>
     </div>
 
+    <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
+    {% if divergence_matrix_html or oracle_gap_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_inter_engine">Analyse inter-moteurs</h3>
+      <div class="inter-engine-grid"
+           style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+        {% if divergence_matrix_html %}
+        <div>{{ divergence_matrix_html }}</div>
+        {% endif %}
+        {% if oracle_gap_html %}
+        <div>{{ oracle_gap_html }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="inter_engine_note">
+        Plus la divergence est élevée, plus deux moteurs se trompent sur des
+        classes d'erreurs différentes — ils sont alors candidats à un voting
+        ensemble. L'oracle est la borne supérieure du recall token-level
+        atteignable par ce voting (proxy bag-of-words).
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
       <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>

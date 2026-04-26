@@ -706,6 +706,21 @@ class ReportGenerator:
         glossary = load_glossary(self.lang)
         glossary_json = json.dumps(glossary, ensure_ascii=False, separators=(",", ":"))
 
+        # Sprint 37 — section inter-moteurs (matrice de divergence + oracle)
+        # rendue côté serveur. Vide si moins de 2 moteurs ou taxonomie absente.
+        from picarones.report.inter_engine_render import (
+            build_divergence_matrix_html,
+            build_oracle_gap_html,
+        )
+        divergence_matrix_html = build_divergence_matrix_html(
+            report_data.get("inter_engine_analysis"),
+            labels=labels,
+        )
+        oracle_gap_html = build_oracle_gap_html(
+            report_data.get("inter_engine_analysis"),
+            labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -719,6 +734,8 @@ class ReportGenerator:
             friedman=report_data.get("statistics", {}).get("friedman", {}),
             synthesis=synthesis,
             glossary_json=glossary_json,
+            divergence_matrix_html=divergence_matrix_html,
+            oracle_gap_html=oracle_gap_html,
         )
 
         output_path.write_text(html, encoding="utf-8")
