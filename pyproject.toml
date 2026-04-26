@@ -48,6 +48,10 @@ web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0", "python
 # Tests statistiques avancés (Wilcoxon exact, Friedman chi² exact, Nemenyi)
 # Sinon fallback pur Python (approximations normale / Wilson-Hilferty).
 stats = ["scipy>=1.11.0"]
+# Extracteurs d'entités nommées (Sprint 40 — A.II.1.a du plan d'évolution).
+# Sans cet extra, picarones.core.ner_backends.SpacyEntityExtractor tombe
+# en mode dégradé silencieux et le runner saute le calcul NER.
+ner = ["spacy>=3.7.0"]
 # Import HuggingFace Datasets
 hf = ["datasets>=2.19.0"]
 # Moteurs OCR optionnels

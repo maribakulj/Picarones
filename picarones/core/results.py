@@ -51,6 +51,16 @@ class DocumentResult:
     """Distribution CER par ligne (percentiles, Gini, heatmap de position)."""
     hallucination_metrics: Optional[dict] = None
     """Métriques de détection des hallucinations VLM (ancrage, ratio longueur, blocs)."""
+    # Champ Sprint 40 — métriques NER calculées si la GT a un EntitiesGT
+    # ET qu'un EntityExtractor a été passé au runner.  ``None`` sinon.
+    ner_metrics: Optional[dict] = None
+    """Précision/rappel/F1 sur entités nommées (Sprint 38-40).
+
+    Format : retour de ``compute_ner_metrics`` (global, per_category,
+    hallucinated_entities, missed_entities, etc.).  Présent uniquement si
+    le document a un niveau de GT ``ENTITIES`` ET que le runner a reçu
+    un ``EntityExtractor``.
+    """
 
     def as_dict(self) -> dict:
         d = {
@@ -80,6 +90,8 @@ class DocumentResult:
             d["line_metrics"] = self.line_metrics
         if self.hallucination_metrics is not None:
             d["hallucination_metrics"] = self.hallucination_metrics
+        if self.ner_metrics is not None:
+            d["ner_metrics"] = self.ner_metrics
         return d
 
     def compact(self) -> None:
@@ -105,6 +117,7 @@ class DocumentResult:
         self.image_quality = None
         self.line_metrics = None
         self.hallucination_metrics = None
+        self.ner_metrics = None
 
 
 @dataclass
@@ -137,6 +150,11 @@ class EngineReport:
     """Distribution CER par ligne agrégée (Gini moyen, percentiles, heatmap, taux catastrophiques)."""
     aggregated_hallucination: Optional[dict] = None
     """Métriques d'hallucination VLM agrégées (ancrage moyen, taux de docs hallucinés…)."""
+    # Sprint 40
+    aggregated_ner: Optional[dict] = None
+    """Métriques NER agrégées sur le corpus : F1 micro/macro globaux et
+    par catégorie, total hallucinations/missed.  ``None`` si aucun
+    document n'a porté de calcul NER."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -197,6 +215,8 @@ class EngineReport:
             d["aggregated_line_metrics"] = self.aggregated_line_metrics
         if self.aggregated_hallucination is not None:
             d["aggregated_hallucination"] = self.aggregated_hallucination
+        if self.aggregated_ner is not None:
+            d["aggregated_ner"] = self.aggregated_ner
         return d
 
 

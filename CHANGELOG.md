@@ -16,6 +16,51 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 40 — A.II.1.a NER : backend extracteur + câblage runner.**
+  Suite directe du Sprint 38 (couche de calcul pure). Le runner peut
+  maintenant calculer les métriques NER de bout-en-bout quand le corpus
+  porte une GT entités (`EntitiesGT` du Sprint 32).
+  - Nouveau module `picarones/core/ner_backends.py` :
+    - `EntityExtractor` (Protocol) : tout callable
+      `(text) -> list[dict]` est un extracteur valide.
+    - `SpacyEntityExtractor(model_name, label_mapping=None)` : lazy-import
+      de spaCy, charge le modèle au premier appel, met en cache. Si
+      spaCy absent OU modèle non téléchargé, fallback gracieux silencieux
+      (retourne `[]`) avec **warning explicite** au premier appel
+      (cf. règle CLAUDE.md). Mapping par défaut spaCy → conventions HIPE
+      (PERSON → PER, GPE → LOC, TIME → DATE, etc.).
+    - `SPACY_PROFILES` : 6 profils nommés (fr, fr_lg, en, en_lg,
+      multilingual, hipe).
+    - `get_extractor(profile)` : factory qui accepte clé de profil ou
+      nom de modèle direct.
+    - `is_spacy_available()` : test sans charger de modèle.
+  - `DocumentResult.ner_metrics: Optional[dict]` ajouté ; sérialisé
+    dans `as_dict()` quand renseigné, libéré par `compact()`.
+  - `EngineReport.aggregated_ner: Optional[dict]` ajouté avec micro-F1
+    global recalculé à partir des sommes TP/FP/FN, détail par catégorie,
+    totaux d'hallucinations et missed.
+  - `runner.run_benchmark` accepte un nouveau paramètre optionnel
+    `entity_extractor`. Si fourni, le runner appelle deux helpers en
+    post-process (main process, **pas** dans les sous-processus pour
+    éviter de pickler spaCy) :
+    - `_attach_ner_metrics(corpus, doc_results, extractor)` : pour
+      chaque doc avec `GTLevel.ENTITIES`, extrait les entités sur
+      l'hypothèse et calcule `compute_ner_metrics`.
+    - `_aggregate_ner(doc_results)` : agrège au niveau du moteur
+      (micro-F1 + per_category + totaux).
+    Les exceptions par doc sont dégradées en warning, le benchmark
+    continue.
+  - **Rétrocompat stricte** : sans `entity_extractor`, aucun calcul
+    NER n'a lieu, aucun champ n'est ajouté, le rapport reste identique.
+  - Nouveau extra `[ner]` dans `pyproject.toml` (`spacy>=3.7.0`) — non
+    installé par défaut.
+  - +16 tests dans `test_sprint40_ner_runner.py` couvrant le fallback
+    sans spaCy + warning, l'idempotence du load, les profils + factory,
+    la sérialisation des nouveaux champs (omis quand None, présents
+    quand renseignés, libérés par compact), le câblage runner avec un
+    extracteur mock injecté, l'agrégation micro-F1, la rétrocompat
+    sans extracteur, et la robustesse à un extracteur qui lève.
+
 - **Sprint 39 — A.II.1.b Calibration des moteurs : couche de calcul.**
   Deuxième brique des trois métriques prioritaires de l'Étape 2 (axe A —
   fiabilité). Stratégie identique aux Sprints 35-38 : couche de calcul
@@ -220,12 +265,13 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1681 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1697 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
-  +32 Sprint 39). Aucune régression. **Phase 0 close ; Étape 2 du plan
-  d'évolution : inter-moteurs livrés bout-en-bout (Sprints 35-37) ;
-  NER (A.II.1.a) et calibration (A.II.1.b) couches de calcul livrées
-  (Sprints 38-39).**
+  +32 Sprint 39, +16 Sprint 40). Aucune régression. **Phase 0 close ;
+  Étape 2 du plan d'évolution : inter-moteurs livrés bout-en-bout
+  (Sprints 35-37) ; NER (A.II.1.a) couche de calcul + backend + câblage
+  runner livrés (Sprints 38-40) ; calibration (A.II.1.b) couche de
+  calcul livrée (Sprint 39).**
 
 ---
 
