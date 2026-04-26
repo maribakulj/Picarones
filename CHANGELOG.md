@@ -16,6 +16,33 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 34 — Phase 0.3 : registre typé de métriques (clôture Phase 0).**
+  Nouveaux modules `picarones/core/metric_registry.py` et
+  `picarones/core/builtin_metrics.py` :
+  - `MetricSpec` (dataclass figée) déclare `name`, `func`,
+    `input_types: tuple[ArtifactType, ArtifactType]`, `description`,
+    `higher_is_better`, `tags`
+  - Décorateur `@register_metric(name=..., input_types=..., ...)`
+    enregistre une métrique dans un registre global ; double
+    enregistrement avec le même nom interdit, signature non-paire rejetée
+  - `select_metrics(input_types)` retourne les métriques applicables à
+    une jonction
+  - `compute_at_junction(reference, hypothesis, input_types)` calcule
+    toutes les métriques sélectionnées et tolère les erreurs unitaires
+    (`logger.warning`, jamais `except: pass`)
+  - `builtin_metrics.py` enregistre `cer`, `wer`, `mer`, `wil` sur
+    `(TEXT, TEXT)` plus le stub `text_preservation_after_reconstruction`
+    sur `(TEXT, ALTO)` comme preuve de concept de jonction hétérogène
+  - **Approche additive stricte** : ni `metrics.py` ni `compute_metrics`
+    ne sont modifiés ; le rapport HTML existant reste strictement
+    identique octet par octet
+  - +21 tests dans `tests/test_sprint34_metric_registry.py` couvrant
+    l'enregistrement, la sélection par signature exacte, la résilience
+    aux erreurs (`skip_on_error`), la **parité numérique** avec
+    `compute_metrics` legacy sur 4 paires de textes (CER/WER/MER/WIL
+    identiques à 1e-9 près), les garde-fous (double enregistrement,
+    arité), et le stub TEXT→ALTO
+
 - **Sprint 33 — Phase 0.2 : interface module générique.** Création de
   `picarones/core/modules.py` :
   - Enum `ArtifactType` (IMAGE, TEXT, ALTO, PAGE, ENTITIES, READING_ORDER) —
@@ -56,7 +83,8 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1518 tests (+17 Sprint 32, +23 Sprint 33). Aucune régression.
+- 1478 → 1539 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34). Aucune
+  régression sur la suite existante. **Phase 0 du plan d'évolution close.**
 
 ---
 
