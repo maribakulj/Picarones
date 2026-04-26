@@ -16,6 +16,38 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 47 — Adapter Tesseract : exposition des `token_confidences`
+  natifs.** Premier des engines adaptés au câblage calibration
+  (Sprint 42). L'utilisateur qui benchmarke avec Tesseract obtient
+  désormais automatiquement ECE/MCE et reliability diagram dans le
+  rapport, sans configuration supplémentaire.
+  - `TesseractEngine.run()` est surchargé : appelle `image_to_string`
+    pour le texte (rétrocompat octet par octet) **et** `image_to_data`
+    pour les confidences mot par mot, retourne un `EngineResult` avec
+    `token_confidences = [{"token": str, "confidence": float}, …]`
+    (confidence ∈ [0, 100], le runner Sprint 42 normalise en [0, 1]).
+  - Helper `_extract_token_confidences()` séparé du chemin OCR
+    principal : si `image_to_data` lève, l'OCR continue normalement
+    et `token_confidences = None` (warning explicite, pas
+    `except: pass`).
+  - Filtrage à la source : non-mots Tesseract (conf = -1), tokens
+    vides, longueurs incompatibles → ignorés.
+  - Nouveau paramètre config `expose_confidences: false` pour
+    désactiver le second appel Tesseract (économie d'un appel par
+    image en cas de besoin).
+  - Coût additionnel : un appel `image_to_data` par image. Le texte
+    de `image_to_string` n'est jamais reconstruit depuis
+    `image_to_data` — préservation stricte du comportement
+    historique.
+  - +9 tests dans `test_sprint47_tesseract_confidences.py` couvrant
+    l'exposition des confidences (avec mock pytesseract), la
+    préservation octet par octet du texte, le flag
+    `expose_confidences=False`, le fallback gracieux quand
+    `image_to_data` lève (warning + `None`), le filtrage des
+    non-mots/longueurs incompatibles, l'intégration bout-en-bout
+    avec le runner (`calibration_metrics` calculé), et le cas
+    pytesseract absent.
+
 - **Sprint 46 — A.III stratification par `script_type` : vue HTML +
   détecteur narratif (clôture A.III)**. Suite directe du Sprint 45
   (couche backend). La vue stratifiée est désormais rendue dans le
@@ -479,16 +511,18 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1864 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1873 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
-  +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46).
-  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution :
-  inter-moteurs (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b)
-  et stratification (A.III) livrés bout-en-bout calcul → runner →
-  HTML ; A.I.2 médiane par défaut livré (Sprint 44). Reste
-  l'adaptation effective des engines pour exposer leurs confidences
-  natives (un sprint par adapter).**
+  +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
+  +9 Sprint 47). Aucune régression. **Phase 0 close ; Étape 2 du
+  plan d'évolution : inter-moteurs (A.II.1.c), NER (A.II.1.a),
+  calibration (A.II.1.b) et stratification (A.III) livrés
+  bout-en-bout calcul → runner → HTML ; A.I.2 médiane par défaut
+  livré (Sprint 44) ; Tesseract adapté pour exposer ses
+  `token_confidences` natifs (Sprint 47, première brique de
+  l'adaptation engines). Reste à adapter Pero, Mistral OCR, Google
+  Vision et Azure DI (un sprint par adapter).**
 
 ---
 
