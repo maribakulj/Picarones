@@ -16,6 +16,35 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 50 — Adapter Google Vision : exposition de
+  `Word.confidence`.** Suite directe des Sprints 47-49.
+  ``DOCUMENT_TEXT_DETECTION`` expose ``Word.confidence`` au niveau mot
+  sur ``page > block > paragraph > word`` ; l'adapter parcourt cette
+  hiérarchie et émet une entrée par mot au format Sprint 42.
+  - Refactor : ``_run_ocr_with_full_annotation(image_path) → (text,
+    full_dict)`` centralise les deux chemins (SDK
+    ``google-cloud-vision`` et REST direct via ``urllib``).
+    ``_run_ocr`` reste rétrocompat (retourne juste le texte).
+  - ``_sdk_full_text_to_dict`` convertit la réponse proto SDK en
+    dict normalisé identique à la réponse REST, pour traitement
+    uniforme.
+  - ``_extract_token_confidences_from_full_text`` parcourt
+    ``pages → blocks → paragraphs → words``, reconstruit chaque mot
+    par concaténation des ``word.symbols[i].text``, et émet
+    ``{"token": str, "confidence": float}`` (confidence ∈ [0, 1] —
+    le runner Sprint 42 accepte directement ce format).
+  - Filtrage cohérent avec les autres adapters : confidence None /
+    négative → ignorée, mots vides → ignorés.
+  - ``TEXT_DETECTION`` (mode "court") ne fournit pas de confidence
+    par mot → ``token_confidences = None``.
+  - Flag config ``expose_confidences: false``.
+  - L'API est appelée une seule fois — aucun overhead.
+  - +17 tests dans `test_sprint50_google_vision_confidences.py`
+    (reconstruction depuis symbols, multi-pages/blocks, filtrage,
+    flag, cas dégénérés, conversion SDK → dict, surcharge ``run()``
+    avec mock du chemin réseau, REST avec urllib mocké, intégration
+    runner).
+
 - **Sprint 49 — Adapter Mistral OCR : exposition des
   `token_confidences` quand l'API les fournit.** Suite des Sprints
   47 (Tesseract) et 48 (Pero OCR). Mistral OCR a deux chemins :
@@ -576,18 +605,18 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1904 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1921 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
-  +9 Sprint 47, +14 Sprint 48, +17 Sprint 49). Aucune régression.
-  **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
-  (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b) et
-  stratification (A.III) livrés bout-en-bout calcul → runner →
+  +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50).
+  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution :
+  inter-moteurs (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b)
+  et stratification (A.III) livrés bout-en-bout calcul → runner →
   HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; Tesseract
-  (Sprint 47), Pero OCR (Sprint 48) et Mistral OCR (Sprint 49)
-  adaptés pour exposer leurs `token_confidences` natifs. Reste à
-  adapter Google Vision et Azure DI.**
+  (Sprint 47), Pero OCR (Sprint 48), Mistral OCR (Sprint 49) et
+  Google Vision (Sprint 50) adaptés pour exposer leurs
+  `token_confidences` natifs. Reste à adapter Azure DI.**
 
 ---
 

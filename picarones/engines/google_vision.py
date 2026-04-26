@@ -10,19 +10,35 @@ Authentification :
   - Via clé API simple : variable d'environnement ``GOOGLE_API_KEY``
 
 Le mode service account est recommandé pour la production.
+
+Sprint 50 — exposition des token_confidences
+---------------------------------------------
+``DOCUMENT_TEXT_DETECTION`` expose ``Word.confidence`` au niveau mot
+sur chaque ``page > block > paragraph > word``.  L'adapter parcourt
+cette hiérarchie et émet une entrée par mot au format Sprint 42.
+Les deux chemins (SDK ``google-cloud-vision`` et REST direct via
+``urllib``) sont normalisés vers une représentation unifiée.
+
+Pour ``TEXT_DETECTION`` (mode "court"), aucune confidence par mot
+n'est exposée : ``token_confidences = None``.
 """
 
 from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-from picarones.engines.base import BaseOCREngine
+from picarones.engines.base import BaseOCREngine, EngineResult
+
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleVisionEngine(BaseOCREngine):
@@ -35,6 +51,11 @@ class GoogleVisionEngine(BaseOCREngine):
     feature_type : str
         Type de détection : ``"DOCUMENT_TEXT_DETECTION"`` (défaut, pour textes
         denses) ou ``"TEXT_DETECTION"`` (pour textes courts).
+    expose_confidences : bool
+        ``True`` (défaut) : extrait ``Word.confidence`` quand
+        ``feature_type=DOCUMENT_TEXT_DETECTION`` (Sprint 50).
+        ``False`` : désactive l'extraction (économise quelques ms par
+        image).
     """
 
     @property
@@ -52,7 +73,22 @@ class GoogleVisionEngine(BaseOCREngine):
         self._feature_type: str = self.config.get("feature_type", "DOCUMENT_TEXT_DETECTION")
 
     def _run_ocr(self, image_path: Path) -> str:
-        # Priorité : SDK google-cloud-vision si disponible, sinon REST direct
+        """API rétrocompat : retourne uniquement le texte."""
+        text, _full = self._run_ocr_with_full_annotation(image_path)
+        return text
+
+    def _run_ocr_with_full_annotation(
+        self, image_path: Path,
+    ) -> tuple[str, Optional[dict]]:
+        """Exécute l'OCR et retourne ``(text, full_text_annotation_dict)``.
+
+        ``full_text_annotation_dict`` est :
+        - le JSON brut ``fullTextAnnotation`` du REST quand on passe
+          par REST,
+        - une représentation dict normalisée quand on passe par SDK,
+        - ``None`` pour ``TEXT_DETECTION`` (mode court sans
+          confidence par mot).
+        """
         if self._credentials_path:
             return self._run_via_sdk(image_path)
         elif self._api_key:
@@ -64,7 +100,7 @@ class GoogleVisionEngine(BaseOCREngine):
                 "ou GOOGLE_API_KEY."
             )
 
-    def _run_via_sdk(self, image_path: Path) -> str:
+    def _run_via_sdk(self, image_path: Path) -> tuple[str, Optional[dict]]:
         try:
             from google.cloud import vision
         except ImportError as exc:
@@ -84,7 +120,9 @@ class GoogleVisionEngine(BaseOCREngine):
                     language_hints=self._language_hints
                 ),
             )
-            return response.full_text_annotation.text
+            text = response.full_text_annotation.text
+            full = self._sdk_full_text_to_dict(response.full_text_annotation)
+            return text, full
         else:
             response = client.text_detection(
                 image=image,
@@ -93,9 +131,10 @@ class GoogleVisionEngine(BaseOCREngine):
                 ),
             )
             texts = response.text_annotations
-            return texts[0].description if texts else ""
+            text = texts[0].description if texts else ""
+            return text, None
 
-    def _run_via_rest(self, image_path: Path) -> str:
+    def _run_via_rest(self, image_path: Path) -> tuple[str, Optional[dict]]:
         """Appel REST direct (sans SDK), avec clé API simple."""
         image_b64 = base64.b64encode(image_path.read_bytes()).decode("ascii")
         payload = {
@@ -124,13 +163,137 @@ class GoogleVisionEngine(BaseOCREngine):
 
         responses = result.get("responses", [{}])
         if not responses:
-            return ""
+            return "", None
         r = responses[0]
         if "error" in r:
             raise RuntimeError(f"Google Vision API erreur : {r['error']}")
 
         if self._feature_type == "DOCUMENT_TEXT_DETECTION":
-            return r.get("fullTextAnnotation", {}).get("text", "")
+            full = r.get("fullTextAnnotation") or None
+            text = (full or {}).get("text", "") if isinstance(full, dict) else ""
+            return text, full
         else:
             texts = r.get("textAnnotations", [])
-            return texts[0]["description"] if texts else ""
+            text = texts[0]["description"] if texts else ""
+            return text, None
+
+    # ──────────────────────────────────────────────────────────────────
+    # Conversion SDK → dict normalisé (pour traitement uniforme)
+    # ──────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _sdk_full_text_to_dict(full_text_annotation: Any) -> dict:
+        """Convertit une réponse proto SDK en dict avec la même
+        structure que le REST : ``{pages: [{blocks: [{paragraphs:
+        [{words: [{confidence, symbols: [{text}]}]}]}]}]}``."""
+        pages = []
+        for page in getattr(full_text_annotation, "pages", []) or []:
+            blocks = []
+            for block in getattr(page, "blocks", []) or []:
+                paragraphs = []
+                for para in getattr(block, "paragraphs", []) or []:
+                    words = []
+                    for word in getattr(para, "words", []) or []:
+                        symbols = [
+                            {"text": getattr(s, "text", "")}
+                            for s in getattr(word, "symbols", []) or []
+                        ]
+                        words.append({
+                            "confidence": float(getattr(word, "confidence", 0.0)),
+                            "symbols": symbols,
+                        })
+                    paragraphs.append({"words": words})
+                blocks.append({"paragraphs": paragraphs})
+            pages.append({"blocks": blocks})
+        return {"pages": pages}
+
+    # ──────────────────────────────────────────────────────────────────
+    # Extraction des token_confidences au format Sprint 42
+    # ──────────────────────────────────────────────────────────────────
+
+    def _extract_token_confidences_from_full_text(
+        self, full_text_annotation: Optional[dict],
+    ) -> Optional[list[dict[str, Any]]]:
+        """Parcourt ``pages → blocks → paragraphs → words`` et émet
+        ``{"token": mot, "confidence": float}`` par mot.
+
+        Le mot est reconstitué par concaténation des
+        ``word.symbols[i].text``.  ``word.confidence`` ∈ [0, 1] (le
+        runner Sprint 42 accepte directement ce format).
+
+        Retourne ``None`` si :
+        - ``full_text_annotation`` est ``None`` (cas TEXT_DETECTION),
+        - ``expose_confidences=False``,
+        - aucun mot exploitable n'a été trouvé.
+        """
+        if not self.config.get("expose_confidences", True):
+            return None
+        if not full_text_annotation or not isinstance(full_text_annotation, dict):
+            return None
+        try:
+            out: list[dict[str, Any]] = []
+            for page in full_text_annotation.get("pages") or []:
+                if not isinstance(page, dict):
+                    continue
+                for block in page.get("blocks") or []:
+                    if not isinstance(block, dict):
+                        continue
+                    for para in block.get("paragraphs") or []:
+                        if not isinstance(para, dict):
+                            continue
+                        for word in para.get("words") or []:
+                            if not isinstance(word, dict):
+                                continue
+                            text = "".join(
+                                (s or {}).get("text", "")
+                                for s in (word.get("symbols") or [])
+                            ).strip()
+                            if not text:
+                                continue
+                            conf = word.get("confidence")
+                            if conf is None:
+                                continue
+                            try:
+                                conf_val = float(conf)
+                            except (TypeError, ValueError):
+                                continue
+                            if conf_val < 0:
+                                continue
+                            out.append({"token": text, "confidence": conf_val})
+            return out or None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[google_vision] extraction des token_confidences dégradée : %s",
+                exc,
+            )
+            return None
+
+    def run(self, image_path: str | Path) -> EngineResult:
+        """Exécute Google Vision et expose les ``Word.confidence``
+        natifs (Sprint 50).
+
+        L'API est appelée une seule fois ; texte et structure
+        ``fullTextAnnotation`` sont récupérés ensemble.  Aucun
+        overhead par rapport à l'implémentation historique.
+        """
+        image_path = Path(image_path)
+        start = time.perf_counter()
+        text = ""
+        error: Optional[str] = None
+        token_confidences: Optional[list[dict[str, Any]]] = None
+        try:
+            text, full = self._run_ocr_with_full_annotation(image_path)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        else:
+            token_confidences = self._extract_token_confidences_from_full_text(full)
+        duration = time.perf_counter() - start
+        return EngineResult(
+            engine_name=self.name,
+            image_path=str(image_path),
+            text=text,
+            duration_seconds=round(duration, 4),
+            error=error,
+            metadata={"engine_version": self._safe_version()},
+            token_confidences=token_confidences,
+        )
