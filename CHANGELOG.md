@@ -16,6 +16,33 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 38 — A.II.1.a NER : couche de calcul.** Première brique
+  des trois métriques prioritaires de l'Étape 2 du plan d'évolution
+  (axe A — utilité aval). Stratégie de découpage analogue à la
+  divergence taxonomique (Sprints 35-37) : couche de calcul d'abord,
+  câblage runner+narratif+HTML aux sprints suivants.
+  - Nouveau module `picarones/core/ner.py` :
+    - dataclass `Entity(label, start, end, text)` avec validation de
+      span ;
+    - `compute_ner_metrics(reference_entities, hypothesis_entities,
+      iou_threshold=0.5)` qui aligne par chevauchement IoU
+      (greedy, IoU décroissant, chaque entité matchée une seule fois)
+      et retourne precision/recall/F1 globaux + par catégorie, plus
+      les listes des entités hallucinées (FP) et manquées (FN) ;
+    - format de dict compatible `EntitiesGT` du Sprint 32 (clé
+      `{label, start, end, text}`).
+  - Métrique `ner_f1` enregistrée dans le registre typé Sprint 34
+    pour la jonction `(ENTITIES, ENTITIES)` — peut être appelée par
+    `compute_at_junction` aussi simplement que `cer` sur `(TEXT, TEXT)`.
+  - Aucune dépendance externe (pas de spaCy ni Stanza dans ce sprint) :
+    les listes d'entités sont fournies en entrée. Le backend extracteur
+    suit dans un sprint dédié.
+  - +19 tests dans `test_sprint38_ner_metrics.py` (cas standard parfait/FN/FP,
+    label case-insensitive, IoU sous/sur seuil, custom threshold,
+    multi-catégorie, alignement greedy avec une seule entité matchée,
+    best-IoU wins, cas dégénérés vide/asymétrique, validation Entity,
+    intégration registre).
+
 - **Sprint 37 — Section inter-moteurs dans le rapport HTML.** Suite directe
   des Sprints 35-36 : la couche de calcul est maintenant visible côté
   rapport.
@@ -159,11 +186,11 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1630 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
-  +27 Sprint 35, +22 Sprint 36, +42 Sprint 37). Aucune régression.
-  **Phase 0 close ; Étape 2 du plan d'évolution : couche de calcul,
-  câblage narratif et vue HTML inter-moteurs livrés (matrice de
-  divergence + encart oracle dans la vue analyses).**
+- 1478 → 1649 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+  +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38). Aucune
+  régression. **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
+  livrés bout-en-bout (Sprints 35-37) ; NER (axe A.II.1.a) couche de
+  calcul livrée (Sprint 38).**
 
 ---
 
