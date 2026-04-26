@@ -16,6 +16,24 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 33 — Phase 0.2 : interface module générique.** Création de
+  `picarones/core/modules.py` :
+  - Enum `ArtifactType` (IMAGE, TEXT, ALTO, PAGE, ENTITIES, READING_ORDER) —
+    valeurs string alignées sur `GTLevel` pour conversion triviale
+  - Classe abstraite `BaseModule` avec `input_types`/`output_types`
+    déclaratifs, `execution_mode: "io"|"cpu"`, méthode `process` typée
+    `dict[ArtifactType, Any] → dict[ArtifactType, Any]`, helpers
+    `validate_inputs`/`validate_outputs`, `metadata()` libre
+  - `BaseOCREngine` hérite désormais de `BaseModule` avec
+    `input_types=(IMAGE,)`, `output_types=(TEXT,)`. Sa nouvelle méthode
+    `process` wrappe l'API historique `run()`. Aucun adaptateur OCR
+    existant (Tesseract, Pero, Mistral OCR, Google Vision, Azure DI) n'est
+    touché — le test_engines.py passe sans modification.
+  - +23 tests dans `tests/test_sprint33_module_interface.py` couvrant le
+    contrat (instanciation, validation I/O, repr), un `TextToAltoMock`
+    démonstratif (TEXT→ALTO, critère explicite du plan), la délégation
+    `BaseOCREngine.process → run`, et la cohérence ArtifactType/GTLevel.
+
 - **Sprint 32 — Phase 0.1 : modèle de données GT multi-niveaux.**
   Refonte de `picarones/core/corpus.py` :
   - Enum `GTLevel` (TEXT, ALTO, PAGE, ENTITIES, READING_ORDER)
@@ -38,8 +56,7 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1495 tests (+17 sur le Sprint 32). Aucune régression sur la
-  suite existante.
+- 1478 → 1518 tests (+17 Sprint 32, +23 Sprint 33). Aucune régression.
 
 ---
 
