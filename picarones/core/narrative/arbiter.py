@@ -64,6 +64,7 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.COST_OUTLIER,
     FactType.CONFIDENCE_WARNING,
     FactType.ENSEMBLE_OPPORTUNITY,
+    FactType.MEDIAN_MEAN_GAP_WARNING,
 )
 
 
@@ -86,6 +87,9 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.SPEED_WINNER}),
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.CONFIDENCE_WARNING}),
     frozenset({FactType.STATISTICAL_TIE, FactType.SPEED_WINNER}),
+    # Sprint 44 — l'avertissement d'asymétrie nuance le leader
+    # plutôt que de le doubler : on veut les deux phrases ensemble.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.MEDIAN_MEAN_GAP_WARNING}),
 })
 
 

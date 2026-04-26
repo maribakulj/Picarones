@@ -61,3 +61,10 @@ ensemble_opportunity: >-
   among the engines would preserve {oracle_recall_pct} % — i.e.
   {absolute_gap_pct} points recoverable ({relative_gap_pct} % of the best
   engine's errors).
+
+median_mean_gap_warning: >-
+  Asymmetric distribution for {engine}: median CER {median_cer_pct} %
+  vs mean {mean_cer_pct} % across {n_docs} documents (relative gap
+  {relative_gap_pct} %). The mean is pulled by a few catastrophic
+  documents — the median (now used for default ranking) is more
+  representative.

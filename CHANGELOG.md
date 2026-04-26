@@ -16,6 +16,36 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 44 — A.I.2 : tri par médiane CER par défaut + détecteur
+  d'asymétrie.** Réponse à la critique structurelle 2 du plan
+  d'évolution : sur les corpus patrimoniaux, la moyenne est facilement
+  tirée par quelques documents catastrophiques et masque les
+  performances réelles ; la médiane est plus représentative.
+  - `EngineReport.median_cer` : nouvelle propriété qui lit
+    `aggregated_metrics["cer"]["median"]`.
+  - `BenchmarkResult.ranking()` :
+    - inclut désormais `median_cer` dans chaque entrée (additif)
+    - **trie par médiane CER croissante par défaut** (et non plus
+      par moyenne)
+    - retombe sur `mean_cer` quand `median_cer` est absent
+      (rétrocompat pour le cas pathologique)
+  - Nouveau `FactType.MEDIAN_MEAN_GAP_WARNING` et détecteur
+    `detect_median_mean_gap_warning` (priority 140) : émet un Fact
+    quand `|mean - median| / median > 30 %` pour le moteur leader.
+    Importance MEDIUM par défaut, HIGH si gap relatif ≥ 100 %.
+    Garde-fou : ne déclenche pas si la médiane est nulle.
+  - Templates FR/EN — aucun nombre en dur, tout vient du payload
+    (vérifié par test).
+  - L'arbitre marque la paire `{GLOBAL_LEADER_CER,
+    MEDIAN_MEAN_GAP_WARNING}` comme **complémentaire** : les deux
+    phrases peuvent coexister dans la synthèse pour nuancer le
+    leader.
+  - +15 tests dans `test_sprint44_median_default.py` (propriété
+    median_cer, tri par médiane sur cas asymétrique réaliste,
+    fallback sur la moyenne, déclenchement du détecteur sur 4 cas
+    dégénérés, importance MEDIUM/HIGH selon gap, traçabilité
+    anti-hallucination FR + EN, intégration via build_synthesis).
+
 - **Sprint 43 — A.II.1.b Calibration : vue HTML reliability diagram +
   tableau ECE/MCE (clôture A.II.1.b côté rapport).** Suite directe du
   Sprint 42 (câblage runner). Les chiffres de calibration sont
@@ -374,12 +404,13 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1795 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1810 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
-  +43 Sprint 43). Aucune régression. **Phase 0 close ; Étape 2 du
-  plan d'évolution : inter-moteurs (A.II.1.c), NER (A.II.1.a) et
-  calibration (A.II.1.b) livrés bout-en-bout calcul → runner → HTML.
+  +43 Sprint 43, +15 Sprint 44). Aucune régression. **Phase 0
+  close ; Étape 2 du plan d'évolution : inter-moteurs (A.II.1.c),
+  NER (A.II.1.a) et calibration (A.II.1.b) livrés bout-en-bout
+  calcul → runner → HTML ; A.I.2 médiane par défaut livré (Sprint 44).
   Reste l'adaptation effective des engines pour exposer leurs
   confidences natives (un sprint par adapter).**
 

@@ -64,6 +64,12 @@ class FactType(str, Enum):
     """Deux moteurs sont fortement complémentaires : un voting majoritaire
     pourrait améliorer significativement le CER (Sprint 36)."""
 
+    MEDIAN_MEAN_GAP_WARNING = "median_mean_gap_warning"
+    """Distribution des CER fortement asymétrique sur le corpus —
+    la moyenne du leader est tirée par quelques documents catastrophiques
+    et masque les performances réelles. La médiane (utilisée pour le tri
+    par défaut depuis Sprint 44) est plus représentative."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

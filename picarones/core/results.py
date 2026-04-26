@@ -186,6 +186,18 @@ class EngineReport:
         return cer_stats.get("mean")
 
     @property
+    def median_cer(self) -> Optional[float]:
+        """CER médian sur le corpus.
+
+        Sprint 44 — devient le critère de tri par défaut du ``ranking()``
+        car la moyenne est facilement tirée par quelques documents
+        catastrophiques sur une distribution asymétrique (typique des
+        corpus patrimoniaux).
+        """
+        cer_stats = self.aggregated_metrics.get("cer", {})
+        return cer_stats.get("median")
+
+    @property
     def mean_wer(self) -> Optional[float]:
         wer_stats = self.aggregated_metrics.get("wer", {})
         return wer_stats.get("mean")
@@ -258,22 +270,43 @@ class BenchmarkResult:
     inter_engine_analysis: Optional[dict] = None
 
     def ranking(self) -> list[dict]:
-        """Retourne le classement des moteurs trié par CER croissant."""
+        """Retourne le classement des moteurs trié par **médiane CER** croissante.
+
+        Sprint 44 — A.I.2 du plan d'évolution : le tri par défaut bascule
+        de la moyenne vers la médiane.  Sur des distributions
+        asymétriques (typique des corpus patrimoniaux : 80 % des docs
+        à 3 % de CER, 20 % à 40 %), la moyenne est tirée par quelques
+        documents catastrophiques et masque les performances réelles.
+        La médiane est plus représentative ; cohérente aussi avec le
+        test de Friedman qui travaille déjà sur les rangs (Sprint 18).
+
+        Le champ ``mean_cer`` est conservé dans chaque entrée pour
+        rétrocompatibilité — les consommateurs (CLI, détecteurs
+        narratifs, vue HTML) continuent à pouvoir l'afficher en colonne
+        secondaire.  Le tri prend ``median_cer`` quand disponible et
+        retombe sur ``mean_cer`` sinon.
+        """
         ranked = []
         for report in self.engine_reports:
             ranked.append(
                 {
                     "engine": report.engine_name,
                     "mean_cer": report.mean_cer,
+                    "median_cer": report.median_cer,
                     "mean_wer": report.mean_wer,
                     "documents": len(report.document_results),
                     "failed": report.aggregated_metrics.get("failed_count", 0),
                 }
             )
-        return sorted(
-            ranked,
-            key=lambda x: (x["mean_cer"] is None, x["mean_cer"] or float("inf")),
-        )
+
+        def _sort_key(entry: dict) -> tuple:
+            # Priorité : médiane si disponible, sinon moyenne, sinon +∞
+            primary = entry.get("median_cer")
+            if primary is None:
+                primary = entry.get("mean_cer")
+            return (primary is None, primary if primary is not None else float("inf"))
+
+        return sorted(ranked, key=_sort_key)
 
     def as_dict(self) -> dict:
         d = {

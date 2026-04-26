@@ -65,3 +65,10 @@ ensemble_opportunity: >-
   entre les moteurs en préserverait {oracle_recall_pct} %, soit
   {absolute_gap_pct} points récupérables ({relative_gap_pct} % des erreurs
   du meilleur moteur).
+
+median_mean_gap_warning: >-
+  Distribution asymétrique pour {engine} : médiane CER {median_cer_pct} %
+  vs moyenne {mean_cer_pct} % sur {n_docs} documents (écart relatif
+  {relative_gap_pct} %). La moyenne est tirée par quelques documents
+  catastrophiques — la médiane (utilisée pour le tri par défaut) est
+  plus représentative.

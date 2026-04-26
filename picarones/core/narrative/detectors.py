@@ -718,6 +718,65 @@ def detect_confidence_warning(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
+# Détecteur Sprint 44 — distribution asymétrique (médiane vs moyenne)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.MEDIAN_MEAN_GAP_WARNING,
+    priority=140,
+    importance=FactImportance.MEDIUM,
+)
+def detect_median_mean_gap_warning(benchmark_data: dict) -> list[Fact]:
+    """Avertit quand le ratio ``|moyenne - médiane| / médiane`` du leader
+    dépasse 30 %, ce qui indique une distribution fortement asymétrique
+    où la moyenne masque les performances réelles.
+
+    Sprint 44 — A.I.2 du plan d'évolution. Cohérent avec le passage du
+    tri par défaut sur la médiane : si la moyenne du leader diverge
+    fortement de la médiane, l'utilisateur doit le savoir pour
+    interpréter correctement les chiffres.
+    """
+    ranking = benchmark_data.get("ranking") or []
+    valid = [
+        r for r in ranking
+        if r.get("median_cer") is not None
+        and r.get("mean_cer") is not None
+    ]
+    if not valid:
+        return []
+
+    leader = valid[0]
+    median_cer = float(leader["median_cer"])
+    mean_cer = float(leader["mean_cer"])
+
+    if median_cer <= 0:
+        # Médiane nulle (corpus très facile pour ce moteur) — l'écart
+        # relatif n'est pas calculable de manière utile, on s'abstient.
+        return []
+
+    relative_gap = abs(mean_cer - median_cer) / median_cer
+    if relative_gap < 0.30:
+        return []
+
+    importance = (
+        FactImportance.HIGH if relative_gap >= 1.0 else FactImportance.MEDIUM
+    )
+
+    return [Fact(
+        type=FactType.MEDIAN_MEAN_GAP_WARNING,
+        importance=importance,
+        payload={
+            "engine": leader["engine"],
+            "median_cer_pct": round(median_cer * 100, 2),
+            "mean_cer_pct": round(mean_cer * 100, 2),
+            "relative_gap_pct": round(relative_gap * 100, 1),
+            "n_docs": int(leader.get("documents") or 0),
+        },
+        engines_involved=(leader["engine"],),
+    )]
+
+
+# ---------------------------------------------------------------------------
 # Détecteur Sprint 36 — opportunité d'ensemble (complémentarité)
 # ---------------------------------------------------------------------------
 
