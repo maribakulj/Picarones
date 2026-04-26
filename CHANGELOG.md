@@ -16,6 +16,41 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 49 — Adapter Mistral OCR : exposition des
+  `token_confidences` quand l'API les fournit.** Suite des Sprints
+  47 (Tesseract) et 48 (Pero OCR). Mistral OCR a deux chemins :
+  l'endpoint dédié `/v1/ocr` (modèle `mistral-ocr-latest`) qui peut
+  exposer des champs `confidence` à différents niveaux, et l'API
+  chat/vision (`pixtral-*`) qui ne fournit pas de confidences.
+  - Refactor : nouvelle méthode `_run_ocr_with_response(image_path)`
+    retourne `(text, raw_response)`. `_run_ocr_native_api` retourne
+    désormais aussi le JSON brut. Le chemin chat/vision retourne
+    `(text, None)` car aucune confidence n'est disponible.
+  - `_extract_token_confidences_from_response` parse la réponse
+    `/v1/ocr` en cascade :
+    1. `pages[i].words[j]` avec `{"text", "confidence"}` →
+       extraction directe
+    2. `pages[i].lines[j]` avec `{"text", "confidence"}` →
+       propagation de la confidence à chaque mot (pattern Pero
+       Sprint 48)
+    3. `pages[i].blocks[j]` → idem
+  - Filtrage cohérent avec Tesseract/Pero : texte vide, confidence
+    None, confidence négative → ignorés.
+  - Si l'API ne retourne aucun champ `confidence` exploitable
+    (cas courant si Mistral retourne uniquement du markdown), ou si
+    on est sur le chemin chat/vision, `token_confidences = None`.
+  - Nouveau paramètre config `expose_confidences: false` cohérent
+    avec les autres adapters.
+  - L'API est appelée **une seule fois** ; le coût est strictement
+    identique à l'implémentation historique.
+  - +17 tests dans `test_sprint49_mistral_confidences.py` couvrant
+    l'extraction (words explicites, propagation lines/blocks,
+    combinaison, filtrage texte vide / conf None / négative), les
+    cas dégénérés (None, dict vide, pas de pages, markdown sans
+    confidences, types invalides), le flag `expose_confidences=False`,
+    la surcharge `run()` (mock du chemin réseau, chat/vision sans
+    confidences, échec API), et l'intégration runner.
+
 - **Sprint 48 — Adapter Pero OCR : exposition des `token_confidences`
   natifs.** Suite directe du Sprint 47 (Tesseract). Pero OCR fournit
   une confidence par ligne (``transcription_confidence``, probabilité
@@ -541,17 +576,18 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1887 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1904 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
-  +9 Sprint 47, +14 Sprint 48). Aucune régression. **Phase 0
-  close ; Étape 2 du plan d'évolution : inter-moteurs (A.II.1.c),
-  NER (A.II.1.a), calibration (A.II.1.b) et stratification (A.III)
-  livrés bout-en-bout calcul → runner → HTML ; A.I.2 médiane par
-  défaut livré (Sprint 44) ; Tesseract (Sprint 47) et Pero OCR
-  (Sprint 48) adaptés pour exposer leurs `token_confidences`
-  natifs. Reste à adapter Mistral OCR, Google Vision et Azure DI.**
+  +9 Sprint 47, +14 Sprint 48, +17 Sprint 49). Aucune régression.
+  **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
+  (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b) et
+  stratification (A.III) livrés bout-en-bout calcul → runner →
+  HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; Tesseract
+  (Sprint 47), Pero OCR (Sprint 48) et Mistral OCR (Sprint 49)
+  adaptés pour exposer leurs `token_confidences` natifs. Reste à
+  adapter Google Vision et Azure DI.**
 
 ---
 
