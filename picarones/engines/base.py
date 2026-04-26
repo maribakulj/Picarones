@@ -22,6 +22,13 @@ class EngineResult:
     duration_seconds: float
     error: Optional[str] = None
     metadata: dict = field(default_factory=dict)
+    # Sprint 42 — confidences au niveau token (optionnel).
+    # Format attendu : liste de dicts ``{"token": str, "confidence": float}``
+    # avec ``confidence`` ∈ [0, 1] (ou ∈ [0, 100], normalisé par le runner).
+    # ``None`` si le moteur ne fournit pas ce signal — comportement par
+    # défaut pour tous les adapters historiques.  Quand renseigné,
+    # le runner alimente ``DocumentResult.calibration_metrics``.
+    token_confidences: Optional[list[dict[str, Any]]] = None
 
     @property
     def success(self) -> bool:

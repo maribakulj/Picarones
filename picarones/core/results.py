@@ -61,6 +61,15 @@ class DocumentResult:
     le document a un niveau de GT ``ENTITIES`` ET que le runner a reçu
     un ``EntityExtractor``.
     """
+    # Sprint 42 — calibration des confidences moteur (ECE, MCE, bins)
+    calibration_metrics: Optional[dict] = None
+    """Métriques de calibration (Sprint 39+42).
+
+    Format : retour de ``compute_calibration_metrics`` (ece, mce,
+    n_bins, n_predictions, overall_accuracy, overall_confidence, bins).
+    Présent uniquement si le moteur a fourni des ``token_confidences``
+    sur l'``EngineResult``.
+    """
 
     def as_dict(self) -> dict:
         d = {
@@ -92,6 +101,8 @@ class DocumentResult:
             d["hallucination_metrics"] = self.hallucination_metrics
         if self.ner_metrics is not None:
             d["ner_metrics"] = self.ner_metrics
+        if self.calibration_metrics is not None:
+            d["calibration_metrics"] = self.calibration_metrics
         return d
 
     def compact(self) -> None:
@@ -118,6 +129,7 @@ class DocumentResult:
         self.line_metrics = None
         self.hallucination_metrics = None
         self.ner_metrics = None
+        self.calibration_metrics = None
 
 
 @dataclass
@@ -155,6 +167,12 @@ class EngineReport:
     """Métriques NER agrégées sur le corpus : F1 micro/macro globaux et
     par catégorie, total hallucinations/missed.  ``None`` si aucun
     document n'a porté de calcul NER."""
+    # Sprint 42
+    aggregated_calibration: Optional[dict] = None
+    """Calibration agrégée sur le corpus : ECE, MCE, reliability diagram
+    micro recalculé à partir des sommes par bin.  ``None`` si aucun
+    document n'avait de ``calibration_metrics`` (cas par défaut tant que
+    les engines n'exposent pas ``token_confidences``)."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -217,6 +235,8 @@ class EngineReport:
             d["aggregated_hallucination"] = self.aggregated_hallucination
         if self.aggregated_ner is not None:
             d["aggregated_ner"] = self.aggregated_ner
+        if self.aggregated_calibration is not None:
+            d["aggregated_calibration"] = self.aggregated_calibration
         return d
 
 

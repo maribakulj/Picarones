@@ -16,6 +16,40 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 42 — A.II.1.b Calibration : exposition `token_confidences` +
+  câblage runner.** Suite directe du Sprint 39 (couche de calcul). Le
+  runner peut maintenant calculer ECE/MCE/reliability dès qu'un moteur
+  expose des confidences au niveau token.
+  - `EngineResult.token_confidences: Optional[list[dict[str, Any]]]`
+    ajouté. Format attendu : `[{"token": str, "confidence": float}, …]`,
+    confidence ∈ [0, 1] ou ∈ [0, 100] (normalisé par le runner).
+    `None` par défaut → comportement strictement rétrocompat pour tous
+    les adapters historiques (Tesseract, Pero, Mistral OCR, Google
+    Vision, Azure DI). L'adaptation de chaque adapter à exposer ses
+    confidences natives est reportée à des sprints dédiés (un par
+    adapter).
+  - `DocumentResult.calibration_metrics: Optional[dict]` ajouté
+    (sérialisé dans `as_dict` quand renseigné, libéré par `compact()`).
+  - `EngineReport.aggregated_calibration: Optional[dict]` ajouté.
+  - Helper `_calibration_from_engine_result(ground_truth, token_confidences)` :
+    aligne par bag-of-words avec multiplicité (proxy oracle, comme
+    `oracle_token_recall` du Sprint 35), normalise les confidences en
+    pourcentage à `[0, 1]`, ignore les confidences négatives
+    (Tesseract met -1 pour les non-mots), retourne `None` sur entrée
+    vide. Appelé dans `_compute_document_result` quand
+    `EngineResult.token_confidences` est non-vide.
+  - Helper `_aggregate_calibration(doc_results)` : combine les bins de
+    tous les docs en somme pondérée par count, recalcule ECE/MCE micro
+    sur l'ensemble. Renvoie `None` si aucun doc n'a de
+    `calibration_metrics`.
+  - +17 tests dans `test_sprint42_calibration_runner.py` couvrant le
+    nouveau champ EngineResult, la sérialisation et compact des
+    nouveaux champs DR/ER, l'helper d'alignement (calibration parfaite,
+    normalisation %, skip négatifs, bag-of-words avec multiplicité,
+    skip entrées invalides), l'agrégateur (combinaison de bins
+    multi-docs, recalcul ECE/MCE micro), et la rétrocompat
+    (pas de calcul sans token_confidences).
+
 - **Sprint 41 — A.II.1.a NER : vue HTML dédiée (clôture A.II.1.a).**
   Suite directe des Sprints 38-40. Le moteur narratif et le runner ont
   déjà tout ce qu'il faut ; ce sprint rend les chiffres visibles et
@@ -299,13 +333,15 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1735 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1752 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
-  +32 Sprint 39, +16 Sprint 40, +38 Sprint 41). Aucune régression.
-  **Phase 0 close ; Étape 2 du plan d'évolution : inter-moteurs
-  (A.II.1.c) et NER (A.II.1.a) livrés bout-en-bout calcul → runner
-  → narratif → HTML ; calibration (A.II.1.b) couche de calcul
-  livrée (Sprint 39).**
+  +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42).
+  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution :
+  inter-moteurs (A.II.1.c) et NER (A.II.1.a) livrés bout-en-bout
+  calcul → runner → narratif → HTML ; calibration (A.II.1.b) couche
+  de calcul + câblage runner livrés (Sprints 39+42), il manque la vue
+  HTML reliability diagram et l'adaptation des engines pour exposer
+  leurs confidences natives.**
 
 ---
 

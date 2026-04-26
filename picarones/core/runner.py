@@ -101,6 +101,67 @@ def _io_doc_worker(
 # Calcul documentaire centralisé
 # ---------------------------------------------------------------------------
 
+
+def _calibration_from_engine_result(
+    ground_truth: str,
+    token_confidences: list,
+) -> Optional[dict]:
+    """Aligne les ``token_confidences`` du moteur sur la GT (bag-of-words)
+    pour produire les listes parallèles ``confidences`` / ``is_correct``,
+    puis appelle ``compute_calibration_metrics`` (Sprint 39).
+
+    Convention d'alignement (proxy bag-of-words avec multiplicité, comme
+    ``oracle_token_recall`` du Sprint 35) : un token de l'hypothèse est
+    "correct" si la GT contient encore une occurrence de ce token.
+    Ce n'est pas un alignement séquentiel ; c'est volontaire pour rester
+    simple et robuste aux décalages d'OCR.
+
+    Les confidences ``> 1.0`` sont supposées en pourcentage et
+    normalisées à ``[0, 1]``.  Les confidences négatives (Tesseract met
+    -1 pour les non-mots) sont ignorées.
+    """
+    from collections import Counter
+
+    from picarones.core.calibration import compute_calibration_metrics
+
+    if not token_confidences:
+        return None
+
+    gt_counter = Counter((ground_truth or "").split())
+    confidences: list[float] = []
+    is_correct: list[int] = []
+
+    for tc in token_confidences:
+        if not isinstance(tc, dict):
+            continue
+        token = str(tc.get("token", ""))
+        if not token:
+            continue
+        try:
+            conf = float(tc.get("confidence"))
+        except (TypeError, ValueError):
+            continue
+        if conf < 0:
+            # -1 = non-mot dans le format Tesseract image_to_data
+            continue
+        if conf > 1.0:
+            conf = conf / 100.0
+        if not 0.0 <= conf <= 1.0:
+            continue
+        if gt_counter[token] > 0:
+            is_correct.append(1)
+            gt_counter[token] -= 1
+        else:
+            is_correct.append(0)
+        confidences.append(conf)
+
+    if not confidences:
+        return None
+    return compute_calibration_metrics(confidences, is_correct)
+
+
+
+
 def _compute_document_result(
     doc_id: str,
     image_path: str,
@@ -204,6 +265,18 @@ def _compute_document_result(
         except Exception as e:
             _logger.warning("[hallucination] fonctionnalité dégradée : %s", e)
 
+    # Sprint 42 — calibration des confidences moteur (en dehors du
+    # ``if ocr_result.success`` puisqu'on peut avoir des confidences même
+    # sur un succès partiel).
+    calibration_data: Optional[dict] = None
+    if ocr_result.token_confidences:
+        try:
+            calibration_data = _calibration_from_engine_result(
+                ground_truth, ocr_result.token_confidences,
+            )
+        except Exception as e:
+            _logger.warning("[calibration] fonctionnalité dégradée : %s", e)
+
     try:
         from picarones.core.image_quality import analyze_image_quality
         iq = analyze_image_quality(image_path)
@@ -229,6 +302,7 @@ def _compute_document_result(
         image_quality=image_quality_data,
         line_metrics=line_metrics_data,
         hallucination_metrics=hallucination_data,
+        calibration_metrics=calibration_data,
     )
 
 
@@ -636,6 +710,7 @@ def run_benchmark(
         agg_image_quality = _aggregate_image_quality(document_results)
         agg_line_metrics = _aggregate_line_metrics(document_results)
         agg_hallucination = _aggregate_hallucination(document_results)
+        agg_calibration = _aggregate_calibration(document_results)
 
         report = EngineReport(
             engine_name=engine.name,
@@ -650,6 +725,7 @@ def run_benchmark(
             aggregated_image_quality=agg_image_quality,
             aggregated_line_metrics=agg_line_metrics,
             aggregated_hallucination=agg_hallucination,
+            aggregated_calibration=agg_calibration,
         )
         engine_reports.append(report)
         logger.info(
@@ -955,6 +1031,102 @@ def _attach_ner_metrics(
 
     if n_done > 0:
         logger.info("[ner] %d documents évalués pour NER.", n_done)
+
+
+def _aggregate_calibration(doc_results: list) -> Optional[dict]:
+    """Agrège la calibration micro sur tous les docs.
+
+    Recalcule ECE/MCE à partir de la **somme des bins** de chaque
+    document : pour chaque bin, on additionne ``count``, on agrège la
+    confiance moyenne pondérée par count, et on agrège l'accuracy
+    pondérée par count.  L'ECE micro est ensuite la moyenne pondérée
+    par bin de ``|conf - acc|``.
+    """
+    relevant = [
+        dr for dr in doc_results
+        if dr.calibration_metrics is not None
+        and (dr.calibration_metrics.get("bins") or [])
+    ]
+    if not relevant:
+        return None
+
+    # Aligne tous les docs sur le même nombre de bins (par sécurité, on
+    # vérifie qu'ils sont cohérents — sinon on prend le 1er en
+    # référence et on saute les incohérents avec un warning).
+    n_bins = relevant[0].calibration_metrics.get("n_bins", 10)
+    sum_conf: list[float] = [0.0] * n_bins
+    sum_acc: list[float] = [0.0] * n_bins
+    counts: list[int] = [0] * n_bins
+    bin_lows: list[float] = [
+        b["bin_low"] for b in relevant[0].calibration_metrics["bins"]
+    ]
+    bin_highs: list[float] = [
+        b["bin_high"] for b in relevant[0].calibration_metrics["bins"]
+    ]
+
+    for dr in relevant:
+        m = dr.calibration_metrics
+        if m.get("n_bins") != n_bins:
+            logger.warning(
+                "[aggregate_calibration] %s : n_bins=%s ≠ %s — ignoré",
+                dr.doc_id, m.get("n_bins"), n_bins,
+            )
+            continue
+        for k, b in enumerate(m["bins"]):
+            n = int(b.get("count") or 0)
+            if n == 0:
+                continue
+            counts[k] += n
+            sum_conf[k] += float(b.get("avg_confidence") or 0.0) * n
+            sum_acc[k] += float(b.get("accuracy") or 0.0) * n
+
+    total = sum(counts)
+    if total == 0:
+        return None
+
+    bins: list[dict] = []
+    ece = 0.0
+    mce = 0.0
+    for k in range(n_bins):
+        n = counts[k]
+        if n == 0:
+            bins.append({
+                "bin_low": bin_lows[k] if k < len(bin_lows) else k / n_bins,
+                "bin_high": bin_highs[k] if k < len(bin_highs) else (k + 1) / n_bins,
+                "avg_confidence": None,
+                "accuracy": None,
+                "count": 0,
+                "gap": None,
+            })
+            continue
+        avg_conf = sum_conf[k] / n
+        accuracy = sum_acc[k] / n
+        gap = abs(avg_conf - accuracy)
+        bins.append({
+            "bin_low": bin_lows[k] if k < len(bin_lows) else k / n_bins,
+            "bin_high": bin_highs[k] if k < len(bin_highs) else (k + 1) / n_bins,
+            "avg_confidence": avg_conf,
+            "accuracy": accuracy,
+            "count": n,
+            "gap": gap,
+        })
+        ece += (n / total) * gap
+        if gap > mce:
+            mce = gap
+
+    overall_acc = sum(sum_acc) / total
+    overall_conf = sum(sum_conf) / total
+
+    return {
+        "ece": ece,
+        "mce": mce,
+        "n_bins": n_bins,
+        "n_predictions": total,
+        "overall_accuracy": overall_acc,
+        "overall_confidence": overall_conf,
+        "bins": bins,
+        "doc_count": len(relevant),
+    }
 
 
 def _aggregate_ner(doc_results: list) -> Optional[dict]:
