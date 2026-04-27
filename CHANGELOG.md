@@ -16,6 +16,78 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 68 — Vue HTML de comparaison de N pipelines composées
+  (axe B, suite Sprints 63-67).**  Suite directe Sprint 67 — la
+  vue mono-pipeline est étendue avec un rendu **comparatif** entre
+  N pipelines exécutées sur le même corpus (Sprint 65).  Pattern
+  inchangé : server-side, pas de JS, anti-injection systématique.
+  - Extension de ``picarones/report/pipeline_render.py`` :
+    - ``RankingSpec(artifact_type, metric_name, higher_is_better=False,
+      label=None)`` — dataclass légère qui décrit un classement à
+      afficher.  ``display_label`` auto-généré (``"<at>.<metric>"``)
+      ou explicite.
+    - ``build_pipeline_ranking_table_html(comparison, ranking_spec)``
+      — tableau rang × pipeline × valeur, classé selon
+      ``ranking_by_final_metric`` (Sprint 65).  Cellule de rang
+      colorée par gradient vert (1er) → rouge (dernier).  Pipelines
+      sans valeur listés en queue avec tirets.  Vide si la
+      comparaison ne contient aucune pipeline.
+    - ``build_pipeline_gain_table_html(comparison, ranking_spec,
+      baseline_pipeline)`` — tableau pipeline × {valeur, gain
+      absolu, gain relatif} vs baseline.  Cellule de gain colorée
+      en vert (favorable) ou rouge (défavorable) selon
+      ``higher_is_better``.  Baseline marquée explicitement
+      ``(référence)``.  Retourne ``""`` si la baseline est inconnue.
+    - ``build_pipeline_comparison_summary_html(comparison)`` —
+      encart résumé : corpus, n_docs, n_pipelines, durée totale,
+      mini-résumé par pipeline (nom + ``n_succeeded/n_docs``).
+    - ``build_pipeline_comparison_report_html(comparison,
+      ranking_specs, baseline_pipeline, lang)`` — **document HTML
+      autonome** (``<!doctype html>``) qui assemble le summary +
+      les rankings + les gain tables.  Aucune auto-détection
+      magique : si ``ranking_specs`` est vide, on n'affiche que
+      le summary ; si ``baseline_pipeline`` est ``None``, pas de
+      gain tables.  L'utilisateur déclare explicitement ce qu'il
+      veut voir.
+  - +14 clés i18n FR/EN (``pipeline_comparison_*``,
+    ``pipeline_ranking_*``, ``pipeline_gain_*``,
+    ``pipeline_baseline_marker``).  Les libellés
+    ``pipeline_ranking_title`` et ``pipeline_gain_title`` sont des
+    templates avec placeholders ``{label}`` et ``{baseline}``.
+  - +26 tests dans
+    `test_sprint68_pipeline_comparison_html.py` :
+    ``RankingSpec`` (display_label auto/explicite, défaut
+    ``higher_is_better``) ; ranking table (ordre ascendant/
+    descendant, pipelines sans valeur en queue, cellule rang
+    colorée, vide si comparison vide, label explicite dans titre) ;
+    gain table (baseline marquée, valeurs absolues et relatives,
+    cellules vert favorable / rouge défavorable selon
+    ``higher_is_better``, baseline inconnue → vide) ; summary
+    (corpus, comptes, mini-résumé par pipeline) ; document
+    autonome (doctype, structure, lang FR/EN, rankings affichés
+    si specs, pas de gain table sans baseline) ; anti-injection
+    sur pipeline name / corpus / labels i18n ; complétude i18n
+    sur les 14 nouvelles clés FR ET EN.
+  - **Toujours pas de classification automatique** : on classe et
+    on affiche les gains, mais on ne dit jamais « pipeline A est
+    la meilleure ».  Le chercheur lit le ranking et décide selon
+    ses critères.
+  - **Verrou levé** : un chercheur peut désormais générer en une
+    ligne le rapport HTML autonome d'une comparaison entre N
+    pipelines :
+
+    .. code-block:: python
+
+       html = build_pipeline_comparison_report_html(
+           comparison,
+           ranking_specs=[
+               RankingSpec(ArtifactType.TEXT, "cer", label="CER"),
+               RankingSpec(ArtifactType.TEXT, "wer", label="WER"),
+           ],
+           baseline_pipeline="ocr_only",
+       )
+       Path("comparaison.html").write_text(html)
+
 - **Sprint 67 — Vue HTML d'un benchmark de pipeline composée
   (axe B, suite Sprints 63-66).**  Pattern identique aux
   Sprints 41 (NER), 43 (calibration) et 62 (philologie) : rendu

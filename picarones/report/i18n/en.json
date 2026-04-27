@@ -225,5 +225,18 @@
   "pipeline_duration_median_label": "Median duration",
   "pipeline_junction_metrics_label": "Junction metrics",
   "pipeline_error_breakdown_label": "Errors",
-  "pipeline_docs_short": "docs"
+  "pipeline_docs_short": "docs",
+  "pipeline_comparison_report_title": "Pipeline comparison report",
+  "pipeline_comparison_report_note": "Raw comparative data. The tool measures and ranks — it does not settle the editorial debate. It is up to the researcher to read the figures and conclude according to their own criteria.",
+  "pipeline_comparison_summary_title": "Comparison summary",
+  "pipeline_n_pipelines_label": "Pipelines compared",
+  "pipeline_n_pipelines_short": "pipelines",
+  "pipeline_per_pipeline_label": "Per pipeline",
+  "pipeline_ranking_title": "Ranking by {label}",
+  "pipeline_rank_label": "Rank",
+  "pipeline_value_label": "Value",
+  "pipeline_gain_title": "Gain vs {baseline} on {label}",
+  "pipeline_gain_absolute_label": "Absolute gain",
+  "pipeline_gain_relative_label": "Relative gain",
+  "pipeline_baseline_marker": "(baseline)"
 }

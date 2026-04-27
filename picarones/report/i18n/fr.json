@@ -225,5 +225,18 @@
   "pipeline_duration_median_label": "Durée médiane",
   "pipeline_junction_metrics_label": "Métriques aux jonctions",
   "pipeline_error_breakdown_label": "Erreurs",
-  "pipeline_docs_short": "docs"
+  "pipeline_docs_short": "docs",
+  "pipeline_comparison_report_title": "Rapport de comparaison de pipelines",
+  "pipeline_comparison_report_note": "Données comparatives brutes. L'outil mesure et classe — il ne tranche pas le débat éditorial. C'est au chercheur de lire les chiffres et de conclure selon ses critères.",
+  "pipeline_comparison_summary_title": "Résumé de la comparaison",
+  "pipeline_n_pipelines_label": "Pipelines comparées",
+  "pipeline_n_pipelines_short": "pipelines",
+  "pipeline_per_pipeline_label": "Par pipeline",
+  "pipeline_ranking_title": "Classement par {label}",
+  "pipeline_rank_label": "Rang",
+  "pipeline_value_label": "Valeur",
+  "pipeline_gain_title": "Gain vs {baseline} sur {label}",
+  "pipeline_gain_absolute_label": "Gain absolu",
+  "pipeline_gain_relative_label": "Gain relatif",
+  "pipeline_baseline_marker": "(référence)"
 }
