@@ -16,6 +16,71 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 70 — CLI pour piloter les pipelines composées sans
+  Python (axe B, suite Sprints 63-69).**  Permet de spécifier une
+  pipeline ou une comparaison de N pipelines dans un fichier
+  **YAML déclaratif** et de les exécuter via la CLI Picarones, sans
+  écrire une ligne de Python.  Utile pour la reproductibilité
+  (specs versionnées en git) et pour les non-développeurs.
+  - Nouveau module `picarones/core/pipeline_spec_loader.py` :
+    - ``load_pipeline_spec_from_yaml(path)`` /
+      ``load_pipeline_spec_from_dict(data)`` : parse un YAML et
+      construit une ``PipelineSpec``.  Format :
+      ``name`` + liste de ``steps``, chaque step ayant ``name``,
+      ``module`` (dotted path Python vers la classe ``BaseModule``
+      tierce), ``args`` (kwargs constructeur, optionnel),
+      ``inputs_from`` (DAG branchant Sprint 66, optionnel).
+    - ``load_comparison_specs_from_yaml(path)`` : parse un YAML
+      contenant ``pipelines: [...]`` et retourne ``(specs,
+      extras)`` où ``extras`` est le dict YAML brut (pour
+      récupérer ``rankings``, ``baseline``…).
+    - Import dynamique via ``importlib.import_module`` ; la classe
+      référencée doit hériter de ``BaseModule`` (validation
+      stricte).
+    - Exception dédiée ``PipelineSpecLoadError`` avec messages
+      explicites pour 8 cas d'erreur (chemin invalide, module
+      introuvable, classe absente, classe non-BaseModule,
+      constructeur incompatible, ``args`` non dict, type
+      d'artefact inconnu, champ requis absent).
+    - **Aucun module métier n'est créé** : le YAML référence
+      uniquement les classes que l'utilisateur a installées dans
+      son environnement Python.  Picarones se contente de les
+      importer et de les brancher.
+  - Nouveau sous-groupe CLI `picarones pipeline` dans
+    `picarones/cli.py` :
+    - ``picarones pipeline run <spec.yaml> --corpus <dir>``
+      [``--output-json``] [``--output-html``] [``--lang``] :
+      exécute une pipeline composée sur un corpus.  Affiche le
+      résumé par étape (succès, taux), exporte JSON brut et/ou
+      HTML autonome (Sprint 67).
+    - ``picarones pipeline compare <specs.yaml> --corpus <dir>``
+      [``--output-html``] [``--baseline``] [``--lang``] : compare
+      N pipelines sur le même corpus.  Affiche le ranking par
+      CER, exporte le rapport comparatif HTML autonome (Sprint
+      68) avec ``ranking_specs`` extraits du YAML
+      (``rankings`` au top-level) ou par défaut CER seul.
+  - +27 tests dans `test_sprint70_pipeline_cli.py` :
+    ``_resolve_class`` (5 cas — valide, sans dot, module
+    introuvable, classe absente, cible non-classe),
+    ``load_pipeline_spec_from_dict`` (9 cas — valide minimal,
+    avec args, name/steps/module manquants, args non dict, classe
+    non BaseModule, constructeur invalide, inputs_from valide,
+    inputs_from type inconnu), ``load_pipeline_spec_from_yaml``
+    (3 cas — fichier introuvable, YAML invalide, round-trip
+    valide), ``load_comparison_specs`` (2 cas), CLI ``pipeline
+    run`` (2 cas — basic + avec output JSON+HTML), CLI ``pipeline
+    compare`` (2 cas — basic + avec HTML et baseline), CLI help
+    (3 cas — pipeline groupe listé, run et compare avec leurs
+    options).
+  - **Tous les modules utilisés sont des mocks** définis dans le
+    fichier de test (``_CLIMockOCR``, ``_NotABaseModule``).
+    Picarones n'expose volontairement aucun module métier.
+  - **Verrou levé** : un workflow BnF type — décrire la pipeline
+    dans ``my_pipeline.yaml``, versionner le fichier en git, lancer
+    ``picarones pipeline run my_pipeline.yaml --corpus ./scans
+    --output-html rapport.html`` — fonctionne sans qu'un
+    ingénieur Python soit dans la boucle.
+
 - **Sprint 69 — Documentation utilisateur « Écrire un module pour
   le banc d'essai de pipelines » (axe B, suite Sprints 63-68).**
   Premier guide pédagogique dédié à l'axe B : un chercheur ou
