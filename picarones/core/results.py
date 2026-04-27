@@ -70,6 +70,26 @@ class DocumentResult:
     Présent uniquement si le moteur a fourni des ``token_confidences``
     sur l'``EngineResult``.
     """
+    # Sprint 61 — métriques philologiques (Sprints 55-60) calculées
+    # automatiquement.  Présent uniquement si au moins un module a
+    # détecté du signal dans la GT.
+    philological_metrics: Optional[dict] = None
+    """Métriques philologiques (Sprints 55-60).
+
+    Dict avec une clé par module en présence de signal :
+
+    - ``unicode_blocks``    : Sprint 55, retour de ``compute_unicode_block_accuracy``
+    - ``abbreviations``     : Sprint 56, retour de ``compute_abbreviation_metrics``
+    - ``mufi``              : Sprint 57, retour de ``compute_mufi_coverage``
+    - ``early_modern``      : Sprint 58, retour de ``compute_early_modern_metrics``
+    - ``modern_archives``   : Sprint 59, retour de ``compute_modern_archives_metrics``
+    - ``roman_numerals``    : Sprint 60, retour de ``compute_roman_numeral_metrics``
+
+    Un module n'est inclus que si la GT contient du signal exploitable
+    (n_markers_reference > 0, n_mufi_chars_reference > 0, etc.).
+    Cette logique adaptative permet de garder les rapports lisibles
+    sur les corpus sans marqueurs philologiques.
+    """
 
     def as_dict(self) -> dict:
         d = {
@@ -103,6 +123,8 @@ class DocumentResult:
             d["ner_metrics"] = self.ner_metrics
         if self.calibration_metrics is not None:
             d["calibration_metrics"] = self.calibration_metrics
+        if self.philological_metrics is not None:
+            d["philological_metrics"] = self.philological_metrics
         return d
 
     def compact(self) -> None:
@@ -130,6 +152,7 @@ class DocumentResult:
         self.hallucination_metrics = None
         self.ner_metrics = None
         self.calibration_metrics = None
+        self.philological_metrics = None
 
 
 @dataclass
@@ -173,6 +196,16 @@ class EngineReport:
     micro recalculé à partir des sommes par bin.  ``None`` si aucun
     document n'avait de ``calibration_metrics`` (cas par défaut tant que
     les engines n'exposent pas ``token_confidences``)."""
+    # Sprint 61
+    aggregated_philological: Optional[dict] = None
+    """Métriques philologiques agrégées sur le corpus (Sprints 55-60).
+
+    Dict avec une clé par module ayant du signal sur au moins un
+    document.  Pour chaque module, l'agrégation somme les compteurs
+    bruts (n_total, n_preserved, etc.) et recalcule les scores
+    globaux ; les structures per_category/per_block/per_status sont
+    également agrégées.  ``None`` si aucun document n'a porté de
+    ``philological_metrics``."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -249,6 +282,8 @@ class EngineReport:
             d["aggregated_ner"] = self.aggregated_ner
         if self.aggregated_calibration is not None:
             d["aggregated_calibration"] = self.aggregated_calibration
+        if self.aggregated_philological is not None:
+            d["aggregated_philological"] = self.aggregated_philological
         return d
 
 

@@ -16,6 +16,55 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 61 — Câblage backend des métriques philologiques au
+  runner (Sprints 55-60).**  Suite directe Sprints 55-60 — les six
+  modules philologiques (unicode_blocks, abbreviations, mufi,
+  early_modern, modern_archives, roman_numerals) sont désormais
+  calculés automatiquement par le runner pour chaque document et
+  agrégés par moteur, **sans aucune option à activer**.
+  - Nouveau module `picarones/core/philological_runner.py` :
+    - ``compute_philological_metrics(reference, hypothesis)``
+      calcule les six modules et retourne un dict avec une clé par
+      module ayant du **signal exploitable** dans la GT
+      (``n_markers_reference > 0``, ``n_mufi_chars_reference > 0``,
+      au moins un caractère hors Basic Latin pour unicode_blocks,
+      etc.).  Retourne ``None`` si aucun module n'a de signal.
+    - ``aggregate_philological_metrics(per_doc_list)`` agrège les
+      compteurs bruts par module (somme), recalcule les scores
+      globaux à partir des sommes (accuracy, coverage, strict,
+      expansion, value, preservation), et préserve les structures
+      ``per_block`` / ``per_abbreviation`` / ``per_char`` /
+      ``per_category`` / ``per_status`` agrégées.
+    - **Adaptive masking** : un module n'apparaît dans le résultat
+      que si au moins un document a eu du signal pour lui — les
+      rapports restent lisibles sur les corpus sans marqueur
+      philologique pertinent (typique des fonds XXIᵉ propres).
+  - Nouveaux champs sur ``DocumentResult.philological_metrics`` et
+    ``EngineReport.aggregated_philological`` (``Optional[dict]``,
+    ``None`` par défaut, sérialisés conditionnellement par
+    ``as_dict``, libérés par ``compact``).
+  - Câblage dans ``runner._compute_document_result`` : le calcul
+    est inconditionnel (coût O(N) sur le texte, négligeable face à
+    l'OCR) et l'erreur d'un module individuel ne propage pas — on
+    omet le module et on logue un warning explicite (jamais
+    ``except: pass`` selon les règles CLAUDE.md).
+  - Câblage dans ``run_benchmark`` : agrégation par moteur
+    appelée juste après les autres agrégations Sprint 5/10/40/42.
+  - **Rétrocompat stricte** : aucun paramètre ajouté, aucun
+    comportement existant modifié ; un benchmark sans signal
+    philologique voit ses ``philological_metrics`` à ``None`` (pas
+    de champ dans le JSON de sortie).
+  - +24 tests dans `test_sprint61_philological_runner.py` (champs
+    par défaut, sérialisation conditionnelle, libération par
+    compact, calcul adaptive sur 6 cas de figure — médiéval,
+    imprimé ancien, moderne, numéral romain, diacritiques,
+    ASCII pur —, agrégation : sommes correctes, recalcul des scores
+    globaux, per_category modern_archives, intégration runner
+    end-to-end avec mock ``EngineResult``).
+  - **Verrou levé** : les six modules philologiques sont désormais
+    visibles dans le pipeline standard de bench ; il manque
+    uniquement la vue HTML dédiée (Sprint 62 à venir).
+
 - **Sprint 60 — Numéraux romains transversaux : couche de calcul
   (clôture extension philologique par période).**  Suite directe
   Sprints 56-59.  Les numéraux romains traversent les trois

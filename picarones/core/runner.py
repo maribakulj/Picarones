@@ -285,6 +285,19 @@ def _compute_document_result(
     except Exception as e:
         _logger.warning("[image_quality] fonctionnalité dégradée : %s", e)
 
+    # Sprint 61 — métriques philologiques (Sprints 55-60).  Calcul
+    # automatique : O(N) sur le texte, coût négligeable.  Le helper
+    # gère lui-même l'« adaptive masking » : un module n'est inclus
+    # que si la GT a du signal pour lui.
+    philological_data: Optional[dict] = None
+    try:
+        from picarones.core.philological_runner import compute_philological_metrics
+        philological_data = compute_philological_metrics(
+            ground_truth, ocr_result.text,
+        )
+    except Exception as e:
+        _logger.warning("[philological] fonctionnalité dégradée : %s", e)
+
     return DocumentResult(
         doc_id=doc_id,
         image_path=image_path,
@@ -303,6 +316,7 @@ def _compute_document_result(
         line_metrics=line_metrics_data,
         hallucination_metrics=hallucination_data,
         calibration_metrics=calibration_data,
+        philological_metrics=philological_data,
     )
 
 
@@ -714,6 +728,13 @@ def run_benchmark(
         agg_line_metrics = _aggregate_line_metrics(document_results)
         agg_hallucination = _aggregate_hallucination(document_results)
         agg_calibration = _aggregate_calibration(document_results)
+        # Sprint 61 — agrégation philologique (modules Sprints 55-60).
+        from picarones.core.philological_runner import (
+            aggregate_philological_metrics,
+        )
+        agg_philological = aggregate_philological_metrics(
+            [dr.philological_metrics for dr in document_results],
+        )
 
         report = EngineReport(
             engine_name=engine.name,
@@ -729,6 +750,7 @@ def run_benchmark(
             aggregated_line_metrics=agg_line_metrics,
             aggregated_hallucination=agg_hallucination,
             aggregated_calibration=agg_calibration,
+            aggregated_philological=agg_philological,
         )
         engine_reports.append(report)
         logger.info(
