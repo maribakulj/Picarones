@@ -16,6 +16,68 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 60 — Numéraux romains transversaux : couche de calcul
+  (clôture extension philologique par période).**  Suite directe
+  Sprints 56-59.  Les numéraux romains traversent les trois
+  périodes patrimoniales : médiéval (minuscules + ``j`` final
+  ``mcclxxxij`` = 1282), imprimé ancien (``Tome IV``), moderne
+  (``Louis XIV``, ``MCMXIV``).  Pour chaque numéral GT, l'OCR
+  peut le **préserver strictement**, **changer la casse**,
+  **supprimer le ``j`` médiéval**, **convertir en chiffres
+  arabes**, ou le **perdre**.  Ce module classifie les 5 statuts
+  pour que le chercheur juge lui-même la convention.
+  - Nouveau module `picarones/core/roman_numerals.py` :
+    - ``roman_to_int(s)`` : parsing tolérant casse + ``j`` médiéval
+      final, validation stricte des paires soustractives canoniques
+      (IV, IX, XL, XC, CD, CM uniquement) — rejette « ICI » (faux
+      positif), « VV », « LL », « DD », « IIIII ».
+    - Forme additive médiévale ``IIII``/``XXXX`` acceptée.
+    - ``int_to_roman(n)`` : conversion vers la forme canonique
+      majuscule.
+    - ``detect_roman_numerals(text, min_length=1)`` : regex
+      ``\b[IVXLCDMivxlcdmj]+\b`` + validation par parsing.
+      Paramètre ``min_length`` pour filtrer les single-letter
+      ambigus (« I » pronom anglais, « M » initiale).
+    - ``compute_roman_numeral_metrics(ref, hyp)`` classifie chaque
+      numéral GT selon 5 statuts ordonnés par priorité :
+      ``strict_preserved``, ``case_changed``, ``j_dropped``,
+      ``converted_to_arabic``, ``lost``.  Retourne
+      ``per_status``, ``per_numeral``, ``lost_numerals``,
+      ``global_strict_score`` (forme exacte uniquement) et
+      ``global_value_score`` (toute forme préservant la valeur).
+    - Le breakdown ``per_status`` discrimine la convention adoptée :
+      - majoritaire ``strict_preserved`` → diplomatique ;
+      - majoritaire ``case_changed`` → modernisation typo ;
+      - majoritaire ``j_dropped`` → modernisation orthographique
+        médiévale ;
+      - majoritaire ``converted_to_arabic`` → modernisation
+        profonde du système numéral ;
+      - majoritaire ``lost`` → erreur OCR.
+  - ``roman_numeral_strict_score`` et
+    ``roman_numeral_value_score`` enregistrés dans le registre
+    typé Sprint 34 pour ``(TEXT, TEXT)``.
+  - **Choix éditorial assumé** : aucune classification
+    automatique imposée — le chercheur lit ``per_status`` et
+    conclut.
+  - +93 tests dans `test_sprint60_roman_numerals.py`
+    (parsing/conversion bidirectionnelle paramétrée standard +
+    minuscules + ``j`` médiéval, formes invalides rejetées,
+    aller-retour ``int_to_roman``, détection avec ``min_length``,
+    frontière de mot anti-faux-positif (``VIVE`` ne match pas),
+    rejet faux positif ``ICI``, **5 statuts discriminés
+    individuellement**, priorité strict > arabic, **3 cas
+    réalistes par période** — charte médiévale ``mcclxxxij``,
+    imprimé ancien ``Tome IV``, moderne ``Louis XIV`` —,
+    comptage exhaustif somme des per_status = total, dégénérés,
+    raccourcis, intégration registre).
+  - **Verrou levé** : l'extension philologique est livrée pour
+    les trois périodes principales (médiéval Sprints 56-57,
+    imprimé ancien Sprint 58, moderne Sprint 59) **plus** la
+    dimension transversale numérale ; un benchmark sur n'importe
+    quel fonds patrimonial européen peut classer les moteurs
+    sur leur traitement des numéraux romains, indépendamment de
+    la période.
+
 - **Sprint 59 — Marqueurs et abréviations des archives modernes
   XIXᵉ-XXᵉ : couche de calcul (extension axe philologique aux
   périodes contemporaines).**  Suite des Sprints 56-58.  Sur les
