@@ -16,6 +16,81 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 59 — Marqueurs et abréviations des archives modernes
+  XIXᵉ-XXᵉ : couche de calcul (extension axe philologique aux
+  périodes contemporaines).**  Suite des Sprints 56-58.  Sur les
+  fonds modernes BnF (état civil, recensements, presse, monographies,
+  archives militaires, annuaires), la typographie historique a
+  disparu mais subsiste un riche système d'abréviations propres à
+  l'archive contemporaine.  Le module les couvre en **9 catégories**
+  pour qu'un chercheur puisse juger lui-même la convention adoptée
+  par chaque moteur, **sans qu'aucune classification automatique
+  ne soit imposée**.
+  - Nouveau module `picarones/core/modern_archives.py` :
+    - 9 catégories de marqueurs :
+      1. ``civility_titles`` : Mme, Mlle, Mgr, Dr, Pr, Me, M.,
+         R.P., S.M., S.A.R., S.E., S.S.
+      2. ``ordinals`` : 1ᵉʳ, 1ʳᵉ, 2ᵉ, 2ᵈ, 2ᵈᵉ, 3ᵉ, Iᵉʳ, Vᵉ,
+         XIᵉ-XXᵉ (avec exposants Unicode ᵉ ʳ ᵈ).
+      3. ``currency`` : ₶ (livre tournois), ₣ ƒ (franc), £, l. s. d.
+         (livre/sol/denier d'Ancien Régime).
+      4. ``administrative`` : arr., dép., cant., com., reg., prov.
+      5. ``civil_status`` : ° (né), † (mort), ✶, ⚭, ép., vve.
+      6. ``typographic_punctuation`` : « », –, —, …, ’, ‘.
+      7. ``latin_abbr_modern`` : e.g., i.e., etc., cf., ibid.,
+         op. cit., ad lib., N.B.
+      8. ``bibliographic`` : vol., t., p., pp., n°, fasc., éd.,
+         ms., f., r°, v°.
+      9. ``address`` : bd, av., r., pl., imp., fbg.
+    - ``get_category(marker)`` classe un marqueur ou retourne
+      ``None`` ; ``get_expansions(marker)`` retourne les formes
+      développées connues.
+    - ``detect_modern_markers(text)`` retourne la liste ordonnée
+      ``[(index, marker, category)]`` avec **stratégie greedy
+      « plus long gagne »** (S.A.R. avant S.A.) et **frontières
+      de mot adaptées** (espace/ponctuation pour les abréviations
+      à point comme « M. ", « arr. », « r° » ; ``\b`` standard
+      pour les alphabétiques comme « Mme » ou « bd »).
+    - ``compute_modern_archives_metrics(ref, hyp)`` retourne, par
+      catégorie, **deux scores** dans la lignée du Sprint 56 :
+      ``strict_score`` (forme abrégée préservée telle quelle) et
+      ``expansion_score`` (forme abrégée OU forme développée
+      présente, sensible à la casse seulement pour les
+      abréviations alphanumériques).  Le ratio des deux par
+      catégorie permet au chercheur de **juger lui-même la
+      convention** : strict ≈ expansion ≈ 1 → diplomatique ;
+      strict = 0, expansion = 1 → modernisant ; les deux faibles
+      → erreur OCR.
+    - ``missed_markers`` distingue les **pertes pures** (ni
+      abrégé ni développé) des **modernisations** (abrégé absent
+      mais développé présent) via le booléen
+      ``expansion_preserved``.
+  - ``modern_archives_strict_score`` et
+    ``modern_archives_expansion_score`` enregistrés dans le
+    registre typé Sprint 34 pour ``(TEXT, TEXT)``.
+  - **Choix éditorial assumé** : aucun module ne classe un moteur
+    « diplomatique » ou « modernisant ".  L'outil est conçu pour
+    un usage de **recherche** (BnF, philologie, sciences
+    historiques) — il fournit les chiffres bruts et laisse le
+    chercheur conclure.
+  - +75 tests dans `test_sprint59_modern_archives.py`
+    (catégorisation paramétrée 33 marqueurs sur 9 catégories,
+    ``get_expansions``, détection par catégorie ×9, **greedy
+    plus-long-gagne** sur S.A.R., **frontière de mot** sur « bd »
+    vs « abdomen ", scénarios standards diplomatique/modernisant/
+    erreur, breakdown per_category, dégénérés, missed_markers
+    distinguant pertes pures et modernisations, **5 cas réalistes**
+    par catégorie clé — citation bibliographique, registre d'état
+    civil, adresse de recensement, protocole royal, monnaie
+    d'Ancien Régime, ponctuation typographique —, comptage
+    exhaustif, sanité tables, raccourcis, intégration registre).
+  - **Verrou levé** : un benchmark sur fonds modernes XIXᵉ-XXᵉ
+    peut désormais classer les moteurs sur leur traitement des
+    abréviations contemporaines — symétrique au Sprint 56
+    (médiéval) et au Sprint 58 (imprimé ancien).  L'extension
+    philologique couvre maintenant trois périodes principales
+    des fonds patrimoniaux européens.
+
 - **Sprint 58 — Marqueurs typographiques de l'imprimé ancien :
   couche de calcul (extension axe philologique aux périodes
   XVIᵉ-XVIIIᵉ).**  Les Sprints 56 (abréviations Capelli) et 57
