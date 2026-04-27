@@ -16,6 +16,75 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 64 — Orchestration corpus-wide d'une pipeline composée
+  (axe B, suite directe Sprint 63).**  Le ``PipelineRunner`` du
+  Sprint 63 exécute une pipeline sur un seul document ; ce sprint
+  fournit l'orchestration sur un **corpus complet** et
+  l'agrégation des résultats par étape.  Toujours dans la
+  philosophie « banc d'essai, pas atelier de production » : aucun
+  module métier n'est ajouté côté Picarones, l'utilisateur amène
+  ses propres ``BaseModule`` (Sprint 33).
+  - Nouveau module `picarones/core/pipeline_benchmark.py` :
+    - ``InitialInputsFactory = Callable[[Document], dict[
+      ArtifactType, Any]]`` : type pour la fonction qui produit
+      les artefacts initiaux par document.
+    - ``default_initial_inputs(doc)`` : factory par défaut qui
+      retourne ``{IMAGE: doc.image_path}`` (cas standard d'une
+      pipeline qui démarre par un OCR).  L'utilisateur peut
+      fournir une factory personnalisée pour brancher d'autres
+      sources (par exemple un ``ALTO`` pré-existant).
+    - ``StepAggregate(step_name, n_docs, n_succeeded, n_failed,
+      duration_seconds_total/mean/median, failing_doc_ids,
+      junction_metrics, error_breakdown)`` : agrégat d'une étape
+      sur tout le corpus.  Les métriques aux jonctions sont
+      agrégées par type d'artefact, avec ``mean`` / ``median`` /
+      ``n`` par métrique numérique (les non-numériques sont
+      ignorées dans l'agrégat global mais restent visibles par
+      doc).  ``error_breakdown`` catégorise les erreurs en
+      ``missing_input`` / ``raised_exception`` /
+      ``missing_output`` / ``pipeline_aborted`` / ``other`` via
+      heuristique stable sur les messages produits par
+      ``pipeline_runner._run_step``.
+    - ``PipelineBenchmarkResult(pipeline_name, corpus_name,
+      n_docs, per_doc_results, per_step_aggregates,
+      total_duration_seconds)`` : conteneur global avec
+      ``n_pipelines_succeeded`` / ``n_pipelines_failed`` calculés
+      à la volée et ``aggregate_for_step(name)`` pour récupérer
+      l'agrégat par nom.
+    - ``run_pipeline_benchmark(spec, corpus,
+      initial_inputs_factory)`` : itère séquentiellement sur les
+      documents, appelle ``PipelineRunner.run`` sur chacun,
+      capture gracieusement les erreurs de la factory, agrège
+      par étape via ``_aggregate_step``.  Une spec invalide
+      propage l'erreur à tous les documents (chacun a un
+      ``PipelineResult`` avec ``error`` non vide et aucune étape
+      exécutée).
+  - **Périmètre Sprint 64** : séquentiel inter-documents.
+    Comparaison de N pipelines sur le même corpus (Sprint 65),
+    DAG branchant (Sprint 66), vue HTML pipelines (Sprint 67),
+    parallélisation reportée à arbitrer.
+  - +13 tests dans `test_sprint64_pipeline_benchmark.py` :
+    factory par défaut, corpus vide, 1 doc OK, métriques agrégées
+    sur 3 docs (CER mean/median/n), mix succès/échecs (1 doc
+    crash → comptes corrects + failing_doc_ids + error_breakdown
+    catégorisé en ``raised_exception``), 2 étapes avec rebond
+    propre (étape 1 plante → étape 2 reçoit ``missing_input``
+    avec le bon breakdown), spec invalide → tous les docs en
+    pipeline_aborted, factory personnalisée, factory qui lève sur
+    un doc → autres continuent, dataclasses (success_rate,
+    aggregate_for_step retourne None pour nom inconnu).
+  - **Tous les modules utilisés sont des mocks définis dans le
+    test** (``MockOCR``, ``MockCrasherSometimes``,
+    ``MockTextRewriter``).  Picarones n'expose volontairement
+    aucun module métier.
+  - **Verrou levé** : un utilisateur peut maintenant lancer une
+    pipeline composée tierce sur **tout son corpus** en une
+    commande, obtenir l'agrégat par étape (durée mean/median,
+    métriques mean/median, taux d'erreur par catégorie) et les
+    résultats détaillés par document.  La comparaison de
+    plusieurs pipelines sur le même corpus arrive Sprint 65, la
+    vue HTML dédiée Sprint 67.
+
 - **Sprint 63 — Banc d'essai de pipelines composées : runner +
   évaluation aux jonctions (démarrage axe B du plan 2026).**
   Picarones est et reste un **banc d'essai**, pas un atelier de
