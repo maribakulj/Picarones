@@ -16,6 +16,50 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 58 — Marqueurs typographiques de l'imprimé ancien :
+  couche de calcul (extension axe philologique aux périodes
+  XVIᵉ-XVIIIᵉ).**  Les Sprints 56 (abréviations Capelli) et 57
+  (couverture MUFI) sont orientés **médiéval scribal**.  Picarones
+  doit aussi servir les éditeurs d'**imprimés anciens**, pour qui
+  les marqueurs caractéristiques sont **typographiques** (et non
+  scribaux) : ligatures composées, s long ſ, i sans point ı,
+  esperluette &, tildes nasaux indiquant une abréviation.
+  - Nouveau module `picarones/core/early_modern_typography.py` :
+    - 5 catégories de marqueurs typographiques : ``ligatures``
+      (ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ), ``long_s`` (ſ), ``dotless_i`` (ı),
+      ``ampersand`` (&), ``nasal_tildes`` (ã Ã ñ Ñ õ Õ ũ Ũ ẽ Ẽ ĩ Ĩ
+      pré-composés + séquences ``voyelle + U+0303``).
+    - ``get_category(char)`` classe un caractère dans une catégorie
+      ou retourne ``None``.
+    - ``detect_markers(text)`` retourne la liste ordonnée des
+      marqueurs avec leur index et leur catégorie ; reconnaît à la
+      fois les caractères pré-composés et les séquences combinantes
+      (``a`` + U+0303 → nasal_tildes).
+    - ``compute_early_modern_metrics(ref, hyp)`` retourne le taux
+      de préservation par catégorie + ``global_preservation`` +
+      ``missed_markers`` (liste des marqueurs ratés avec index et
+      catégorie).
+    - Approche identique aux Sprints 56-57 (alignement caractère
+      par caractère via ``difflib.SequenceMatcher``).
+  - ``early_modern_preservation`` enregistré dans le registre typé
+    Sprint 34 pour ``(TEXT, TEXT)``.
+  - **Le breakdown par catégorie discrimine la convention** : un
+    moteur diplomatique préserve toutes les catégories ; un moteur
+    modernisant préserve typiquement l'esperluette mais pas les
+    ligatures, le s long, le i sans point ni les tildes nasaux ;
+    un moteur mixte panache.
+  - +38 tests dans `test_sprint58_early_modern.py` (catégorisation
+    paramétrée sur 18 caractères, détection des 5 catégories,
+    séquence ``voyelle + U+0303``, ordre préservé, **trois
+    scénarios standards** discriminés — diplomatique 1.0,
+    modernisant 0.2, mixte 0.4 —, breakdown per_category, cas
+    dégénérés, comptage exhaustif preserved+missed=total, sets
+    disjoints, raccourci, intégration registre).
+  - **Verrou levé** : un benchmark sur des imprimés anciens XVIᵉ-XVIIIᵉ
+    peut désormais classer les moteurs sur leur convention typographique
+    éditoriale (diplomatique vs modernisante) — symétrique à ce que
+    le Sprint 56 fait pour les manuscrits médiévaux.
+
 - **Sprint 57 — A.II.3.3 Couverture MUFI : couche de calcul
   (clôture A.II.3 philologique côté calcul).** Suite des Sprints
   55-56 dans l'axe philologique.  La **Medieval Unicode Font
