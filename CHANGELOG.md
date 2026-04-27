@@ -16,6 +16,38 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 54 — A.II.2.2 Layout F1 par type de région : couche de
+  calcul (clôture A.II.2 côté calcul).** Dernière brique de l'axe
+  A.II.2 (métriques structurelles).  Pour les manuscrits glosés
+  (texte principal vs glose) ou les journaux multi-colonnes, c'est
+  la métrique qui répond à *« le moteur sépare-t-il bien le texte
+  principal de la glose ? »*.
+  - Nouveau module `picarones/core/layout.py` :
+    - dataclass `Region(id, type, bbox)` avec validation (bbox
+      strictement positive)
+    - `_iou_bbox` calcule l'IoU de deux rectangles (origine en haut
+      à gauche, convention ALTO/PAGE)
+    - `_align_regions` apparie GT ↔ hypothèse en greedy par IoU
+      décroissant, **same type required** (case-insensitive),
+      pattern identique au NER (Sprint 38)
+    - `compute_layout_metrics(refs, hyps, iou_threshold=0.5)`
+      retourne global F1 + per_type + listes
+      ``missed_regions`` (FN) et ``hallucinated_regions`` (FP)
+    - `layout_f1` : raccourci pour le F1 global
+  - Conventions : seuil IoU par défaut à 0,5 (convention ICDAR),
+    coercion automatique dict → ``Region``, comparaison de type
+    insensible à la casse.
+  - Pas d'enregistrement registre typé pour ce sprint — la métrique
+    suppose un parsing préalable (extraction des régions avec types
+    et bbox depuis l'ALTO/PAGE) qui ne s'inscrit pas directement
+    dans le pattern `(ArtifactType, ArtifactType)`.  L'enregistrement
+    suivra quand le parser ALTO standard sera livré.
+  - +20 tests dans `test_sprint54_layout.py` (validation Region,
+    IoU mathématique, cas standards : parfait, mauvais type,
+    hallucination, FN, IoU sous/sur seuil, multi-type breakdown,
+    alignement greedy avec best-IoU wins, dégénérés, type
+    case-insensitive, shortcut).
+
 - **Sprint 53 — A.II.2.1 Reading order F1 (ICDAR 2015) : couche de
   calcul.** Suite du Sprint 52 dans l'axe A.II.2 (métriques
   structurelles).  Sur un manuscrit glosé ou un journal multi-colonnes,
@@ -684,16 +716,18 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1978 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1998 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
   +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
-  +16 Sprint 51, +25 Sprint 52, +16 Sprint 53). Aucune régression.
-  **Phase 0 close ; Étape 2 du plan d'évolution intégralement
-  livrée ; Étape 3 démarrée :** Flesch (A.II.2.3, Sprint 52) et
-  Reading order F1 ICDAR 2015 (A.II.2.1, Sprint 53) couches de
-  calcul livrées.
+  +16 Sprint 51, +25 Sprint 52, +16 Sprint 53, +20 Sprint 54).
+  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution
+  intégralement livrée ; Étape 3 / axe A.II.2 (métriques
+  structurelles) couches de calcul intégralement livrées :**
+  Flesch (A.II.2.3, Sprint 52), Reading order F1 ICDAR 2015
+  (A.II.2.1, Sprint 53) et Layout F1 par type (A.II.2.2,
+  Sprint 54).
 
 ---
 
