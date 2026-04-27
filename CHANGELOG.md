@@ -16,6 +16,31 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 53 — A.II.2.1 Reading order F1 (ICDAR 2015) : couche de
+  calcul.** Suite du Sprint 52 dans l'axe A.II.2 (métriques
+  structurelles).  Sur un manuscrit glosé ou un journal multi-colonnes,
+  un moteur peut avoir un excellent CER caractère et un ordre de
+  lecture catastrophique — le CER seul ne capture pas cette
+  dimension.
+  - Nouveau module `picarones/core/reading_order.py` :
+    - ``compute_reading_order_metrics(ref_order, hyp_order)`` :
+      pour chaque paire ``(a, b)`` où ``a`` précède ``b`` dans la GT,
+      vérifie si ``a`` précède aussi ``b`` dans l'hypothèse.  Retourne
+      precision/recall/F1 + détails (TP/FP/FN, paires totales, régions
+      communes vs disjointes).
+    - ``reading_order_f1`` : raccourci qui retourne juste le F1.
+  - Conventions : doublons traités à la première occurrence,
+    séquences ``None``/vides → F1 = 0 (pas de récompense gratuite),
+    séquence à 1 région → 0 paire émise → F1 = 0 (convention de bord).
+  - Format compatible avec ``ReadingOrderGT.region_order`` du
+    Sprint 32 — l'utilisateur fournit directement la liste d'IDs.
+  - ``reading_order_f1`` enregistré dans le registre typé Sprint 34
+    pour la jonction ``(READING_ORDER, READING_ORDER)``.
+  - +16 tests dans `test_sprint53_reading_order.py` (cas canoniques :
+    identique → F1=1, inversé → F1=0, permutation locale, insertion,
+    suppression ; cas dégénérés : vide, single region, doublons,
+    None ; comptages détaillés ; intégration registre typé).
+
 - **Sprint 52 — A.II.2.3 Différence Flesch : couche de calcul
   (démarrage de l'Étape 3 / axe A — métriques structurelles).**
   Stratégie identique aux Sprints 35/38/39 (couche pure d'abord,
@@ -659,20 +684,16 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1962 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1978 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
   +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
-  +16 Sprint 51, +25 Sprint 52). Aucune régression. **Phase 0
-  close ; Étape 2 du plan d'évolution intégralement livrée :**
-  inter-moteurs (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b)
-  et stratification (A.III) livrés bout-en-bout calcul → runner →
-  HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; les 5
-  adapters OCR (Tesseract, Pero, Mistral, Google Vision, Azure DI)
-  exposent désormais leurs `token_confidences` natifs.
-  **Étape 3 démarrée :** Flesch (A.II.2.3) couche de calcul livrée
-  (Sprint 52).
+  +16 Sprint 51, +25 Sprint 52, +16 Sprint 53). Aucune régression.
+  **Phase 0 close ; Étape 2 du plan d'évolution intégralement
+  livrée ; Étape 3 démarrée :** Flesch (A.II.2.3, Sprint 52) et
+  Reading order F1 ICDAR 2015 (A.II.2.1, Sprint 53) couches de
+  calcul livrées.
 
 ---
 
