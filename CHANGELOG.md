@@ -16,6 +16,63 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 66 — DAG branchant via ``inputs_from`` (axe B, suite
+  Sprints 63-65).**  Les Sprints 63-65 traitaient des pipelines
+  séquentielles : la sortie d'une étape alimente automatiquement
+  la suivante via le bag d'artefacts (la dernière version d'un
+  type écrase la précédente).  Ce sprint permet de **désigner
+  explicitement la source d'un artefact** quand plusieurs étapes
+  produisent le même type, débloquant des scénarios fork/merge
+  dans une même pipeline (ex. comparer deux corrections LLM en
+  parallèle d'un même OCR sans devoir basculer sur deux pipelines
+  distinctes via Sprint 65).
+  - ``PipelineStep.inputs_from: dict[ArtifactType, str]`` (vide
+    par défaut) — pour chaque type d'entrée, l'étape peut désigner
+    le nom de l'étape source dont consommer l'artefact.  La chaîne
+    spéciale ``"__initial__"`` désigne les entrées initiales
+    (utile pour les pipelines démarrant par un type fourni en
+    entrée).
+  - **Bag versionné** dans ``PipelineRunner.run`` : on stocke
+    désormais ``versioned[(type, source_step_name)] = artifact``
+    et on maintient un index ``latest[type] = step_name``.  En
+    l'absence d'``inputs_from``, le runner prend la version la
+    plus récente — comportement Sprint 63 strictement préservé.
+  - **Validation étendue** dans ``PipelineSpec.validate`` :
+    détecte les références ``inputs_from`` vers une étape inconnue,
+    une étape qui ne produit pas le type demandé, ou un type que
+    le module ne consomme pas.  Tous les problèmes sont remontés
+    avec un message explicite indiquant l'étape concernée et la
+    référence litigieuse.
+  - **Référence vers étape qui a échoué** : si ``inputs_from``
+    pointe vers un step qui a levé une exception, l'étape en aval
+    rapporte une erreur ``entrée manquante : <type>@<step>`` —
+    le marqueur ``@step`` permet au lecteur de comprendre
+    immédiatement que la dépendance pointait vers un step en
+    échec, pas un type absent.
+  - **Rétrocompat stricte** : sans ``inputs_from``, le
+    comportement Sprint 63 est intégralement préservé.  Les 42
+    tests Sprints 63-65 passent sans modification.
+  - +11 tests dans `test_sprint66_dag_branching.py` :
+    - défaut ``inputs_from`` vide
+    - validation : référence valide, ``"__initial__"``, étape
+      inconnue, type non consommé
+    - DAG fork explicite : 2 corrections en parallèle d'un même
+      OCR avec métriques indépendantes
+    - **fork vs chain divergent** : test propriété qui prouve que
+      placer ``inputs_from={TEXT: "ocr"}`` change le résultat
+      final (CER 0 en fork vs CER > 0 en chain) sur un même corpus
+    - référence vers étape qui a échoué → erreur ``@step`` propre
+    - rétrocompat sans ``inputs_from``
+  - **Tous les modules utilisés sont des mocks** (``MockOCR``,
+    ``TextFixer``, ``TextDoubler``, ``AlwaysFails``).  Picarones
+    n'expose volontairement aucun module métier.
+  - **Verrou levé** : un chercheur peut désormais composer une
+    pipeline qui fork un même OCR vers plusieurs branches de
+    correction et évaluer chacune indépendamment, dans une seule
+    spec — sans devoir basculer sur ``compare_pipelines`` quand
+    le besoin est de tracer le branchement dans un seul contexte
+    d'exécution.
+
 - **Sprint 65 — Comparaison de N pipelines composées sur le même
   corpus (axe B, suite Sprints 63-64).**  Réponse à la question
   typique BnF : « OCR seul vs OCR+correcteur A vs OCR+correcteur

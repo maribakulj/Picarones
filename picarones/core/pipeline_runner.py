@@ -110,10 +110,31 @@ class PipelineStep:
     l'utilisateur.  Les types d'entrée et de sortie ne sont pas
     redéclarés ici : ils sont lus depuis le module lui-même
     (``module.input_types`` / ``module.output_types``).
+
+    Sprint 66 — DAG branchant
+    -------------------------
+    ``inputs_from`` permet de désigner explicitement, pour chaque
+    type d'entrée, l'étape source dont on veut consommer l'artefact.
+    Utile quand plusieurs étapes antérieures produisent le même
+    type et qu'on veut éviter l'écrasement implicite (par exemple
+    deux correcteurs LLM en parallèle qui partent du même OCR).
+
+    - ``inputs_from = {}`` (défaut) : pour chaque type d'entrée,
+      le runner prend la version **la plus récente** disponible
+      dans le bag (comportement Sprint 63, rétrocompat stricte).
+    - ``inputs_from = {ArtifactType.TEXT: "ocr"}`` : exige la
+      version du ``TEXT`` produite par l'étape nommée ``"ocr"``.
+      Si cette étape n'existe pas ou n'a pas produit ce type,
+      ``PipelineSpec.validate`` remonte un problème explicite et
+      le runner remonte une erreur d'entrée manquante.
+
+    La chaîne spéciale ``"__initial__"`` désigne les artefacts
+    fournis dans ``initial_inputs`` (par exemple ``IMAGE``).
     """
 
     name: str
     module: BaseModule
+    inputs_from: dict[ArtifactType, str] = field(default_factory=dict)
 
     @property
     def input_types(self) -> tuple[ArtifactType, ...]:
@@ -126,6 +147,11 @@ class PipelineStep:
     def __repr__(self) -> str:
         ins = ",".join(t.value for t in self.input_types) or "·"
         outs = ",".join(t.value for t in self.output_types) or "·"
+        if self.inputs_from:
+            refs = ",".join(
+                f"{t.value}@{src}" for t, src in self.inputs_from.items()
+            )
+            return f"PipelineStep({self.name}: [{refs}] → {outs})"
         return f"PipelineStep({self.name}: {ins} → {outs})"
 
 
@@ -151,13 +177,33 @@ class PipelineSpec:
         ``input_types`` sont disponibles : soit dans les
         ``initial_inputs`` (typiquement ``IMAGE``), soit produits
         par une étape antérieure.
+
+        Sprint 66 — validation des références ``inputs_from`` :
+        si une étape déclare ``inputs_from[type] = "foo"``,
+        l'étape ``foo`` doit exister parmi les étapes antérieures
+        et avoir ce type dans ses ``output_types``.  La chaîne
+        spéciale ``"__initial__"`` désigne les entrées initiales.
         """
         problems: list[str] = []
         if not self.steps:
             problems.append("pipeline vide : au moins une étape est requise")
             return problems
+        # Map type → set des steps qui ont produit ce type
+        # ("__initial__" pour les entrées initiales) — utilisé pour
+        # valider les références ``inputs_from``.
+        producers: dict[ArtifactType, set[str]] = {
+            t: {"__initial__"} for t in initial_inputs
+        }
+        # Map step_name → set des types produits, pour la validation
+        # des références.
+        step_outputs: dict[str, set[ArtifactType]] = {
+            "__initial__": set(initial_inputs),
+        }
+        # Set des types disponibles à un instant t (latest seulement).
         available: set[ArtifactType] = set(initial_inputs)
+
         for i, step in enumerate(self.steps):
+            # 1. Toutes les entrées doivent être disponibles
             missing = [t for t in step.input_types if t not in available]
             if missing:
                 miss_str = ",".join(t.value for t in missing)
@@ -166,7 +212,33 @@ class PipelineSpec:
                     f"qui n'est ni dans les entrées initiales "
                     f"ni produit par une étape antérieure"
                 )
+            # 2. Vérification des références ``inputs_from``
+            for ref_type, ref_step in step.inputs_from.items():
+                if ref_type not in step.input_types:
+                    problems.append(
+                        f"étape {i} ({step.name}) déclare "
+                        f"inputs_from[{ref_type.value}]={ref_step!r} "
+                        f"mais le module ne consomme pas ce type"
+                    )
+                    continue
+                if ref_step not in step_outputs:
+                    problems.append(
+                        f"étape {i} ({step.name}) référence "
+                        f"inputs_from[{ref_type.value}]={ref_step!r} "
+                        f"qui n'est pas une étape antérieure connue"
+                    )
+                    continue
+                if ref_type not in step_outputs[ref_step]:
+                    problems.append(
+                        f"étape {i} ({step.name}) référence "
+                        f"inputs_from[{ref_type.value}]={ref_step!r} "
+                        f"mais cette étape ne produit pas ce type"
+                    )
+            # 3. Mise à jour pour les étapes suivantes
             available.update(step.output_types)
+            step_outputs[step.name] = set(step.output_types)
+            for out_type in step.output_types:
+                producers.setdefault(out_type, set()).add(step.name)
         return problems
 
     def is_valid(self, initial_inputs: tuple[ArtifactType, ...]) -> bool:
@@ -339,46 +411,62 @@ class PipelineRunner:
             result.error = " ; ".join(problems)
             return result
 
-        # Bag d'artefacts disponibles, mis à jour à chaque étape.
-        available: dict[ArtifactType, Any] = dict(initial_inputs)
+        # Sprint 66 — bag versionné : ``versioned[(type, src_step)]``
+        # contient l'artefact produit par ``src_step`` pour ``type``.
+        # ``src_step`` vaut ``"__initial__"`` pour les entrées
+        # initiales fournies par l'utilisateur.  ``latest[type]``
+        # désigne le nom de l'étape qui a produit la version la plus
+        # récente du type — utilisé en l'absence d'``inputs_from``
+        # explicite (rétrocompat Sprint 63).
+        versioned: dict[tuple[ArtifactType, str], Any] = {
+            (t, "__initial__"): v for t, v in initial_inputs.items()
+        }
+        latest: dict[ArtifactType, str] = {
+            t: "__initial__" for t in initial_inputs
+        }
 
         pipeline_t0 = time.monotonic()
         for step in spec.steps:
             step_result = PipelineRunner._run_step(
-                step, available, document,
+                step, versioned, latest, document,
             )
             result.steps.append(step_result)
-            # Si l'étape a échoué, les étapes suivantes risquent
-            # de manquer leur entrée.  On continue quand même pour
-            # capturer toutes les erreurs possibles ; chaque étape
-            # vérifie ses propres entrées.
-            for at in step_result.output_types:
-                # Récupère le dernier artefact produit pour ce type
-                # depuis ``available`` (mis à jour dans _run_step).
-                pass  # available déjà mis à jour
         result.total_duration_seconds = time.monotonic() - pipeline_t0
         return result
 
     @staticmethod
     def _run_step(
         step: PipelineStep,
-        available: dict[ArtifactType, Any],
+        versioned: dict[tuple[ArtifactType, str], Any],
+        latest: dict[ArtifactType, str],
         document: Document,
     ) -> StepResult:
-        # Vérification des entrées disponibles
-        missing = [t for t in step.input_types if t not in available]
+        # Sprint 66 — résolution des entrées : pour chaque type
+        # demandé, on consulte ``inputs_from`` ; sinon on prend la
+        # dernière version disponible (rétrocompat Sprint 63).
+        resolved: dict[ArtifactType, Any] = {}
+        missing: list[str] = []
+        for t in step.input_types:
+            src = step.inputs_from.get(t, latest.get(t))
+            if src is None:
+                missing.append(t.value)
+                continue
+            key = (t, src)
+            if key not in versioned:
+                # Référence explicite vers une étape qui n'a pas
+                # produit cet artefact (ex. l'étape source a échoué).
+                missing.append(f"{t.value}@{src}")
+                continue
+            resolved[t] = versioned[key]
         if missing:
-            miss_str = ",".join(t.value for t in missing)
+            miss_str = ",".join(missing)
             return StepResult(
                 step_name=step.name,
                 duration_seconds=0.0,
                 output_types=(),
                 error=f"entrée manquante : {miss_str}",
             )
-        # Construit le sous-dict d'entrées attendues par le module.
-        inputs_for_module = {
-            t: available[t] for t in step.input_types
-        }
+        inputs_for_module = resolved
         # Exécution chronométrée
         t0 = time.monotonic()
         try:
@@ -419,9 +507,12 @@ class PipelineRunner:
             miss_str = ",".join(t.value for t in missing_outputs)
             error = f"sortie manquante : {miss_str}"
 
-        # Mise à jour du bag d'artefacts disponibles
+        # Mise à jour du bag versionné : on stocke la sortie sous
+        # une clé (type, step.name) ET on met à jour ``latest`` pour
+        # que les étapes suivantes la récupèrent par défaut.
         for t in produced:
-            available[t] = outputs[t]
+            versioned[(t, step.name)] = outputs[t]
+            latest[t] = step.name
 
         # Évaluation aux jonctions : pour chaque type produit, si
         # la GT du même niveau existe, on calcule les métriques.
