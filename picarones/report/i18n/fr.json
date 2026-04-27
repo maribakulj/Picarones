@@ -208,5 +208,22 @@
   "philo_roman_status_case_changed": "Casse",
   "philo_roman_status_j_dropped": "j supprimé",
   "philo_roman_status_converted_to_arabic": "→ arabe",
-  "philo_roman_status_lost": "Perdu"
+  "philo_roman_status_lost": "Perdu",
+  "pipeline_report_title": "Rapport de pipeline composée",
+  "pipeline_report_note": "Données brutes par étape. L'outil mesure et agrège — il ne classe pas la pipeline « bonne » ou « mauvaise ». C'est au chercheur de juger les chiffres selon ses critères.",
+  "pipeline_summary_title": "Résumé du benchmark",
+  "pipeline_name_label": "Pipeline",
+  "pipeline_corpus_label": "Corpus",
+  "pipeline_n_docs_label": "Documents",
+  "pipeline_succeeded_label": "Pipelines réussies",
+  "pipeline_failed_label": "Pipelines échouées",
+  "pipeline_duration_label": "Durée totale",
+  "pipeline_steps_title": "Détail par étape",
+  "pipeline_step_name_label": "Étape",
+  "pipeline_success_rate_label": "Taux succès",
+  "pipeline_duration_mean_label": "Durée moyenne",
+  "pipeline_duration_median_label": "Durée médiane",
+  "pipeline_junction_metrics_label": "Métriques aux jonctions",
+  "pipeline_error_breakdown_label": "Erreurs",
+  "pipeline_docs_short": "docs"
 }

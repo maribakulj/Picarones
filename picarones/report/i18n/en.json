@@ -208,5 +208,22 @@
   "philo_roman_status_case_changed": "Case",
   "philo_roman_status_j_dropped": "j dropped",
   "philo_roman_status_converted_to_arabic": "→ arabic",
-  "philo_roman_status_lost": "Lost"
+  "philo_roman_status_lost": "Lost",
+  "pipeline_report_title": "Composed pipeline report",
+  "pipeline_report_note": "Raw counts per step. The tool measures and aggregates — it does not classify the pipeline as 'good' or 'bad'. It is up to the researcher to judge the figures according to their own criteria.",
+  "pipeline_summary_title": "Benchmark summary",
+  "pipeline_name_label": "Pipeline",
+  "pipeline_corpus_label": "Corpus",
+  "pipeline_n_docs_label": "Documents",
+  "pipeline_succeeded_label": "Pipelines succeeded",
+  "pipeline_failed_label": "Pipelines failed",
+  "pipeline_duration_label": "Total duration",
+  "pipeline_steps_title": "Per-step details",
+  "pipeline_step_name_label": "Step",
+  "pipeline_success_rate_label": "Success rate",
+  "pipeline_duration_mean_label": "Mean duration",
+  "pipeline_duration_median_label": "Median duration",
+  "pipeline_junction_metrics_label": "Junction metrics",
+  "pipeline_error_breakdown_label": "Errors",
+  "pipeline_docs_short": "docs"
 }

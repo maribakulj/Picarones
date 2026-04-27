@@ -16,6 +16,66 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 67 — Vue HTML d'un benchmark de pipeline composée
+  (axe B, suite Sprints 63-66).**  Pattern identique aux
+  Sprints 41 (NER), 43 (calibration) et 62 (philologie) : rendu
+  **server-side**, pas de JavaScript, déterministe, anti-injection
+  systématique via ``html.escape``.
+  - Nouveau module `picarones/report/pipeline_render.py` :
+    - ``build_pipeline_summary_html(bench)`` — encart résumé
+      global (pipeline, corpus, n_docs, n_pipelines_succeeded /
+      failed avec cellule colorée par taux de succès, durée
+      totale formatée).
+    - ``build_pipeline_steps_table_html(bench)`` — tableau par
+      étape avec colonnes : nom, ``n_succeeded`` / ``n_failed``,
+      taux de succès (gradient rouge → vert), durée mean /
+      median, métriques aux jonctions formatées
+      (``<type>.<metric>: mean (n=N)``), error_breakdown
+      catégorisé (``raised_exception`` / ``missing_input`` /
+      ``missing_output`` / ``pipeline_aborted`` / ``other``).
+      Adaptive : retourne ``""`` si aucune étape n'a été agrégée.
+    - ``build_pipeline_report_html(bench, lang)`` — **document
+      HTML autonome** (``<!doctype html>`` + ``<html>`` +
+      ``<head>`` avec styles CSS inline + ``<body>``) que
+      l'utilisateur peut écrire directement sur disque, **sans
+      dépendre du générateur OCR historique** (rapport pipeline
+      distinct du rapport ``BenchmarkResult``).  Helper
+      ``_format_duration`` adaptatif (ms / s / mm:ss).
+  - **Vue distincte du rapport OCR** : le rapport HTML existant
+    (``ReportGenerator``) attend un ``BenchmarkResult`` (axe A) ;
+    pour les pipelines composées on utilise
+    ``PipelineBenchmarkResult`` (axe B).  Plutôt que de fusionner
+    les deux, on livre un rapport autonome à part — clarté
+    architecturale et pas de couplage.
+  - +18 clés i18n FR/EN (``pipeline_report_*``,
+    ``pipeline_summary_*``, ``pipeline_steps_*``,
+    ``pipeline_*_label``).
+  - +21 tests dans `test_sprint67_pipeline_html.py` :
+    - summary : nom de pipeline / corpus / succeeded-failed
+      affichés, durée formatée
+    - steps table : noms, colonnes (8 attendues), métriques aux
+      jonctions affichées (``text.cer 0.182 (n=10)``),
+      error_breakdown affiché, vide sans agrégats, cellule de
+      taux colorée
+    - document autonome : doctype, structure html/head/body,
+      styles inline, title contenant le pipeline name, attribut
+      ``lang`` (FR + EN), summary et steps inclus
+    - anti-injection : pipeline name / corpus name / step name /
+      labels i18n contenant ``<script>`` tous correctement
+      échappés
+    - complétude i18n : 17 clés ``pipeline_*`` présentes en FR
+      ET EN
+  - **Pas de classification automatique** : le document affiche
+    les chiffres bruts par étape ; aucun verdict « pipeline bonne
+    ou mauvaise » imposé.
+  - **Reporté Sprint 68** : rendu d'un
+    ``PipelineComparisonResult`` (ranking + gain table entre N
+    pipelines).
+  - **Verrou levé** : un chercheur peut désormais générer un
+    rapport HTML autonome après ``run_pipeline_benchmark`` —
+    ``Path("rapport.html").write_text(build_pipeline_report_html(
+    bench))`` — sans rien d'autre.
+
 - **Sprint 66 — DAG branchant via ``inputs_from`` (axe B, suite
   Sprints 63-65).**  Les Sprints 63-65 traitaient des pipelines
   séquentielles : la sortie d'une étape alimente automatiquement
