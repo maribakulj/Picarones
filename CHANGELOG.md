@@ -16,6 +16,68 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 62 — Vue HTML « Profil philologique » (clôture du
+  câblage philologique bout-en-bout).**  Suite directe Sprint 61
+  (câblage backend) — produit le bloc HTML qui remonte les six
+  modules philologiques (Sprints 55-60) dans le rapport.  Pattern
+  identique aux Sprints 41 (NER) et 43 (calibration) : rendu
+  server-side, pas de JavaScript, déterministe.
+  - Nouveau module `picarones/report/philological_render.py` :
+    - 6 fonctions de rendu de section (une par module) :
+      ``build_unicode_blocks_section``,
+      ``build_abbreviations_section``, ``build_mufi_section``,
+      ``build_early_modern_section``,
+      ``build_modern_archives_section``,
+      ``build_roman_numerals_section``.
+    - Agrégateur ``build_philological_profile_html`` qui assemble
+      les sections non vides en un bloc unique avec titre et note
+      d'usage explicite (« L'outil ne classifie pas la convention
+      adoptée par chaque moteur — c'est au chercheur de lire les
+      chiffres et de conclure selon ses critères éditoriaux »).
+    - **Adaptive masking complet** : chaque section n'apparaît que
+      si au moins un moteur a du signal pour son module ; si aucun
+      module n'a de signal, l'agrégateur retourne ``""`` et le
+      bloc HTML complet est omis.
+    - Cellules colorées par gradient rouge → jaune → vert
+      proportionnel au score (identique au pattern Sprint 41
+      ``ner_render``) ; pour le statut ``lost`` des numéraux
+      romains, la coloration est inversée (un haut taux de perte
+      est mauvais).
+    - Affichage des effectifs ``n=…`` à côté de chaque score pour
+      donner au chercheur le contexte (un score de 100 % sur n=1
+      n'a pas la même valeur qu'un 80 % sur n=500).
+  - Câblage dans ``ReportGenerator.generate`` : appel de
+    ``build_philological_profile_html`` après les blocs
+    NER/calibration/inter-moteurs/stratification, passage au
+    template via la variable ``philological_profile_html``.
+  - Câblage dans ``view_analyses.html`` : un nouveau
+    ``chart-card`` pleine largeur conditionné au contenu
+    (``{% if philological_profile_html %}``).
+  - Anti-injection HTML systématique : tous les noms de moteurs,
+    catégories, statuts, libellés i18n passent par
+    ``html.escape`` avant insertion (testé : ``<script>`` dans le
+    nom du moteur correctement échappé).
+  - **Aucune classification automatique** : le mot
+    « diplomatique » / « modernisant » n'apparaît que dans la
+    note explicative en bas de section, jamais comme étiquette
+    accolée à un moteur.
+  - +25 clés i18n FR/EN (``philo_profile_*``,
+    ``philo_unicode_*``, ``philo_abbreviations_*``,
+    ``philo_mufi_*``, ``philo_early_modern_*``,
+    ``philo_modern_archives_*``, ``philo_roman_numerals_*``,
+    ``philo_roman_status_*``).
+  - +18 tests dans `test_sprint62_philological_html.py` (sections
+    individuelles ×6, adaptive masking complet, anti-injection sur
+    nom de moteur et libellé i18n, valeurs en %, code couleur,
+    pas de classification imposée, complétude i18n FR/EN sur les
+    25 clés).
+  - **Verrou levé** : les six modules philologiques sont désormais
+    livrés bout-en-bout (calcul Sprints 55-60 + backend Sprint 61
+    + HTML Sprint 62).  Un benchmark sur n'importe quel fonds
+    patrimonial européen produit automatiquement, sans
+    configuration, un profil philologique lisible dans le rapport
+    HTML — donné par catégorie/bloc/statut, sans verdict.
+
 - **Sprint 61 — Câblage backend des métriques philologiques au
   runner (Sprints 55-60).**  Suite directe Sprints 55-60 — les six
   modules philologiques (unicode_blocks, abbreviations, mufi,

@@ -196,6 +196,9 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             # Sprint 43 — calibration agrégée (None si aucune confidence
             # n'a été exposée par le moteur sur ce corpus)
             "aggregated_calibration": report.aggregated_calibration,
+            # Sprint 62 — profil philologique agrégé (None si aucun
+            # signal philologique sur le corpus pour ce moteur)
+            "aggregated_philological": report.aggregated_philological,
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
@@ -773,6 +776,17 @@ class ReportGenerator:
             labels=labels,
         )
 
+        # Sprint 62 — profil philologique (6 sections adaptive sur les
+        # modules philologiques Sprints 55-60). Vide si aucun moteur
+        # n'a de aggregated_philological.
+        from picarones.report.philological_render import (
+            build_philological_profile_html,
+        )
+        philological_profile_html = build_philological_profile_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -793,6 +807,7 @@ class ReportGenerator:
             calibration_summary_html=calibration_summary_html,
             reliability_diagrams_html=reliability_diagrams_html,
             stratified_ranking_html=stratified_ranking_html,
+            philological_profile_html=philological_profile_html,
         )
 
         output_path.write_text(html, encoding="utf-8")

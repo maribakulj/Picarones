@@ -200,6 +200,15 @@
     </div>
     {% endif %}
 
+    <!-- Sprint 62 — Profil philologique (6 sections : unicode_blocks,
+         abbreviations, mufi, early_modern, modern_archives, roman_numerals).
+         Adaptive : n'apparaît que si au moins un module a du signal. -->
+    {% if philological_profile_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ philological_profile_html }}
+    </div>
+    {% endif %}
+
     <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
     {% if divergence_matrix_html or oracle_gap_html %}
     <div class="chart-card" style="grid-column:1/-1">
