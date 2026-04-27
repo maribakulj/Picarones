@@ -16,6 +16,41 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 55 — A.II.3.1 Précision par bloc Unicode : couche de
+  calcul (démarrage A.II.3, métriques philologiques).** Pour un
+  éditeur d'imprimés anciens ou un médiéviste, la question
+  pertinente n'est pas seulement « quel CER global ? » mais
+  « quels caractères historiques ce moteur restitue-t-il
+  fidèlement ? ».  Le module produit la phrase actionnable du plan :
+  *« GPT-4o restitue 100 % du Latin de Base mais 0 % des formes de
+  présentation latine (ﬁ, ſ…) »*.
+  - Nouveau module `picarones/core/unicode_blocks.py` :
+    - Table de 22 blocs Unicode standard centrée sur les corpus
+      patrimoniaux européens (Latin de Base, Latin Étendu A/B/C/D/E,
+      Latin Extended Additional, Diacritiques combinants,
+      Présentation latine, MUFI PUA, Greek, Cyrillic, etc.).
+      Tout caractère hors table → ``"Other"`` (couverture
+      exhaustive : ``sum(total) == len(GT)``).
+    - ``get_block(char)`` retourne le nom du bloc Unicode.
+    - ``compute_unicode_block_accuracy(reference, hypothesis)`` :
+      aligne caractère par caractère via ``difflib.SequenceMatcher``,
+      classe chaque caractère GT dans son bloc, et compte les
+      positions correctement restituées (opcodes ``equal``).
+      Retourne ``per_block`` (correct/total/accuracy par bloc) +
+      ``global_accuracy``.
+    - ``unicode_block_global_accuracy`` : raccourci enregistré dans
+      le registre typé Sprint 34 pour ``(TEXT, TEXT)``.
+  - +24 tests dans `test_sprint55_unicode_blocks.py` :
+    - ``get_block`` sur 10 caractères clés (ASCII, é, ç, ƒ, ſ, ﬁ,
+      diacritique combinant) + Other (vide, émoji)
+    - calcul d'accuracy : identité, vide bilatéral / unilatéral,
+      None, substitutions ciblées par bloc
+    - **cas réaliste du plan** : OCR modernisant remplace ſ→s et
+      ﬁ→fi → 100 % Latin de Base mais 0 % Présentation latine et
+      0 % Latin Extended-A
+    - insertions/suppressions, coverage exhaustive, raccourci,
+      intégration registre
+
 - **Sprint 54 — A.II.2.2 Layout F1 par type de région : couche de
   calcul (clôture A.II.2 côté calcul).** Dernière brique de l'axe
   A.II.2 (métriques structurelles).  Pour les manuscrits glosés
@@ -716,18 +751,17 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1998 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 2022 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
   +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
-  +16 Sprint 51, +25 Sprint 52, +16 Sprint 53, +20 Sprint 54).
-  Aucune régression. **Phase 0 close ; Étape 2 du plan d'évolution
+  +16 Sprint 51, +25 Sprint 52, +16 Sprint 53, +20 Sprint 54,
+  +24 Sprint 55). Aucune régression. **Phase 0 close ; Étape 2
   intégralement livrée ; Étape 3 / axe A.II.2 (métriques
-  structurelles) couches de calcul intégralement livrées :**
-  Flesch (A.II.2.3, Sprint 52), Reading order F1 ICDAR 2015
-  (A.II.2.1, Sprint 53) et Layout F1 par type (A.II.2.2,
-  Sprint 54).
+  structurelles) couches de calcul intégralement livrées
+  (Sprints 52-54) ; Étape 3 / axe A.II.3 (métriques philologiques)
+  démarrée :** Précision par bloc Unicode (A.II.3.1, Sprint 55).
 
 ---
 
