@@ -16,6 +16,62 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 69 — Documentation utilisateur « Écrire un module pour
+  le banc d'essai de pipelines » (axe B, suite Sprints 63-68).**
+  Premier guide pédagogique dédié à l'axe B : un chercheur ou
+  ingénieur qui veut **brancher son propre module** dans Picarones
+  (correcteur LLM, reconstructeur ALTO, classifieur d'entités,
+  re-segmenteur…) trouve maintenant un guide complet bout-en-bout.
+  - Nouveau document `docs/user/writing-a-pipeline-module.md` :
+    - **TL;DR** avec un exemple `MyCorrector` minimal en 25 lignes.
+    - Section **« Le contrat ``BaseModule`` »** : tableau des
+      champs obligatoires (``input_types``, ``output_types``,
+      ``execution_mode``, ``name``, ``process``) et liste des
+      ``ArtifactType`` disponibles.
+    - Section **« Exemples pédagogiques »** : trois mocks
+      explicitement étiquetés « pédagogique » et marqués « à NE
+      PAS copier en production » — correcteur LLM TEXT→TEXT,
+      reconstructeur TEXT→ALTO, classifieur TEXT→ENTITIES.
+    - Section **« Orchestrer une pipeline »** : mono-document
+      (Sprint 63), corpus complet avec factory personnalisée
+      (Sprint 64), comparaison de N pipelines (Sprint 65), DAG
+      branchant via ``inputs_from`` (Sprint 66) — chaque
+      sous-section avec snippet exécutable.
+    - Section **« Générer un rapport HTML autonome »** : pipeline
+      unique (Sprint 67) et comparaison (Sprint 68) avec snippets
+      ``Path("rapport.html").write_text(...)``.
+    - Section **« Bonnes pratiques »** : discipline des types,
+      erreurs gracieuses, mesure du temps wall-clock, **pas de
+      seuils éditoriaux dans votre module** (le chercheur juge,
+      pas le module).
+    - Section **« Anti-patterns »** : trois questions FAQ avec
+      réponses explicites — « Pourquoi pas de correcteur LLM
+      intégré ? », « Et si je veux juste tester un OCR seul ? »,
+      « Mon module a besoin d'état mutable entre documents ? ».
+    - **Tableau de référence rapide** des sprints axe B (32-34
+      pour les fondations, 63-68 pour l'orchestration et le
+      rapport).
+  - +34 tests dans `test_sprint69_user_doc.py` :
+    - **présence des 7 sections principales** (TL;DR, contrat,
+      exemples, orchestration, rapport HTML, bonnes pratiques,
+      anti-patterns) — anti-régression doc
+    - **15 concepts API mentionnés** (``BaseModule``,
+      ``ArtifactType``, ``input_types``, ``inputs_from``,
+      ``RankingSpec``, ``compare_pipelines``,
+      ``build_pipeline_comparison_report_html``, etc.)
+    - **philosophie « banc d'essai pas atelier »** présente
+      explicitement dans le doc, mention « aucun module métier »,
+      exemples étiquetés « pédagogique »
+    - **références aux 6 sprints axe B** (63-68) + au moins un
+      sprint de la phase 0 (32-34)
+    - **≥ 5 blocs de code Python** + imports valides depuis les
+      vrais modules ``picarones.core.*`` et ``picarones.report.*``
+  - **Verrou levé** : la barrière d'entrée pour un utilisateur
+    tiers qui veut évaluer son module passe d'« il faut lire le
+    code source des Sprints 63-68 pour comprendre comment ça
+    marche » à « il y a un guide qui couvre le tout en une page,
+    avec des snippets prêts à copier ».
+
 - **Sprint 68 — Vue HTML de comparaison de N pipelines composées
   (axe B, suite Sprints 63-67).**  Suite directe Sprint 67 — la
   vue mono-pipeline est étendue avec un rendu **comparatif** entre
