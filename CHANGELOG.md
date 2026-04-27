@@ -16,6 +16,55 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 65 — Comparaison de N pipelines composées sur le même
+  corpus (axe B, suite Sprints 63-64).**  Réponse à la question
+  typique BnF : « OCR seul vs OCR+correcteur A vs OCR+correcteur
+  B : laquelle est la meilleure sur mon corpus, et de combien ? ».
+  Philosophie inchangée — banc d'essai, pas atelier de production.
+  - Nouveau module `picarones/core/pipeline_comparison.py` :
+    - ``compare_pipelines(specs, corpus, factories=None)`` exécute
+      séquentiellement N ``PipelineSpec`` sur le **même** corpus
+      (même GT, comparaison apple-to-apple).  Garde-fou : noms
+      uniques exigés (sinon ``ValueError`` explicite).
+    - ``factories`` optionnel : dict ``{pipeline_name:
+      InitialInputsFactory}`` pour personnaliser les entrées
+      initiales par pipeline (utile pour comparer une pipeline qui
+      démarre par ``IMAGE`` et une qui démarre par ``TEXT``).
+    - ``PipelineComparisonResult`` : conteneur avec
+      ``per_pipeline: dict[name → PipelineBenchmarkResult]``,
+      ``pipeline_names()`` qui préserve l'ordre d'insertion,
+      et deux utilitaires comparatifs.
+    - ``ranking_by_final_metric(artifact_type, metric_name,
+      higher_is_better=False)`` : trie les pipelines par la valeur
+      **finale** de la métrique demandée à la jonction
+      ``artifact_type`` (récupère le ``mean`` de la dernière étape
+      qui a produit ce type, cohérent avec
+      ``PipelineResult.junction_metrics_for`` Sprint 63).  Les
+      pipelines sans métrique vont en queue.
+    - ``gain_table(artifact_type, metric_name, baseline_pipeline)``
+      : pour chaque pipeline, ``{value, absolute, relative}``
+      vs baseline.  ``relative`` à ``None`` si baseline = 0
+      (évite division par zéro silencieuse).  ``KeyError`` si
+      la baseline est inconnue.
+  - Approche purement infrastructure : aucun module métier, on se
+    contente de réutiliser ``run_pipeline_benchmark`` (Sprint 64)
+    pour chaque spec et d'ajouter la couche comparative au-dessus.
+  - +13 tests dans `test_sprint65_pipeline_comparison.py`
+    (single/multi pipelines, ordre préservé, noms en double,
+    corpus vide, ranking ascendant/descendant, pipelines sans
+    métrique en queue, ``gain_table`` avec baseline inconnue,
+    baseline = 0 → relative None, baseline=self → absolute=0,
+    cas réaliste OCR fautif vs OCR+correcteur, factories par
+    pipeline, dataclass).
+  - **Tous les modules utilisés sont des mocks** (``MockOCR``,
+    ``TextFixer``, ``AlwaysFails``).  Picarones n'expose
+    volontairement aucun module métier.
+  - **Verrou levé** : un chercheur peut désormais comparer N
+    pipelines tierces sur le **même** corpus en une commande,
+    obtenir le ranking selon la métrique d'intérêt et la table
+    de gain vs baseline.  Vue HTML dédiée et tests statistiques
+    inter-pipelines arrivent dans les sprints suivants.
+
 - **Sprint 64 — Orchestration corpus-wide d'une pipeline composée
   (axe B, suite directe Sprint 63).**  Le ``PipelineRunner`` du
   Sprint 63 exécute une pipeline sur un seul document ; ce sprint
