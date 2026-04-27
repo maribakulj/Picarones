@@ -16,6 +16,37 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 52 — A.II.2.3 Différence Flesch : couche de calcul
+  (démarrage de l'Étape 3 / axe A — métriques structurelles).**
+  Stratégie identique aux Sprints 35/38/39 (couche pure d'abord,
+  câblage runner+HTML après).
+  - Nouveau module `picarones/core/readability.py` :
+    - ``count_syllables_word`` : heuristique groupes de voyelles
+      consécutives (avec diacritiques FR/EN), fallback à 1 syllabe
+      pour les mots sans voyelle (acronymes type « BNF »).
+    - ``count_words`` (regex Unicode) et ``count_sentences``
+      (découpe sur ``.!?…``, minimum 1 si le texte contient au
+      moins un mot).
+    - ``flesch_score(text, lang)`` avec coefficients FR
+      (Kandel-Moles 1958, ``207 - 1.015·m/p - 73.6·s/m``) et EN
+      (Flesch 1948, ``206.835 - 1.015·m/p - 84.6·s/m``).  Score
+      borné dans ``[0, 100]``.
+    - ``flesch_delta(reference, hypothesis, lang)`` retourne la
+      différence ``Flesch(OCR) - Flesch(GT)``.  **Positif = signal
+      d'over-normalisation LLM** (le LLM a lissé la langue
+      historique).
+  - **Aucun alignement caractère/mot requis** : la métrique reste
+    calculable même quand l'OCR est très dégradé — c'est l'avantage
+    clé pour repérer les VLM/LLM qui hallucinent du texte moderne
+    plausible mais déconnecté de la GT.
+  - `flesch_delta_fr` et `flesch_delta_en` enregistrés dans le
+    registre typé Sprint 34 pour la jonction ``(TEXT, TEXT)``.
+  - +25 tests dans `test_sprint52_readability.py` (compteurs de
+    base avec cas limites, score Flesch borné, FR/EN cohérents,
+    delta nul sur textes identiques, **cas réaliste de
+    modernisation LLM** → delta > 10 pts, OCR dégradé borné,
+    intégration registre typé).
+
 - **Sprint 51 — Adapter Azure Document Intelligence : exposition de
   `Word.confidence` (clôture de l'adaptation engines).** Suite directe
   des Sprints 47-50. Azure DI expose ``analyzeResult.pages[].words[]``
@@ -628,18 +659,20 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 1937 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 1962 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
   +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
-  +16 Sprint 51). Aucune régression. **Phase 0 close ; Étape 2
-  du plan d'évolution intégralement livrée :** inter-moteurs
-  (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b) et
-  stratification (A.III) livrés bout-en-bout calcul → runner →
-  HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; **les 5
+  +16 Sprint 51, +25 Sprint 52). Aucune régression. **Phase 0
+  close ; Étape 2 du plan d'évolution intégralement livrée :**
+  inter-moteurs (A.II.1.c), NER (A.II.1.a), calibration (A.II.1.b)
+  et stratification (A.III) livrés bout-en-bout calcul → runner →
+  HTML ; A.I.2 médiane par défaut livré (Sprint 44) ; les 5
   adapters OCR (Tesseract, Pero, Mistral, Google Vision, Azure DI)
-  exposent désormais leurs `token_confidences` natifs**.
+  exposent désormais leurs `token_confidences` natifs.
+  **Étape 3 démarrée :** Flesch (A.II.2.3) couche de calcul livrée
+  (Sprint 52).
 
 ---
 
