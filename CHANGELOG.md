@@ -16,6 +16,38 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 57 — A.II.3.3 Couverture MUFI : couche de calcul
+  (clôture A.II.3 philologique côté calcul).** Suite des Sprints
+  55-56 dans l'axe philologique.  La **Medieval Unicode Font
+  Initiative** (MUFI v4.0) standardise les caractères médiévaux
+  attendus en transcription fidèle ; le module mesure le taux de
+  caractères MUFI de la GT correctement restitués dans l'OCR.
+  - Nouveau module `picarones/core/mufi.py` :
+    - ``_MUFI_RANGES`` : 4 plages Unicode caractéristiques (PUA
+      ``E000-F8FF``, Latin Extended-D ``A720-A7FF``, Combining
+      Diacritical Marks Supplement ``1DC0-1DFF``, Alphabetic
+      Presentation Forms ``FB00-FB4F``).
+    - ``_MUFI_EXPLICIT_CHARS`` : liste raisonnée de lettres
+      médiévales hors plages (þ, Þ, ð, Ð, ƿ, Ƿ, ſ, æ, Æ, œ, Œ,
+      ø, Ø, ƀ, ŧ, đ, ħ, ȝ, Ȝ, ꜿ).
+    - ``is_mufi_char(char, custom_chars=None)`` extensible via
+      paramètre.
+    - ``compute_mufi_coverage(reference, hypothesis, custom_chars)``
+      aligne caractère par caractère via
+      ``difflib.SequenceMatcher`` (même méthode que le bloc Unicode
+      du Sprint 55), classe les positions GT MUFI, et compte les
+      positions correctement restituées.
+    - Retourne ``coverage`` global + ``per_char`` (total /
+      preserved / coverage par caractère MUFI rencontré) + liste
+      ``missed_chars`` (caractères MUFI ratés).
+  - ``mufi_coverage`` enregistré dans le registre typé Sprint 34
+    pour ``(TEXT, TEXT)``.
+  - +41 tests dans `test_sprint57_mufi.py` (détection sur 28
+    caractères clés, plage PUA, custom_chars extensible ; coverage
+    diplomatique → 1, modernisante → 0, partielle avec breakdown
+    per_char ; cas dégénérés ; comptage exhaustif ;
+    intégration registre).
+
 - **Sprint 56 — A.II.3.2 Score d'expansion d'abréviations
   médiévales : couche de calcul.** Suite du Sprint 55 dans l'axe
   A.II.3 (philologique).  Sur les manuscrits médiévaux, les
@@ -790,13 +822,13 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 2045 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 2086 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
   +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
   +16 Sprint 51, +25 Sprint 52, +16 Sprint 53, +20 Sprint 54,
-  +24 Sprint 55, +23 Sprint 56). Aucune régression. **Phase 0 close ; Étape 2
+  +24 Sprint 55, +23 Sprint 56, +41 Sprint 57). Aucune régression. **Phase 0 close ; Étape 2
   intégralement livrée ; Étape 3 / axe A.II.2 (métriques
   structurelles) couches de calcul intégralement livrées
   (Sprints 52-54) ; Étape 3 / axe A.II.3 (métriques philologiques)
