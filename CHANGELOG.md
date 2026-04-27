@@ -16,6 +16,76 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 63 — Banc d'essai de pipelines composées : runner +
+  évaluation aux jonctions (démarrage axe B du plan 2026).**
+  Picarones est et reste un **banc d'essai**, pas un atelier de
+  production : ce sprint livre l'infrastructure qui permet
+  d'**évaluer des pipelines composées de modules tiers** que
+  l'utilisateur amène (ses propres ``BaseModule`` du Sprint 33),
+  **sans qu'aucun module métier ne soit fourni par Picarones**
+  (pas de reconstructeur ALTO, pas de correcteur LLM, pas de
+  re-segmenteur).
+  - Nouveau module `picarones/core/pipeline_runner.py` :
+    - ``PipelineStep(name, module)`` : une étape lit ses
+      ``input_types`` / ``output_types`` directement depuis le
+      ``BaseModule`` fourni par l'utilisateur.
+    - ``PipelineSpec(name, steps)`` : DAG séquentiel de
+      ``PipelineStep`` avec validation statique des types
+      (``validate(initial_inputs)`` retourne la liste des
+      problèmes ; ``is_valid`` raccourci booléen).
+    - ``StepResult(step_name, duration_seconds, output_types,
+      junction_metrics, error)`` : résultat d'une étape avec
+      durée chronométrée, types effectivement produits, métriques
+      aux jonctions et erreur éventuelle.
+    - ``PipelineResult(pipeline_name, doc_id, steps,
+      total_duration_seconds, error)`` : résultat complet pour un
+      document, avec ``succeeded``, ``failing_steps``, et
+      ``junction_metrics_for(artifact_type)`` qui retourne les
+      métriques de la **dernière étape réussie** ayant produit le
+      type demandé.
+    - ``PipelineRunner.run(spec, document, initial_inputs)`` :
+      exécute la pipeline sur **un seul document**.  À chaque
+      étape : valide les entrées disponibles, exécute le module
+      avec chronométrage wall-clock, capture gracieusement les
+      exceptions (``RuntimeError``, etc.), valide que les sorties
+      déclarées sont effectivement produites, met à jour le bag
+      d'artefacts disponibles, et **évalue automatiquement chaque
+      type produit contre la GT du même niveau** (Sprint 32) via
+      ``compute_at_junction`` (Sprint 34) — sélectionnant les
+      métriques pertinentes selon les types.
+  - **Eager-load** des modules de métriques au top du
+    ``pipeline_runner.py`` (``builtin_metrics``, les six modules
+    philologiques, NER, reading_order, readability) pour garantir
+    que le registre typé soit peuplé avant l'évaluation aux
+    jonctions — sans ça, le runner trouverait un registre vide.
+  - **Périmètre Sprint 63** : runner séquentiel mono-document.
+    DAG branchant, parallélisation, agrégation corpus-wide et
+    vue HTML dédiée aux pipelines sont reportés à des sprints
+    dédiés.
+  - +16 tests dans `test_sprint63_pipeline_runner.py` :
+    validation de spec (vide, chaînée, manque d'entrée),
+    exécution 1 étape (parfait + imparfait), exécution 2 étapes
+    avec évaluation à chaque jonction et CER qui baisse après
+    correction par le rewriter, erreurs gracieuses (module qui
+    lève → RuntimeError capturé sans arrêter la chaîne ; module
+    silencieux qui ne produit pas la sortie déclarée → erreur
+    explicite ; spec invalide → erreur en amont, aucune étape
+    exécutée), pas de GT → pas de métriques sans erreur, mesure
+    du temps par étape, dataclasses (``StepResult`` /
+    ``PipelineResult.succeeded`` / ``failing_steps`` /
+    ``junction_metrics_for`` qui ignore les étapes en erreur).
+  - **Tous les modules utilisés dans les tests sont des mocks
+    définis dans le fichier de test** (``MockOCR``,
+    ``MockTextRewriter``, ``MockCrasher``, ``MockSilentDropper``)
+    — Picarones n'expose volontairement aucun module métier.
+  - **Verrou levé** : l'utilisateur peut désormais brancher ses
+    propres modules tiers (un correcteur LLM, un reconstructeur
+    ALTO, un re-segmenteur, un classifieur d'entités), composer
+    une pipeline et obtenir automatiquement les métriques à
+    chaque étape contre la GT correspondante.  L'orchestration
+    corpus-wide et la vue HTML dédiée arrivent dans les sprints
+    suivants de l'axe B.
+
 - **Sprint 62 — Vue HTML « Profil philologique » (clôture du
   câblage philologique bout-en-bout).**  Suite directe Sprint 61
   (câblage backend) — produit le bloc HTML qui remonte les six
