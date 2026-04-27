@@ -16,6 +16,45 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 56 — A.II.3.2 Score d'expansion d'abréviations
+  médiévales : couche de calcul.** Suite du Sprint 55 dans l'axe
+  A.II.3 (philologique).  Sur les manuscrits médiévaux, les
+  scribes utilisent intensivement des signes d'abréviation
+  (``ꝑ``=per, ``ꝓ``=pro, ``⁊``=et, etc.).  Un OCR/HTR a trois
+  comportements possibles face à eux : préserver, développer, ou
+  perdre.  Le module discrimine les trois.
+  - Nouveau module `picarones/core/abbreviations.py` :
+    - Table ``ABBREVIATION_EXPANSIONS`` des signes Capelli + MUFI
+      les plus courants (10 entrées : ꝑ, ꝓ, ꝗ, ꝙ, ꝯ, ⁊, ꝝ, ꝫ,
+      ꝭ, et séquences ``lettre + U+0303`` comme ``p̃``, ``q̃``).
+    - ``detect_abbreviations(text)`` retourne la liste ordonnée
+      des abréviations, avec doublons préservés et tolérance
+      NFC/NFD.
+    - ``compute_abbreviation_metrics(ref, hyp)`` produit deux
+      scores complémentaires :
+      - **strict_score** : taux d'abréviations Unicode dont la
+        forme abrégée est préservée telle quelle (édition
+        diplomatique).
+      - **expansion_score** : taux d'abréviations dont SOIT la
+        forme abrégée SOIT la forme développée attendue est
+        présente (édition modernisée acceptée).
+    - Le **ratio strict/expansion** dit la convention adoptée :
+      si égal et proche de 1 → diplomatique ; si strict << expansion
+      → modernisant ; les deux faibles → erreur OCR.
+    - Frontière de mot exigée pour les expansions courtes (« et »,
+      « us ») afin de limiter le bruit (« permettre » ne match
+      pas « per »).
+  - ``abbreviation_strict_score`` et ``abbreviation_expansion_score``
+    enregistrés dans le registre typé Sprint 34 pour ``(TEXT, TEXT)``.
+  - +23 tests dans `test_sprint56_abbreviations.py` couvrant la
+    détection (Unicode + tilde combinant + duplications + NFD),
+    les **trois scénarios standards** (diplomatique → strict=1,
+    expansion=1 ; modernisant → strict=0, expansion=1 ;
+    mauvais OCR → 0/0 ; mixte → strict=0.5, expansion=1), le
+    breakdown per_abbreviation, les cas dégénérés, la frontière
+    de mot pour les expansions courtes, l'intégration registre,
+    et la sanité de la table d'expansions.
+
 - **Sprint 55 — A.II.3.1 Précision par bloc Unicode : couche de
   calcul (démarrage A.II.3, métriques philologiques).** Pour un
   éditeur d'imprimés anciens ou un médiéviste, la question
@@ -751,13 +790,13 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Tests
 
-- 1478 → 2022 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
+- 1478 → 2045 tests (+17 Sprint 32, +23 Sprint 33, +21 Sprint 34,
   +27 Sprint 35, +22 Sprint 36, +42 Sprint 37, +19 Sprint 38,
   +32 Sprint 39, +16 Sprint 40, +38 Sprint 41, +17 Sprint 42,
   +43 Sprint 43, +15 Sprint 44, +16 Sprint 45, +38 Sprint 46,
   +9 Sprint 47, +14 Sprint 48, +17 Sprint 49, +17 Sprint 50,
   +16 Sprint 51, +25 Sprint 52, +16 Sprint 53, +20 Sprint 54,
-  +24 Sprint 55). Aucune régression. **Phase 0 close ; Étape 2
+  +24 Sprint 55, +23 Sprint 56). Aucune régression. **Phase 0 close ; Étape 2
   intégralement livrée ; Étape 3 / axe A.II.2 (métriques
   structurelles) couches de calcul intégralement livrées
   (Sprints 52-54) ; Étape 3 / axe A.II.3 (métriques philologiques)
