@@ -238,5 +238,9 @@
   "pipeline_gain_title": "Gain vs {baseline} sur {label}",
   "pipeline_gain_absolute_label": "Gain absolu",
   "pipeline_gain_relative_label": "Gain relatif",
-  "pipeline_baseline_marker": "(référence)"
+  "pipeline_baseline_marker": "(référence)",
+  "baseline_corpus_title": "Ce corpus est-il habituel ?",
+  "baseline_corpus_harder": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents de votre institution. Ce corpus est plus difficile que la moyenne.",
+  "baseline_corpus_easier": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents. Ce corpus est plus facile que la moyenne.",
+  "baseline_corpus_usual": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents. Ce corpus est dans la moyenne."
 }

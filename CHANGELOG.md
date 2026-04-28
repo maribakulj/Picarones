@@ -16,6 +16,62 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 74 — A.I.3 chantier 1 : encart « Ce corpus est-il
+  habituel ? » (clôture A.I.3).**  Suite directe Sprint 73
+  (couche calcul + détecteur narratif).  Ce sprint livre le
+  rendu HTML de l'encart qui place la difficulté du corpus
+  courant dans la distribution des corpus précédents stockés
+  en SQLite (Sprint 8) — phrase factuelle + mini-boxplot SVG.
+  - Nouveau module `picarones/report/baseline_render.py` :
+    - ``build_corpus_difficulty_baseline_html(percentile_data,
+      historical_values, labels)`` produit l'encart complet
+      (titre + phrase factuelle + boxplot SVG si valeurs
+      fournies).  Phrase template auto-sélectionnée selon les
+      flags ``harder_than_usual`` / ``easier_than_usual`` /
+      « usual » du percentile_data.
+    - ``_build_difficulty_boxplot_svg(historical_values,
+      current, width, height)`` construit un boxplot horizontal
+      SVG **server-side** (pas de JavaScript) avec :
+      - moustache min → max (ligne grise)
+      - boîte Q1 → Q3 (rectangle gris clair)
+      - médiane (trait noir épais)
+      - point courant (cercle coloré)
+    - **Couleur du point courant adaptive** :
+      - bleu (#3b87d8) si current < Q1 (corpus plus facile que
+        d'habitude)
+      - rouge (#d8553b) si current > Q3 (plus difficile)
+      - vert (#5fa860) sinon (habituel)
+    - Étiquettes numériques min / max / current visibles (fonts
+      explicites).
+    - SVG accessible : ``role="img"`` + ``aria-label``.
+    - Adaptive : retourne ``""`` si ``percentile_data is None``
+      (rapport adaptatif).  Si ``historical_values`` vide /
+      ``None``, seule la phrase factuelle est rendue (le boxplot
+      est omis silencieusement).
+  - Helper interne ``_quantiles(values)`` calcule
+    (min, Q1, median, Q3, max) avec méthode inclusive — gère le
+    cas N=0 et N=1.
+  - +4 clés i18n FR/EN (``baseline_corpus_title``,
+    ``baseline_corpus_harder``, ``baseline_corpus_easier``,
+    ``baseline_corpus_usual``).  Templates Python avec
+    placeholders ``{current:.2f}``, ``{percentile:.0f}``,
+    ``{n_runs}``.
+  - +20 tests dans `test_sprint74_baseline_html.py` :
+    - ``_quantiles`` (3 cas — simple, vide, single)
+    - SVG (8 cas — bien formé, vide, couleurs harder/easier/usual,
+      box+moustaches+cercle, dégénéré tous identiques, current
+      hors range historique)
+    - HTML (6 cas — None, harder/easier/usual, SVG omis sans
+      values, SVG présent avec values)
+    - anti-injection sur label i18n
+    - complétude i18n FR + EN
+  - **Verrou levé** : un benchmark BnF avec un historique SQLite
+    chargé peut désormais générer en tête de rapport un encart
+    qui dit *« ce corpus est plus difficile que la moyenne — au
+    88ᵉ percentile des 47 corpus précédents »* avec un boxplot
+    qui le visualise.  L'A.I.3 est livré bout-en-bout (Sprint 73
+    couche calcul + détecteur, Sprint 74 vue HTML).
+
 - **Sprint 73 — A.I.3 chantier 2 : détecteur narratif
   ``engine_off_baseline`` (couche calcul + narrative).**  L'historique
   SQLite (Sprint 8) existait depuis longtemps mais aucun détecteur
