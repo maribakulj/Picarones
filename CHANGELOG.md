@@ -16,6 +16,54 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 71 — A.I.1 chantier 2 : rare-token recall (couche
+  de calcul, démarrage de la résolution des critiques
+  structurelles A.I).**  Premier sprint du chantier A.I qui
+  s'attaque à la critique « la granularité ne s'arrête plus à la
+  page ».  Pour répondre à *« mon OCR a 5 % de CER, mais
+  préserve-t-il les noms propres rares qui m'intéressent pour
+  l'indexation prosopographique ? »*, le module mesure le **rappel
+  sur les tokens rares** d'un corpus (hapax + dis legomena,
+  défaut ``max_freq=2``).
+  - Nouveau module `picarones/core/rare_tokens.py` :
+    - ``tokenize(text)`` Unicode-aware : préserve les
+      contractions (``L'an``, ``d’une``), composés
+      (``peut-être``, ``c'est-à-dire``), apostrophe typographique
+      ``’`` (U+2019).
+    - ``frequency_distribution(documents, case_sensitive=False)``
+      : ``{token: count}`` corpus-wide.
+    - ``extract_rare_tokens(documents, max_freq=2)`` retourne le
+      ``frozenset`` des tokens dont la fréquence corpus-wide est
+      ``≤ max_freq``.  ``max_freq < 1`` → ``ValueError``.
+    - ``compute_rare_token_recall(reference, hypothesis,
+      rare_tokens)`` retourne ``{n_rare_tokens_in_reference,
+      n_rare_tokens_recalled, recall, missed_tokens}``.
+      Alignement **bag-of-tokens avec multiplicité** : un token
+      rare présent 2× en GT et 1× en hyp donne recall = 0,5 (pas
+      1,0).  ``missed_tokens`` liste les manqués avec
+      multiplicité.
+    - ``rare_token_recall`` raccourci.
+  - **Pas d'enregistrement dans le registre typé Sprint 34** : la
+    métrique exige un **3ᵉ argument** (le set des tokens rares,
+    calculé corpus-wide en amont).  L'utilisateur appelle
+    explicitement la fonction avec son set — pas de magie globale.
+  - +28 tests dans `test_sprint71_rare_tokens.py` :
+    tokenisation (8 cas — contractions ASCII et typographiques,
+    composés, diacritiques, ponctuation, nombres, vide),
+    frequency_distribution (4 cas — single/multi/casse), extraction
+    (4 cas — hapax, hapax+dis legomena, max_freq invalide, vide),
+    recall (10 cas — full/partiel/zéro, multiplicité, GT sans
+    rare, hyp vide, None, casse), raccourci, et **2 cas réalistes
+    « registre d'état civil »** dont un test de propriété qui
+    démontre la conjecture du plan : un OCR qui rate les noms
+    propres a un rare-token recall plus dégradé qu'un OCR qui
+    rate un mot fréquent (« le »), même si leur CER caractère est
+    similaire.
+  - **Verrou levé** : un bench BnF qui veut savoir « ce moteur
+    préserve-t-il bien les noms de famille de mes registres ? »
+    a maintenant la métrique adaptée.  La vue HTML « Worst lines
+    + tokens rares manqués » suit Sprint 72 (chantier 1 d'A.I.1).
+
 - **Sprint 70 — CLI pour piloter les pipelines composées sans
   Python (axe B, suite Sprints 63-69).**  Permet de spécifier une
   pipeline ou une comparaison de N pipelines dans un fichier
