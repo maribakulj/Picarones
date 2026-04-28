@@ -16,6 +16,55 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 76 — A.I.4 chantier 2 : évolution intra-document
+  des classes taxonomiques (couche calcul + heatmap SVG).**
+  Deuxième des trois chantiers d'A.I.4.  ``line_metrics.py``
+  (Sprint 10) avait déjà une heatmap **CER × position** dans le
+  document ; ce sprint l'étend à toutes les classes
+  taxonomiques : où dans le document apparaît tel type d'erreur ?
+  Lecture concrète : ``ligature_error`` concentré dans la
+  première tranche → erreur de **marge** ; uniformément réparti
+  → erreur de **scribe**.
+  - Nouveau module `picarones/core/taxonomy_intra_doc.py` :
+    - ``compute_taxonomy_position_heatmap(reference, hypothesis,
+      n_bins=10)`` calcule, pour chaque classe taxonomique, le
+      nombre d'erreurs par tranche de position.  Réutilise la
+      logique mot-à-mot de ``classify_errors`` (Sprint 5) en
+      gardant la position du mot GT (``i1`` dans la diff
+      word-level) et en binnifiant par
+      ``floor(i1 / n_gt_words * n_bins)``.
+    - ``_classify_word_pair`` : variante pure de la
+      classification (sans modifier de compteurs externes).
+    - Helper ``_bin_for_position`` : clip entre 0 et n_bins-1.
+    - ``ValueError`` si ``n_bins ≤ 0``.  Retourne ``None`` si
+      la GT est vide.
+  - Nouveau module `picarones/report/taxonomy_intra_doc_render.py` :
+    - ``build_taxonomy_intra_doc_html(data, labels)`` produit
+      heatmap SVG + titre + note d'usage.
+    - ``_build_heatmap_svg`` server-side : grille
+      classes_avec_erreurs × n_bins, gradient blanc → orange
+      profond (#c2410c), valeur affichée si > 0, étiquettes de
+      colonnes (positions 1..N) et de lignes (noms de classes),
+      légende axe X.  Densité **relative au max de la classe**
+      (mise en évidence des positions concentrées).
+    - Adaptive : ``""`` si ``data is None``, ``total_errors=0``
+      ou aucune classe avec erreurs.  Filtrage : seules les
+      classes ayant ≥ 1 erreur apparaissent en ligne.
+    - Accessible : ``role="img"`` + ``aria-label``.
+  - +3 clés i18n FR/EN (``intradoc_title``, ``intradoc_note``,
+    ``intradoc_n_words`` avec template Python).
+  - +16 tests dans `test_sprint76_taxonomy_intra_doc.py` :
+    couche calcul (8 cas — identité, GT vide, erreur en début,
+    erreur en fin, distribution uniforme, ``n_bins`` invalide,
+    breakdown par classe, plus de bins que de mots), rendu (5
+    cas — None, no_errors, SVG, labels, n_words affichés),
+    anti-injection, complétude i18n FR + EN.
+  - **Verrou levé** : un chercheur peut désormais voir, pour un
+    document donné, **où** chaque type d'erreur apparaît — utile
+    pour distinguer erreurs de marge, erreurs de scribe, et
+    erreurs concentrées sur des sections spécifiques (titres,
+    manchettes…).
+
 - **Sprint 75 — A.I.4 chantier 1 : co-occurrence taxonomique
   (couche calcul + heatmap SVG bout-en-bout).**  Premier des trois
   chantiers d'A.I.4.  La taxonomie d'erreurs (10 classes,

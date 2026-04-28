@@ -247,5 +247,8 @@
   "taxocooc_note": "Jaccard index at the document level: 1.00 = these two classes always appear together; 0.00 = never. Read the most co-occurring pairs below.",
   "taxocooc_n_docs": "Computed on {n_docs} documents.",
   "taxocooc_pair_label": "Pair",
-  "taxocooc_jaccard_label": "Jaccard"
+  "taxocooc_jaccard_label": "Jaccard",
+  "intradoc_title": "Intra-document evolution of error classes",
+  "intradoc_note": "Heatmap class × position: relative density per class (darker = concentrated). A class concentrated in the first column suggests a margin error; a uniform distribution suggests a scribe error.",
+  "intradoc_n_words": "Computed on {n_words_gt} GT words, split into {n_bins} bins."
 }

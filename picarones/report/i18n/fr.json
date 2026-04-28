@@ -247,5 +247,8 @@
   "taxocooc_note": "Indice de Jaccard au niveau document : 1,00 = ces deux classes apparaissent toujours ensemble ; 0,00 = jamais. Lecture par paires co-occurrentes ci-dessous.",
   "taxocooc_n_docs": "Calculé sur {n_docs} documents.",
   "taxocooc_pair_label": "Paire",
-  "taxocooc_jaccard_label": "Jaccard"
+  "taxocooc_jaccard_label": "Jaccard",
+  "intradoc_title": "Évolution intra-document des classes d'erreur",
+  "intradoc_note": "Heatmap class × position : densité relative par classe (plus foncé = concentré). Une classe concentrée dans la première colonne suggère une erreur de marge ; une distribution uniforme suggère une erreur de scribe.",
+  "intradoc_n_words": "Calculé sur {n_words_gt} mots GT, répartis en {n_bins} tranches."
 }
