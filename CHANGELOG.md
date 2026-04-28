@@ -16,6 +16,47 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 78 — A.I.5 : équivalences diplomatiques en curseur
+  fin (couche de calcul).**  Aujourd'hui les profils de
+  ``picarones/core/normalization.py`` (``medieval_french``,
+  ``early_modern_french``, etc.) appliquent un **bloc entier**
+  de transformations.  Mais un éditeur peut vouloir nuancer :
+  *« je tolère ``ſ → s`` mais pas ``u → v`` »*.  Ce sprint
+  éclate chaque profil en règles d'équivalence **nommées et
+  indépendantes** que l'utilisateur peut activer ou désactiver
+  une par une.
+  - Nouveau module `picarones/core/equivalence_profile.py` :
+    - Dataclass ``EquivalenceRule(name, source, target,
+      description, profile_tag)``.
+    - Catalogue ``BUILTIN_EQUIVALENCES`` construit
+      automatiquement depuis les ``DIPLOMATIC_*`` existants avec
+      noms canoniques stables (``longs_s``, ``u_eq_v``,
+      ``i_eq_j``, ``ae_ligature``, ``thorn_th``, ``vv_eq_w``,
+      etc.) : 15 règles couvrant les 4 profils intégrés.
+    - ``list_equivalences_by_profile(profile_name=None)`` pour
+      grouper par profil dans l'UX.
+    - ``apply_selected_equivalences(text, selected_names)``
+      applique uniquement les règles dont le nom est dans
+      ``selected_names``.  Règles inconnues ignorées
+      silencieusement avec warning.  Texte vide / None → ``""``.
+    - ``compute_cer_with_equivalences(reference, hypothesis,
+      selected_names)`` retourne le CER après normalisation
+      sélective sur les **deux** côtés (GT et hyp).
+  - Aucune modification de ``normalization.py`` — purement
+    additif.
+  - +17 tests dans `test_sprint78_equivalence_profile.py` :
+    catalogue (4 cas — règles canoniques, structure, noms
+    uniques, longs_s correct), liste par profil (3 cas), apply
+    (6 cas — sélectif, exclu, multi, vide, texte vide, règle
+    inconnue), compute_cer (4 cas — drop avec eq, application
+    bilatérale, diff résiduelle, vide).
+  - **Verrou levé** : la couche calcul est en place pour qu'un
+    développeur frontend puisse câbler le panneau « Avancé » du
+    rapport (Sprint 21) avec des cases à cocher granulaires et
+    recalcul JS client.  L'UX panneau avancé (état URL
+    persisté, debounce 1s) suivra dans un sprint dédié — la
+    base est livrée, testée, et auto-documentée.
+
 - **Sprint 77 — A.I.4 chantier 3 : taxonomie comparative
   côte-à-côte (clôture A.I.4).**  Troisième et dernier chantier
   d'A.I.4.  Le détecteur ``error_profile_outlier`` (Sprint 19)
