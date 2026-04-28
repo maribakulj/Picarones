@@ -841,6 +841,73 @@ def detect_stratification_recommended(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
+# Détecteur Sprint 73 — moteur hors baseline historique (A.I.3)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.ENGINE_OFF_BASELINE,
+    priority=150,
+    importance=FactImportance.MEDIUM,
+)
+def detect_engine_off_baseline(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact pour chaque moteur dont le CER courant s'écarte
+    significativement de sa moyenne historique sur le **même corpus**.
+
+    Lit ``benchmark_data["baseline_comparisons"]`` (liste de dicts
+    produits par ``compute_engine_baseline`` du module
+    ``baseline_comparison`` Sprint 73).  Si la clé est absente ou
+    vide, le détecteur reste silencieux — typiquement le cas quand
+    aucun historique SQLite n'a été chargé.
+
+    Garde-fous :
+
+    - Si ``n_runs < 5`` (déjà filtré par ``compute_engine_baseline``
+      qui retourne ``None`` dans ce cas).
+    - Si ``relative_delta`` n'est pas calculable (baseline = 0).
+    - Importance ``HIGH`` si ``|relative_delta| ≥ 50 %``, sinon
+      ``MEDIUM``.
+    """
+    comparisons = benchmark_data.get("baseline_comparisons") or []
+    if not isinstance(comparisons, (list, tuple)):
+        return []
+    facts: list[Fact] = []
+    for comp in comparisons:
+        if not isinstance(comp, dict):
+            continue
+        if not comp.get("off_baseline"):
+            continue
+        rel = comp.get("relative_delta")
+        if rel is None:
+            continue
+        engine = comp.get("engine_name")
+        cer_current = comp.get("cer_current")
+        cer_hist_mean = comp.get("cer_historical_mean")
+        n_runs = comp.get("n_runs")
+        if engine is None or cer_current is None or cer_hist_mean is None:
+            continue
+        importance = (
+            FactImportance.HIGH if abs(float(rel)) >= 0.50
+            else FactImportance.MEDIUM
+        )
+        facts.append(Fact(
+            type=FactType.ENGINE_OFF_BASELINE,
+            importance=importance,
+            payload={
+                "engine": engine,
+                "cer_current_pct": round(float(cer_current) * 100, 2),
+                "cer_historical_mean_pct": round(
+                    float(cer_hist_mean) * 100, 2,
+                ),
+                "n_runs": int(n_runs or 0),
+                "relative_delta_pct": round(float(rel) * 100, 1),
+                "direction": "higher" if float(rel) > 0 else "lower",
+            },
+            engines_involved=(engine,),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
 # Détecteur Sprint 36 — opportunité d'ensemble (complémentarité)
 # ---------------------------------------------------------------------------
 

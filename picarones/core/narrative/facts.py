@@ -76,6 +76,13 @@ class FactType(str, Enum):
     la vue stratifiée plutôt que de se fier au seul classement global
     (Sprint 46)."""
 
+    ENGINE_OFF_BASELINE = "engine_off_baseline"
+    """Le CER courant d'un moteur s'écarte significativement de sa
+    moyenne historique sur le même corpus (lue depuis l'historique
+    SQLite, Sprint 8). Lit ``BenchmarkHistory`` via le module
+    ``baseline_comparison`` (Sprint 73). Garde-fous : ≥ 5 runs
+    historiques même corpus + |delta_relatif| > 20 %."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

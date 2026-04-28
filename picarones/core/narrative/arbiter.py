@@ -69,6 +69,10 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.CONFIDENCE_WARNING,
     FactType.ENSEMBLE_OPPORTUNITY,
     FactType.MEDIAN_MEAN_GAP_WARNING,
+    # Sprint 73 — priority 150, après MEDIAN_MEAN_GAP_WARNING (140).
+    # Le détecteur off-baseline donne le contexte historique, qui
+    # vient en fin de synthèse comme « note ».
+    FactType.ENGINE_OFF_BASELINE,
 )
 
 

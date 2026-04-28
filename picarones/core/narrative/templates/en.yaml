@@ -76,3 +76,9 @@ stratification_recommended: >-
   {max_stratum_cer_pct} % on "{max_stratum}", a gap of {gap_pct}
   points. The global ranking hides this disparity; consult the
   stratified view.
+
+engine_off_baseline: >-
+  {engine} achieved {cer_current_pct} % CER here, vs {cer_historical_mean_pct} %
+  on average over the last {n_runs} runs of your institution on this
+  same corpus (relative delta {relative_delta_pct} %). This corpus is
+  harder for it than usual.

@@ -16,6 +16,62 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 73 — A.I.3 chantier 2 : détecteur narratif
+  ``engine_off_baseline`` (couche calcul + narrative).**  L'historique
+  SQLite (Sprint 8) existait depuis longtemps mais aucun détecteur
+  narratif ne le lisait.  Ce sprint répond à *« comment ce moteur
+  se comporte-t-il sur ce corpus, par rapport à ses runs précédents
+  de mon institution ? »*.  L'encart HTML « Ce corpus est-il
+  habituel ? » (chantier 1 d'A.I.3, boxplot SVG) suit Sprint 74.
+  - Nouveau module `picarones/core/baseline_comparison.py` :
+    - ``compute_engine_baseline(history, engine_name, corpus_name,
+      current_cer, *, current_run_id, min_runs=5,
+      relative_delta_threshold=0.20)`` retourne un dict avec
+      ``cer_current``, ``cer_historical_mean``,
+      ``cer_historical_median``, ``n_runs``, ``absolute_delta``,
+      ``relative_delta``, ``off_baseline``.  Filtre par moteur ×
+      corpus (apple-to-apple), exclut le run courant si fourni,
+      ignore les CER négatifs / None, retourne ``None`` si moins
+      de ``min_runs`` runs historiques.
+    - ``compute_corpus_difficulty_percentile(history,
+      current_difficulty, *, min_runs=5)`` place la difficulté du
+      corpus courant dans la distribution historique (lit
+      ``HistoryEntry.metadata["difficulty"]``).  Retourne
+      ``percentile``, ``median_historical``, flags
+      ``harder_than_usual`` (P75+) et ``easier_than_usual`` (P25-).
+  - Nouveau ``FactType.ENGINE_OFF_BASELINE`` dans
+    ``narrative/facts.py``.
+  - Nouveau détecteur ``detect_engine_off_baseline`` dans
+    ``narrative/detectors.py`` (priority 150) :
+    - Lit ``benchmark_data["baseline_comparisons"]`` (liste de
+      dicts produits par ``compute_engine_baseline``).
+    - Émet 1 Fact par moteur off_baseline.
+    - Importance ``HIGH`` si ``|relative_delta| ≥ 50 %``,
+      ``MEDIUM`` sinon.
+    - Garde-fous : silencieux si ``baseline_comparisons`` absent
+      ou vide, si ``relative_delta`` est ``None`` (baseline = 0
+      non calculable), si ``off_baseline=False``.
+  - Nouveaux templates FR/EN dans
+    ``narrative/templates/{fr,en}.yaml``.  Phrase factuelle type :
+    *« tess a obtenu 5,2 % CER ici, vs 4,1 % en moyenne sur les
+    12 runs précédents… »*.
+  - +21 tests dans `test_sprint73_baseline_comparison.py` :
+    - couche calcul (off_baseline_higher, within_baseline,
+      min_runs filter, custom_min_runs, current_run_excluded,
+      filter par engine+corpus, CER None ignorés, baseline=0 →
+      relative None, current_cer invalide)
+    - difficulty_percentile (calcul, harder/easier, min_runs)
+    - détecteur (silent sans data, silent off=False, silent
+      relative=None, fact émis, importance HIGH si ≥50%, multiple
+      moteurs)
+    - **traçabilité anti-hallucination** FR + EN : chaque nombre
+      dans le texte rendu est traçable au payload.
+  - **Verrou levé** : un benchmark BnF qui pousse ses résultats
+    dans l'historique SQLite et qui passe ``baseline_comparisons``
+    au moteur narratif voit automatiquement, dans la synthèse en
+    tête de rapport, *« ce moteur a un CER inhabituel sur ce
+    corpus par rapport à vos 12 runs précédents »*.
+
 - **Sprint 72 — A.I.1 chantier 1 : vue « Worst lines globale »
   (clôture A.I.1).**  Suite directe Sprint 71 : la roadmap A.I.1
   comporte deux chantiers — la métrique rare-token recall (livrée)
