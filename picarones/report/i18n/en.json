@@ -242,5 +242,10 @@
   "baseline_corpus_title": "Is this corpus typical?",
   "baseline_corpus_harder": "Difficulty observed {current:.2f} — at the {percentile:.0f}th percentile of the {n_runs} previous corpora of your institution. This corpus is harder than usual.",
   "baseline_corpus_easier": "Difficulty observed {current:.2f} — at the {percentile:.0f}th percentile of the {n_runs} previous corpora. This corpus is easier than usual.",
-  "baseline_corpus_usual": "Difficulty observed {current:.2f} — at the {percentile:.0f}th percentile of the {n_runs} previous corpora. This corpus is in the average."
+  "baseline_corpus_usual": "Difficulty observed {current:.2f} — at the {percentile:.0f}th percentile of the {n_runs} previous corpora. This corpus is in the average.",
+  "taxocooc_title": "Error class co-occurrence",
+  "taxocooc_note": "Jaccard index at the document level: 1.00 = these two classes always appear together; 0.00 = never. Read the most co-occurring pairs below.",
+  "taxocooc_n_docs": "Computed on {n_docs} documents.",
+  "taxocooc_pair_label": "Pair",
+  "taxocooc_jaccard_label": "Jaccard"
 }

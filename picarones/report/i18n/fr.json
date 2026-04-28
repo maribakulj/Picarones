@@ -242,5 +242,10 @@
   "baseline_corpus_title": "Ce corpus est-il habituel ?",
   "baseline_corpus_harder": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents de votre institution. Ce corpus est plus difficile que la moyenne.",
   "baseline_corpus_easier": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents. Ce corpus est plus facile que la moyenne.",
-  "baseline_corpus_usual": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents. Ce corpus est dans la moyenne."
+  "baseline_corpus_usual": "Difficulté observée {current:.2f} — au {percentile:.0f}ᵉ percentile des {n_runs} corpus précédents. Ce corpus est dans la moyenne.",
+  "taxocooc_title": "Co-occurrence des classes d'erreur",
+  "taxocooc_note": "Indice de Jaccard au niveau document : 1,00 = ces deux classes apparaissent toujours ensemble ; 0,00 = jamais. Lecture par paires co-occurrentes ci-dessous.",
+  "taxocooc_n_docs": "Calculé sur {n_docs} documents.",
+  "taxocooc_pair_label": "Paire",
+  "taxocooc_jaccard_label": "Jaccard"
 }

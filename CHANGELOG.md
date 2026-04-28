@@ -16,6 +16,53 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 75 — A.I.4 chantier 1 : co-occurrence taxonomique
+  (couche calcul + heatmap SVG bout-en-bout).**  Premier des trois
+  chantiers d'A.I.4.  La taxonomie d'erreurs (10 classes,
+  ``picarones/core/taxonomy.py``) est calculée par document
+  depuis longtemps mais le rapport ne montre qu'un seul
+  histogramme global.  Ce sprint répond à *« quelles classes
+  d'erreur tendent à apparaître ensemble dans les mêmes
+  documents ? »* — utile pour stratifier *a posteriori* (« mes
+  documents difficiles ont tous ``ligature_error`` +
+  ``abbreviation_error`` ensemble : signal d'un type de scribe »).
+  - Nouveau module `picarones/core/taxonomy_cooccurrence.py` :
+    - ``compute_taxonomy_cooccurrence(per_doc_classes,
+      min_doc_count=1, top_n_pairs=10)`` calcule l'indice de
+      **Jaccard** entre paires de classes au niveau **document**
+      (présence binaire — un doc « contient » la classe X ou
+      pas).  Symétrique, diagonale = 1.0 pour les classes
+      présentes.
+    - Filtrage des classes anecdotiques via ``min_doc_count``
+      (défaut 1).
+    - ``top_pairs`` : top-N paires triées par Jaccard décroissant
+      (utile pour la table HTML compacte).
+    - Retourne ``None`` si ``per_doc_classes`` vide ou si aucune
+      classe ne dépasse ``min_doc_count``.
+  - Nouveau module `picarones/report/taxonomy_cooccurrence_render.py` :
+    - ``build_taxonomy_cooccurrence_html(data, labels)`` produit
+      titre + note + heatmap SVG + table top_pairs.
+    - ``_build_heatmap_svg`` server-side : grille N×N avec
+      cellules colorées par gradient blanc → bleu profond
+      (#1e3a8a) selon Jaccard, valeur affichée si > 0,05,
+      étiquettes rotées -45° en haut, normales à gauche.  SVG
+      accessible (``role="img"`` + ``aria-label``).
+    - ``_build_top_pairs_table`` : table HTML avec cellule
+      Jaccard colorée pour lecture rapide.
+    - Adaptive : ``""`` si ``data is None`` ou matrice vide.
+  - +5 clés i18n FR/EN (``taxocooc_*``).
+  - +22 tests dans `test_sprint75_taxonomy_cooccurrence.py` :
+    couche calcul (11 cas — toujours/jamais ensemble, diagonale,
+    symétrie, chevauchement partiel, vide, ``min_doc_count``,
+    ``top_pairs`` triées et limitées, ``doc_count``, doc=None),
+    rendu (7 cas — None, classes vides, SVG, table, valeurs
+    affichées, étiquettes, n_docs), anti-injection (classe
+    ``<script>`` + label i18n), complétude i18n FR + EN.
+  - **Verrou levé** : un chercheur peut désormais voir d'un coup
+    d'œil quelles classes d'erreur sont corrélées dans son
+    corpus, et utiliser cette info pour stratifier *a posteriori*
+    ses documents difficiles.
+
 - **Sprint 74 — A.I.3 chantier 1 : encart « Ce corpus est-il
   habituel ? » (clôture A.I.3).**  Suite directe Sprint 73
   (couche calcul + détecteur narratif).  Ce sprint livre le
