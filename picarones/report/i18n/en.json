@@ -250,5 +250,11 @@
   "taxocooc_jaccard_label": "Jaccard",
   "intradoc_title": "Intra-document evolution of error classes",
   "intradoc_note": "Heatmap class × position: relative density per class (darker = concentrated). A class concentrated in the first column suggests a margin error; a uniform distribution suggests a scribe error.",
-  "intradoc_n_words": "Computed on {n_words_gt} GT words, split into {n_bins} bins."
+  "intradoc_n_words": "Computed on {n_words_gt} GT words, split into {n_bins} bins.",
+  "taxocomp_title": "Taxonomic profile: {engine_a} vs {engine_b}",
+  "taxocomp_note": "Mirror chart of error proportions per class. Color by editorial recoverability (green = correctable, red = irrecoverable). At equal global CER, an engine whose errors are mostly green is preferable for a critical edition.",
+  "taxocomp_level_label": "Category",
+  "taxocomp_recoverable": "Recoverable",
+  "taxocomp_difficult": "Difficult",
+  "taxocomp_irrecoverable": "Irrecoverable"
 }

@@ -16,6 +16,64 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 77 — A.I.4 chantier 3 : taxonomie comparative
+  côte-à-côte (clôture A.I.4).**  Troisième et dernier chantier
+  d'A.I.4.  Le détecteur ``error_profile_outlier`` (Sprint 19)
+  signale qu'un moteur a un profil taxonomique éloigné de ses
+  concurrents, mais sans visualisation.  Ce sprint répond à
+  *« deux moteurs ont le même CER global, mais lequel fait des
+  erreurs plus récupérables ? »*.
+  - Nouveau module `picarones/core/taxonomy_comparison.py` :
+    - ``compare_taxonomies(engine_a, counts_a, engine_b, counts_b)``
+      normalise les comptes en proportions (somme = 1), calcule
+      les ``deltas`` signés (b - a) par classe, et agrège par
+      niveau de **récupérabilité éditoriale** :
+
+      - ``recoverable``   : case_error, ligature_error,
+        abbreviation_error (corrigeables par post-processing
+        trivial)
+      - ``difficult``     : diacritic_error, visual_confusion,
+        hapax (effort modéré requis)
+      - ``irrecoverable`` : lacuna, oov_character,
+        segmentation_error (impossibles sans relire l'image)
+    - Constante ``RECOVERABILITY`` exportée pour utilisation
+      externe.
+    - Retourne ``None`` si les deux moteurs ont 0 erreur chacun.
+  - Nouveau module `picarones/report/taxonomy_comparison_render.py` :
+    - ``build_taxonomy_comparison_html(data, labels)`` produit
+      titre + note d'usage + diagramme miroir SVG + tableau
+      résumé par catégorie.
+    - ``_build_mirror_chart_svg`` server-side : une ligne par
+      classe, deux barres horizontales (A à gauche, B à droite),
+      étiquette de classe au centre, valeurs en %.  Couleur de
+      la barre selon ``recoverability`` (vert / orange / rouge).
+      Échelle normalisée à la proportion max pour visibilité
+      uniforme.
+    - ``_build_recoverability_summary_html`` : tableau 3 lignes
+      (Récupérable / Difficile / Irrécupérable) × 2 colonnes
+      (engine A / engine B) avec pastille colorée et %.
+    - Adaptive : ``""`` si ``data is None`` ou pas de classes.
+    - Anti-injection systématique sur noms de moteurs et labels
+      i18n.  Accessible : ``role="img"`` + ``aria-label``.
+  - +6 clés i18n FR/EN (``taxocomp_*``) avec template Python
+    ``{engine_a}/{engine_b}``.
+  - +18 tests dans `test_sprint77_taxonomy_comparison.py` :
+    couche calcul (7 cas — proportions, deltas signés,
+    récupérabilité, vide, classe unique chez un moteur, totaux,
+    sanité ``RECOVERABILITY`` couvre toutes ``ERROR_CLASSES``),
+    rendu (7 cas — None, SVG, noms moteurs, labels classes,
+    résumé récupérabilité, % affichés, codes couleur), anti-
+    injection (nom moteur + label i18n), complétude i18n FR + EN.
+  - **Choix éditorial assumé** : la classification
+    ``recoverable``/``difficult``/``irrecoverable`` est un
+    **guide pragmatique pour le chercheur**, pas un verdict
+    imposé.  La note explicative dit textuellement « à CER égal,
+    un moteur dont les erreurs sont majoritairement vertes est
+    préférable pour une édition critique » — c'est au chercheur
+    de juger selon ses besoins.
+  - **A.I.4 livré bout-en-bout** : co-occurrence (Sprint 75) +
+    intra-document (Sprint 76) + comparatif (Sprint 77).
+
 - **Sprint 76 — A.I.4 chantier 2 : évolution intra-document
   des classes taxonomiques (couche calcul + heatmap SVG).**
   Deuxième des trois chantiers d'A.I.4.  ``line_metrics.py``

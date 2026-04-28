@@ -250,5 +250,11 @@
   "taxocooc_jaccard_label": "Jaccard",
   "intradoc_title": "Évolution intra-document des classes d'erreur",
   "intradoc_note": "Heatmap class × position : densité relative par classe (plus foncé = concentré). Une classe concentrée dans la première colonne suggère une erreur de marge ; une distribution uniforme suggère une erreur de scribe.",
-  "intradoc_n_words": "Calculé sur {n_words_gt} mots GT, répartis en {n_bins} tranches."
+  "intradoc_n_words": "Calculé sur {n_words_gt} mots GT, répartis en {n_bins} tranches.",
+  "taxocomp_title": "Profil taxonomique : {engine_a} vs {engine_b}",
+  "taxocomp_note": "Diagramme miroir des proportions d'erreurs par classe. Couleur selon récupérabilité éditoriale (vert = corrigeable, rouge = irrécupérable). À CER global égal, un moteur dont les erreurs sont majoritairement vertes est préférable pour une édition critique.",
+  "taxocomp_level_label": "Catégorie",
+  "taxocomp_recoverable": "Récupérable",
+  "taxocomp_difficult": "Difficile",
+  "taxocomp_irrecoverable": "Irrécupérable"
 }
