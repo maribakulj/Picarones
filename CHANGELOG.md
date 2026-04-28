@@ -16,6 +16,50 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 72 — A.I.1 chantier 1 : vue « Worst lines globale »
+  (clôture A.I.1).**  Suite directe Sprint 71 : la roadmap A.I.1
+  comporte deux chantiers — la métrique rare-token recall (livrée)
+  et la vue HTML qui expose les lignes individuelles les plus mal
+  transcrites du corpus.  Ce sprint livre la vue.
+  - Nouveau module `picarones/core/worst_lines.py` :
+    - Dataclass ``WorstLineEntry(rank, cer, engine_name, doc_id,
+      line_index, gt_line, hyp_line, script_type)``.
+    - ``extract_worst_lines(benchmark, top_n=20, engine_filter,
+      script_type_filter)`` collecte transversalement à tous les
+      moteurs et documents, filtre par moteur et par strate
+      (Sprint 45 ``doc_strata``), trie par CER décroissant, retourne
+      les ``top_n`` premières avec rang 1-based.
+    - Récupération des textes GT/hyp par re-split du
+      ``DocumentResult.ground_truth`` / ``hypothesis`` à l'index de
+      ligne (cf. limite : suppose un ``BenchmarkResult``
+      non-compacté).
+    - Lignes avec ``cer == 0.0`` ignorées (pas dans le worst).
+  - Nouveau module `picarones/report/worst_lines_render.py` :
+    - ``build_worst_lines_table_html(entries, labels)`` : tableau
+      HTML server-side avec colonnes Rang / CER (cellule colorée
+      gradient jaune→rouge) / Moteur / Document / Ligne # /
+      [Strate] / Diff GT→OCR.  Colonne strate **adaptive**
+      (omise si aucune entry n'a de ``script_type``).
+    - Diff caractère par caractère via
+      ``diff_utils.compute_char_diff`` (réutilisation Sprint 5),
+      rendu inline avec rouge clair barré pour suppressions et vert
+      clair pour insertions.
+    - Anti-injection systématique sur engine_name, doc_id, GT/hyp
+      lines, labels i18n.
+    - Retourne ``""`` si la liste est vide (rapport adaptatif).
+  - +25 tests dans `test_sprint72_worst_lines.py` :
+    extraction (top_n, tri par CER décroissant, rang 1-based,
+    top_n=0, lignes CER=0 ignorées) ; filtres (par moteur, par
+    strate, valeurs inconnues) ; cas limites (pas de line_metrics,
+    benchmark vide, sans doc_strata, hyp plus courte que GT) ;
+    rendu (tableau, colonnes attendues, strate adaptive, cellule
+    CER colorée, diff rendu, % affiché) ; anti-injection
+    (engine_name, doc_id, GT line, label i18n).
+  - **Verrou levé** : un chercheur qui voit *« 5 % de mes lignes
+    ont un CER > 0,42 »* dans le rapport peut désormais voir
+    **quelles** lignes — diff inline, document parent, ligne #,
+    moteur — pour comprendre ce qui casse précisément.
+
 - **Sprint 71 — A.I.1 chantier 2 : rare-token recall (couche
   de calcul, démarrage de la résolution des critiques
   structurelles A.I).**  Premier sprint du chantier A.I qui
