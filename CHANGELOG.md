@@ -16,6 +16,44 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 82 — A.I.9 : section « Leviers d'amélioration »
+  (couche calcul + cards HTML).**  Le moteur narratif
+  (Sprint 19) émet des `Fact` qui décrivent **ce qui s'est
+  passé** dans le benchmark.  Ce sprint répond à une question
+  complémentaire : *« sur quelle dimension le bénéfice attendu
+  d'une amélioration serait-il le plus visible ? »*.  Approche
+  strictement **non-prescriptive** : aucune recommandation
+  *« faites X »*, uniquement des **observations factuelles**
+  agrégées depuis les modules d'analyse (Sprints 75-81).
+  Nouveau module `picarones/core/levers.py` : dataclass
+  ``Lever(type, importance, payload, engines_involved)``,
+  ``LeverImportance`` (HIGH/MEDIUM/LOW), registre via
+  décorateur ``@register_lever``, helper ``detect_levers`` qui
+  trie par importance décroissante.  **5 détecteurs livrés** :
+  ``dominant_recoverable_class`` (≥30 % d'erreurs récupérables
+  selon la catégorisation Sprint 77), ``pareto_concentration``
+  (top-20 % docs ≥50 % du CER cumulé), ``complementarity_observation``
+  (factuel sur ``inter_engine_analysis.complementarity_gap``,
+  Sprint 35), ``lexical_modernization_observation`` (top-3
+  tokens GT systématiquement modernisés, Sprint 80),
+  ``robustness_projection_observation`` (déficit projeté ≥2
+  points de CER, Sprint 81).  Nouveau module
+  `picarones/report/levers_render.py` : ``build_levers_section_html``
+  rend des **cards** server-side avec étiquette i18n + phrase
+  factuelle + détail compact + niveau d'importance coloré.
+  Adaptive masking : ``""`` si aucun levier exploitable.
+  Anti-injection systématique via ``html.escape``.  Garde-fou
+  anti-hallucination identique au moteur narratif : chaque
+  chiffre rendu est dans le ``payload`` du levier.  +18 clés
+  i18n FR/EN (``levers_*``).  +40 tests dans
+  `test_sprint82_levers.py` (modèle 3, dominant 6, pareto 5,
+  complementarity 4, lexical 4, robustness 4, pipeline 3,
+  rendu 6, anti-hallucination FR+EN 3, complétude i18n 2).
+  **Verrou levé** : le rapport ne se contente plus de décrire
+  *ce qui est* — il propose une lecture compacte des
+  **dimensions où un effort éditorial pourrait porter**, sans
+  jamais imposer un verdict.
+
 - **Sprint 81 — A.I.8 : robustesse synthétique projetée sur le
   corpus réel (couche de calcul).**  Le module
   ``picarones/core/robustness.py`` (Sprint 8) génère des courbes
