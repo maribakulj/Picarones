@@ -231,6 +231,14 @@
     </div>
     {% endif %}
 
+    <!-- Sprint 89 — A.II.8b : spécialisation inter-moteurs.
+         Adaptive : n'apparaît que si ≥ 2 moteurs avec taxonomie. -->
+    {% if specialization_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ specialization_html }}
+    </div>
+    {% endif %}
+
     <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
     {% if divergence_matrix_html or oracle_gap_html %}
     <div class="chart-card" style="grid-column:1/-1">

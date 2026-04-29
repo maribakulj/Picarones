@@ -16,6 +16,50 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 89 — A.II.8b : score de spécialisation inter-moteurs
+  (couche calcul + vue HTML).**  La matrice de divergence
+  taxonomique (Sprint 35) répondait à *« à quel point ces
+  moteurs se trompent-ils différemment ? »* ; ce sprint
+  transforme cette information en un score lisible et un
+  **top-N des paires les plus spécialisées**, qui répond
+  directement à la question *« quels moteurs sont des candidats
+  pour un voting ensemble ? »*.  Le module **ne recommande
+  pas** d'ensemble — il livre l'observation factuelle et
+  laisse le chercheur arbitrer.  Nouveau module
+  `picarones/core/specialization.py` :
+  `compute_specialization_score(taxonomy_a, taxonomy_b)`
+  retourne un score normalisé ∈ [0, 1] (délégué à
+  `inter_engine.jensen_shannon_divergence` Sprint 35, pas de
+  double calcul) ;
+  `classify_specialization(score, thresholds=DEFAULT_THRESHOLDS)`
+  classe en `similar` (< 0,10) / `distinct` (0,10–0,30) /
+  `highly_specialized` (≥ 0,30) — seuils éditoriaux pas
+  verdict, surchargeables ;
+  `compute_specialization_matrix(taxonomies)` retourne une
+  matrice symétrique avec `max_pair` ;
+  `top_specialized_pairs(matrix, n=5, min_score=0)` retourne
+  les paires triées par score décroissant avec leur catégorie.
+  Nouveau module `picarones/report/specialization_render.py` :
+  `build_specialization_html(taxonomies, labels, top_n=5)`
+  rend un tableau Moteur A × Moteur B × Score (gradient blanc
+  → bleu profond) × Lecture (libellé i18n).  Adaptive : `""`
+  si moins de 2 moteurs avec taxonomie.  Anti-injection.
+  Câblage générator : lit les `aggregated_taxonomy` exposés
+  sur les moteurs (Sprint 5/runner historique), construit la
+  map `{engine: counts}` et passe au renderer.  Insertion dans
+  `view_analyses.html` derrière la lisibilité.  +9 clés i18n
+  FR/EN (`specialization_*`).  +24 tests dans
+  `test_sprint89_specialization.py` (score symétrique +
+  identité 0 + disjoint 1 + bornes [0,1], classify 5 cas dont
+  custom thresholds, matrice diagonale 0 + symétrique +
+  max_pair correctement identifié, top_pairs tri/n/min_score/
+  None, rendu adaptive + anti-injection + FR/EN, complétude
+  i18n 9 clés).  **Verrou levé** : un benchmark BnF avec ≥ 2
+  moteurs voit immédiatement *« tess et pero ont une
+  spécialisation forte (0,489) — ils font des erreurs de
+  natures différentes »* — observation factuelle, le
+  chercheur arbitre.
+
 - **Sprint 88 — A.I.8 vue HTML : déficit projeté de robustesse
   (clôture A.I.8 bout-en-bout).**  Le module
   `picarones/core/robustness_projection.py` (Sprint 81)

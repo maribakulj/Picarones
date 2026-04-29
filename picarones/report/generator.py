@@ -819,6 +819,28 @@ class ReportGenerator:
             report_data.get("engines", []), labels=labels,
         )
 
+        # Sprint 89 — A.II.8b : spécialisation inter-moteurs.
+        # Adaptive : "" si moins de 2 moteurs avec taxonomie.
+        from picarones.report.specialization_render import (
+            build_specialization_html,
+        )
+        # Construit une map {engine: counts} depuis les
+        # ``aggregated_taxonomy`` ; un moteur sans taxonomie
+        # est exclu.
+        _taxos: dict = {}
+        for eng in report_data.get("engines", []):
+            tax = eng.get("aggregated_taxonomy")
+            if isinstance(tax, dict):
+                counts = tax.get("counts") if "counts" in tax else tax
+                if isinstance(counts, dict) and counts:
+                    _taxos[eng.get("name", "?")] = {
+                        k: float(v) for k, v in counts.items()
+                        if isinstance(v, (int, float))
+                    }
+        specialization_html = build_specialization_html(
+            _taxos, labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -843,6 +865,7 @@ class ReportGenerator:
             searchability_html=searchability_html,
             numerical_sequences_html=numerical_sequences_html,
             readability_html=readability_html,
+            specialization_html=specialization_html,
         )
 
         output_path.write_text(html, encoding="utf-8")

@@ -316,5 +316,14 @@
   "robproj_n_docs": "Docs",
   "robproj_n_with_data": "Docs avec data",
   "robproj_deficit": "Δ CER projeté (pts)",
-  "robproj_above": "Docs ≥ seuil critique"
+  "robproj_above": "Docs ≥ seuil critique",
+  "specialization_title": "Spécialisation inter-moteurs",
+  "specialization_note": "Score de divergence Jensen-Shannon entre les profils taxonomiques de chaque paire de moteurs (0 = profils identiques, 1 = totalement disjoints). Une paire très spécialisée signale des erreurs de natures différentes — c'est au chercheur d'en tirer parti, pas à l'outil de prescrire un ensemble.",
+  "specialization_engine_a": "Moteur A",
+  "specialization_engine_b": "Moteur B",
+  "specialization_score": "Score",
+  "specialization_category": "Lecture",
+  "specialization_cat_similar": "Profils similaires",
+  "specialization_cat_distinct": "Profils distincts",
+  "specialization_cat_highly_specialized": "Forte spécialisation"
 }

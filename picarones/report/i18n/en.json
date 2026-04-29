@@ -316,5 +316,14 @@
   "robproj_n_docs": "Docs",
   "robproj_n_with_data": "Docs with data",
   "robproj_deficit": "Projected ΔCER (pts)",
-  "robproj_above": "Docs ≥ critical threshold"
+  "robproj_above": "Docs ≥ critical threshold",
+  "specialization_title": "Inter-engine specialisation",
+  "specialization_note": "Jensen-Shannon divergence between the taxonomic profiles of each pair of engines (0 = identical profiles, 1 = fully disjoint). A highly specialised pair signals error categories of different natures — it is for the researcher to act on it, not for the tool to prescribe an ensemble.",
+  "specialization_engine_a": "Engine A",
+  "specialization_engine_b": "Engine B",
+  "specialization_score": "Score",
+  "specialization_category": "Reading",
+  "specialization_cat_similar": "Similar profiles",
+  "specialization_cat_distinct": "Distinct profiles",
+  "specialization_cat_highly_specialized": "Highly specialised"
 }
