@@ -381,5 +381,11 @@
   "absorption_corr_rate": "% corrigées",
   "absorption_intro_rate": "% introduites",
   "absorption_net": "Amélioration nette",
-  "absorption_sample": "Échantillon (intro)"
+  "absorption_sample": "Échantillon (intro)",
+  "dag_title": "Pipeline DAG",
+  "dag_note": "Graphe orienté du pipeline composé. Chaque arête porte le type d'artefact transmis et la métrique calculée à la jonction. Code couleur vert/orange/rouge selon le seuil. Outil d'inspection — le YAML reste source de vérité.",
+  "dag_legend": "Lecture",
+  "dag_legend_green": "qualité élevée",
+  "dag_legend_yellow": "qualité moyenne",
+  "dag_legend_red": "qualité faible"
 }

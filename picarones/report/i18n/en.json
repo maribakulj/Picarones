@@ -381,5 +381,11 @@
   "absorption_corr_rate": "% corrected",
   "absorption_intro_rate": "% introduced",
   "absorption_net": "Net improvement",
-  "absorption_sample": "Sample (intro)"
+  "absorption_sample": "Sample (intro)",
+  "dag_title": "Pipeline DAG",
+  "dag_note": "Directed graph of the composed pipeline. Each edge shows the artifact type transmitted and the metric computed at the junction. Green/orange/red colour code by threshold. Inspection tool — YAML remains the source of truth.",
+  "dag_legend": "Reading",
+  "dag_legend_green": "high quality",
+  "dag_legend_yellow": "moderate quality",
+  "dag_legend_red": "low quality"
 }

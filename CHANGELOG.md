@@ -16,6 +16,51 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 95 — B.4 : visualisation DAG d'un pipeline composé
+  (rendu SVG server-side).**  Outil d'**inspection**, pas de
+  construction — le YAML reste source de vérité.  Permet
+  d'auditer rapidement la qualité d'une pipeline d'axe B
+  (Sprint 63+).  Nouveau module
+  `picarones/report/pipeline_dag_render.py` :
+  `build_pipeline_dag_html(nodes, labels, edges=None,
+  thresholds=(0.05, 0.15), higher_is_better=False)` rend un
+  graphe orienté gauche → droite en SVG natif (pas de
+  bibliothèque, pas de JS).  Chaque nœud est un rectangle
+  annoté du nom du module + types d'entrée/sortie.  Chaque
+  arête est une flèche colorée vert/orange/rouge selon la
+  valeur de la métrique calculée à la jonction, avec
+  étiquette ``type d'artefact`` + ``métrique : valeur``
+  (formatée en pourcent ou décimal).  Légende intégrée avec
+  les seuils.  Mode ``higher_is_better=True`` inverse la
+  sémantique pour les métriques type F1/recall.  Adaptive :
+  ``""`` si moins d'un nœud.  Auto-déduction des arêtes
+  séquentielles si non fournies.  Anti-injection systématique
+  via ``html.escape`` sur le nom du nœud, le type d'artefact,
+  le nom de métrique et les listes input/output_types.
+
+  **Pas de drag-and-drop, pas de notebook, pas de drill-down
+  par document** : le visuel sert à inspecter et déboguer,
+  pas à construire.  Une institution sérieuse versionne ses
+  pipelines en YAML dans Git, pas en JSON exporté d'une UI.
+  Le drill-down par document reste sur le tableau de
+  ``error_absorption`` (Sprint 94) qui montre déjà les tokens
+  corrigés / introduits par jonction.
+
+  +6 clés i18n FR/EN (`dag_*`).  +18 tests dans
+  `test_sprint95_pipeline_dag.py` (vide → "", single node sans
+  flèche, 2 nœuds 1 arête avec étiquettes + valeur formatée
+  4.0%, chaîne 3 nœuds 2 flèches, auto-déduction d'arêtes,
+  3 cas de couleur (vert ≤ 0.05, jaune ≤ 0.15, rouge > 0.15),
+  inversion higher_is_better avec F1=0.96 → vert, nœud
+  inconnu dans une arête skipped, valeur de métrique absente
+  affichée comme — ; anti-injection 4 vecteurs : nom de nœud,
+  artifact_type, metric_name, input/output types ; rendu en
+  anglais ; complétude i18n 6 clés).  **Verrou levé** : un
+  benchmark d'axe B avec 3+ étapes (par ex. OCR → LLM →
+  ALTO_mapper) voit immédiatement à quelle jonction la
+  qualité décroche, sans avoir à parcourir un tableau de
+  métriques.
+
 - **Sprint 94 — B.3 : métrique d'absorption d'erreur (couche
   calcul + vue HTML).**  Quand un module post-correction LLM
   aplatit les différences entre OCR amont, ce n'est pas qu'il
