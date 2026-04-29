@@ -333,5 +333,13 @@
   "stability_cer": "Mean CER ± σ",
   "stability_cv": "CV (%)",
   "stability_identical": "% identical runs",
-  "stability_distinct": "Distinct outputs"
+  "stability_distinct": "Distinct outputs",
+  "throughput_title": "Effective throughput",
+  "throughput_note": "Pages processable per hour including post-OCR human correction time. Discriminates between a fast but imprecise cloud and a slow but reliable local engine. Correction constant: {time_per_error}s per error (HTR-United default, overridable).",
+  "throughput_engine": "Engine",
+  "throughput_raw": "Pages/h raw",
+  "throughput_effective": "Pages/h usable",
+  "throughput_drag": "% correction",
+  "throughput_pages": "Pages",
+  "throughput_errors": "Errors"
 }

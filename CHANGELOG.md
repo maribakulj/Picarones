@@ -16,6 +16,64 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 91 — A.II.6 : métriques économiques (throughput
+  effectif + coût marginal par erreur évitée).**  Le throughput
+  brut (pages/heure d'OCR pur) ment quand un moteur est rapide
+  mais imprécis : la correction humaine *post hoc* absorbe le
+  gain.  Cette métrique discrimine fortement entre un cloud
+  rapide à 30 % de timeouts et un local lent à 100 % de
+  fiabilité.  Couplée au coût marginal par erreur évitée, elle
+  arme une décision business honnête.
+
+  - `picarones/core/throughput.py` :
+    `compute_effective_throughput(n_pages, duration_seconds,
+    n_errors, time_per_error_seconds=5.0)` retourne
+    `{n_pages, duration_seconds, n_errors,
+    time_per_error_seconds, correction_time_seconds,
+    total_seconds, pages_per_hour_raw,
+    pages_per_hour_effective, drag_ratio}`.  Constante
+    HTR-United (5 s/erreur) surchargeable.  Garde-fous : `None`
+    si `n_pages = 0` ou `total_seconds = 0`, `ValueError` sur
+    valeurs négatives.  `aggregate_effective_throughput` agrège
+    par moteur sur le corpus.
+
+  - `picarones/core/marginal_cost.py` :
+    `compute_marginal_cost(cost_a, errors_a, cost_b, errors_b)`
+    retourne `{cost_per_avoided_error, n_errors_avoided,
+    cost_delta, dominated}` ou `None` si `errors_b ≥ errors_a`
+    (pas de gain à mesurer).  `dominated=True` quand B est moins
+    cher ET plus précis (cas idéal Pareto).
+    `compute_marginal_cost_matrix(per_engine)` retourne toutes
+    les paires ordonnées (A → B) où B fait moins d'erreurs,
+    triées par coût marginal croissant.
+
+  - `picarones/report/throughput_render.py` :
+    `build_throughput_html(aggregated, labels)` produit un
+    tableau résumé moteur × {pages/h brut, pages/h **utilisable**
+    (gradient rouge → vert sur le max observé), % drag (gradient
+    vert → rouge), pages, erreurs}.  Tri par pages/h utilisable
+    décroissant.  Adaptive : `""` si pas de données.  Module
+    pur — l'utilisateur compose la liste `per_engine` depuis ses
+    `EngineReport` (calcul `n_errors` au choix : WER × n_words,
+    CER × n_chars, etc.).  Vue HTML pour le coût marginal sera
+    couplée à la vue Pareto dans un sprint ultérieur.
+
+  +9 clés i18n FR/EN (`throughput_*`).  +27 tests dans
+  `test_sprint91_throughput.py` (formule effective avec/sans
+  erreurs, custom time_per_error, garde-fous n_pages=0 +
+  total_seconds=0 + ValueError sur négatifs, drag_ratio élevé,
+  agrégation 3 cas, marginal cost standard + dominé + B pire +
+  errors égales + invalide, matrice tri ascendant + lt 2 +
+  données invalides, **cas réaliste BnF** Tesseract local 600
+  p/h brut → 423 p/h effectif vs GPT-4o cloud 1800 p/h brut →
+  300 p/h effectif, vue HTML 4 cas dont anti-injection + tri
+  descendant, complétude i18n 9 clés).  **Verrou levé** : un
+  archiviste BnF qui pondère un budget contre une exigence de
+  délai voit immédiatement *« Tesseract local 423 p/h
+  utilisable, GPT-4o cloud 300 p/h utilisable malgré son
+  apparente vitesse de 1800 p/h brut »* — la décision business
+  s'aligne sur la réalité opérationnelle.
+
 - **Sprint 90 — A.II.4 finition : détecteur narratif
   `engine_unstable` + vue HTML stabilité multi-runs.**  Le
   module `picarones/core/reliability.py` (Sprint 83) livrait

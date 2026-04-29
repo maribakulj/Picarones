@@ -333,5 +333,13 @@
   "stability_cer": "CER moyen ± σ",
   "stability_cv": "CV (%)",
   "stability_identical": "% runs identiques",
-  "stability_distinct": "Sorties distinctes"
+  "stability_distinct": "Sorties distinctes",
+  "throughput_title": "Throughput effectif",
+  "throughput_note": "Pages traitables par heure en intégrant le temps de correction humaine post-OCR. Discrimine entre un cloud rapide mais imprécis et un local lent mais fiable. Constante de correction : {time_per_error}s par erreur (défaut HTR-United, surchargeable).",
+  "throughput_engine": "Moteur",
+  "throughput_raw": "Pages/h brut",
+  "throughput_effective": "Pages/h utilisable",
+  "throughput_drag": "% correction",
+  "throughput_pages": "Pages",
+  "throughput_errors": "Erreurs"
 }
