@@ -16,6 +16,57 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 83 — A.II.4 : métriques de fiabilité (couche de
+  calcul).**  Premier sprint de l'Étape 4 du plan d'évolution
+  2026 après la clôture de A.I.  Une publication scientifique
+  qui rapporte un CER LLM sans stabilité est méthodologiquement
+  faible ; un benchmark qui ignore le plafond humain (« deux
+  paléographes ne sont pas même d'accord ») crée des
+  classements faussement optimistes.  Nouveau module
+  `picarones/core/reliability.py` couvrant deux familles :
+
+  - **Inter-annotator agreement (IAA) au niveau caractère.**
+    `cohen_kappa(annotations_a, annotations_b)` : κ standard
+    avec gestion des cas dégénérés (tailles incompatibles →
+    `None`, séquences vides → `None`, un seul label →
+    convention 1.0/0.0 documentée car κ mathématiquement
+    indéfini quand pe = 1).  `krippendorff_alpha(units)` : α
+    de Krippendorff en mode nominal, généralisé à N
+    annotateurs avec missing values autorisées (cellules
+    `None`), formule `1 - D_o / D_e` avec `D_e` calculé sur
+    les paires sans remise.  `compute_iaa(transcription_a,
+    transcription_b)` : aligne deux GT caractère par
+    caractère via `_aligned_char_pairs` (segments `equal` et
+    `replace` de `SequenceMatcher`, les `insert`/`delete`
+    n'ayant pas d'alignement bilatéral exploitable) puis
+    calcule κ et α sur les paires alignées + agreement_rate
+    + n_aligned_chars.
+
+  - **Stabilité multi-runs.**  `compute_multirun_stability(runs,
+    reference=None)` mesure la variance d'une pipeline
+    LLM/VLM non-déterministe relancée N fois sur le même
+    document : pairwise_disagreement (Jaccard token-level)
+    moyen et max, identical_run_rate, n_distinct_outputs.  Si
+    `reference` fournie, on calcule `cer_per_run`,
+    `cer_mean`, `cer_stdev`, `cer_cv` (coefficient de
+    variation, `None` quand mean=0 pour éviter la division
+    par zéro).  Retourne `None` si moins de 2 runs.
+
+  Périmètre Sprint 83 : **couche de calcul uniquement**.
+  L'extension du loader pour accepter `doc_001.gt.A.txt` et
+  `doc_001.gt.B.txt` comme GT multiples, l'option
+  `--repeats N` du runner et le détecteur narratif
+  `engine_unstable` arriveront dans des sprints suivants.
+  +26 tests dans `test_sprint83_reliability.py` (cohen_kappa
+  6 cas dont accord parfait/désaccord pire que hasard/un seul
+  label, krippendorff_alpha 5 cas, compute_iaa 5 cas dont
+  empty/one-empty, compute_multirun_stability 6 cas dont
+  reference parfaite/CV indéfini, _aligned_char_pairs 4 cas).
+  **Verrou levé** : le rapport pourra demain afficher le
+  plafond humain à côté du CER (« CER de Pero 4,2 % approche
+  le κ inter-paléographes 0,89 ») et signaler les pipelines
+  LLM dont la variance dépasse un seuil.
+
 - **Sprint 82 — A.I.9 : section « Leviers d'amélioration »
   (couche calcul + cards HTML).**  Le moteur narratif
   (Sprint 19) émet des `Fact` qui décrivent **ce qui s'est
