@@ -16,6 +16,44 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 79 — A.I.6 : projection de coût en volume cible
+  (couche de calcul).**  La vue Pareto (Sprint 20) trace CER vs
+  coût mais le coût est par unité (1 000 pages).  Pour décider
+  business-side, il faut projeter ce coût sur le **volume cible**
+  que l'utilisateur prévoit de traiter — payer 50 € de plus sur
+  50 pages est trivial, sur 5 millions ça change tout.
+  - Nouveau module `picarones/core/cost_projection.py` :
+    - Dataclass ``ProjectedCost(engine_key, target_pages,
+      cost_total_eur, co2_total_g, cost_per_1k_pages_eur,
+      co2_per_1k_pages_g, type)``.
+    - ``project_cost_total(engine_cost, target_pages)`` : coût
+      total linéaire en pages.  ``None`` si données insuffisantes
+      ou ``target_pages < 0``.
+    - ``project_co2_total(engine_cost, target_pages)`` :
+      empreinte CO₂ en grammes pour le volume cible (étiqueté
+      « expérimental » dans ``pricing.py`` Sprint 20).
+    - ``project_engine(engine_cost, target_pages)`` : retourne
+      le ``ProjectedCost`` complet.
+    - ``project_all_engines(engine_costs, target_pages)``
+      projette N moteurs en une passe.  ``ValueError`` si
+      ``target_pages < 0``.
+    - ``cost_gap_table(projections, baseline_engine)`` retourne
+      ``{engine: {total, delta_abs, delta_rel}}`` vs baseline ;
+      ``KeyError`` si baseline inconnue ; ``delta_rel = None`` si
+      baseline = 0 (pas de division silencieuse).
+  - +17 tests dans `test_sprint79_cost_projection.py` :
+    couche calcul (5 cas — linear, zero, négatif, no_data,
+    fractionnel), CO₂ (2 cas), engine (2 cas), all_engines (3
+    cas), gap_table (4 cas — vs baseline, baseline inconnue,
+    baseline=0, données manquantes), **cas réaliste BnF**
+    (80 000 pages BMS avec 4 moteurs : Tesseract 3,20 €, Pero
+    0 €, Mistral 280 €, GPT-4o 600 €).
+  - **Verrou levé** : la couche calcul est prête pour câbler le
+    panneau « Avancé » (Sprint 21) avec le champ « Volume cible »
+    qui recalcule la vue Pareto et la table coût en valeur
+    totale projetée.  L'UX et le câblage HTML suivront — la
+    base est testée et auto-documentée.
+
 - **Sprint 78 — A.I.5 : équivalences diplomatiques en curseur
   fin (couche de calcul).**  Aujourd'hui les profils de
   ``picarones/core/normalization.py`` (``medieval_french``,
