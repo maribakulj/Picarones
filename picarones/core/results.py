@@ -90,6 +90,25 @@ class DocumentResult:
     Cette logique adaptative permet de garder les rapports lisibles
     sur les corpus sans marqueurs philologiques.
     """
+    # Sprint 86 — recherchabilité fuzzy (Sprint 84) calculée
+    # automatiquement avec adaptive masking.
+    searchability_metrics: Optional[dict] = None
+    """Recherchabilité fuzzy (Sprint 84+86).
+
+    Format : retour de ``compute_searchability`` ({n_gt_tokens,
+    n_searchable, recall, missed_tokens, max_distance}). Présent
+    uniquement si la GT contient au moins un token.
+    """
+    # Sprint 86 — précision sur séquences numériques (Sprint 85)
+    # calculée automatiquement avec adaptive masking.
+    numerical_sequence_metrics: Optional[dict] = None
+    """Précision sur séquences numériques (Sprint 85+86).
+
+    Format : retour de ``compute_numerical_sequence_metrics``
+    (global_strict_score, global_value_score, n_total,
+    per_category). Présent uniquement si la GT contient au
+    moins une séquence détectée.
+    """
 
     def as_dict(self) -> dict:
         d = {
@@ -125,6 +144,10 @@ class DocumentResult:
             d["calibration_metrics"] = self.calibration_metrics
         if self.philological_metrics is not None:
             d["philological_metrics"] = self.philological_metrics
+        if self.searchability_metrics is not None:
+            d["searchability_metrics"] = self.searchability_metrics
+        if self.numerical_sequence_metrics is not None:
+            d["numerical_sequence_metrics"] = self.numerical_sequence_metrics
         return d
 
     def compact(self) -> None:
@@ -153,6 +176,8 @@ class DocumentResult:
         self.ner_metrics = None
         self.calibration_metrics = None
         self.philological_metrics = None
+        self.searchability_metrics = None
+        self.numerical_sequence_metrics = None
 
 
 @dataclass
@@ -206,6 +231,21 @@ class EngineReport:
     globaux ; les structures per_category/per_block/per_status sont
     également agrégées.  ``None`` si aucun document n'a porté de
     ``philological_metrics``."""
+    # Sprint 86
+    aggregated_searchability: Optional[dict] = None
+    """Recherchabilité fuzzy agrégée corpus-wide (Sprint 84+86).
+
+    Format ``{n_docs, n_gt_tokens, n_searchable, recall,
+    missed_tokens_sample, max_distance}``. ``None`` si aucun
+    document n'a porté de ``searchability_metrics``."""
+    aggregated_numerical_sequences: Optional[dict] = None
+    """Précision sur séquences numériques agrégée (Sprint 85+86).
+
+    Format identique à ``compute_numerical_sequence_metrics`` :
+    global_strict_score, global_value_score, n_total,
+    per_category{n_total, strict, value, strict_score,
+    value_score, lost_items}. ``None`` si aucun document n'avait
+    de séquence numérique exploitable."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -284,6 +324,12 @@ class EngineReport:
             d["aggregated_calibration"] = self.aggregated_calibration
         if self.aggregated_philological is not None:
             d["aggregated_philological"] = self.aggregated_philological
+        if self.aggregated_searchability is not None:
+            d["aggregated_searchability"] = self.aggregated_searchability
+        if self.aggregated_numerical_sequences is not None:
+            d["aggregated_numerical_sequences"] = (
+                self.aggregated_numerical_sequences
+            )
         return d
 
 

@@ -199,6 +199,12 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             # Sprint 62 — profil philologique agrégé (None si aucun
             # signal philologique sur le corpus pour ce moteur)
             "aggregated_philological": report.aggregated_philological,
+            # Sprint 86 — A.II.5 (recherchabilité fuzzy + séquences
+            # numériques). None si aucun document n'a de signal.
+            "aggregated_searchability": report.aggregated_searchability,
+            "aggregated_numerical_sequences": (
+                report.aggregated_numerical_sequences
+            ),
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
@@ -787,6 +793,21 @@ class ReportGenerator:
             labels=labels,
         )
 
+        # Sprint 86 — A.II.5 : recherchabilité fuzzy +
+        # séquences numériques. Adaptive : "" si aucun signal.
+        from picarones.report.searchability_render import (
+            build_searchability_summary_html,
+        )
+        from picarones.report.numerical_sequences_render import (
+            build_numerical_sequences_html,
+        )
+        searchability_html = build_searchability_summary_html(
+            report_data.get("engines", []), labels=labels,
+        )
+        numerical_sequences_html = build_numerical_sequences_html(
+            report_data.get("engines", []), labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -808,6 +829,8 @@ class ReportGenerator:
             reliability_diagrams_html=reliability_diagrams_html,
             stratified_ranking_html=stratified_ranking_html,
             philological_profile_html=philological_profile_html,
+            searchability_html=searchability_html,
+            numerical_sequences_html=numerical_sequences_html,
         )
 
         output_path.write_text(html, encoding="utf-8")

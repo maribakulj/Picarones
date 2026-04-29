@@ -298,6 +298,35 @@ def _compute_document_result(
     except Exception as e:
         _logger.warning("[philological] fonctionnalité dégradée : %s", e)
 
+    # Sprint 86 — recherchabilité fuzzy (Sprint 84) avec adaptive
+    # masking. Coût O(N_gt × N_hyp × len_max), négligeable sur les
+    # tailles de documents typiques.
+    searchability_data: Optional[dict] = None
+    try:
+        from picarones.core.searchability_runner import (
+            compute_searchability_metrics,
+        )
+        searchability_data = compute_searchability_metrics(
+            ground_truth, ocr_result.text,
+        )
+    except Exception as e:
+        _logger.warning("[searchability] fonctionnalité dégradée : %s", e)
+
+    # Sprint 86 — précision sur séquences numériques (Sprint 85)
+    # avec adaptive masking.
+    numerical_sequence_data: Optional[dict] = None
+    try:
+        from picarones.core.numerical_sequences_runner import (
+            compute_numerical_sequence_metrics_adaptive,
+        )
+        numerical_sequence_data = compute_numerical_sequence_metrics_adaptive(
+            ground_truth, ocr_result.text,
+        )
+    except Exception as e:
+        _logger.warning(
+            "[numerical_sequences] fonctionnalité dégradée : %s", e,
+        )
+
     return DocumentResult(
         doc_id=doc_id,
         image_path=image_path,
@@ -317,6 +346,8 @@ def _compute_document_result(
         hallucination_metrics=hallucination_data,
         calibration_metrics=calibration_data,
         philological_metrics=philological_data,
+        searchability_metrics=searchability_data,
+        numerical_sequence_metrics=numerical_sequence_data,
     )
 
 
@@ -735,6 +766,19 @@ def run_benchmark(
         agg_philological = aggregate_philological_metrics(
             [dr.philological_metrics for dr in document_results],
         )
+        # Sprint 86 — agrégation A.II.5
+        from picarones.core.searchability_runner import (
+            aggregate_searchability_metrics,
+        )
+        from picarones.core.numerical_sequences_runner import (
+            aggregate_numerical_sequence_metrics,
+        )
+        agg_searchability = aggregate_searchability_metrics(
+            [dr.searchability_metrics for dr in document_results],
+        )
+        agg_numerical_sequences = aggregate_numerical_sequence_metrics(
+            [dr.numerical_sequence_metrics for dr in document_results],
+        )
 
         report = EngineReport(
             engine_name=engine.name,
@@ -751,6 +795,8 @@ def run_benchmark(
             aggregated_hallucination=agg_hallucination,
             aggregated_calibration=agg_calibration,
             aggregated_philological=agg_philological,
+            aggregated_searchability=agg_searchability,
+            aggregated_numerical_sequences=agg_numerical_sequences,
         )
         engine_reports.append(report)
         logger.info(

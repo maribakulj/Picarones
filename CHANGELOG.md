@@ -16,6 +16,53 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 86 — A.II.5 : câblage runner + vues HTML (clôture
+  bout-en-bout).**  Suite directe Sprints 84 et 85 — la couche
+  de calcul livrait deux modules pour le mode plein-texte
+  patrimonial, ce sprint les remonte automatiquement dans le
+  rapport.  Deux nouveaux helpers
+  `picarones/core/searchability_runner.py` et
+  `picarones/core/numerical_sequences_runner.py` qui calculent
+  les métriques par document avec **adaptive masking** (rien
+  n'apparaît pour un doc sans GT exploitable) et agrègent
+  corpus-wide en *micro*-rappel pour la searchability et en
+  somme de compteurs par catégorie pour les séquences
+  numériques.  `DocumentResult` gagne `searchability_metrics`
+  et `numerical_sequence_metrics` ; `EngineReport` gagne
+  `aggregated_searchability` et `aggregated_numerical_sequences`
+  (sérialisation conditionnelle dans `as_dict`, libérés par
+  `compact`).  Le runner historique calcule désormais les deux
+  inconditionnellement (coût négligeable face à l'OCR), erreur
+  d'un module isolée par try/except + warning explicite,
+  rétrocompat stricte (aucun champ ajouté au JSON quand le
+  corpus est sans signal).  Deux nouveaux modules de rendu
+  `picarones/report/searchability_render.py` et
+  `picarones/report/numerical_sequences_render.py` :
+  `build_searchability_summary_html` produit un tableau résumé
+  moteur × (rappel coloré gradient rouge → jaune → vert,
+  retrouvés/total, docs) ;
+  `build_numerical_sequences_html` produit un tableau moteur ×
+  catégorie (year/roman/foliation/currency/regnal) avec
+  **adaptive masking par catégorie** (une catégorie sans signal
+  est omise pour tous les moteurs) ; chaque cellule affiche le
+  score strict (gradient) + la valeur entre parenthèses + le
+  n.  Insertion dans `view_analyses.html` derrière le profil
+  philologique, `chart-card` pleine largeur conditionné.
+  Anti-injection systématique (`html.escape`).  +15 nouvelles
+  clés i18n FR/EN (`search_*`, `numseq_*`).  +25 tests dans
+  `test_sprint86_aii5_html.py` couvrant adaptive masking sur
+  les helpers, agrégation micro-rappel, somme par catégorie,
+  sérialisation `DocumentResult`/`EngineReport`,
+  `compact` qui efface bien les champs, masquage adaptatif HTML
+  (vide quand sans signal, omission de catégories), rendu en
+  FR + EN, anti-injection sur nom de moteur, complétude i18n
+  sur 15 clés.  **Verrou levé** : un benchmark BnF voit
+  désormais sur la vue Analyses *« Recherchabilité fuzzy :
+  tess 95,2 %, pero 87,8 % »* + le tableau séquences
+  numériques détaillé par catégorie — A.II.5 est livrée
+  bout-en-bout en couche calcul (Sprints 84-85), runner et
+  HTML (Sprint 86).
+
 - **Sprint 85 — A.II.5b : précision sur séquences numériques
   (couche de calcul + registre typé).**  Pour un économiste-
   historien, un éditeur de chartes ou un archiviste, la

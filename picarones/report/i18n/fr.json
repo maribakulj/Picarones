@@ -280,5 +280,20 @@
   "levers_complementarity_phrase_with_engine": "L'oracle bag-of-words atteint un rappel supérieur de {abs_pct} points (+{rel_pct}% relatif) à celui du meilleur moteur seul ({best_engine}).",
   "levers_lexical_phrase": "Top tokens GT systématiquement modernisés par {engine} : {items}.",
   "levers_robustness_phrase": "Déficit projeté de {engine} sur le corpus réel : {deficit_pct} points de CER cumulés sur {n_types} dégradations.",
-  "levers_robustness_phrase_with_worst": "Déficit projeté de {engine} sur le corpus réel : {deficit_pct} points de CER cumulés sur {n_types} dégradations — pire dégradation : {worst_type} ({worst_pct} points)."
+  "levers_robustness_phrase_with_worst": "Déficit projeté de {engine} sur le corpus réel : {deficit_pct} points de CER cumulés sur {n_types} dégradations — pire dégradation : {worst_type} ({worst_pct} points).",
+  "search_title": "Recherchabilité fuzzy",
+  "search_note": "Proportion de tokens GT retrouvés dans la sortie OCR à distance de Levenshtein ≤ 2 — proxy direct de la qualité pour la recherche plein-texte (Elastic, Solr, Gallica).",
+  "search_engine": "Moteur",
+  "search_recall": "Rappel",
+  "search_count": "Tokens retrouvés / total",
+  "search_docs": "Docs",
+  "numseq_title": "Précision sur séquences numériques",
+  "numseq_note": "Score strict (forme préservée) — la valeur entre parenthèses est le score sur la valeur (XIV ↔ 14 accepté). Foliotation : recto/verso non interchangeables.",
+  "numseq_engine": "Moteur",
+  "numseq_global": "Global",
+  "numseq_cat_year": "Année",
+  "numseq_cat_roman": "Romain",
+  "numseq_cat_foliation": "Foliation",
+  "numseq_cat_currency": "Montant",
+  "numseq_cat_regnal": "Régnal"
 }

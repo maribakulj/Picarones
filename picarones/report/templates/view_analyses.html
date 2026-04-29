@@ -209,6 +209,20 @@
     </div>
     {% endif %}
 
+    <!-- Sprint 86 — A.II.5 : recherchabilité fuzzy + précision sur
+         séquences numériques. Adaptive : n'apparaît que si au moins
+         un moteur a du signal. -->
+    {% if searchability_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ searchability_html }}
+    </div>
+    {% endif %}
+    {% if numerical_sequences_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ numerical_sequences_html }}
+    </div>
+    {% endif %}
+
     <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
     {% if divergence_matrix_html or oracle_gap_html %}
     <div class="chart-card" style="grid-column:1/-1">

@@ -280,5 +280,20 @@
   "levers_complementarity_phrase_with_engine": "The bag-of-words oracle achieves a recall {abs_pct} points higher (+{rel_pct}% relative) than the best single engine ({best_engine}).",
   "levers_lexical_phrase": "Top GT tokens systematically modernized by {engine}: {items}.",
   "levers_robustness_phrase": "Projected deficit of {engine} on the real corpus: {deficit_pct} CER points cumulated over {n_types} degradations.",
-  "levers_robustness_phrase_with_worst": "Projected deficit of {engine} on the real corpus: {deficit_pct} CER points cumulated over {n_types} degradations — worst degradation: {worst_type} ({worst_pct} points)."
+  "levers_robustness_phrase_with_worst": "Projected deficit of {engine} on the real corpus: {deficit_pct} CER points cumulated over {n_types} degradations — worst degradation: {worst_type} ({worst_pct} points).",
+  "search_title": "Fuzzy searchability",
+  "search_note": "Fraction of GT tokens recovered in the OCR output within Levenshtein distance ≤ 2 — direct proxy of full-text search quality (Elastic, Solr, Gallica).",
+  "search_engine": "Engine",
+  "search_recall": "Recall",
+  "search_count": "Recovered tokens / total",
+  "search_docs": "Docs",
+  "numseq_title": "Numerical-sequence precision",
+  "numseq_note": "Strict score (form preserved) — the value in parentheses is the score on the value (XIV ↔ 14 accepted). Foliation: recto/verso are not interchangeable.",
+  "numseq_engine": "Engine",
+  "numseq_global": "Global",
+  "numseq_cat_year": "Year",
+  "numseq_cat_roman": "Roman",
+  "numseq_cat_foliation": "Foliation",
+  "numseq_cat_currency": "Amount",
+  "numseq_cat_regnal": "Regnal"
 }
