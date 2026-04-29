@@ -295,5 +295,13 @@
   "numseq_cat_roman": "Romain",
   "numseq_cat_foliation": "Foliation",
   "numseq_cat_currency": "Montant",
-  "numseq_cat_regnal": "Régnal"
+  "numseq_cat_regnal": "Régnal",
+  "readability_title": "Lisibilité (delta Flesch)",
+  "readability_note": "Différence de lisibilité Flesch entre la sortie OCR et la GT. Δ > +5 : over-normalisation (typique des LLM qui modernisent un texte ancien). Δ < -5 : dégradation brutale. Δ ≈ 0 : fidélité au registre linguistique.",
+  "readability_engine": "Moteur",
+  "readability_delta_mean": "Δ moyen",
+  "readability_delta_median": "Δ médian",
+  "readability_over_norm_rate": "% over-normalisé",
+  "readability_under_norm_count": "Docs under-normalisés",
+  "readability_docs": "Docs"
 }

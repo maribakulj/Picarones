@@ -295,5 +295,13 @@
   "numseq_cat_roman": "Roman",
   "numseq_cat_foliation": "Foliation",
   "numseq_cat_currency": "Amount",
-  "numseq_cat_regnal": "Regnal"
+  "numseq_cat_regnal": "Regnal",
+  "readability_title": "Readability (Flesch delta)",
+  "readability_note": "Flesch readability difference between OCR output and GT. Δ > +5: over-normalisation (typical of LLMs that modernize archaic text). Δ < -5: heavy OCR degradation. Δ ≈ 0: faithful to the linguistic register.",
+  "readability_engine": "Engine",
+  "readability_delta_mean": "Mean Δ",
+  "readability_delta_median": "Median Δ",
+  "readability_over_norm_rate": "% over-normalised",
+  "readability_under_norm_count": "Under-normalised docs",
+  "readability_docs": "Docs"
 }

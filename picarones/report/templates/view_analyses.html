@@ -223,6 +223,14 @@
     </div>
     {% endif %}
 
+    <!-- Sprint 87 — A.II.2 : lisibilité (delta Flesch). Adaptive :
+         n'apparaît que si au moins un moteur a du signal. -->
+    {% if readability_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ readability_html }}
+    </div>
+    {% endif %}
+
     <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
     {% if divergence_matrix_html or oracle_gap_html %}
     <div class="chart-card" style="grid-column:1/-1">

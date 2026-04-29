@@ -16,6 +16,53 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 87 — A.II.2 : delta Flesch câblé bout-en-bout
+  (couche calcul Sprint 52 + runner + vue HTML).**  Le module
+  `picarones/core/readability.py` (Sprint 52) calculait le
+  delta Flesch *« over-normalisation par LLM »* — ce sprint le
+  remonte automatiquement dans le rapport.  Nouveau helper
+  `picarones/core/readability_runner.py` :
+  `compute_readability_metrics(reference, hypothesis, lang)`
+  avec **adaptive masking** (≥ 5 mots GT pour éviter
+  l'instabilité de Flesch sur très courts textes) ;
+  `aggregate_readability_metrics(per_doc)` retourne
+  `{lang, n_docs, n_docs_with_delta, delta_mean, delta_median,
+  delta_min, delta_max, n_over_normalized, n_under_normalized,
+  over_normalized_rate}` — l'over-normalisation est définie à
+  Δ > +5 points (LLM modernise un texte ancien), l'under-
+  normalisation à Δ < -5 (dégradation OCR brutale).
+  `DocumentResult.readability_metrics` et
+  `EngineReport.aggregated_readability` (sérialisation
+  conditionnelle, libérés par `compact`).  Câblage runner :
+  langue lue depuis `corpus.metadata.get("language", "fr")`,
+  fallback `fr` avec warning si valeur non `fr`/`en`,
+  paramètre `corpus_lang` propagé jusqu'aux workers IO et CPU
+  (workers acceptent maintenant 7 ou 8 args en mode legacy
+  pour rétrocompat).  Erreur isolée par try/except + warning
+  explicite.  Nouveau module
+  `picarones/report/readability_render.py` :
+  `build_readability_summary_html` rend un tableau résumé
+  moteur × {Δ moyen coloré (vert au centre, orange si over-
+  norm, bleu si under-norm), Δ médian, % over-normalisés,
+  docs under-normalisés, docs} ; saturation à ±15 points.
+  Insertion dans `view_analyses.html` derrière les blocs
+  A.II.5.  Anti-injection systématique.  +8 clés i18n FR/EN.
+  +20 tests dans `test_sprint87_readability_html.py`
+  (adaptive masking GT < 5 mots, langue passée à fr/en,
+  hypothèse vide → flesch_delta None mais flesch_reference
+  conservé, agrégation moyenne + over-norm rate, sérialisation
+  `DocumentResult`/`EngineReport`, `compact`, masquage
+  adaptatif HTML, rendu FR + EN, anti-injection sur nom
+  moteur, complétude i18n 8 clés).  **Verrou levé** : le
+  rapport remonte désormais *« GPT-4o : Δ moyen +11,5,
+  85 % des docs over-normalisés »* directement dans la vue
+  Analyses — pas de visualisation HTML pour les VLM
+  hallucinant du français moderne sur du français médiéval
+  jusqu'ici, c'est livré.  Reste pour A.II.2 bout-en-bout :
+  reading_order_f1 et layout_f1 (Sprints 53-54) qui requièrent
+  un moteur produisant PAGE/ALTO et seront câblés via les
+  pipelines composées (axe B).
+
 - **Sprint 86 — A.II.5 : câblage runner + vues HTML (clôture
   bout-en-bout).**  Suite directe Sprints 84 et 85 — la couche
   de calcul livrait deux modules pour le mode plein-texte

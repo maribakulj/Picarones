@@ -45,7 +45,14 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
     toutes les métriques.  Doit être une fonction de niveau module pour être
     sérialisable par ``pickle``.
     """
-    engine_module, engine_class_name, engine_config, doc_id, image_path, ground_truth, char_exclude_chars = args
+    # Sprint 87 — args peut contenir 7 (legacy) ou 8 (avec corpus_lang) éléments
+    if len(args) == 8:
+        (engine_module, engine_class_name, engine_config, doc_id,
+         image_path, ground_truth, char_exclude_chars, corpus_lang) = args
+    else:
+        (engine_module, engine_class_name, engine_config, doc_id,
+         image_path, ground_truth, char_exclude_chars) = args
+        corpus_lang = "fr"
     import importlib
     mod = importlib.import_module(engine_module)
     engine_cls = getattr(mod, engine_class_name)
@@ -58,6 +65,7 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
         ground_truth=ground_truth,
         ocr_result=ocr_result,
         char_exclude=char_exclude,
+        corpus_lang=corpus_lang,
     )
 
 
@@ -65,6 +73,7 @@ def _io_doc_worker(
     engine: BaseOCREngine,
     doc: object,
     char_exclude: Optional[frozenset],
+    corpus_lang: str = "fr",
 ) -> "DocumentResult":
     """Worker pour ThreadPoolExecutor (moteurs IO-bound / API).
 
@@ -94,6 +103,7 @@ def _io_doc_worker(
         ground_truth=doc.ground_truth,  # type: ignore[attr-defined]
         ocr_result=ocr_result,
         char_exclude=char_exclude,
+        corpus_lang=corpus_lang,
     )
 
 
@@ -168,6 +178,7 @@ def _compute_document_result(
     ground_truth: str,
     ocr_result: EngineResult,
     char_exclude: Optional[frozenset],
+    corpus_lang: str = "fr",
 ) -> DocumentResult:
     """Calcule toutes les métriques pour un document et retourne un DocumentResult.
 
@@ -327,6 +338,20 @@ def _compute_document_result(
             "[numerical_sequences] fonctionnalité dégradée : %s", e,
         )
 
+    # Sprint 87 — delta Flesch (Sprint 52) calculé automatiquement
+    # avec adaptive masking (≥ 5 mots dans la GT).  Langue lue
+    # depuis ``corpus_lang`` propagé par run_benchmark.
+    readability_data: Optional[dict] = None
+    try:
+        from picarones.core.readability_runner import (
+            compute_readability_metrics,
+        )
+        readability_data = compute_readability_metrics(
+            ground_truth, ocr_result.text, lang=corpus_lang,
+        )
+    except Exception as e:
+        _logger.warning("[readability] fonctionnalité dégradée : %s", e)
+
     return DocumentResult(
         doc_id=doc_id,
         image_path=image_path,
@@ -348,6 +373,7 @@ def _compute_document_result(
         philological_metrics=philological_data,
         searchability_metrics=searchability_data,
         numerical_sequence_metrics=numerical_sequence_data,
+        readability_metrics=readability_data,
     )
 
 
@@ -575,6 +601,17 @@ def run_benchmark(
     # document avant ``compact()`` (qui efface ``image_quality``).
     doc_strata: dict[str, str] = {}
 
+    # Sprint 87 — langue du corpus pour le delta Flesch (A.II.2).
+    # Lecture depuis corpus.metadata, fallback "fr".
+    corpus_lang: str = (corpus.metadata or {}).get("language", "fr")
+    if corpus_lang not in ("fr", "en"):
+        # Sprint 52 ne supporte que fr/en — fallback "fr" en warning.
+        logger.warning(
+            "[readability] langue '%s' non supportée, fallback 'fr'.",
+            corpus_lang,
+        )
+        corpus_lang = "fr"
+
     for engine in engines:
         if _is_cancelled():
             logger.info("Benchmark annulé avant le moteur '%s'.", engine.name)
@@ -642,10 +679,13 @@ def run_benchmark(
                         _cpu_doc_worker,
                         (engine_module, engine_class_name, engine.config,
                          doc.doc_id, str(doc.image_path), doc.ground_truth,
-                         char_exclude_tuple),
+                         char_exclude_tuple, corpus_lang),
                     )
                 else:
-                    future = executor.submit(_io_doc_worker, engine, doc, char_exclude)
+                    future = executor.submit(
+                        _io_doc_worker, engine, doc, char_exclude,
+                        corpus_lang,
+                    )
                 future_to_doc[future] = doc
                 submitted_at[future] = time.monotonic()
 
@@ -773,11 +813,17 @@ def run_benchmark(
         from picarones.core.numerical_sequences_runner import (
             aggregate_numerical_sequence_metrics,
         )
+        from picarones.core.readability_runner import (
+            aggregate_readability_metrics,
+        )
         agg_searchability = aggregate_searchability_metrics(
             [dr.searchability_metrics for dr in document_results],
         )
         agg_numerical_sequences = aggregate_numerical_sequence_metrics(
             [dr.numerical_sequence_metrics for dr in document_results],
+        )
+        agg_readability = aggregate_readability_metrics(
+            [dr.readability_metrics for dr in document_results],
         )
 
         report = EngineReport(
@@ -797,6 +843,7 @@ def run_benchmark(
             aggregated_philological=agg_philological,
             aggregated_searchability=agg_searchability,
             aggregated_numerical_sequences=agg_numerical_sequences,
+            aggregated_readability=agg_readability,
         )
         engine_reports.append(report)
         logger.info(

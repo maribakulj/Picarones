@@ -102,6 +102,14 @@ class DocumentResult:
     # Sprint 86 — précision sur séquences numériques (Sprint 85)
     # calculée automatiquement avec adaptive masking.
     numerical_sequence_metrics: Optional[dict] = None
+    # Sprint 87 — delta Flesch (Sprint 52) calculé automatiquement
+    # avec adaptive masking (≥ 5 mots dans la GT).
+    readability_metrics: Optional[dict] = None
+    """Métriques de lisibilité (Sprint 52+87).
+
+    Format ``{lang, flesch_reference, flesch_hypothesis,
+    flesch_delta, n_words_reference}``.  Présent uniquement si
+    la GT contient au moins 5 mots."""
     """Précision sur séquences numériques (Sprint 85+86).
 
     Format : retour de ``compute_numerical_sequence_metrics``
@@ -148,6 +156,8 @@ class DocumentResult:
             d["searchability_metrics"] = self.searchability_metrics
         if self.numerical_sequence_metrics is not None:
             d["numerical_sequence_metrics"] = self.numerical_sequence_metrics
+        if self.readability_metrics is not None:
+            d["readability_metrics"] = self.readability_metrics
         return d
 
     def compact(self) -> None:
@@ -178,6 +188,7 @@ class DocumentResult:
         self.philological_metrics = None
         self.searchability_metrics = None
         self.numerical_sequence_metrics = None
+        self.readability_metrics = None
 
 
 @dataclass
@@ -246,6 +257,14 @@ class EngineReport:
     per_category{n_total, strict, value, strict_score,
     value_score, lost_items}. ``None`` si aucun document n'avait
     de séquence numérique exploitable."""
+    # Sprint 87 — A.II.2 (delta Flesch agrégé)
+    aggregated_readability: Optional[dict] = None
+    """Delta Flesch agrégé corpus-wide (Sprint 52+87).
+
+    Format ``{lang, n_docs, n_docs_with_delta, delta_mean,
+    delta_median, delta_min, delta_max, n_over_normalized,
+    n_under_normalized, over_normalized_rate}``.  ``None`` si
+    aucun document n'avait de ``readability_metrics``."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -330,6 +349,8 @@ class EngineReport:
             d["aggregated_numerical_sequences"] = (
                 self.aggregated_numerical_sequences
             )
+        if self.aggregated_readability is not None:
+            d["aggregated_readability"] = self.aggregated_readability
         return d
 
 

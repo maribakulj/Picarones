@@ -205,6 +205,8 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "aggregated_numerical_sequences": (
                 report.aggregated_numerical_sequences
             ),
+            # Sprint 87 — A.II.2 (delta Flesch agrégé)
+            "aggregated_readability": report.aggregated_readability,
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
@@ -808,6 +810,15 @@ class ReportGenerator:
             report_data.get("engines", []), labels=labels,
         )
 
+        # Sprint 87 — A.II.2 : lisibilité (delta Flesch).
+        # Adaptive : "" si aucun moteur n'a de signal.
+        from picarones.report.readability_render import (
+            build_readability_summary_html,
+        )
+        readability_html = build_readability_summary_html(
+            report_data.get("engines", []), labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -831,6 +842,7 @@ class ReportGenerator:
             philological_profile_html=philological_profile_html,
             searchability_html=searchability_html,
             numerical_sequences_html=numerical_sequences_html,
+            readability_html=readability_html,
         )
 
         output_path.write_text(html, encoding="utf-8")
