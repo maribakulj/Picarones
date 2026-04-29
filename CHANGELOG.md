@@ -16,6 +16,46 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 81 — A.I.8 : robustesse synthétique projetée sur le
+  corpus réel (couche de calcul).**  Le module
+  ``picarones/core/robustness.py`` (Sprint 8) génère des courbes
+  CER vs niveau de dégradation **synthétique** ;
+  ``image_quality.py`` mesure le bruit/flou réels du corpus.  Ce
+  sprint **projette** les caractéristiques réelles sur les
+  courbes synthétiques pour estimer le **déficit attendu de CER**
+  sur le corpus dans son état actuel.
+  - Nouveau module `picarones/core/robustness_projection.py` :
+    - ``_interpolate_cer(levels, cer_values, target_level)``
+      interpolation linéaire avec **clip** aux bornes (pas
+      d'extrapolation hasardeuse).  Filtre les ``cer_values``
+      à ``None``.
+    - ``_extract_quality_value(quality_dict, degradation_type,
+      custom_mapping)`` extrait la valeur pertinente depuis
+      ``ImageQualityResult.as_dict()`` (mapping default :
+      noise→noise_level, blur→blur_score, etc.).
+    - ``project_robustness_on_corpus(curves, image_qualities,
+      quality_to_level, critical_threshold)`` retourne
+      ``{engine: {degradation_type: {n_docs, n_docs_with_data,
+      expected_cer_mean, expected_cer_median, baseline_cer,
+      deficit_vs_baseline, n_docs_above_critical,
+      critical_threshold_level, critical_threshold_cer}}}``.
+    - ``aggregate_projection_per_engine(projection)`` somme les
+      déficits sur tous les types de dégradation et identifie le
+      **type le plus pénalisant** (worst_degradation_type).
+      Hypothèse d'indépendance des dégradations documentée.
+  - +22 tests dans `test_sprint81_robustness_projection.py` :
+    interpolation (7 cas — exact, linéaire, clip lower/upper,
+    vide, all None, partiel None) ; extraction qualité (4 cas —
+    default, unknown, missing, custom) ; projection (7 cas —
+    single curve, doc above critical, doc sans data, multi
+    moteurs/types, no curves, no docs, threshold override) ;
+    agrégation (4 cas — total, worst, None skipped, vide).
+  - **Verrou levé** : un benchmark BnF avec
+    ``image_quality_aggregated`` peut désormais lire *« 30 %
+    de vos documents ont un bruit où Tesseract perd 8 points de
+    CER — déficit attendu global 2,4 points »*.  La courbe de
+    robustesse n'est plus déconnectée du corpus réel.
+
 - **Sprint 80 — A.I.7 : sur-normalisation lexicale en vue
   analytique dédiée (couche calcul + table HTML).**  Le détecteur
   ``llm_hallucination_flag`` (Sprint 19) signale qu'un moteur
