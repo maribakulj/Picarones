@@ -16,6 +16,48 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 84 — A.II.5 : recherchabilité fuzzy (couche de
+  calcul + métrique enregistrée).**  Le CER mesure les erreurs
+  caractère par caractère ; pour un usage *recherche
+  plein-texte* (Elastic, Solr en mode fuzzy, full-text de
+  Gallica), la question réelle est : *« combien de mots GT
+  sont retrouvables dans la sortie OCR à orthographe approchée
+  près ? »*.  Un CER de 8 % peut donner 95 % de findability si
+  les erreurs sont concentrées sur des caractères non
+  significatifs ; à l'inverse, 4 % de CER mais distribué sur
+  tous les noms propres rend le corpus inutilisable pour
+  l'indexation prosopographique.  Nouveau module
+  `picarones/core/searchability.py` : `levenshtein_distance(a,
+  b)` (DP O(|a|·|b|), mémoire O(min(|a|,|b|)));
+  `compute_searchability(reference, hypothesis,
+  max_distance=2, case_sensitive=False)` aligne par multi-set
+  (un token hyp utilisé une seule fois, comme
+  rare_token_recall Sprint 71), retourne `{n_gt_tokens,
+  n_searchable, recall, missed_tokens, max_distance}` avec
+  `recall=None` quand n_gt=0 (différencie GT vide de aucun
+  match), court-circuit longueur (Levenshtein ≥ |Δlen|) et
+  arrêt précoce sur match exact.  `searchability_recall_metric`
+  enregistré dans le registre typé Sprint 34 pour la jonction
+  `(TEXT, TEXT)` (convention float : 0.0 si GT vide).  Tableau
+  Elastic ``fuzziness: AUTO`` (≤ 2) en défaut, paramétrable.
+  Limites documentées : tokenisation par split whitespace ;
+  Levenshtein non pondéré ; pas de sémantique (BERTScore
+  reporté).  +28 tests dans `test_sprint84_searchability.py`
+  (Levenshtein 9 cas dont identité/insertion/suppression/
+  substitution/disjoint/empty/kitten classique, computation
+  13 cas dont identité, complètement différent, GT vide
+  (recall None), hypothèse vide (recall 0), max_distance=0
+  exact, max_distance=2 swap, max_distance large, casse
+  insensible, casse sensible opt-in, multiplicité,
+  missed_tokens préserve casse GT, ValueError sur
+  max_distance négatif, deux **cas réalistes opposés**
+  (« Charles → Charlemagne » non retrouvé vs « maistre →
+  maitre » retrouvé), intégration registre 4 cas dont
+  `compute_at_junction`).  **Verrou levé** : un bench BnF
+  d'archive numérique peut désormais classer ses moteurs sur
+  la dimension *« mes corpus seront-ils retrouvables après
+  OCRisation ? »* — proxy direct de la valeur d'usage.
+
 - **Sprint 83 — A.II.4 : métriques de fiabilité (couche de
   calcul).**  Premier sprint de l'Étape 4 du plan d'évolution
   2026 après la clôture de A.I.  Une publication scientifique
