@@ -256,5 +256,11 @@
   "taxocomp_level_label": "Catégorie",
   "taxocomp_recoverable": "Récupérable",
   "taxocomp_difficult": "Difficile",
-  "taxocomp_irrecoverable": "Irrécupérable"
+  "taxocomp_irrecoverable": "Irrécupérable",
+  "lexmod_title": "Modernisation lexicale (top tokens)",
+  "lexmod_note": "Tokens GT que le moteur réécrit le plus souvent. Lecture : « maistre → maître modernisé dans 85 % des cas » indique de quoi corriger dans le prompt pour préserver l'orthographe historique.",
+  "lexmod_gt_label": "Forme historique GT",
+  "lexmod_hyp_label": "Variantes OCR",
+  "lexmod_n_label": "n GT",
+  "lexmod_rate_label": "% modernisé"
 }

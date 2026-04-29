@@ -256,5 +256,11 @@
   "taxocomp_level_label": "Category",
   "taxocomp_recoverable": "Recoverable",
   "taxocomp_difficult": "Difficult",
-  "taxocomp_irrecoverable": "Irrecoverable"
+  "taxocomp_irrecoverable": "Irrecoverable",
+  "lexmod_title": "Lexical modernization (top tokens)",
+  "lexmod_note": "GT tokens that the engine rewrites most often. Reading: « maistre → maître modernized in 85 % of cases » tells you what to fix in the prompt to preserve historical spelling.",
+  "lexmod_gt_label": "Historical GT form",
+  "lexmod_hyp_label": "OCR variants",
+  "lexmod_n_label": "n GT",
+  "lexmod_rate_label": "% modernized"
 }

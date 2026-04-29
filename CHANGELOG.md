@@ -16,6 +16,49 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 80 — A.I.7 : sur-normalisation lexicale en vue
+  analytique dédiée (couche calcul + table HTML).**  Le détecteur
+  ``llm_hallucination_flag`` (Sprint 19) signale qu'un moteur
+  sur-normalise via un score agrégé.  Mais ce score ne dit rien
+  sur **quoi** corriger dans le prompt.  Ce sprint produit une
+  **table de fréquences détaillée** par token GT.
+  - Nouveau module `picarones/core/lexical_modernization.py` :
+    - ``compute_lexical_modernization(reference, hypothesis,
+      stop_list, case_sensitive)`` aligne mot-à-mot via
+      ``difflib.SequenceMatcher`` et accumule par token GT :
+      ``{n_total, n_modernized, rate_modernized, variants}``.
+    - ``aggregate_lexical_modernization(per_doc_results)`` somme
+      les compteurs corpus-wide.
+    - ``top_modernized_tokens(data, n=20, min_total=1)`` retourne
+      les N tokens GT les plus modernisés (tri décroissant par
+      taux, tie-break par n_total).  Filtre les anecdotiques
+      via ``min_total``.
+    - Stop-list paramétrable (tokens GT à ignorer même s'ils
+      sont modifiés) — par défaut vide, le module ne devine pas
+      ce qui est « moderne ».
+    - Cas particuliers : token GT supprimé → variant ``∅``.
+  - Nouveau module `picarones/report/lexical_modernization_render.py` :
+    - ``build_lexical_modernization_html(data, labels, top_n,
+      min_total)`` produit un tableau HTML 4 colonnes (forme
+      historique GT, variantes OCR, n GT, % modernisé).
+    - Cellule ``% modernisé`` colorée en gradient blanc → orange.
+    - Compactage des variants : top 3 affichés + ``+N`` pour le
+      reste.
+    - Adaptive : ``""`` si ``data is None`` ou aucun token
+      modernisé.
+  - +6 clés i18n FR/EN (``lexmod_*``).
+  - +20 tests dans `test_sprint80_lexical_modernization.py` :
+    couche calcul (9 cas — systématique, préservé, partiel,
+    multi-variants, stop-list, casse, suppression, vide, None) ;
+    agrégation (2 cas) ; top (2 cas — tri, min_total) ; rendu
+    (5 cas — None, no_modernization, table, %, anti-injection) ;
+    complétude i18n FR + EN.
+  - **Verrou levé** : le chercheur peut désormais lire « maistre
+    → maître modernisé dans 100 % des cas » et ajuster son prompt
+    en conséquence pour préserver l'orthographe historique.
+    L'information est exploitable au lieu d'un score agrégé
+    abstrait.
+
 - **Sprint 79 — A.I.6 : projection de coût en volume cible
   (couche de calcul).**  La vue Pareto (Sprint 20) trace CER vs
   coût mais le coût est par unité (1 000 pages).  Pour décider
