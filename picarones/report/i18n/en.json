@@ -387,5 +387,14 @@
   "dag_legend": "Reading",
   "dag_legend_green": "high quality",
   "dag_legend_yellow": "moderate quality",
-  "dag_legend_red": "low quality"
+  "dag_legend_red": "low quality",
+  "incr_title": "Controlled comparison by slot",
+  "incr_note": "Isolated effect of the varying module on pipelines while controlling for the other slots. For each value of the slot: mean ± stdev, average rank across fixed groups, number of observations. A design-of-experiment approach for honest comparisons.",
+  "incr_slot_label": "Varying slot",
+  "incr_value": "Value",
+  "incr_mean": "Mean score",
+  "incr_stdev": "± σ",
+  "incr_rank": "Mean rank",
+  "incr_n_obs": "Observations",
+  "incr_groups": "Fixed groups"
 }

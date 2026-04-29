@@ -387,5 +387,14 @@
   "dag_legend": "Lecture",
   "dag_legend_green": "qualité élevée",
   "dag_legend_yellow": "qualité moyenne",
-  "dag_legend_red": "qualité faible"
+  "dag_legend_red": "qualité faible",
+  "incr_title": "Comparaison contrôlée par slot",
+  "incr_note": "Effet isolé du module variant sur les pipelines en contrôlant les autres slots. Pour chaque valeur du slot, moyenne ± écart-type, rang moyen sur les groupes fixes, et nombre d'observations. Type design d'expérience pour des comparaisons honnêtes.",
+  "incr_slot_label": "Slot variant",
+  "incr_value": "Valeur",
+  "incr_mean": "Score moyen",
+  "incr_stdev": "± σ",
+  "incr_rank": "Rang moyen",
+  "incr_n_obs": "Observations",
+  "incr_groups": "Groupes fixes"
 }

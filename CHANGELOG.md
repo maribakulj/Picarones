@@ -16,6 +16,64 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 96 — B.5 : comparaison incrémentale (couche calcul +
+  vue HTML).**  Avec 5 OCR × 3 reconstructeurs × 4 post-
+  correcteurs × 3 mappeurs = 180 pipelines à comparer, le
+  rapport noie l'information.  Il faut un mécanisme de
+  comparaison **contrôlée** type design d'expérience.
+
+  Nouveau module `picarones/core/incremental_comparison.py` :
+
+  - Dataclass immuable ``PipelineRun(name, slots, score)``
+    décrivant un run avec sa signature de modules
+    (``slots = {"ocr": "tess", "llm": "gpt-4o", ...}``) et sa
+    métrique numérique.
+  - ``compare_isolated_effect(runs, varying_slot,
+    higher_is_better=False)`` mesure l'effet isolé d'un slot
+    en fixant tous les autres : groupe les runs par
+    combinaison des slots fixed, calcule pour chaque valeur
+    du slot variant ``{n_observations, mean, stdev, min, max,
+    mean_rank}``, retourne ``best_value``/``worst_value`` et
+    le détail des groupes pour traçabilité.  Les ex aequo
+    partagent la moyenne des rangs (convention statistique
+    standard).  Garde-fous : ``None`` si moins de 2 runs ou
+    si ``varying_slot`` n'est dans aucun run ; les runs avec
+    schéma de slots incompatible sont ignorés (pas écrasés).
+    Accepte ``PipelineRun`` ou dicts compatibles.
+
+  Nouveau module `picarones/report/incremental_comparison_render.py`
+  : `build_incremental_comparison_html(analysis, labels)`
+  produit un tableau ANOVA-like avec lignes triées par rang
+  moyen ascendant ; chaque ligne montre la valeur, le score
+  moyen coloré en gradient vert (meilleur) → rouge (pire)
+  normalisé sur la plage observée, l'écart-type, le rang
+  moyen, le nombre d'observations.  ``best_value`` marquée
+  ★ vert, ``worst_value`` marquée ▼ rouge.  Adaptive : ``""``
+  si ``analysis`` est ``None`` ou ``per_value`` vide.  Anti-
+  injection systématique sur la valeur du slot et sur le nom
+  du slot variant.
+
+  **Pas de tests statistiques recalculés** : la sortie agrège
+  les données nécessaires pour qu'un test externe (Friedman/
+  Nemenyi déjà dans `core/statistics.py` Sprint 18) puisse
+  les consommer.  Le module ne reconstruit pas ce qui existe.
+
+  +9 clés i18n FR/EN (`incr_*`).  +20 tests dans
+  `test_sprint96_incremental_comparison.py` (cas standard 4×2
+  → effet du LLM avec gpt rang 1.0 systématique, rang moyen
+  correct, best/worst identifiés, ``higher_is_better`` inverse
+  l'ordre, lt 2 → None, slot inconnu → None, schémas
+  incompatibles ignorés sans crash, acceptation de dicts,
+  ex aequo → rangs moyens 1.5, vue HTML adaptive + tri par
+  rang + marqueurs ★/▼ + anti-injection sur valeur ET sur
+  nom de slot + EN, **cas réaliste 5 OCR × 2 LLM** prouvant
+  que mistral domine systématiquement et gpt-4o aussi,
+  PipelineRun.as_dict + immutable, complétude i18n 9 clés).
+  **Verrou levé** : un benchmark d'axe B avec dizaines de
+  pipelines voit immédiatement *« en variant le LLM, gpt-4o
+  domine sur 100 % des configurations OCR (rang moyen 1.0) »*
+  sans avoir à parcourir les 180 lignes de comparaison brute.
+
 - **Sprint 95 — B.4 : visualisation DAG d'un pipeline composé
   (rendu SVG server-side).**  Outil d'**inspection**, pas de
   construction — le YAML reste source de vérité.  Permet
