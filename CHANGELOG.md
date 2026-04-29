@@ -16,6 +16,50 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 88 — A.I.8 vue HTML : déficit projeté de robustesse
+  (clôture A.I.8 bout-en-bout).**  Le module
+  `picarones/core/robustness_projection.py` (Sprint 81)
+  calculait la projection des courbes de dégradation
+  synthétique sur les caractéristiques d'image réelles ; ce
+  sprint livre la **vue HTML** correspondante.  La robustesse
+  étant un workflow CLI séparé (`picarones robustness`) et non
+  intégré au benchmark principal, ce sprint livre un **module
+  de rendu pur** que l'utilisateur compose lui-même
+  (`analyze_robustness` → `project_robustness_on_corpus` →
+  `aggregate_projection_per_engine` →
+  `build_robustness_projection_html`).  Nouveau module
+  `picarones/report/robustness_projection_render.py` :
+  `build_robustness_projection_html(projection, aggregated,
+  labels)` produit deux tableaux :
+
+  1. **Résumé par moteur** — déficit total attendu (gradient
+     vert → orange → rouge sur ±5 pts de CER), nombre de types
+     de dégradation évalués, pire dégradation avec sa
+     contribution.  Trié par déficit décroissant.
+  2. **Détail (moteur × dégradation)** — docs, docs avec data,
+     déficit projeté coloré, docs au-dessus du seuil critique.
+
+  Si `aggregated` n'est pas fourni, calculé automatiquement
+  depuis la projection.  Adaptive : `""` si la projection est
+  vide.  Anti-injection systématique sur nom de moteur et type
+  de dégradation.  Note explicite que la sommation suppose
+  l'indépendance des dégradations *« approximation utile pour
+  le diagnostic, pas un verdict »*.  +13 clés i18n FR/EN
+  (`robproj_*`).  +12 tests dans
+  `test_sprint88_robustness_projection_html.py` couvrant rendu
+  vide/None, rendu complet, calcul automatique de
+  l'agrégation, tri par déficit décroissant, formatage de la
+  cellule « pire dégradation », gestion d'un déficit None
+  (cellule —), anti-injection nom moteur + type dégradation,
+  rendu en français + anglais, **bout-en-bout** avec le
+  pipeline réel `project_robustness_on_corpus` +
+  `aggregate_projection_per_engine`, complétude i18n 13 clés.
+  **Verrou levé** : un benchmark BnF qui veut savoir *« mon
+  corpus de notaires XVIIᵉ siècle est-il à risque face à mon
+  moteur OCR ? »* obtient un tableau lisible directement
+  intégrable dans le rapport — A.I.8 livrée bout-en-bout
+  (calcul Sprint 81 + vue HTML Sprint 88).
+
 - **Sprint 87 — A.II.2 : delta Flesch câblé bout-en-bout
   (couche calcul Sprint 52 + runner + vue HTML).**  Le module
   `picarones/core/readability.py` (Sprint 52) calculait le

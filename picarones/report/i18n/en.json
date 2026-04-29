@@ -303,5 +303,18 @@
   "readability_delta_median": "Median Δ",
   "readability_over_norm_rate": "% over-normalised",
   "readability_under_norm_count": "Under-normalised docs",
-  "readability_docs": "Docs"
+  "readability_docs": "Docs",
+  "robproj_title": "Projected robustness deficit on the real corpus",
+  "robproj_note": "Projection of synthetic degradation curves onto real image characteristics. The total deficit assumes independence of degradations — a useful diagnostic approximation, not a verdict.",
+  "robproj_summary": "Per-engine summary",
+  "robproj_detail": "Detail per (engine × degradation) pair",
+  "robproj_engine": "Engine",
+  "robproj_total": "Total deficit (CER pts)",
+  "robproj_n_types": "Types evaluated",
+  "robproj_worst": "Worst degradation",
+  "robproj_deg_type": "Degradation",
+  "robproj_n_docs": "Docs",
+  "robproj_n_with_data": "Docs with data",
+  "robproj_deficit": "Projected ΔCER (pts)",
+  "robproj_above": "Docs ≥ critical threshold"
 }
