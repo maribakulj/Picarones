@@ -396,5 +396,17 @@
   "incr_stdev": "± σ",
   "incr_rank": "Mean rank",
   "incr_n_obs": "Observations",
-  "incr_groups": "Fixed groups"
+  "incr_groups": "Fixed groups",
+  "audit_title": "Audited modules",
+  "audit_note": "Summary of the modules used in the composed pipeline. A module that does not pass the audit is not executable. Metadata comes from the manifest provided by the contributor (author, licence, citation).",
+  "audit_pass": "audit OK",
+  "audit_fail": "failed checks",
+  "audit_module": "Module",
+  "audit_status": "Audit",
+  "audit_version": "Version",
+  "audit_author": "Author",
+  "audit_license": "Licence",
+  "audit_io": "Input → output",
+  "audit_citation": "Citation",
+  "audit_homepage": "Project page"
 }

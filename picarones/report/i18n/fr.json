@@ -396,5 +396,17 @@
   "incr_stdev": "± σ",
   "incr_rank": "Rang moyen",
   "incr_n_obs": "Observations",
-  "incr_groups": "Groupes fixes"
+  "incr_groups": "Groupes fixes",
+  "audit_title": "Modules audités",
+  "audit_note": "Récapitulatif des modules utilisés dans la pipeline composée. Un module qui ne passe pas l'audit n'est pas exécutable. Métadonnées issues du manifest fourni par le contributeur (auteur, licence, citation).",
+  "audit_pass": "audit OK",
+  "audit_fail": "checks échoués",
+  "audit_module": "Module",
+  "audit_status": "Audit",
+  "audit_version": "Version",
+  "audit_author": "Auteur",
+  "audit_license": "Licence",
+  "audit_io": "Entrée → sortie",
+  "audit_citation": "Citation",
+  "audit_homepage": "Page projet"
 }

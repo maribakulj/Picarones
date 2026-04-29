@@ -16,6 +16,71 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 97 — B.6 : politique de modules contribués
+  (manifest + audit + vue HTML + doc).**  Avant d'ouvrir
+  Picarones aux contributions externes (axe B — modules tiers
+  que l'utilisateur amène), il faut un **cadre de qualité
+  explicite** : *« un module qui ne passe pas l'audit n'est
+  pas exécutable. »*
+
+  Nouveau module `picarones/core/module_policy.py` :
+
+  - Dataclass ``ModuleManifest`` avec **5 champs obligatoires**
+    (``name``, ``version``, ``author``, ``license``,
+    ``description``) + ``input_types``/``output_types`` non
+    vides + champs optionnels ``citation`` (BibTeX/DOI/texte
+    libre), ``homepage``, ``picarones_min_version``, ``extra``.
+    Pas de validation SPDX (l'outil documente, ne juge pas le
+    choix de licence).
+  - ``validate_manifest(manifest)`` → liste d'``AuditCheck``
+    (un par champ obligatoire + 2 pour les types).
+  - Dataclasses ``AuditCheck(name, passed, detail)`` et
+    ``AuditResult(module_name, passed, checks)`` avec
+    ``n_passed``/``n_failed`` properties + ``as_dict()``
+    sérialisable.
+  - ``audit_module(class_or_instance, manifest)`` ajoute
+    4 checks en plus du manifest : héritage de ``BaseModule``
+    (Sprint 33), correspondance ``input_types``/``output_types``
+    déclarés vs manifest (case-insensitive : on accepte
+    ``"TEXT"`` ou ``"text"``), méthode ``process`` callable.
+    Retourne ``passed=True`` ssi tous les checks passent.
+
+  Nouveau module `picarones/report/module_audit_render.py` :
+  ``build_module_audit_html(audits, labels)`` produit un
+  tableau récapitulatif des modules utilisés dans la pipeline,
+  chacun avec statut d'audit (✓ vert ou ✗ rouge avec compte
+  des checks échoués), version, auteur, licence, types
+  d'entrée → sortie, citation tronquée à 120 chars, page
+  projet tronquée à 80 chars (pas d'auto-link : anti-injection
+  + honnêteté, l'URL peut pointer ailleurs).  Adaptive : ``""``
+  si liste vide.  Anti-injection systématique sur tous les
+  champs.
+
+  Documentation `docs/developer/module-policy.md` (135 lignes) :
+  TL;DR, raison d'être, table des champs manifest, contrat
+  ``BaseModule`` avec exemple, audit automatique, **stratégie
+  d'ouverture en deux temps** (phase fermée actuelle → phase
+  ouverte via plugins ``picarones-module-X`` PyPI avec
+  ``entry_points`` une fois 5–6 modules officiels stables).
+
+  +12 clés i18n FR/EN (`audit_*`).  +23 tests dans
+  `test_sprint97_module_policy.py` couvrant ``ModuleManifest``
+  (as_dict + champs optionnels), ``validate_manifest`` (4 cas
+  dont champ manquant + types vides), ``audit_module`` (6 cas
+  dont module valide passe, non-BaseModule échoue, I/O
+  mismatch échoue, **case-insensitive sur les types** prouvant
+  que ``"TEXT"`` côté manifest et ``ArtifactType.TEXT``
+  côté module sont équivalents, accepte instance ou classe,
+  as_dict structuré), vue HTML 6 cas dont badge ✓/✗,
+  anti-injection sur ``name``, ``homepage``, ``citation``, FR
+  + EN, **présence de la doc** + listing des champs
+  obligatoires dans la doc, complétude i18n 12 clés.  **Verrou
+  levé** : la phase fermée a maintenant son cadre formel ; la
+  phase ouverte (plugins PyPI) peut être déclenchée le jour
+  où 5–6 modules officiels stables existent, **sans refactor
+  de l'interface**.  Tout module externe devra simplement
+  fournir un manifest valide et passer l'audit.
+
 - **Sprint 96 — B.5 : comparaison incrémentale (couche calcul +
   vue HTML).**  Avec 5 OCR × 3 reconstructeurs × 4 post-
   correcteurs × 3 mappeurs = 180 pipelines à comparer, le
