@@ -341,5 +341,15 @@
   "throughput_effective": "Pages/h utilisable",
   "throughput_drag": "% correction",
   "throughput_pages": "Pages",
-  "throughput_errors": "Erreurs"
+  "throughput_errors": "Erreurs",
+  "longitudinal_title": "Évolution dans le temps",
+  "longitudinal_note": "Tendance et points de rupture sur l'historique SQLite des runs précédents. Une variation positive signale une dégradation cumulée — utile pour relier une régression à un changement de pipeline ou de modèle.",
+  "longitudinal_engine": "Moteur",
+  "longitudinal_n_runs": "Runs",
+  "longitudinal_first": "Premier CER",
+  "longitudinal_last": "Dernier CER",
+  "longitudinal_delta": "Δ cumulé (pts)",
+  "longitudinal_slope": "Pente annuelle (pts/an)",
+  "longitudinal_r2": "R²",
+  "longitudinal_change": "Rupture"
 }

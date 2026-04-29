@@ -16,6 +16,70 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 92 — A.II.9 : métriques longitudinales (régression
+  linéaire + change-point + détecteur narratif + vue HTML).**
+  L'historique SQLite (`core/history.py`, Sprint 8) collectait
+  les résultats sans qu'aucune métrique n'en sorte dans le
+  rapport.  Ce sprint exploite la série temporelle des CER
+  pour signaler tendances et ruptures — complémentaire à
+  A.I.3 (off-baseline) qui dit *« écart anormal sur ce
+  corpus »* sans caractériser la dynamique.
+
+  - `picarones/core/longitudinal.py` : `compute_linear_trend`
+    régression OLS pure Python sans scipy retourne
+    `LinearTrend(slope, intercept, r_squared, n_runs)` ;
+    `detect_change_point(series, min_segment_size=3)` balayage
+    exhaustif (Pettitt simplifié) retourne
+    `ChangePointResult(index, timestamp, mean_before,
+    mean_after, delta, n_before, n_after)` ;
+    `compute_engine_longitudinal(history, engine, corpus)`
+    combine les deux avec garde-fou `min_runs_for_trend=3` et
+    seuil `change_point_threshold=0.01` (1 point CER) pour
+    filtrer le bruit ; `compute_corpus_longitudinal` agrège
+    sur tous les moteurs présents.
+
+  - Nouveau `FactType.REGRESSION_IN_HISTORY` (priority 170,
+    importance MEDIUM par défaut, HIGH si `|absolute_delta| ≥
+    0.05`) + détecteur `detect_regression_in_history` qui lit
+    `benchmark_data["longitudinal_trends"]`.  Déclenche si
+    pente > +1 pt CER/an **ou** change-point delta > 1 pt CER.
+    Garde-fou `n_runs ≥ 3`.  Le payload trace
+    `pattern in {"trend", "change_point",
+    "trend_and_change_point"}`.  Templates FR/EN sans chiffres
+    en dur.  Ajout aux paires complémentaires de l'arbitre :
+    `(GLOBAL_LEADER_CER, REGRESSION_IN_HISTORY)` (le leader
+    peut être en régression, info critique) et
+    `(ENGINE_OFF_BASELINE, REGRESSION_IN_HISTORY)` (les deux
+    se complètent : écart anormal vs tendance dans le temps).
+
+  - `picarones/report/longitudinal_render.py` :
+    `build_longitudinal_html(trends, labels)` rend un tableau
+    moteur × {n_runs, premier CER, dernier CER, Δ cumulé
+    coloré (gradient vert → orange → rouge sur ±5 pts ; bleu
+    si amélioration), pente annualisée, R², point de rupture
+    avec timestamp + delta entre parenthèses}.  Tri par Δ
+    décroissant.  Adaptive : `""` si pas de données.  Module
+    pur — l'utilisateur compose
+    `BenchmarkHistory.list_entries()` →
+    `compute_corpus_longitudinal` →
+    `build_longitudinal_html`.
+
+  +10 clés i18n FR/EN (`longitudinal_*`).  +28 tests dans
+  `test_sprint92_longitudinal.py` (régression OLS pente + R² +
+  série plate + lt 2 + même timestamp ; change-point delta
+  exact + lt segments + uniforme ; intégration entries +
+  filtre corpus + min_runs + threshold ; multi-moteurs ;
+  détecteur 6 cas dont silence sans data, silence si plat,
+  HIGH si Δ ≥ 5 pts, change-point seul, garde-fou n_runs < 3 ;
+  **traçabilité anti-hallucination FR + EN** sur les sentences
+  de `build_synthesis` ; vue HTML 4 cas dont anti-injection,
+  complétude i18n 10 clés).  **Verrou levé** : un benchmark
+  qui pousse ses résultats dans l'historique voit désormais
+  *« sur les 8 runs historiques pour tess, le CER moyen est
+  passé de 4 % à 7 % (variation cumulée 3 points) »* dans la
+  synthèse + le tableau d'évolution dans la vue.  Permet de
+  relier une régression à un changement de pipeline.
+
 - **Sprint 91 — A.II.6 : métriques économiques (throughput
   effectif + coût marginal par erreur évitée).**  Le throughput
   brut (pages/heure d'OCR pur) ment quand un moteur est rapide

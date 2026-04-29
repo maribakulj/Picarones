@@ -91,6 +91,15 @@ class FactType(str, Enum):
     de variation du CER (>10 % par défaut) ou sur le rappel de
     runs identiques (<50 %)."""
 
+    REGRESSION_IN_HISTORY = "regression_in_history"
+    """Un moteur montre une tendance ou une rupture défavorable
+    sur l'historique SQLite : son CER moyen s'est dégradé sur
+    les N derniers runs (Sprint 92).  Lit
+    ``compute_corpus_longitudinal`` du module ``longitudinal``.
+    Garde-fous : ≥ 3 runs historiques et soit pente > seuil
+    (régression progressive), soit change-point avec delta >
+    seuil (rupture brutale)."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

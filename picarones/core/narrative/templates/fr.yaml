@@ -91,3 +91,9 @@ engine_unstable: >-
   Sur {n_runs} runs successifs, {engine} produit des sorties variables
   (CV CER {cer_cv_pct} %, paires de runs identiques {identical_run_rate_pct} %).
   La reproductibilité est limitée — interpréter le CER moyen avec prudence.
+
+regression_in_history: >-
+  Sur les {n_runs} runs historiques pour {engine}, le CER moyen
+  est passé de {first_cer_pct} % à {last_cer_pct} %
+  (variation cumulée {absolute_delta_pct} points). Vérifier ce qui
+  a changé dans le pipeline ou les modèles.

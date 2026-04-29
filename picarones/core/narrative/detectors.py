@@ -993,6 +993,124 @@ def detect_engine_unstable(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
+# Détecteur Sprint 92 — régression dans l'historique (A.II.9)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.REGRESSION_IN_HISTORY,
+    priority=170,
+    importance=FactImportance.MEDIUM,
+)
+def detect_regression_in_history(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact pour chaque moteur dont l'historique montre
+    une dégradation : pente positive significative ou rupture
+    brutale (Sprint 92).
+
+    Lit ``benchmark_data["longitudinal_trends"]`` : liste de
+    dicts produits par ``compute_corpus_longitudinal`` du module
+    ``longitudinal``.  Si la clé est absente ou vide, le
+    détecteur reste silencieux — typiquement le cas quand
+    aucun historique n'a été chargé ou que la série est trop
+    courte.
+
+    Garde-fous :
+
+    - ``n_runs ≥ 3`` (déjà filtré par
+      ``compute_engine_longitudinal``).
+    - Déclenche si **soit** ``trend.slope`` traduit une
+      régression d'au moins ``slope_threshold`` (en CER/jour,
+      défaut équivalent à +1 point CER sur 365 jours), **soit**
+      ``change_point.delta > change_threshold`` (défaut
+      0.01 = +1 point de CER d'un segment à l'autre).
+    - Importance ``HIGH`` si la dégradation cumulée
+      ``absolute_delta`` ≥ 5 points de CER.
+    """
+    trends = benchmark_data.get("longitudinal_trends") or []
+    if not isinstance(trends, (list, tuple)):
+        return []
+    slope_threshold = (
+        0.01 / 365.0  # +1 point de CER sur 365 jours minimum
+    )
+    change_threshold = 0.01
+    facts: list[Fact] = []
+    for entry in trends:
+        if not isinstance(entry, dict):
+            continue
+        engine = entry.get("engine_name")
+        if not engine:
+            continue
+        n_runs = entry.get("n_runs")
+        if not isinstance(n_runs, int) or n_runs < 3:
+            continue
+        trend = entry.get("trend") or {}
+        cp = entry.get("change_point")
+        slope = trend.get("slope")
+        slope_high = (
+            isinstance(slope, (int, float))
+            and float(slope) > slope_threshold
+        )
+        cp_high = (
+            isinstance(cp, dict)
+            and isinstance(cp.get("delta"), (int, float))
+            and float(cp["delta"]) > change_threshold
+        )
+        if not (slope_high or cp_high):
+            continue
+        absolute_delta = entry.get("absolute_delta") or 0.0
+        importance = (
+            FactImportance.HIGH
+            if isinstance(absolute_delta, (int, float))
+            and abs(float(absolute_delta)) >= 0.05
+            else FactImportance.MEDIUM
+        )
+        payload: dict = {
+            "engine": engine,
+            "n_runs": int(n_runs),
+            "absolute_delta_pct": round(
+                float(absolute_delta) * 100, 2,
+            ) if isinstance(absolute_delta, (int, float)) else 0.0,
+            "first_cer_pct": round(
+                float(entry.get("first_cer") or 0.0) * 100, 2,
+            ),
+            "last_cer_pct": round(
+                float(entry.get("last_cer") or 0.0) * 100, 2,
+            ),
+        }
+        if slope_high:
+            payload["slope_per_year_pct"] = round(
+                float(slope) * 365 * 100, 2,
+            )
+            payload["r_squared"] = round(
+                float(trend.get("r_squared") or 0.0), 3,
+            )
+            payload["pattern"] = "trend"
+        if cp_high:
+            payload["change_point_timestamp"] = str(
+                cp.get("timestamp") or "?",
+            )
+            payload["change_delta_pct"] = round(
+                float(cp["delta"]) * 100, 2,
+            )
+            payload["mean_before_pct"] = round(
+                float(cp.get("mean_before") or 0.0) * 100, 2,
+            )
+            payload["mean_after_pct"] = round(
+                float(cp.get("mean_after") or 0.0) * 100, 2,
+            )
+            # Si on a aussi une rupture, le pattern domine
+            payload["pattern"] = (
+                "trend_and_change_point" if slope_high else "change_point"
+            )
+        facts.append(Fact(
+            type=FactType.REGRESSION_IN_HISTORY,
+            importance=importance,
+            payload=payload,
+            engines_involved=(engine,),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
 # Détecteur Sprint 36 — opportunité d'ensemble (complémentarité)
 # ---------------------------------------------------------------------------
 

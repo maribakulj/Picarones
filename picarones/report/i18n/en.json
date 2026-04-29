@@ -341,5 +341,15 @@
   "throughput_effective": "Pages/h usable",
   "throughput_drag": "% correction",
   "throughput_pages": "Pages",
-  "throughput_errors": "Errors"
+  "throughput_errors": "Errors",
+  "longitudinal_title": "Evolution over time",
+  "longitudinal_note": "Trend and change-points on the SQLite history of previous runs. A positive change signals cumulative degradation — useful to link a regression to a pipeline or model change.",
+  "longitudinal_engine": "Engine",
+  "longitudinal_n_runs": "Runs",
+  "longitudinal_first": "First CER",
+  "longitudinal_last": "Last CER",
+  "longitudinal_delta": "Cumulative Δ (pts)",
+  "longitudinal_slope": "Annual slope (pts/yr)",
+  "longitudinal_r2": "R²",
+  "longitudinal_change": "Change-point"
 }

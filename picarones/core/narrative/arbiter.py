@@ -78,6 +78,11 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     # discrédite toute autre conclusion sur ce moteur ; on la
     # remonte en dernier pour ne pas l'enterrer.
     FactType.ENGINE_UNSTABLE,
+    # Sprint 92 — priority 170, après ENGINE_UNSTABLE.  La
+    # régression historique complète A.I.3 (off-baseline) en
+    # caractérisant la tendance : l'écart courant est-il une
+    # dégradation graduelle, une rupture brutale, ou un bruit ?
+    FactType.REGRESSION_IN_HISTORY,
 )
 
 
@@ -112,6 +117,14 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
     # leader **et** instable, et c'est précisément l'information
     # critique pour la reproductibilité scientifique.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.ENGINE_UNSTABLE}),
+    # Sprint 92 — la régression historique caractérise la tendance
+    # du leader : un leader peut être en régression progressive,
+    # info critique pour décider quand re-tester.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.REGRESSION_IN_HISTORY}),
+    # Off-baseline (Sprint 73) dit "écart anormal sur ce corpus" ;
+    # regression-in-history (Sprint 92) dit "tendance dans le
+    # temps" — les deux se complètent sans se redonder.
+    frozenset({FactType.ENGINE_OFF_BASELINE, FactType.REGRESSION_IN_HISTORY}),
 })
 
 
