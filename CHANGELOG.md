@@ -16,6 +16,64 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 93 — A.II.7 : métriques d'image prédictives (couche
+  calcul + vue HTML).**  ``image_quality.py`` (Sprint 5)
+  mesurait des features indépendamment ; ce module les
+  **combine** en deux indicateurs corpus-level qui répondent
+  à des questions de diagnostic distinctes.
+
+  - `picarones/core/image_predictive.py` :
+    `compute_paleographic_complexity(quality, weights=None)`
+    retourne ``{score ∈ [0,1], components, weights_used}`` —
+    combinaison pondérée éditoriale du bruit (0,30), du flou
+    `1 - sharpness` (0,30), du faible contraste
+    `1 - contrast` (0,20) et de la rotation
+    `|degrees| / 30` (0,20).  Bornes [0, 1] forcées par
+    clamping.  Poids surchargeables.  Garde-fous : `None` si
+    quality vide ou poids tous nuls.
+    `compute_corpus_homogeneity(image_qualities)` retourne
+    ``{score ∈ [0,1], n_docs, per_feature{mean, stdev,
+    normalised}}`` — moyenne des écart-types normalisés sur
+    4 features (plage 0,5 pour [0,1] et 10° pour rotation).
+    0 = corpus uniforme (la moyenne globale est fiable),
+    1 = corpus très hétérogène (la moyenne ment).
+    `aggregate_corpus_predictive(image_qualities)` synthétise
+    complexité (mean/median/min/max/stdev) + homogeneity.
+
+  - `picarones/report/image_predictive_render.py` :
+    `build_image_predictive_html(aggregated, labels)` produit
+    deux blocs : tableau résumé complexité (mean coloré
+    gradient vert → rouge, median, min, max, stdev, n_docs) +
+    tableau homogénéité (score coloré + détail par feature
+    avec mean, stdev, contribution normalisée colorée).
+    Adaptive : `""` si pas de données.  Module pur —
+    l'utilisateur compose
+    `[doc.image_quality.as_dict() for ...]` →
+    `aggregate_corpus_predictive` → `build_image_predictive_html`.
+
+  - **Pas de prédiction CER absolue** : on ne prétend pas
+    fournir une valeur CER en pourcentage (demanderait un
+    modèle entraîné par moteur, contraire à la philosophie
+    banc d'essai).  Le score est relatif, pour une lecture
+    diagnostique : *« le doc A est ~3× plus complexe que le
+    doc B, ce qui est cohérent avec le CER observé »*.
+
+  +20 clés i18n FR/EN (`imgpred_*`).  +21 tests dans
+  `test_sprint93_image_predictive.py` (cas trivial → ≈0, cas
+  extrême → ≈1, bornes [0,1] respectées sur valeurs hors
+  plage, components retournés, poids custom (tout sur le
+  bruit → score = noise_level), poids défaut sommant à 1,
+  None sur empty et poids nuls ; corpus uniforme → 0,
+  hétérogène → > 0.5, lt 2 docs → None, per_feature
+  structurée ; **cas réaliste BnF** mix trivial/difficile,
+  empty, single doc no homogeneity ; vue HTML 4 cas dont
+  anti-injection sur titre custom + FR + EN ; complétude i18n
+  19 clés).  **Verrou levé** : un benchmark BnF voit désormais
+  *« corpus-wide complexity 0,42 (modérée), homogeneity 0,18
+  (uniforme — moyenne fiable) »* dans la vue Analyses, ce qui
+  permet d'expliquer une partie du CER observé sans tomber
+  dans la prédiction prescriptive.
+
 - **Sprint 92 — A.II.9 : métriques longitudinales (régression
   linéaire + change-point + détecteur narratif + vue HTML).**
   L'historique SQLite (`core/history.py`, Sprint 8) collectait
