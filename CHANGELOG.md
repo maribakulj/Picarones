@@ -16,6 +16,61 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 85 — A.II.5b : précision sur séquences numériques
+  (couche de calcul + registre typé).**  Pour un économiste-
+  historien, un éditeur de chartes ou un archiviste, la
+  fidélité aux séquences numériques est un proxy direct de la
+  qualité éditoriale.  Un OCR qui rate *« 1789 »* dans une
+  charte révolutionnaire ou *« f. 12v »* dans une cote
+  d'archives produit un corpus inutilisable, même si le CER
+  global est respectable.  Nouveau module
+  `picarones/core/numerical_sequences.py` couvrant 5 catégories :
+
+  - **Dates arabes** : années 4 chiffres dans la plage
+    [1000-2099] (détection conservatrice pour éviter les
+    faux positifs sur volumes/numéros).
+  - **Numéraux romains** : réutilise
+    `picarones.core.roman_numerals.detect_roman_numerals`
+    (Sprint 60), `min_length=2`.
+  - **Foliotation** : `f.`, `fol.`, `p.`, `pp.`, `n°` avec
+    suffixe `r`/`v` préservé (recto/verso = information
+    distincte, **non interchangeable** côté valeur).
+  - **Montants** : Ancien Régime (`livres`/`l.`,
+    `sols`/`s.`, `deniers`/`d.`) et modernes (`£`, `€`, `₣`,
+    `écus`, `florins`, `francs`).
+  - **Années régnales** : `an III`, `l'an V`, `an de grâce
+    1450`, `an de la République`.
+
+  Pour chaque GT, classification en 3 statuts :
+  `strict_preserved` (forme exacte), `value_preserved` (la
+  valeur apparaît même si la forme diffère, `XIV` ↔ `14`
+  pour les romains ; **mais pas** `f. 12r` ↔ `f. 12v` car
+  recto/verso est une distinction substantielle), `lost`.
+  `compute_numerical_sequence_metrics` retourne
+  `{global_strict_score, global_value_score, n_total,
+  per_category{n_total, strict, value, strict_score,
+  value_score, lost_items}}`.  Multiplicité respectée (un
+  item hyp ne peut servir qu'à un seul match).
+  `numerical_sequence_strict_score` et
+  `numerical_sequence_value_score` enregistrés dans le
+  registre typé Sprint 34 pour `(TEXT, TEXT)`.  Limites
+  documentées : regex conservatrices (`mil cinq cens` non
+  détecté comme année), pas de cross-category match
+  (`MDCLXVIII` GT et `1668` hyp sont catégorisés
+  séparément).  +27 tests dans
+  `test_sprint85_numerical_sequences.py` couvrant détecteurs
+  individuels (year/roman/foliation/currency/regnal),
+  scénarios identité/perte totale/GT vide/recto-verso non
+  interchangeables/multiplicité, **2 cas réalistes** (charte
+  XVIIIᵉ siècle préservée intégralement vs registre paroissial
+  où l'OCR modernise XVIII→18 mais préserve l'année 1750 et
+  la foliation), intégration registre 4 cas dont
+  `compute_at_junction`.  **Verrou levé** : un bench
+  d'archive numérique peut classer ses moteurs sur la
+  dimension *« mes dates et cotes seront-elles fiables ? »*,
+  qui complète la **recherchabilité fuzzy** (Sprint 84) pour
+  livrer A.II.5 en couche de calcul intégrale.
+
 - **Sprint 84 — A.II.5 : recherchabilité fuzzy (couche de
   calcul + métrique enregistrée).**  Le CER mesure les erreurs
   caractère par caractère ; pour un usage *recherche
