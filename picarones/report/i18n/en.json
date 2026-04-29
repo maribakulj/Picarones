@@ -325,5 +325,13 @@
   "specialization_category": "Reading",
   "specialization_cat_similar": "Similar profiles",
   "specialization_cat_distinct": "Distinct profiles",
-  "specialization_cat_highly_specialized": "Highly specialised"
+  "specialization_cat_highly_specialized": "Highly specialised",
+  "stability_title": "Multi-run stability",
+  "stability_note": "When an LLM/VLM engine is non-deterministic, the variance between successive runs on the same documents is a proxy for scientific reliability. A high CV or low identical-run rate undermines the interpretation of the average CER.",
+  "stability_engine": "Engine",
+  "stability_n_runs": "Runs",
+  "stability_cer": "Mean CER ± σ",
+  "stability_cv": "CV (%)",
+  "stability_identical": "% identical runs",
+  "stability_distinct": "Distinct outputs"
 }

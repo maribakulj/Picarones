@@ -82,3 +82,8 @@ engine_off_baseline: >-
   on average over the last {n_runs} runs of your institution on this
   same corpus (relative delta {relative_delta_pct} %). This corpus is
   harder for it than usual.
+
+engine_unstable: >-
+  Over {n_runs} successive runs, {engine} produces variable outputs
+  (CER CV {cer_cv_pct} %, identical-run pair rate {identical_run_rate_pct} %).
+  Reproducibility is limited — interpret the average CER with caution.

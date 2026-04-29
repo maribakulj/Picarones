@@ -16,6 +16,50 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 90 — A.II.4 finition : détecteur narratif
+  `engine_unstable` + vue HTML stabilité multi-runs.**  Le
+  module `picarones/core/reliability.py` (Sprint 83) livrait
+  la couche de calcul ; aucun détecteur ni vue ne consommaient
+  les données.  Ce sprint complète A.II.4 sur les moteurs LLM/
+  VLM dont les sorties varient entre runs successifs sur les
+  mêmes documents — situation critique pour la
+  reproductibilité scientifique d'une publication.  Nouveau
+  `FactType.ENGINE_UNSTABLE` (priority 160, importance HIGH)
+  + détecteur `detect_engine_unstable` qui lit
+  `benchmark_data["multirun_stability"]` (liste enrichie
+  d'`engine_name` + sortie de `compute_multirun_stability`).
+  Garde-fous : `n_runs ≥ 2`, déclenche si `cer_cv > 0.10`
+  **ou** `identical_run_rate < 0.50`.  Templates FR/EN sans
+  chiffres en dur.  Ajout du couple
+  `(GLOBAL_LEADER_CER, ENGINE_UNSTABLE)` à
+  `_COMPLEMENTARY_PAIRS` de l'arbitre — un moteur peut être
+  leader **et** instable, et c'est précisément l'information
+  critique à remonter ensemble.  Nouveau module
+  `picarones/report/multirun_stability_render.py` :
+  `build_multirun_stability_html(stability, labels)` rend un
+  tableau moteur × {n_runs, CER moyen ± σ, CV (gradient vert
+  → orange → rouge sur 0–25 %), % runs identiques, sorties
+  distinctes}.  Adaptive : `""` si la liste est vide ou que
+  tous les `cer_cv` sont `None`.  Note d'intégration : la
+  vue est un module pur (l'utilisateur exécute lui-même les
+  N runs et appelle `compute_multirun_stability` ; option
+  runner `--repeats N` reportée à un sprint dédié).  +8 clés
+  i18n FR/EN (`stability_*`).  +18 tests dans
+  `test_sprint90_engine_unstable.py` (FactType + ajout
+  arbiter, détecteur 6 cas dont silence sans data, silence
+  stable, HIGH si CV ≥ 10 %, HIGH si runs divergent, garde-
+  fou n_runs < 2, garde-fou engine manquant, multi-engines,
+  **traçabilité anti-hallucination FR + EN** prouvant que
+  chaque chiffre de la phrase rendue par
+  `build_synthesis(...)["sentences"]` est dans le payload du
+  Fact, vue HTML 4 cas dont anti-injection nom moteur,
+  complétude i18n 8 clés).  **Verrou levé** : un papier
+  scientifique qui rapporte un CER LLM voit désormais
+  immédiatement *« sur 4 runs successifs, gpt-4o produit des
+  sorties variables (CV 24,3 %) — interpréter avec
+  prudence »* dans la synthèse + le tableau de stabilité dans
+  la vue.
+
 - **Sprint 89 — A.II.8b : score de spécialisation inter-moteurs
   (couche calcul + vue HTML).**  La matrice de divergence
   taxonomique (Sprint 35) répondait à *« à quel point ces

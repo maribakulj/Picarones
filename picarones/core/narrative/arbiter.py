@@ -73,6 +73,11 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     # Le détecteur off-baseline donne le contexte historique, qui
     # vient en fin de synthèse comme « note ».
     FactType.ENGINE_OFF_BASELINE,
+    # Sprint 90 — priority 160, ferme la synthèse avec la mise en
+    # garde sur la reproductibilité.  Une instabilité multi-runs
+    # discrédite toute autre conclusion sur ce moteur ; on la
+    # remonte en dernier pour ne pas l'enterrer.
+    FactType.ENGINE_UNSTABLE,
 )
 
 
@@ -102,6 +107,11 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
     # qui s'ajoute au leader sans le contredire ; les deux peuvent
     # cohabiter même quand ils concernent le même moteur.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.STRATIFICATION_RECOMMENDED}),
+    # Sprint 90 — l'instabilité multi-runs nuance les conclusions
+    # sur le moteur leader sans les contredire : un moteur peut être
+    # leader **et** instable, et c'est précisément l'information
+    # critique pour la reproductibilité scientifique.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.ENGINE_UNSTABLE}),
 })
 
 

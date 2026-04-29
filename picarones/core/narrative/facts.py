@@ -83,6 +83,14 @@ class FactType(str, Enum):
     ``baseline_comparison`` (Sprint 73). Garde-fous : ≥ 5 runs
     historiques même corpus + |delta_relatif| > 20 %."""
 
+    ENGINE_UNSTABLE = "engine_unstable"
+    """Un moteur LLM/VLM exécuté plusieurs fois sur les mêmes
+    documents produit des sorties différentes au-delà d'un seuil
+    de variance (Sprint 90).  Lit ``compute_multirun_stability``
+    (Sprint 83).  Garde-fous : ≥ 2 runs et seuil sur le coefficient
+    de variation du CER (>10 % par défaut) ou sur le rappel de
+    runs identiques (<50 %)."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

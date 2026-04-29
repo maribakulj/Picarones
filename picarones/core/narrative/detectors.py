@@ -908,6 +908,91 @@ def detect_engine_off_baseline(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
+# Détecteur Sprint 90 — moteur instable multi-runs (A.II.4)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.ENGINE_UNSTABLE,
+    priority=160,
+    importance=FactImportance.HIGH,
+)
+def detect_engine_unstable(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact pour chaque moteur dont la stabilité multi-runs
+    est insuffisante (Sprint 83 + 90).
+
+    Lit ``benchmark_data["multirun_stability"]`` : liste de dicts
+    avec ``engine_name`` + champs de ``compute_multirun_stability``
+    (cer_cv, identical_run_rate, n_runs, etc.).  Si la clé est
+    absente ou vide, le détecteur reste silencieux — typiquement
+    le cas quand l'utilisateur n'a pas exécuté `--repeats N`.
+
+    Garde-fous :
+
+    - ``n_runs ≥ 2`` (déjà filtré par
+      ``compute_multirun_stability`` qui retourne ``None``).
+    - Déclenche si ``cer_cv > 0.10`` (variance relative > 10 % du
+      CER moyen) **ou** ``identical_run_rate < 0.50`` (moins
+      d'une paire de runs sur deux est identique).
+    - Importance ``HIGH`` (l'instabilité discrédite les
+      conclusions).
+    """
+    stabilities = benchmark_data.get("multirun_stability") or []
+    if not isinstance(stabilities, (list, tuple)):
+        return []
+    facts: list[Fact] = []
+    for stab in stabilities:
+        if not isinstance(stab, dict):
+            continue
+        engine = stab.get("engine_name") or stab.get("engine")
+        if not engine:
+            continue
+        n_runs = stab.get("n_runs")
+        if not isinstance(n_runs, int) or n_runs < 2:
+            continue
+        cer_cv = stab.get("cer_cv")
+        identical_rate = stab.get("identical_run_rate")
+        # Critères de déclenchement
+        cv_high = (
+            isinstance(cer_cv, (int, float)) and float(cer_cv) > 0.10
+        )
+        runs_diverge = (
+            isinstance(identical_rate, (int, float))
+            and float(identical_rate) < 0.50
+        )
+        if not (cv_high or runs_diverge):
+            continue
+        payload: dict = {
+            "engine": engine,
+            "n_runs": int(n_runs),
+        }
+        if isinstance(cer_cv, (int, float)):
+            payload["cer_cv"] = float(cer_cv)
+            payload["cer_cv_pct"] = round(float(cer_cv) * 100, 1)
+        if isinstance(identical_rate, (int, float)):
+            payload["identical_run_rate"] = float(identical_rate)
+            payload["identical_run_rate_pct"] = round(
+                float(identical_rate) * 100, 1,
+            )
+        # Champs additionnels pour la phrase de synthèse
+        cer_mean = stab.get("cer_mean")
+        cer_stdev = stab.get("cer_stdev")
+        if isinstance(cer_mean, (int, float)):
+            payload["cer_mean_pct"] = round(float(cer_mean) * 100, 2)
+        if isinstance(cer_stdev, (int, float)):
+            payload["cer_stdev_pct"] = round(float(cer_stdev) * 100, 2)
+        n_distinct = stab.get("n_distinct_outputs")
+        if isinstance(n_distinct, int):
+            payload["n_distinct_outputs"] = int(n_distinct)
+        facts.append(Fact(
+            type=FactType.ENGINE_UNSTABLE,
+            importance=FactImportance.HIGH,
+            payload=payload,
+            engines_involved=(engine,),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
 # Détecteur Sprint 36 — opportunité d'ensemble (complémentarité)
 # ---------------------------------------------------------------------------
 
