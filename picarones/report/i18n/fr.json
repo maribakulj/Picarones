@@ -370,5 +370,16 @@
   "imgpred_feat_noise": "Niveau de bruit",
   "imgpred_feat_sharpness": "Netteté",
   "imgpred_feat_contrast": "Contraste",
-  "imgpred_feat_rotation": "Rotation"
+  "imgpred_feat_rotation": "Rotation",
+  "absorption_title": "Absorption d'erreur par jonction",
+  "absorption_note": "À chaque jonction du pipeline, deux flux sont mesurés indépendamment : combien d'erreurs sont corrigées et combien sont introduites. Une jonction qui corrige beaucoup mais introduit aussi beaucoup absorbe les différences amont au lieu de les améliorer.",
+  "absorption_junction": "Jonction",
+  "absorption_errors_before": "Erreurs avant",
+  "absorption_errors_after": "Erreurs après",
+  "absorption_corrected": "Corrigées",
+  "absorption_introduced": "Introduites",
+  "absorption_corr_rate": "% corrigées",
+  "absorption_intro_rate": "% introduites",
+  "absorption_net": "Amélioration nette",
+  "absorption_sample": "Échantillon (intro)"
 }

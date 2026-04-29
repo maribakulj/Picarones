@@ -370,5 +370,16 @@
   "imgpred_feat_noise": "Noise level",
   "imgpred_feat_sharpness": "Sharpness",
   "imgpred_feat_contrast": "Contrast",
-  "imgpred_feat_rotation": "Rotation"
+  "imgpred_feat_rotation": "Rotation",
+  "absorption_title": "Error absorption per junction",
+  "absorption_note": "At each junction of the pipeline, two flows are measured independently: how many errors are corrected vs. how many are introduced. A junction that corrects a lot but also introduces a lot is absorbing upstream differences rather than improving them.",
+  "absorption_junction": "Junction",
+  "absorption_errors_before": "Errors before",
+  "absorption_errors_after": "Errors after",
+  "absorption_corrected": "Corrected",
+  "absorption_introduced": "Introduced",
+  "absorption_corr_rate": "% corrected",
+  "absorption_intro_rate": "% introduced",
+  "absorption_net": "Net improvement",
+  "absorption_sample": "Sample (intro)"
 }

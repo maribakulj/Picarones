@@ -16,6 +16,74 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ### Ajouté
 
+- **Sprint 94 — B.3 : métrique d'absorption d'erreur (couche
+  calcul + vue HTML).**  Quand un module post-correction LLM
+  aplatit les différences entre OCR amont, ce n'est pas qu'il
+  *« améliore »* tous les moteurs — c'est qu'il introduit ses
+  propres biais qui dominent ceux de l'OCR.  Mesurer la
+  dégradation par étape ne suffit pas : il faut **séparer**
+  les deux flux à chaque jonction.
+
+  Nouveau module `picarones/core/error_absorption.py` :
+
+  - `compute_error_absorption(reference, before, after,
+    case_sensitive=False)` — alignement multi-set token-level
+    sur whitespace ; calcule `errors_before`, `errors_after`,
+    `corrected = errors_before \\ errors_after`,
+    `introduced = errors_after \\ errors_before`,
+    `kept_wrong`, `correction_rate` (=
+    `n_corrected / n_errors_before` ou `None` si zéro erreur
+    avant), `introduction_rate` (= `n_introduced /
+    n_errors_after` ou `None`), `net_improvement`,
+    `corrected_tokens` et `introduced_tokens` (casse GT
+    préservée à l'affichage).  `None` si la GT est vide.
+
+  - `aggregate_error_absorption(per_doc, sample_tokens=50)` —
+    somme corpus-wide des compteurs et recalcul *micro* des
+    taux ; cap des échantillons de tokens pour ne pas exploser
+    le JSON.
+
+  Généralisation du score de sur-normalisation (chantier
+  A.I.7) à toute jonction : la formule s'applique uniformément
+  à OCR→LLM, OCR→reconstructor, VLM→ALTO_mapper.  Le module
+  ne classe pas les erreurs (visuelles, abréviations…) — c'est
+  une métrique d'**absorption de volume**, pas de qualité
+  éditoriale ; la qualité reste dans `taxonomy` (Sprint 5).
+
+  Nouveau module `picarones/report/error_absorption_render.py`
+  : `build_error_absorption_html(junctions, labels,
+  sample_max=8)` produit un tableau résumé des jonctions du
+  pipeline ; chaque ligne montre erreurs avant/après,
+  corrigées (gradient vert), introduites (gradient rouge),
+  taux corrigées (gradient rouge → vert), taux introduites
+  (gradient vert → rouge), amélioration nette colorée selon
+  signe et magnitude, échantillon des tokens introduits (cap).
+  Adaptive : `""` si la liste est vide.  Module pur —
+  l'utilisateur compose la liste `junctions` depuis son
+  `PipelineBenchmarkResult` (Sprint 64).  Visualisation Sankey
+  reportée à un sprint dédié (rendu SVG complexe, le tableau
+  livre l'information de fond).
+
+  +11 clés i18n FR/EN (`absorption_*`).  +20 tests dans
+  `test_sprint94_error_absorption.py` (identité no errors,
+  perfect correction, pure introduction, mix correction +
+  introduction avec **cas réaliste maistre Pierre du Bois →
+  maître Pierre du Bois** prouvant qu'une jonction peut
+  corriger ET introduire en parallèle, GT vide → None,
+  case-insensitive par défaut + opt-in case-sensitive,
+  multiplicité respectée, agrégation micro-rate + skip None +
+  cap sample, vue HTML 4 cas dont anti-injection sur
+  junction_name + échantillon introduits + FR + EN,
+  complétude i18n 11 clés).  **Verrou levé** : un benchmark
+  de pipeline composée peut désormais distinguer un module
+  qui *corrige* d'un module qui *absorbe* — *« le LLM
+  postcorr corrige 65 % des erreurs OCR mais introduit
+  12 % de nouvelles erreurs (dont des modernisations
+  systématiques de maistre/nostre/veoir) »*.  Sans cette
+  métrique, on confondait correction et écrasement, et la
+  communauté scientifique ne pouvait pas faire confiance aux
+  conclusions sur les pipelines post-correction.
+
 - **Sprint 93 — A.II.7 : métriques d'image prédictives (couche
   calcul + vue HTML).**  ``image_quality.py`` (Sprint 5)
   mesurait des features indépendamment ; ce module les
