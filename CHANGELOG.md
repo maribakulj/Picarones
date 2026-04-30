@@ -7,6 +7,178 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [post-Sprint 97] — chantiers de consolidation — 2026-04 → ongoing
+
+> 6 chantiers de consolidation **sans suppression** sur la branche
+> `claude/code-quality-audit-ACnhK`, en réponse à un audit identifiant
+> 16 renderers orphelins, 1500+ lignes de duplication, et 2 monolithes
+> de 1200+ lignes. Stratégie : valoriser ce qui a été codé plutôt que
+> supprimer ; donner une adresse à chaque module orphelin.
+
+### Chantier 1 — Reconstructeur ALTO + refonte engines (commit `ceb4ba7`)
+
+**Composants neufs** :
+
+- `picarones/modules/` (nouveau package) — modules `BaseModule` de
+  référence livrés par Picarones.
+- `picarones.modules.alto_text_to_mono_region.TextToAltoMonoRegion` —
+  reconstructeur baseline `(IMAGE, TEXT) → ALTO 4.2 mono-région`.
+  Distribution spatiale proportionnelle à la longueur des mots,
+  déterministe, sans dépendance externe.
+- `picarones.core.alto_metrics` — parser ALTO tolérant
+  (`extract_text_from_alto`) + 4 métriques `(ALTO, ALTO)` enregistrées
+  sur le registre typé Sprint 34 (`alto_text_cer/wer/mer/wil`).
+- `examples/pipelines/ocr_to_alto.yaml` — pipeline déclarative
+  exemple `Tesseract → reconstructeur ALTO`.
+
+**Refactor BaseOCREngine** : 3 hooks unifiés (`_run_with_native`,
+`_extract_raw_confidences`, `_normalize_token_confidences`). Les 5
+adapters OCR (Tesseract, Pero, Mistral OCR, Google Vision, Azure DI)
+ne surchargent plus `run()` : 382 lignes ajoutées / 424 lignes
+supprimées (-42 net), comportement et octets de sortie strictement
+identiques. Le contrat `BaseModule.process()` (Sprint 33) devient
+honoré, les `token_confidences` accessibles via la nouvelle propriété
+`last_run_result`.
+
+**Verrou levé** : toute l'infrastructure des Sprints 32-34, 53-54,
+63-68, 94-97 (axe B) est rétroactivement validée par un module
+non-mocké. Le rapport pipeline composée a maintenant des données
+réelles à montrer.
+
+### Chantier 2 — Profils + registre de hooks (commit `25bd1fe`)
+
+**Composants neufs** :
+
+- `picarones.core.metric_hooks` — 7 profils (`minimal`, `standard`,
+  `philological`, `diagnostics`, `economics`, `pipeline`, `full`)
+  + `DocumentMetricHook` / `CorpusMetricAggregator` + décorateurs
+  `@register_document_metric` / `@register_corpus_aggregator`
+  + `select_*` / `run_*`.
+- `picarones.core.builtin_hooks` — 12 hooks document-level + 12
+  agrégateurs corpus-level enregistrés sur le profil `standard`,
+  reproduisant exactement le comportement pré-chantier.
+
+**Refactor `runner.py`** : 1322 → 1019 lignes (−303). Les 11
+`try/except` codés en dur dans `_compute_document_result` sont
+remplacés par un seul `run_document_hooks(profile, ...)`. Les 12
+appels d'agrégation sont remplacés par un `run_corpus_aggregators`.
+Les 8 `_aggregate_X` privés deviennent des thin wrappers délégués
+(rétrocompat tests Sprint 13/42).
+
+**CLI** : `picarones run --profile {minimal|standard|philological|
+diagnostics|economics|pipeline|full}` (défaut `standard`).
+
+**Verrou levé** : ajouter une métrique au runner devient un travail
+local — `@register_document_metric` + `@register_corpus_aggregator`
+dans un fichier dédié, plus besoin de patcher `runner.py` à deux
+endroits.
+
+### Chantier 3 — 5 vues HTML thématiques (commit `fe6661c`)
+
+**Nouveau package `picarones/report/views/`** (5 modules) qui adresse
+les 16 renderers orphelins :
+
+- `economics.py` — throughput effectif (auto) + cost projection (opt-in).
+- `advanced_taxonomy.py` — taxonomy_comparison (auto) + cooccurrence /
+  intra_doc / lexical_modernization (opt-in).
+- `diagnostics.py` — leviers (auto) + image_predictive / baseline /
+  longitudinal / multirun_stability / worst_lines (opt-in).
+- `pipeline.py` — pipeline_render + DAG + error_absorption +
+  incremental_comparison + module_audit (pour `picarones pipeline run`).
+- `robustness.py` — robustness_projection (pour `picarones robustness`).
+
+**Câblage** : `report/generator.py` calcule les 3 vues automatiques
+et les passe au template `view_analyses.html` qui les inclut
+conditionnellement en chart-card pleine largeur. Adaptive masking
+sur 2 niveaux : si une sous-section n'a pas de signal, elle est
+masquée ; si la vue entière n'a aucune sous-section, elle est masquée.
+
+**Convention de rendu partagée** : `_render_view_shell` produit un
+shell `<details>` collapsible (premier ouvert, autres fermés) avec
+anti-injection HTML systématique.
+
+**Verrou levé** : plus aucun renderer n'est strictement orphelin.
+
+### Chantier 4 — Workflows CLI + LLM Sprint 15 + Gallica/IIIF (commit `36694e1`)
+
+**4.A — LLM** : `normalize_llm_content` + `log_http_error` factorisés
+dans `picarones.llm.base`. Le fix Sprint 15 (normalisation
+`list[ContentChunk] → str`) est désormais appliqué uniformément aux
+4 adapters (Mistral, OpenAI, Anthropic, Ollama). Anthropic gagne un
+log discriminant par status_code.
+
+**4.B — Gallica → IIIF** : nouveau module privé
+`picarones/importers/_http.py` avec `validate_http_url` et
+`download_url`. IIIF et Gallica y délèguent (~30 lignes de
+duplication exacte éliminées). Garde-fou `file://`/`ftp://`/
+`javascript://` cohérent.
+
+**4.C — 3 sous-commandes CLI** :
+
+- `picarones diagnose` → profil `diagnostics`.
+- `picarones economics` → profil `economics`.
+- `picarones edition` → profil `philological`.
+
+Helper privé `_run_workflow(...)` factorise la logique commune des
+4 commandes (run + 3 nouvelles).
+
+### Chantier 5 — Découpage monolithes (commit `c1ae580`)
+
+**5.A** — `picarones/core/narrative/detectors.py` (1229 lignes,
+18 détecteurs) → package thématique avec 8 fichiers :
+
+- `ranking.py` (5 détecteurs), `pareto.py` (2), `stratum.py` (3),
+  `quality.py` (4), `history.py` (3), `ensemble.py` (1), `_helpers.py`.
+- `__init__.py` réexporte les 18 détecteurs + `DETECTORS_BY_TYPE` +
+  `register_default_detectors`.
+
+**5.B** — `picarones/cli.py` (1519 lignes, 15 commandes) → package
+avec 7 fichiers :
+
+- `__init__.py` (groupe `cli` + helpers + 5 commandes simples),
+  `_workflows.py` (471 L), `_pipeline.py`, `_robustness.py`,
+  `_history.py`, `_imports.py`, `_serve.py`.
+- L'entry-point `picarones.cli:cli` (`pyproject.toml`) reste valide.
+
+**5.C** — `runner.py` reporté : déjà allégé de 303 lignes au
+chantier 2 ; les workers picklables sont fragiles à déplacer
+(casserait les fichiers `.partial.json` de reprise).
+
+**Verrou levé** : les deux plus gros monolithes (2748 lignes au total)
+sont éclatés en 14 fichiers thématiques. Plus de conflits de merge
+sur des monolithes globaux.
+
+### Chantier 6 — Documentation + tests features (en cours)
+
+- 4 nouveaux documents dans `docs/` : `architecture.md`,
+  `profiles.md`, `cli-workflows.md`, `views.md`.
+- En-tête « Lecture rapide » ajouté à `CLAUDE.md`.
+- Couche d'index thématique `tests/features/` (chantier 1 a déjà
+  créé `test_pipeline_ocr_to_alto.py`).
+
+### Bilan quantitatif
+
+| Indicateur | Avant chantiers | Après chantiers |
+|---|---|---|
+| Renderers orphelins | 16/26 | 0/26 (tous adressés) |
+| `runner.py` | 1322 lignes | 1019 lignes |
+| `cli.py` (monolithe) | 1519 lignes | éclaté en 7 fichiers |
+| `narrative/detectors.py` | 1229 lignes | éclaté en 8 fichiers |
+| `BaseModule` réel | 0 (mock-only) | `TextToAltoMonoRegion` |
+| Métriques `(ALTO, ALTO)` | 0 | 4 (`alto_text_*`) |
+| Profils de calcul CLI | 1 (implicite) | 7 (`--profile`) |
+| Sous-commandes CLI | 12 | 15 (3 workflows dédiés) |
+| Adapters LLM avec Sprint 15 | 1/4 | 4/4 |
+| Adapters LLM avec log discriminant | 2/4 | 4/4 |
+| Helpers HTTP factorisés | 0 (dupliqués IIIF/Gallica) | 1 module `_http.py` |
+| Détecteurs par fichier | 18/1 | 18/6 (par famille) |
+| Documentation thématique | 1 (CLAUDE.md monolithique) | + 4 docs ciblés |
+
+**Aucune ligne de code utile supprimée** — la stratégie
+« valoriser plutôt que supprimer » a été tenue sur les 6 chantiers.
+
+---
+
 ## [1.2.x] — Sprints 32+ — 2026-04 → ongoing
 
 > Démarrage de la **Phase 0** du [plan d'évolution 2026](docs/roadmap/evolution-2026.md) :

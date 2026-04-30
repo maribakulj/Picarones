@@ -6,6 +6,27 @@ HuggingFace Space : huggingface.co/spaces/Ma-Ri-Ba-Ku/Picarones (Docker, port 78
 
 ---
 
+## Lecture rapide — chantiers post-Sprint 97
+
+5 chantiers ont consolidé l'architecture sans suppression :
+
+| # | Livré | Effet | Doc |
+|---|---|---|---|
+| 1 | `TextToAltoMonoRegion` + refonte `BaseOCREngine` | Valide l'axe B bout-en-bout (BaseModule réel TEXT→ALTO + 5 engines factorisés) | [`docs/architecture.md`](docs/architecture.md) |
+| 2 | Profils + registre de hooks | `runner.py` allégé de 303 lignes ; 7 profils pour moduler le calcul ; `--profile` ajouté | [`docs/profiles.md`](docs/profiles.md) |
+| 3 | 5 vues HTML thématiques | 16 renderers orphelins regroupés en `economics`, `advanced_taxonomy`, `diagnostics`, `pipeline`, `robustness` | [`docs/views.md`](docs/views.md) |
+| 4 | Workflows CLI + LLM Sprint 15 + Gallica/IIIF | 3 commandes `diagnose`/`economics`/`edition` ; Sprint 15 propagé aux 4 LLM ; `_http.py` factorisé | [`docs/cli-workflows.md`](docs/cli-workflows.md) |
+| 5 | Découpage monolithes | `cli.py` 1519L → 7 fichiers ; `narrative/detectors.py` 1229L → 8 fichiers (6 familles + helpers) | [`docs/architecture.md`](docs/architecture.md) |
+
+Branche : `claude/code-quality-audit-ACnhK`. Voir [`CHANGELOG.md`](CHANGELOG.md)
+section `[post-Sprint 97]` pour le détail.
+
+**18 détecteurs narratifs** (et non « 12 » comme annoncé dans les sprints
+historiques) — voir
+[`picarones/core/narrative/detectors/`](picarones/core/narrative/detectors/).
+
+---
+
 ## Setup
 
 ```bash
@@ -26,8 +47,14 @@ git pull && pip install -e ".[dev,web]" && picarones demo --output rapport_demo.
 
 ```
 picarones/
-├── cli.py                  # CLI Click : run, metrics, engines, info, demo, serve, import, history, robustness
+├── cli/                    # (chantier 5) Package CLI Click — 7 fichiers
+│   ├── __init__.py         # Groupe `cli` + helpers + commandes simples
+│   ├── _workflows.py       # run, diagnose, economics, edition, compare
+│   ├── _pipeline.py        # pipeline run + compare
+│   ├── _imports.py, _serve.py, _history.py, _robustness.py
 ├── fixtures.py             # Données de test fictives (documents médiévaux)
+├── modules/                # (chantier 1) Modules BaseModule de référence
+│   └── alto_text_to_mono_region.py    # Reconstructeur ALTO baseline
 ├── core/
 │   ├── corpus.py           # Chargement corpus (dossier local, ALTO XML, PAGE XML)
 │   ├── metrics.py          # CER, WER, MER, WIL (via jiwer)
@@ -315,8 +342,15 @@ au template `_narrative_summary.html` (placé entre `_header.html` et `_critical
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces (`/workspaces/Picarones`), Python 3.12
-- **Tests** : 3098 passed, 2 skipped (Sprints 32-34 = Phase 0 close ; Sprints 35-37 = inter-moteurs livrés bout-en-bout ; Sprints 38+40+41 = NER livré bout-en-bout ; Sprints 39+42+43 = calibration livrée bout-en-bout côté rapport ; Sprint 44 = médiane par défaut ; Sprints 45+46 = stratification A.III livrée bout-en-bout ; Sprints 47-51 = les 5 adapters OCR exposent leurs confidences natives ; **Étape 2 close** ; Sprints 52-54 = axe A.II.2 (métriques structurelles) couches de calcul intégralement livrées ; Sprints 55-62 = extension philologique livrée bout-en-bout sur trois périodes + numéraux romains transversaux + câblage runner adaptive + vue HTML « Profil philologique » ; Sprints 63-70 = axe B livré bout-en-bout ; Sprints 71-72 = A.I.1 livré bout-en-bout ; Sprints 73-74 = A.I.3 livré bout-en-bout ; Sprints 75-77 = A.I.4 livré bout-en-bout ; Sprint 78 = A.I.5 couche calcul ; Sprint 79 = A.I.6 couche calcul ; Sprint 80 = A.I.7 ; Sprint 81 = A.I.8 couche calcul ; Sprint 82 = A.I.9 — « Leviers d'amélioration » bout-en-bout ; Sprint 83 = A.II.4 — métriques de fiabilité (IAA Cohen κ + Krippendorff α + stabilité multi-runs, couche calcul) ; Sprint 84 = A.II.5a — recherchabilité fuzzy ; Sprint 85 = A.II.5b — précision séquences numériques ; Sprint 86 = A.II.5 bout-en-bout (câblage runner + vues HTML) ; Sprint 87 = A.II.2 (delta Flesch) câblé bout-en-bout ; Sprint 88 = A.I.8 — vue HTML « Déficit projeté de robustesse » bout-en-bout ; Sprint 89 = A.II.8b — score de spécialisation inter-moteurs (couche calcul + vue HTML « Top paires spécialisées ») ; Sprint 90 = A.II.4 finition — détecteur narratif `engine_unstable` + vue HTML stabilité multi-runs ; Sprint 91 = A.II.6 — métriques économiques (throughput effectif + coût marginal par erreur évitée, couche calcul + vue HTML throughput) ; Sprint 92 = A.II.9 — métriques longitudinales (régression linéaire + change-point + détecteur narratif + vue HTML) ; Sprint 93 = A.II.7 — métriques d'image prédictives (complexité paléographique + homogénéité corpus, couche calcul + vue HTML) ; Sprint 94 = B.3 — métrique d'absorption d'erreur (corrections vs introductions par jonction de pipeline, couche calcul + vue HTML) ; Sprint 95 = B.4 — visualisation DAG d'un pipeline composé (rendu SVG server-side, outil d'inspection) ; Sprint 96 = B.5 — comparaison incrémentale (effet isolé d'un slot variant en contrôlant les autres, couche calcul + vue HTML ANOVA-like) ; **Sprint 97 = B.6 — politique de modules contribués (ModuleManifest + audit + vue HTML « Modules audités » + documentation contributeur)**)
-- **Plan d'évolution actif** : [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md)
-- **Branche active** : `claude/analyze-project-evolution-KOA56`
-- **Transcript de la conversation de développement** :
-  `/mnt/transcripts/2026-03-11-14-01-41-picarones-ocr-bench-project.txt`
+- **Tests** : 3098+ passed, 2 skipped (cf. CHANGELOG section `[post-Sprint 97]`
+  pour les nouveaux tests des chantiers 1-5 qui ajoutent ~1500 lignes
+  de validation : `test_alto_baseline.py`, `test_metric_hooks.py`,
+  `test_views.py`, `test_chantier4.py`, `test_chantier5.py`).
+- **Plan d'évolution actif** : [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md).
+- **Documentation post-chantiers** : [`docs/architecture.md`](docs/architecture.md),
+  [`docs/profiles.md`](docs/profiles.md), [`docs/cli-workflows.md`](docs/cli-workflows.md),
+  [`docs/views.md`](docs/views.md).
+- **Branche active** : `claude/code-quality-audit-ACnhK`.
+- **Détecteurs narratifs** : 18 (et non 12 comme indiqué historiquement),
+  organisés en 6 familles dans
+  [`picarones/core/narrative/detectors/`](picarones/core/narrative/detectors/).
