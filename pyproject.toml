@@ -79,9 +79,16 @@ ocr-cloud = [
 # entièrement, et un futur split en package PyPI séparé
 # ``picarones-historical`` réutilisera ce nom d'extra.
 historical = []
+# Importeurs de corpus depuis sources distantes (Cercle 3, phase C).
+# Les 6 importeurs (``picarones.extras.importers.*``) sont livrés dans
+# le package principal. ``[importers]`` documente l'intention de
+# séparation future en package PyPI ``picarones-importers``. Les
+# modules ``huggingface`` et ``escriptorium`` émettent un
+# ``UserWarning`` à l'import (statut expérimental).
+importers = []
 # Installation complète (tous les extras sauf les OCR cloud)
 all = [
-    "picarones[web,hf,llm,dev,historical]",
+    "picarones[web,hf,llm,dev,historical,importers]",
 ]
 
 [project.scripts]
