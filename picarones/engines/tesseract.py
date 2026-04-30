@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.engines.base import BaseOCREngine
 
 try:
     import pytesseract
@@ -69,6 +68,13 @@ class TesseractEngine(BaseOCREngine):
 
     Le coût supplémentaire est d'un second appel Tesseract par image.
     Pour le désactiver : ``expose_confidences: false`` dans la config.
+
+    Refactor du chantier 1 (post-Sprint 97)
+    ---------------------------------------
+    L'adapter ne surcharge plus ``run()`` — il implémente
+    ``_run_with_native`` et ``_extract_raw_confidences`` (les hooks
+    factorisés dans ``BaseOCREngine``).  Comportement externe et
+    octets de sortie strictement identiques aux versions Sprint 47+.
     """
 
     execution_mode = "cpu"
@@ -86,12 +92,18 @@ class TesseractEngine(BaseOCREngine):
         """Retourne ``(lang, custom_config)`` selon la config courante.
 
         Centralisé pour rester cohérent entre ``_run_ocr`` et
-        ``_extract_token_confidences``.
+        ``_run_with_native``.
         """
         lang = self.config.get("lang", "fra")
         psm = int(self.config.get("psm", 6))
         oem = int(self.config.get("oem", 3))
         return lang, f"--oem {oem} --psm {psm}"
+
+    def _apply_tesseract_cmd(self) -> None:
+        """Applique le chemin Tesseract custom si la config en fournit un."""
+        tesseract_cmd = self.config.get("tesseract_cmd")
+        if tesseract_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
 
     def _run_ocr(self, image_path: Path) -> str:
         if not _PYTESSERACT_AVAILABLE:
@@ -100,41 +112,27 @@ class TesseractEngine(BaseOCREngine):
                 "Installez-le avec : pip install pytesseract"
             )
 
-        # Paramétrage optionnel de l'exécutable
-        tesseract_cmd = self.config.get("tesseract_cmd")
-        if tesseract_cmd:
-            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
-
+        self._apply_tesseract_cmd()
         lang, custom_config = self._tesseract_args()
-
         image = Image.open(image_path)
         text: str = pytesseract.image_to_string(image, lang=lang, config=custom_config)
         return text.strip()
 
-    def _extract_token_confidences(
-        self, image_path: Path,
-    ) -> Optional[list[dict[str, Any]]]:
-        """Extrait les confidences mot par mot via ``image_to_data``.
+    def _run_with_native(self, image_path: Path) -> tuple[str, Optional[dict]]:
+        """Appelle ``image_to_string`` puis ``image_to_data``.
 
-        Retourne ``None`` quand pytesseract n'est pas disponible OU si
-        l'extraction échoue (best-effort — on ne casse pas l'OCR si
-        seule la calibration est indisponible).
+        Retourne ``(text, image_to_data_dict)`` — la deuxième valeur
+        peut être ``None`` si ``expose_confidences`` est à ``False``
+        ou si l'appel ``image_to_data`` échoue (best-effort).
 
-        Format de sortie compatible Sprint 42 : liste de dicts
-        ``{"token": str, "confidence": float}`` avec confidence ∈
-        [0, 100] (Tesseract).  Les non-mots (conf = -1) et tokens
-        vides sont ignorés.
+        Le texte reste **identique** à celui produit par
+        ``_run_ocr`` (rétrocompat octet par octet — Sprint 47).
         """
-        if not _PYTESSERACT_AVAILABLE:
-            return None
+        text = self._run_ocr(image_path)
         if not self.config.get("expose_confidences", True):
-            return None
-
+            return text, None
         try:
-            tesseract_cmd = self.config.get("tesseract_cmd")
-            if tesseract_cmd:
-                pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
-
+            self._apply_tesseract_cmd()
             lang, custom_config = self._tesseract_args()
             image = Image.open(image_path)
             data = pytesseract.image_to_data(
@@ -143,68 +141,35 @@ class TesseractEngine(BaseOCREngine):
                 config=custom_config,
                 output_type=pytesseract.Output.DICT,
             )
+            return text, data
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "[tesseract] extraction des token_confidences dégradée : %s",
+                "[tesseract] image_to_data indisponible (%s) — "
+                "calibration sautée pour ce document",
                 exc,
             )
-            return None
+            return text, None
 
-        texts = data.get("text") or []
-        confs = data.get("conf") or []
+    def _extract_raw_confidences(
+        self, native: Any,
+    ) -> Optional[list[dict[str, Any]]]:
+        """Parse le ``image_to_data`` dict de Tesseract.
+
+        Format Tesseract : dict ``{"text": [...], "conf": [...], ...}``
+        avec confidences ∈ [0, 100] et ``-1`` pour les segments
+        non-mots — ces derniers sont écartés par
+        ``_normalize_token_confidences`` (filtre les conf < 0).
+        """
+        if not isinstance(native, dict):
+            return None
+        texts = native.get("text") or []
+        confs = native.get("conf") or []
         if not texts or len(texts) != len(confs):
             return None
-
         out: list[dict[str, Any]] = []
         for tok_text, conf in zip(texts, confs):
-            tok_text = (tok_text or "").strip()
-            if not tok_text:
-                continue
-            try:
-                conf_val = float(conf)
-            except (TypeError, ValueError):
-                continue
-            # Tesseract met -1 pour les segments non-mots ; le runner
-            # Sprint 42 les filtre aussi mais on les écarte ici pour
-            # éviter le bruit dans les diagnostics.
-            if conf_val < 0:
-                continue
-            out.append({"token": tok_text, "confidence": conf_val})
+            out.append({"token": tok_text, "confidence": conf})
         return out or None
-
-    def run(self, image_path: str | Path) -> EngineResult:
-        """Exécute Tesseract et expose les ``token_confidences`` natifs
-        (via ``image_to_data``) en plus du texte.
-
-        Surcharge du ``BaseOCREngine.run()`` (Sprint 33) qui ne
-        mettait pas de confidences.  On garde la mesure du temps et la
-        gestion des erreurs.  Si l'extraction des confidences échoue,
-        on retourne quand même le texte avec ``token_confidences =
-        None`` — le runner saute simplement le calcul de calibration
-        sur ce document.
-        """
-        image_path = Path(image_path)
-        start = time.perf_counter()
-        text = ""
-        error: Optional[str] = None
-        token_confidences: Optional[list[dict[str, Any]]] = None
-        try:
-            text = self._run_ocr(image_path)
-        except Exception as exc:  # noqa: BLE001
-            error = str(exc)
-        else:
-            # On n'extrait les confidences que si l'OCR de base a réussi
-            token_confidences = self._extract_token_confidences(image_path)
-        duration = time.perf_counter() - start
-        return EngineResult(
-            engine_name=self.name,
-            image_path=str(image_path),
-            text=text,
-            duration_seconds=round(duration, 4),
-            error=error,
-            metadata={"engine_version": self._safe_version()},
-            token_confidences=token_confidences,
-        )
 
     @classmethod
     def from_config(cls, config: Optional[dict] = None) -> "TesseractEngine":

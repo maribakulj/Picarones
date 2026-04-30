@@ -73,6 +73,9 @@ import picarones.core.roman_numerals  # noqa: F401
 import picarones.core.reading_order  # noqa: F401
 import picarones.core.readability  # noqa: F401
 import picarones.core.ner  # noqa: F401
+# Chantier 1 (post-Sprint 97) : métriques (ALTO, ALTO) pour évaluer
+# les reconstructeurs ALTO contre une GT ALTO du document.
+import picarones.core.alto_metrics  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
