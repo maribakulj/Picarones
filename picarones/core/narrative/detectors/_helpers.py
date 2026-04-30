@@ -1,31 +1,13 @@
-"""Helpers internes partagés par les détecteurs narratifs.
+"""Alias rétrocompat — module déplacé dans :mod:`picarones.measurements.narrative.detectors._helpers`.
 
-Chantier 5 du plan d'évolution post-Sprint 97 — découpage de
-``picarones/core/narrative/detectors.py`` (1229 lignes, 18 détecteurs)
-en 6 sous-modules thématiques + ce module d'helpers communs.
-
-Ces fonctions étaient privées (préfixe ``_``) au module historique.
-Elles sont conservées telles quelles ici ; les sous-modules les
-importent.
+Phase E du chantier de refonte en 3 cercles. Le moteur narratif
+(Cercle 2 — measurements/) a quitté ``picarones.core.narrative``.
+Cet alias maintient la rétrocompat des imports historiques.
 """
 
-from __future__ import annotations
+from picarones.measurements.narrative.detectors._helpers import *  # noqa: F401, F403
 
-from typing import Optional
-
-
-def _engines_summary(data: dict) -> list[dict]:
-    """Accès normalisé à la liste des résumés moteur."""
-    return data.get("engines", []) or []
-
-
-def _engine_by_name(data: dict, name: str) -> Optional[dict]:
-    for e in _engines_summary(data):
-        if e.get("name") == name:
-            return e
-    return None
-
-
-def _n_docs(data: dict) -> int:
-    meta = data.get("meta", {}) or {}
-    return int(meta.get("document_count") or 0)
+import picarones.measurements.narrative.detectors._helpers as _module
+__all__ = getattr(_module, "__all__", [
+    nm for nm in dir(_module) if not nm.startswith("_")
+])

@@ -156,17 +156,40 @@ elles-mêmes dans `report/views/`, donc Cercle 2).
 
 ## Distinguer un module Cercle 1 vs Cercle 2
 
-Test concret : si on supprime ce module, est-ce que la phrase
-*« Picarones est un banc d'essai pour pipelines OCR/HTR/VLM »* reste
-vraie ?
+Critère **corrigé** (alignement architecture hexagonale / DDD) :
 
-- **Oui** → Cercle 2 (le produit existe sans ce module).
-- **Non** → Cercle 1 (le module participe à la définition même).
+> **Cercle 1 = abstractions et logique métier du domaine,
+> indépendantes de l'interface utilisateur. Stables entre versions
+> mineures.**
+>
+> **Cercle 2 = adapters concrets (engines, LLM, modules de référence),
+> couches d'interface (report, cli, web), et mesures au-delà du noyau
+> (measurements). Maintenus mais peuvent évoluer.**
+
+Le critère « si on supprime ce module, le produit reste viable »
+mélange deux questions distinctes (« est-ce indispensable ? » et
+« est-ce une abstraction stable ? »). On préfère le critère DDD :
+
+- **Cercle 1** : abstractions et orchestration qui définissent ce
+  que Picarones *est* logiquement (corpus, BaseModule, registres,
+  runner). Indépendant de l'interface utilisateur.
+- **Cercle 2** : ce qui rend le domaine utilisable concrètement
+  (adapters, mesures, présentation HTML, CLI).
 
 Exemple :
-- Sans `corpus.py` : impossible de charger un corpus → Cercle 1.
-- Sans `confusion.py` : on a toujours un bench fonctionnel sans
-  matrice de confusion → Cercle 2.
+- `corpus.py` → Cercle 1 (abstraction du domaine).
+- `runner.py` → Cercle 1 (orchestration du domaine).
+- `confusion.py` → Cercle 2 (mesure au-delà du noyau, dans
+  ``measurements/``).
+- `report/generator.py` → Cercle 2 (couche de présentation, même si
+  essentielle à l'usage pratique).
+- `engines/tesseract.py` → Cercle 2 (adapter concret).
+
+> Note : la convention « `base.py` dans le dossier du concept »
+> (`engines/base.py`, `llm/base.py`) reste dans son dossier d'origine.
+> Ces contrats sont logiquement Cercle 1 (API publique stable) mais
+> physiquement co-localisés avec leurs implémentations, comme dans
+> Django, SQLAlchemy, FastAPI. Convention universelle Python.
 - Sans `taxonomy_intra_doc.py` : on a toujours un bench complet et
   utile → Cercle 3.
 
