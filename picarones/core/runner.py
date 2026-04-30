@@ -44,15 +44,25 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
     Instancie le moteur dans le sous-processus, exécute l'OCR et calcule
     toutes les métriques.  Doit être une fonction de niveau module pour être
     sérialisable par ``pickle``.
+
+    Le tuple ``args`` peut contenir, par compatibilité ascendante :
+    - 7 éléments : legacy (Sprint 13)
+    - 8 éléments : + ``corpus_lang`` (Sprint 87)
+    - 9 éléments : + ``profile`` (chantier 2 post-Sprint 97)
     """
-    # Sprint 87 — args peut contenir 7 (legacy) ou 8 (avec corpus_lang) éléments
-    if len(args) == 8:
+    if len(args) == 9:
+        (engine_module, engine_class_name, engine_config, doc_id,
+         image_path, ground_truth, char_exclude_chars, corpus_lang,
+         profile) = args
+    elif len(args) == 8:
         (engine_module, engine_class_name, engine_config, doc_id,
          image_path, ground_truth, char_exclude_chars, corpus_lang) = args
+        profile = "standard"
     else:
         (engine_module, engine_class_name, engine_config, doc_id,
          image_path, ground_truth, char_exclude_chars) = args
         corpus_lang = "fr"
+        profile = "standard"
     import importlib
     mod = importlib.import_module(engine_module)
     engine_cls = getattr(mod, engine_class_name)
@@ -66,6 +76,7 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
         ocr_result=ocr_result,
         char_exclude=char_exclude,
         corpus_lang=corpus_lang,
+        profile=profile,
     )
 
 
@@ -74,6 +85,7 @@ def _io_doc_worker(
     doc: object,
     char_exclude: Optional[frozenset],
     corpus_lang: str = "fr",
+    profile: str = "standard",
 ) -> "DocumentResult":
     """Worker pour ThreadPoolExecutor (moteurs IO-bound / API).
 
@@ -104,6 +116,7 @@ def _io_doc_worker(
         ocr_result=ocr_result,
         char_exclude=char_exclude,
         corpus_lang=corpus_lang,
+        profile=profile,
     )
 
 
@@ -112,62 +125,21 @@ def _io_doc_worker(
 # ---------------------------------------------------------------------------
 
 
+# Chantier 2 (post-Sprint 97) — la logique du helper calibration vit
+# désormais dans :mod:`picarones.core.builtin_hooks`. Ce nom reste exposé
+# ici pour la rétrocompat des tests Sprint 42 qui font
+# ``from picarones.core.runner import _calibration_from_engine_result``.
 def _calibration_from_engine_result(
     ground_truth: str,
     token_confidences: list,
 ) -> Optional[dict]:
-    """Aligne les ``token_confidences`` du moteur sur la GT (bag-of-words)
-    pour produire les listes parallèles ``confidences`` / ``is_correct``,
-    puis appelle ``compute_calibration_metrics`` (Sprint 39).
+    """Délégation vers :func:`picarones.core.builtin_hooks.calibration_from_engine_result`.
 
-    Convention d'alignement (proxy bag-of-words avec multiplicité, comme
-    ``oracle_token_recall`` du Sprint 35) : un token de l'hypothèse est
-    "correct" si la GT contient encore une occurrence de ce token.
-    Ce n'est pas un alignement séquentiel ; c'est volontaire pour rester
-    simple et robuste aux décalages d'OCR.
-
-    Les confidences ``> 1.0`` sont supposées en pourcentage et
-    normalisées à ``[0, 1]``.  Les confidences négatives (Tesseract met
-    -1 pour les non-mots) sont ignorées.
+    Conservé pour la rétrocompat des tests existants ; toute évolution
+    du calcul doit se faire dans ``builtin_hooks``.
     """
-    from collections import Counter
-
-    from picarones.core.calibration import compute_calibration_metrics
-
-    if not token_confidences:
-        return None
-
-    gt_counter = Counter((ground_truth or "").split())
-    confidences: list[float] = []
-    is_correct: list[int] = []
-
-    for tc in token_confidences:
-        if not isinstance(tc, dict):
-            continue
-        token = str(tc.get("token", ""))
-        if not token:
-            continue
-        try:
-            conf = float(tc.get("confidence"))
-        except (TypeError, ValueError):
-            continue
-        if conf < 0:
-            # -1 = non-mot dans le format Tesseract image_to_data
-            continue
-        if conf > 1.0:
-            conf = conf / 100.0
-        if not 0.0 <= conf <= 1.0:
-            continue
-        if gt_counter[token] > 0:
-            is_correct.append(1)
-            gt_counter[token] -= 1
-        else:
-            is_correct.append(0)
-        confidences.append(conf)
-
-    if not confidences:
-        return None
-    return compute_calibration_metrics(confidences, is_correct)
+    from picarones.core.builtin_hooks import calibration_from_engine_result
+    return calibration_from_engine_result(ground_truth, token_confidences)
 
 
 
@@ -179,17 +151,32 @@ def _compute_document_result(
     ocr_result: EngineResult,
     char_exclude: Optional[frozenset],
     corpus_lang: str = "fr",
+    profile: str = "standard",
 ) -> DocumentResult:
     """Calcule toutes les métriques pour un document et retourne un DocumentResult.
 
     Utilisable à la fois dans le processus principal (IO-bound) et dans les
     sous-processus créés par ProcessPoolExecutor (CPU-bound).
     Les imports lourds sont différés pour accélérer le démarrage des sous-processus.
-    Les analyses secondaires qui échouent sont loguées en WARNING et non propagées :
-    le benchmark continue avec les métriques de base disponibles.
+
+    Chantier 2 (post-Sprint 97) — refonte
+    ------------------------------------
+    Les 11 ``try/except`` codés en dur (Sprints 5+10+39+42+61+86+87) sont
+    désormais centralisés dans ``picarones.core.builtin_hooks`` et
+    sélectionnés via ``run_document_hooks(profile)``.  Le profil
+    ``"standard"`` (défaut) reproduit strictement le comportement
+    pré-chantier-2.  Les profils ``"minimal"``, ``"philological"``,
+    ``"diagnostics"``, ``"economics"``, ``"pipeline"``, ``"full"``
+    permettent à l'utilisateur de moduler le coût de calcul.
     """
     import logging as _logging
     _logger = _logging.getLogger(__name__)
+
+    # Eager-load des hooks natifs pour peupler le registre dans les
+    # sous-processus du pool (le top-level ``import`` du runner ne le fait
+    # pas pour ne pas pénaliser le démarrage des moteurs minimaux).
+    import picarones.core.builtin_hooks  # noqa: F401
+    from picarones.core.metric_hooks import run_document_hooks
 
     if ocr_result.success:
         metrics = compute_metrics(ground_truth, ocr_result.text, char_exclude=char_exclude)
@@ -224,133 +211,20 @@ def _compute_document_result(
             except Exception as e:
                 _logger.warning("[over_normalization] fonctionnalité dégradée : %s", e)
 
-    confusion_data = None
-    char_scores_data = None
-    taxonomy_data = None
-    structure_data = None
-    image_quality_data = None
-    line_metrics_data = None
-    hallucination_data = None
-
-    if ocr_result.success:
-        try:
-            from picarones.core.confusion import build_confusion_matrix
-            cm = build_confusion_matrix(ground_truth, ocr_result.text)
-            confusion_data = cm.as_dict()
-        except Exception as e:
-            _logger.warning("[confusion] fonctionnalité dégradée : %s", e)
-
-        try:
-            from picarones.core.char_scores import compute_ligature_score, compute_diacritic_score
-            lig = compute_ligature_score(ground_truth, ocr_result.text)
-            diac = compute_diacritic_score(ground_truth, ocr_result.text)
-            char_scores_data = {"ligature": lig.as_dict(), "diacritic": diac.as_dict()}
-        except Exception as e:
-            _logger.warning("[char_scores] fonctionnalité dégradée : %s", e)
-
-        try:
-            from picarones.core.taxonomy import classify_errors
-            tax = classify_errors(ground_truth, ocr_result.text)
-            taxonomy_data = tax.as_dict()
-        except Exception as e:
-            _logger.warning("[taxonomy] fonctionnalité dégradée : %s", e)
-
-        try:
-            from picarones.core.structure import analyze_structure
-            struct = analyze_structure(ground_truth, ocr_result.text)
-            structure_data = struct.as_dict()
-        except Exception as e:
-            _logger.warning("[structure] fonctionnalité dégradée : %s", e)
-
-        try:
-            from picarones.core.line_metrics import compute_line_metrics
-            lm = compute_line_metrics(ground_truth, ocr_result.text)
-            line_metrics_data = lm.as_dict()
-        except Exception as e:
-            _logger.warning("[line_metrics] fonctionnalité dégradée : %s", e)
-
-        try:
-            from picarones.core.hallucination import compute_hallucination_metrics
-            hm = compute_hallucination_metrics(ground_truth, ocr_result.text)
-            hallucination_data = hm.as_dict()
-        except Exception as e:
-            _logger.warning("[hallucination] fonctionnalité dégradée : %s", e)
-
-    # Sprint 42 — calibration des confidences moteur (en dehors du
-    # ``if ocr_result.success`` puisqu'on peut avoir des confidences même
-    # sur un succès partiel).
-    calibration_data: Optional[dict] = None
-    if ocr_result.token_confidences:
-        try:
-            calibration_data = _calibration_from_engine_result(
-                ground_truth, ocr_result.token_confidences,
-            )
-        except Exception as e:
-            _logger.warning("[calibration] fonctionnalité dégradée : %s", e)
-
-    try:
-        from picarones.core.image_quality import analyze_image_quality
-        iq = analyze_image_quality(image_path)
-        if iq.error is None:
-            image_quality_data = iq.as_dict()
-    except Exception as e:
-        _logger.warning("[image_quality] fonctionnalité dégradée : %s", e)
-
-    # Sprint 61 — métriques philologiques (Sprints 55-60).  Calcul
-    # automatique : O(N) sur le texte, coût négligeable.  Le helper
-    # gère lui-même l'« adaptive masking » : un module n'est inclus
-    # que si la GT a du signal pour lui.
-    philological_data: Optional[dict] = None
-    try:
-        from picarones.core.philological_runner import compute_philological_metrics
-        philological_data = compute_philological_metrics(
-            ground_truth, ocr_result.text,
-        )
-    except Exception as e:
-        _logger.warning("[philological] fonctionnalité dégradée : %s", e)
-
-    # Sprint 86 — recherchabilité fuzzy (Sprint 84) avec adaptive
-    # masking. Coût O(N_gt × N_hyp × len_max), négligeable sur les
-    # tailles de documents typiques.
-    searchability_data: Optional[dict] = None
-    try:
-        from picarones.core.searchability_runner import (
-            compute_searchability_metrics,
-        )
-        searchability_data = compute_searchability_metrics(
-            ground_truth, ocr_result.text,
-        )
-    except Exception as e:
-        _logger.warning("[searchability] fonctionnalité dégradée : %s", e)
-
-    # Sprint 86 — précision sur séquences numériques (Sprint 85)
-    # avec adaptive masking.
-    numerical_sequence_data: Optional[dict] = None
-    try:
-        from picarones.core.numerical_sequences_runner import (
-            compute_numerical_sequence_metrics_adaptive,
-        )
-        numerical_sequence_data = compute_numerical_sequence_metrics_adaptive(
-            ground_truth, ocr_result.text,
-        )
-    except Exception as e:
-        _logger.warning(
-            "[numerical_sequences] fonctionnalité dégradée : %s", e,
-        )
-
-    # Sprint 87 — delta Flesch (Sprint 52) calculé automatiquement
-    # avec adaptive masking (≥ 5 mots dans la GT).  Langue lue
-    # depuis ``corpus_lang`` propagé par run_benchmark.
-    readability_data: Optional[dict] = None
-    try:
-        from picarones.core.readability_runner import (
-            compute_readability_metrics,
-        )
-        readability_data = compute_readability_metrics(
-            ground_truth, ocr_result.text, lang=corpus_lang,
-        )
-    except Exception as e:
-        _logger.warning("[readability] fonctionnalité dégradée : %s", e)
+    # Hooks document-level — chaque hook produit un attribut nommé du
+    # ``DocumentResult``.  Les hooks invalides pour ce contexte (échec
+    # OCR pour les hooks ``requires_success``, absence de
+    # ``token_confidences`` pour ``calibration``) sont sautés
+    # silencieusement.  Les exceptions levées par un hook sont
+    # capturées et loggées en warning par ``run_document_hooks``.
+    extras = run_document_hooks(
+        profile,
+        ground_truth=ground_truth,
+        hypothesis=ocr_result.text,
+        image_path=image_path,
+        corpus_lang=corpus_lang,
+        ocr_result=ocr_result,
+    )
 
     return DocumentResult(
         doc_id=doc_id,
@@ -362,18 +236,18 @@ def _compute_document_result(
         engine_error=ocr_result.error,
         ocr_intermediate=ocr_intermediate,
         pipeline_metadata=pipeline_meta,
-        confusion_matrix=confusion_data,
-        char_scores=char_scores_data,
-        taxonomy=taxonomy_data,
-        structure=structure_data,
-        image_quality=image_quality_data,
-        line_metrics=line_metrics_data,
-        hallucination_metrics=hallucination_data,
-        calibration_metrics=calibration_data,
-        philological_metrics=philological_data,
-        searchability_metrics=searchability_data,
-        numerical_sequence_metrics=numerical_sequence_data,
-        readability_metrics=readability_data,
+        confusion_matrix=extras.get("confusion_matrix"),
+        char_scores=extras.get("char_scores"),
+        taxonomy=extras.get("taxonomy"),
+        structure=extras.get("structure"),
+        image_quality=extras.get("image_quality"),
+        line_metrics=extras.get("line_metrics"),
+        hallucination_metrics=extras.get("hallucination_metrics"),
+        calibration_metrics=extras.get("calibration_metrics"),
+        philological_metrics=extras.get("philological_metrics"),
+        searchability_metrics=extras.get("searchability_metrics"),
+        numerical_sequence_metrics=extras.get("numerical_sequence_metrics"),
+        readability_metrics=extras.get("readability_metrics"),
     )
 
 
@@ -536,6 +410,7 @@ def run_benchmark(
     partial_dir: Optional[str | Path] = None,
     cancel_event: Optional[threading.Event] = None,
     entity_extractor: Optional[callable] = None,
+    profile: str = "standard",
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -584,11 +459,29 @@ def run_benchmark(
         ``threading.Event`` optionnel.  Si défini et signalé (``set()``),
         le benchmark s'interrompt proprement dès que possible et retourne
         les résultats partiels collectés jusque-là.
+    profile:
+        Profil de calcul des métriques (chantier 2 post-Sprint 97).
+        Valeurs : ``"minimal"`` (CER/WER seuls), ``"standard"`` (défaut,
+        comportement historique avec les 12 hooks), ``"philological"``,
+        ``"diagnostics"``, ``"economics"``, ``"pipeline"``, ``"full"``.
+        Le profil ``"standard"`` est strictement rétrocompatible avec
+        le runner pré-chantier-2.
 
     Returns
     -------
     BenchmarkResult
     """
+    # Validation du profil dès l'entrée pour échouer rapidement sur
+    # une faute de frappe utilisateur, avant de soumettre des futures
+    # aux pools.  Eager-load des hooks natifs pour peupler le registre
+    # dans le main process (les sous-processus du pool feront leur
+    # propre import dans ``_compute_document_result``).
+    import picarones.core.builtin_hooks  # noqa: F401
+    from picarones.core.metric_hooks import (
+        run_corpus_aggregators, validate_profile,
+    )
+    validate_profile(profile)
+
     def _is_cancelled() -> bool:
         return cancel_event is not None and cancel_event.is_set()
     engine_reports: list[EngineReport] = []
@@ -679,12 +572,12 @@ def run_benchmark(
                         _cpu_doc_worker,
                         (engine_module, engine_class_name, engine.config,
                          doc.doc_id, str(doc.image_path), doc.ground_truth,
-                         char_exclude_tuple, corpus_lang),
+                         char_exclude_tuple, corpus_lang, profile),
                     )
                 else:
                     future = executor.submit(
                         _io_doc_worker, engine, doc, char_exclude,
-                        corpus_lang,
+                        corpus_lang, profile,
                     )
                 future_to_doc[future] = doc
                 submitted_at[future] = time.monotonic()
@@ -791,40 +684,12 @@ def run_benchmark(
         engine_version = engine._safe_version()
         pipeline_info = _build_pipeline_info(engine, document_results)
 
-        agg_confusion = _aggregate_confusion(document_results)
-        agg_char_scores = _aggregate_char_scores(document_results)
-        agg_taxonomy = _aggregate_taxonomy(document_results)
-        agg_structure = _aggregate_structure(document_results)
-        agg_image_quality = _aggregate_image_quality(document_results)
-        agg_line_metrics = _aggregate_line_metrics(document_results)
-        agg_hallucination = _aggregate_hallucination(document_results)
-        agg_calibration = _aggregate_calibration(document_results)
-        # Sprint 61 — agrégation philologique (modules Sprints 55-60).
-        from picarones.core.philological_runner import (
-            aggregate_philological_metrics,
-        )
-        agg_philological = aggregate_philological_metrics(
-            [dr.philological_metrics for dr in document_results],
-        )
-        # Sprint 86 — agrégation A.II.5
-        from picarones.core.searchability_runner import (
-            aggregate_searchability_metrics,
-        )
-        from picarones.core.numerical_sequences_runner import (
-            aggregate_numerical_sequence_metrics,
-        )
-        from picarones.core.readability_runner import (
-            aggregate_readability_metrics,
-        )
-        agg_searchability = aggregate_searchability_metrics(
-            [dr.searchability_metrics for dr in document_results],
-        )
-        agg_numerical_sequences = aggregate_numerical_sequence_metrics(
-            [dr.numerical_sequence_metrics for dr in document_results],
-        )
-        agg_readability = aggregate_readability_metrics(
-            [dr.readability_metrics for dr in document_results],
-        )
+        # Chantier 2 (post-Sprint 97) — agrégation déléguée au registre.
+        # Les 12 appels manuels aux fonctions ``_aggregate_*`` sont
+        # remplacés par un seul appel qui itère sur les agrégateurs
+        # actifs du profil. Le profil ``"standard"`` (défaut) reproduit
+        # exactement le comportement pré-chantier-2.
+        aggregated = run_corpus_aggregators(profile, document_results)
 
         report = EngineReport(
             engine_name=engine.name,
@@ -832,18 +697,18 @@ def run_benchmark(
             engine_config=engine.config,
             document_results=document_results,
             pipeline_info=pipeline_info,
-            aggregated_confusion=agg_confusion,
-            aggregated_char_scores=agg_char_scores,
-            aggregated_taxonomy=agg_taxonomy,
-            aggregated_structure=agg_structure,
-            aggregated_image_quality=agg_image_quality,
-            aggregated_line_metrics=agg_line_metrics,
-            aggregated_hallucination=agg_hallucination,
-            aggregated_calibration=agg_calibration,
-            aggregated_philological=agg_philological,
-            aggregated_searchability=agg_searchability,
-            aggregated_numerical_sequences=agg_numerical_sequences,
-            aggregated_readability=agg_readability,
+            aggregated_confusion=aggregated.get("aggregated_confusion"),
+            aggregated_char_scores=aggregated.get("aggregated_char_scores"),
+            aggregated_taxonomy=aggregated.get("aggregated_taxonomy"),
+            aggregated_structure=aggregated.get("aggregated_structure"),
+            aggregated_image_quality=aggregated.get("aggregated_image_quality"),
+            aggregated_line_metrics=aggregated.get("aggregated_line_metrics"),
+            aggregated_hallucination=aggregated.get("aggregated_hallucination"),
+            aggregated_calibration=aggregated.get("aggregated_calibration"),
+            aggregated_philological=aggregated.get("aggregated_philological"),
+            aggregated_searchability=aggregated.get("aggregated_searchability"),
+            aggregated_numerical_sequences=aggregated.get("aggregated_numerical_sequences"),
+            aggregated_readability=aggregated.get("aggregated_readability"),
         )
         engine_reports.append(report)
         logger.info(
@@ -974,138 +839,54 @@ def _build_pipeline_info(engine: BaseOCREngine, doc_results: list[DocumentResult
 
 
 # ---------------------------------------------------------------------------
-# Helpers d'agrégation Sprint 5
+# Helpers d'agrégation — délégations rétrocompat
 # ---------------------------------------------------------------------------
+# Chantier 2 (post-Sprint 97) : les implémentations vivent désormais dans
+# :mod:`picarones.core.builtin_hooks` (single source of truth, exposé via
+# le registre :mod:`picarones.core.metric_hooks`).  Les noms ci-dessous
+# restent disponibles depuis ``picarones.core.runner`` pour la rétrocompat
+# des tests Sprint 13 / 42 qui les importent directement.
 
 def _aggregate_confusion(doc_results: list) -> Optional[dict]:
-    """Agrège les matrices de confusion unicode sur tous les documents."""
-    try:
-        from picarones.core.confusion import aggregate_confusion_matrices, ConfusionMatrix
-        matrices = [
-            ConfusionMatrix(**dr.confusion_matrix)
-            for dr in doc_results
-            if dr.confusion_matrix is not None
-        ]
-        if not matrices:
-            return None
-        agg = aggregate_confusion_matrices(matrices)
-        return agg.as_compact_dict(min_count=2)
-    except Exception as e:
-        logger.warning("[aggregate_confusion] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_confusion`."""
+    from picarones.core.builtin_hooks import _aggregate_confusion as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_char_scores(doc_results: list) -> Optional[dict]:
-    """Agrège les scores ligatures/diacritiques."""
-    try:
-        from picarones.core.char_scores import (
-            aggregate_ligature_scores, aggregate_diacritic_scores,
-            LigatureScore, DiacriticScore,
-        )
-        lig_scores = [
-            LigatureScore(**dr.char_scores["ligature"])
-            for dr in doc_results
-            if dr.char_scores is not None
-        ]
-        diac_scores = [
-            DiacriticScore(**dr.char_scores["diacritic"])
-            for dr in doc_results
-            if dr.char_scores is not None
-        ]
-        if not lig_scores:
-            return None
-        return {
-            "ligature": aggregate_ligature_scores(lig_scores),
-            "diacritic": aggregate_diacritic_scores(diac_scores),
-        }
-    except Exception as e:
-        logger.warning("[aggregate_char_scores] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_char_scores`."""
+    from picarones.core.builtin_hooks import _aggregate_char_scores as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_taxonomy(doc_results: list) -> Optional[dict]:
-    """Agrège les classifications taxonomiques."""
-    try:
-        from picarones.core.taxonomy import aggregate_taxonomy, TaxonomyResult
-        results = [
-            TaxonomyResult.from_dict(dr.taxonomy)
-            for dr in doc_results
-            if dr.taxonomy is not None
-        ]
-        if not results:
-            return None
-        return aggregate_taxonomy(results)
-    except Exception as e:
-        logger.warning("[aggregate_taxonomy] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_taxonomy`."""
+    from picarones.core.builtin_hooks import _aggregate_taxonomy as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_structure(doc_results: list) -> Optional[dict]:
-    """Agrège les métriques structurelles."""
-    try:
-        from picarones.core.structure import aggregate_structure, StructureResult
-        results = [
-            StructureResult.from_dict(dr.structure)
-            for dr in doc_results
-            if dr.structure is not None
-        ]
-        if not results:
-            return None
-        return aggregate_structure(results)
-    except Exception as e:
-        logger.warning("[aggregate_structure] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_structure`."""
+    from picarones.core.builtin_hooks import _aggregate_structure as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
-    """Agrège les métriques de qualité image."""
-    try:
-        from picarones.core.image_quality import aggregate_image_quality, ImageQualityResult
-        results = [
-            ImageQualityResult.from_dict(dr.image_quality)
-            for dr in doc_results
-            if dr.image_quality is not None
-        ]
-        if not results:
-            return None
-        return aggregate_image_quality(results)
-    except Exception as e:
-        logger.warning("[aggregate_image_quality] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_image_quality`."""
+    from picarones.core.builtin_hooks import _aggregate_image_quality as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
-    """Agrège la distribution CER par ligne (Gini, percentiles, heatmap)."""
-    try:
-        from picarones.core.line_metrics import aggregate_line_metrics, LineMetrics
-        results = [
-            LineMetrics.from_dict(dr.line_metrics)
-            for dr in doc_results
-            if dr.line_metrics is not None
-        ]
-        if not results:
-            return None
-        return aggregate_line_metrics(results)
-    except Exception as e:
-        logger.warning("[aggregate_line_metrics] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_line_metrics`."""
+    from picarones.core.builtin_hooks import _aggregate_line_metrics as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_hallucination(doc_results: list) -> Optional[dict]:
-    """Agrège les métriques de détection d'hallucinations VLM."""
-    try:
-        from picarones.core.hallucination import aggregate_hallucination_metrics, HallucinationMetrics
-        results = [
-            HallucinationMetrics.from_dict(dr.hallucination_metrics)
-            for dr in doc_results
-            if dr.hallucination_metrics is not None
-        ]
-        if not results:
-            return None
-        return aggregate_hallucination_metrics(results)
-    except Exception as e:
-        logger.warning("[aggregate_hallucination] fonctionnalité dégradée : %s", e)
-        return None
+    """Délégation vers :func:`builtin_hooks._aggregate_hallucination`."""
+    from picarones.core.builtin_hooks import _aggregate_hallucination as _impl
+    return _impl(doc_results)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -1158,99 +939,15 @@ def _attach_ner_metrics(
 
 
 def _aggregate_calibration(doc_results: list) -> Optional[dict]:
-    """Agrège la calibration micro sur tous les docs.
+    """Délégation vers :func:`builtin_hooks._aggregate_calibration`.
 
-    Recalcule ECE/MCE à partir de la **somme des bins** de chaque
-    document : pour chaque bin, on additionne ``count``, on agrège la
-    confiance moyenne pondérée par count, et on agrège l'accuracy
-    pondérée par count.  L'ECE micro est ensuite la moyenne pondérée
-    par bin de ``|conf - acc|``.
+    Conservé pour la rétrocompat du test ``test_sprint42_calibration_runner``
+    qui importe directement depuis ``picarones.core.runner``. La logique
+    réelle vit dans :mod:`picarones.core.builtin_hooks` (chantier 2
+    post-Sprint 97).
     """
-    relevant = [
-        dr for dr in doc_results
-        if dr.calibration_metrics is not None
-        and (dr.calibration_metrics.get("bins") or [])
-    ]
-    if not relevant:
-        return None
-
-    # Aligne tous les docs sur le même nombre de bins (par sécurité, on
-    # vérifie qu'ils sont cohérents — sinon on prend le 1er en
-    # référence et on saute les incohérents avec un warning).
-    n_bins = relevant[0].calibration_metrics.get("n_bins", 10)
-    sum_conf: list[float] = [0.0] * n_bins
-    sum_acc: list[float] = [0.0] * n_bins
-    counts: list[int] = [0] * n_bins
-    bin_lows: list[float] = [
-        b["bin_low"] for b in relevant[0].calibration_metrics["bins"]
-    ]
-    bin_highs: list[float] = [
-        b["bin_high"] for b in relevant[0].calibration_metrics["bins"]
-    ]
-
-    for dr in relevant:
-        m = dr.calibration_metrics
-        if m.get("n_bins") != n_bins:
-            logger.warning(
-                "[aggregate_calibration] %s : n_bins=%s ≠ %s — ignoré",
-                dr.doc_id, m.get("n_bins"), n_bins,
-            )
-            continue
-        for k, b in enumerate(m["bins"]):
-            n = int(b.get("count") or 0)
-            if n == 0:
-                continue
-            counts[k] += n
-            sum_conf[k] += float(b.get("avg_confidence") or 0.0) * n
-            sum_acc[k] += float(b.get("accuracy") or 0.0) * n
-
-    total = sum(counts)
-    if total == 0:
-        return None
-
-    bins: list[dict] = []
-    ece = 0.0
-    mce = 0.0
-    for k in range(n_bins):
-        n = counts[k]
-        if n == 0:
-            bins.append({
-                "bin_low": bin_lows[k] if k < len(bin_lows) else k / n_bins,
-                "bin_high": bin_highs[k] if k < len(bin_highs) else (k + 1) / n_bins,
-                "avg_confidence": None,
-                "accuracy": None,
-                "count": 0,
-                "gap": None,
-            })
-            continue
-        avg_conf = sum_conf[k] / n
-        accuracy = sum_acc[k] / n
-        gap = abs(avg_conf - accuracy)
-        bins.append({
-            "bin_low": bin_lows[k] if k < len(bin_lows) else k / n_bins,
-            "bin_high": bin_highs[k] if k < len(bin_highs) else (k + 1) / n_bins,
-            "avg_confidence": avg_conf,
-            "accuracy": accuracy,
-            "count": n,
-            "gap": gap,
-        })
-        ece += (n / total) * gap
-        if gap > mce:
-            mce = gap
-
-    overall_acc = sum(sum_acc) / total
-    overall_conf = sum(sum_conf) / total
-
-    return {
-        "ece": ece,
-        "mce": mce,
-        "n_bins": n_bins,
-        "n_predictions": total,
-        "overall_accuracy": overall_acc,
-        "overall_confidence": overall_conf,
-        "bins": bins,
-        "doc_count": len(relevant),
-    }
+    from picarones.core.builtin_hooks import _aggregate_calibration as _impl
+    return _impl(doc_results)
 
 
 def _aggregate_ner(doc_results: list) -> Optional[dict]:

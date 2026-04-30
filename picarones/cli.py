@@ -119,6 +119,21 @@ def cli() -> None:
     metavar="THRESHOLD",
     help="Quitte avec code 1 si CER moyen > THRESHOLD (usage CI/CD)",
 )
+@click.option(
+    "--profile",
+    default="standard",
+    show_default=True,
+    type=click.Choice([
+        "minimal", "standard", "philological", "diagnostics",
+        "economics", "pipeline", "full",
+    ]),
+    help=(
+        "Profil de calcul des métriques (chantier 2 post-Sprint 97). "
+        "'minimal' calcule uniquement CER/WER (rapide, bench massif). "
+        "'standard' active les 12 hooks historiques (défaut, rétrocompat). "
+        "Voir docs/profiles/ pour le détail."
+    ),
+)
 def run_cmd(
     corpus: str,
     engines: str,
@@ -128,6 +143,7 @@ def run_cmd(
     no_progress: bool,
     verbose: bool,
     fail_if_cer_above: float | None,
+    profile: str,
 ) -> None:
     """Lance un benchmark OCR sur un corpus de documents.
 
@@ -164,6 +180,7 @@ def run_cmd(
         sys.exit(1)
 
     click.echo(f"Moteurs : {', '.join(e.name for e in ocr_engines)}")
+    click.echo(f"Profil de métriques : {profile}")
 
     # Lancement du benchmark
     result = run_benchmark(
@@ -171,6 +188,7 @@ def run_cmd(
         engines=ocr_engines,
         output_json=output,
         show_progress=not no_progress,
+        profile=profile,
     )
 
     # Affichage du classement
