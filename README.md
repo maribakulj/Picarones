@@ -9,9 +9,9 @@ pinned: false
 
 # Picarones
 
-> **Plateforme d'évaluation de pipelines de post-correction OCR sur corpus ALTO XML**
-
 > **OCR Post-Correction Benchmarking Platform for Existing ALTO XML Corpora**
+
+> **Plateforme d'évaluation de pipelines de post-correction OCR sur corpus ALTO XML**
 
 [![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -19,6 +19,60 @@ pinned: false
 [![HuggingFace Space](https://img.shields.io/badge/%F0%9F%A4%97-HuggingFace%20Space-yellow.svg)](https://huggingface.co/spaces/Ma-Ri-Ba-Ku/Picarones)
 
 ---
+
+**Picarones** is an open-source platform designed for an **institutional
+context** — heritage services, archives, digital libraries that already
+have a **corpus in ALTO XML** (output of a prior OCR pipeline) and want
+to **rigorously evaluate** post-correction strategies: alternative re-OCR,
+LLM correction, specialised ALTO mappers, ensemble voting, etc.
+
+This is a **benchmarking platform, not a production workshop**. Picarones
+loads an existing ALTO corpus, runs the pipelines the researcher brings,
+measures every relevant metric, and produces a self-contained HTML report
+that is **factual and reproducible**. No prescriptions, no automatic
+verdicts: the report shows the numbers, the researcher decides.
+
+Heritage-specific metrics (diplomatic CER, ligature and diacritic scores,
+medieval abbreviations, Roman numerals, foliation, fuzzy full-text
+searchability, philological marker fidelity), composable pipelines, a
+**factual narrative synthesis** at the top of the report, **multi-engine
+Friedman/Nemenyi significance tests** with a **critical difference
+diagram**, **cost / speed / CO₂ Pareto analysis**, **per-junction error
+absorption**, **multi-run stability**, **controlled per-slot comparison**,
+and several corpus import sources (IIIF, HuggingFace, HTR-United,
+eScriptorium, ZIP upload).
+
+> *Version française ci-dessous.*
+
+---
+
+## Use case
+
+An institution (archive, digital library, heritage service) has **already
+OCR'd** a corpus of several thousand pages — output in **ALTO XML** with
+zone, line and word coordinates. The output has a decent but imperfect
+CER, with the typical defects on historical ligatures, unexpanded
+abbreviations and badly recognised proper names.
+
+The institution wants to **rigorously compare** several post-correction
+strategies on that existing corpus:
+
+- alternative re-OCR (Pero OCR, Kraken, Mistral OCR…);
+- LLM correction (GPT-4o, Claude, Mistral) in text-only or image+text mode;
+- specialised ALTO mappers (line re-segmentation, abbreviation expansion,
+  diplomatic normalisation);
+- composed pipelines: alternative OCR → LLM correction → ALTO mapper.
+
+Picarones loads the ALTO corpus, runs each pipeline, measures the
+relevant metrics (CER gain, recovered fuzzy searchability, preserved
+numerical sequences, **errors introduced by the post-corrector** —
+critical for LLMs that silently modernise) and produces a factual HTML
+report that is **directly citable in a scientific publication**: every
+number is traceable to its source payload, no prescription imposed.
+
+---
+
+## En français
 
 **Picarones** est une plateforme open source conçue pour un **contexte
 institutionnel** — services patrimoniaux, archives, bibliothèques numériques
@@ -43,9 +97,7 @@ jonction**, **stabilité multi-runs**, **comparaison contrôlée par slot**, et
 plusieurs sources d'import (IIIF, HuggingFace, HTR-United, eScriptorium,
 upload ZIP).
 
----
-
-## Cas d'usage type
+### Cas d'usage type
 
 Une institution (archive, bibliothèque numérique, service patrimonial) a
 **déjà OCRisé** un corpus de plusieurs milliers de pages — sortie au format
