@@ -6,7 +6,7 @@ import logging
 from typing import Optional
 from urllib.parse import urlparse
 
-from picarones.llm.base import BaseLLMAdapter
+from picarones.llm.base import BaseLLMAdapter, normalize_llm_content
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,10 @@ class OllamaAdapter(BaseLLMAdapter):
                 f"Réponse JSON invalide du serveur Ollama : {exc}"
             ) from exc
 
-        text = result.get("response", "")
+        # Chantier 4 — propagation du fix Sprint 15 : Ollama retourne
+        # ``response`` en string mais on normalise par défense (cas où
+        # un futur build retournerait un format structuré).
+        text = normalize_llm_content(result.get("response", ""))
         if not text:
             logger.warning(
                 "[OllamaAdapter] réponse vide (modèle=%s).", self.model,

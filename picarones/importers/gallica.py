@@ -122,34 +122,38 @@ class GallicaClient:
         self.timeout = timeout
         self.delay = delay_between_requests
 
+    # Chantier 4 (post-Sprint 97) — fusion Gallica → IIIF :
+    # ``_validate_url`` et le fetch HTTP sont désormais factorisés
+    # dans :mod:`picarones.importers._http`. Avant ce chantier ces
+    # 30 lignes étaient dupliquées avec :mod:`iiif`. Le polite
+    # ``delay_between_requests`` reste ici (spécifique à la BnF).
+
     @staticmethod
     def _validate_url(url: str) -> None:
-        """Vérifie que l'URL est sûre (pas de schéma file://, ftp://, etc.)."""
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError(
-                f"Schéma URL non autorisé '{parsed.scheme}' (seuls http/https sont acceptés) : {url}"
-            )
+        """Délègue à :func:`picarones.importers._http.validate_http_url`."""
+        from picarones.importers._http import validate_http_url
+        validate_http_url(url)
 
     def _fetch_url(self, url: str) -> bytes:
-        """Télécharge le contenu d'une URL."""
-        self._validate_url(url)
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Picarones/1.0 (research tool)"},
-        )
+        """Télécharge le contenu d'une URL avec respect du polite delay BnF.
+
+        Délègue à :func:`picarones.importers._http.download_url` puis
+        applique ``self.delay`` (par défaut 0.5 s) entre les requêtes
+        pour respecter les conditions d'utilisation Gallica.
+        """
+        from picarones.importers._http import download_url
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                return resp.read()
-        except urllib.error.HTTPError as exc:
-            raise RuntimeError(
-                f"HTTP {exc.code} sur {url}: {exc.reason}"
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(
-                f"Impossible de joindre {url}: {exc.reason}"
-            ) from exc
+            return download_url(
+                url,
+                retries=1,
+                timeout=self.timeout,
+                user_agent="Picarones/1.0 (research tool)",
+            )
+        except RuntimeError as exc:
+            # Le helper retourne ``RuntimeError`` après retries épuisés.
+            # On re-emballe pour conserver le format de message historique
+            # attendu par les tests Gallica (« HTTP 404 sur ... »).
+            raise RuntimeError(str(exc)) from exc
         finally:
             if self.delay > 0:
                 time.sleep(self.delay)

@@ -6,7 +6,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,105 @@ def _is_retryable(exc: Exception) -> bool:
     return False
 
 
+def normalize_llm_content(raw: Any) -> str:
+    """Normalise une réponse LLM en chaîne plate.
+
+    Chantier 4 (post-Sprint 97) — propagation du fix Mistral
+    Sprint 15 à tous les providers. Le SDK Mistral peut retourner
+    une liste de ``ContentChunk`` au lieu d'une chaîne pour certains
+    modèles/versions ; le SDK OpenAI peut faire de même quand on
+    active des features de structuration. Ce helper applique la même
+    discipline pour les 4 adapters :
+
+    - ``str``                          → renvoyée telle quelle (ou ``""``).
+    - ``None``                         → ``""``.
+    - ``list[ContentChunk]``           → concaténation des ``.text``.
+    - ``list[dict]`` avec clé ``text`` → concaténation des ``["text"]``.
+    - ``list[str]``                    → concaténation directe.
+    - autre objet avec ``.text``       → ``obj.text``.
+    - autre                            → ``str(obj)`` (best-effort).
+
+    Le résultat est garanti être une ``str`` ; ``""`` quand la réponse
+    est vide. La fonction est idempotente : ``normalize_llm_content(s)
+    == s`` pour toute chaîne ``s``.
+    """
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw
+    if isinstance(raw, list):
+        parts: list[str] = []
+        for chunk in raw:
+            if chunk is None:
+                continue
+            if isinstance(chunk, str):
+                parts.append(chunk)
+                continue
+            if hasattr(chunk, "text"):
+                txt = getattr(chunk, "text", None)
+                if isinstance(txt, str):
+                    parts.append(txt)
+                    continue
+            if isinstance(chunk, dict) and isinstance(chunk.get("text"), str):
+                parts.append(chunk["text"])
+                continue
+            # Dernier recours — convertit le chunk en chaîne
+            parts.append(str(chunk))
+        return "".join(parts)
+    if hasattr(raw, "text") and isinstance(getattr(raw, "text", None), str):
+        return raw.text  # type: ignore[no-any-return]
+    return str(raw)
+
+
+def log_http_error(
+    adapter_name: str,
+    model: str,
+    exc: Exception,
+    *,
+    env_var: Optional[str] = None,
+) -> None:
+    """Log standardisé des erreurs HTTP des SDK LLM.
+
+    Chantier 4 (post-Sprint 97) — propagation du log discriminant
+    Mistral/OpenAI à tous les providers. Inspecte ``status_code`` et
+    ``http_status`` puis émet un warning ciblé selon le code :
+
+    - 401 : clé API invalide/expirée (mention de la variable
+      d'environnement à vérifier si fournie).
+    - 429 : rate limit / quota dépassé.
+    - 5xx : problème serveur côté provider.
+    - autre / pas de status_code : log générique.
+
+    L'exception n'est pas levée — l'appelant doit ``raise``
+    explicitement après ce log s'il veut propager (le retry est géré
+    par ``BaseLLMAdapter.complete`` selon ``_is_retryable``).
+    """
+    status = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
+    if status == 401:
+        suffix = f" Vérifier {env_var}." if env_var else ""
+        logger.warning(
+            "[%s] erreur HTTP 401 — clé API invalide ou expirée "
+            "(modèle=%s).%s",
+            adapter_name, model, suffix,
+        )
+    elif status == 429:
+        logger.warning(
+            "[%s] erreur HTTP 429 — quota dépassé ou rate-limit "
+            "(modèle=%s). Réessayer plus tard.",
+            adapter_name, model,
+        )
+    elif status is not None and status >= 500:
+        logger.warning(
+            "[%s] erreur HTTP %d — problème serveur (modèle=%s) : %s",
+            adapter_name, status, model, exc,
+        )
+    else:
+        logger.warning(
+            "[%s] erreur lors de l'appel API (modèle=%s) : %s",
+            adapter_name, model, exc,
+        )
+
+
 @dataclass
 class LLMResult:
     """Résultat produit par un appel LLM."""
@@ -69,7 +168,27 @@ class BaseLLMAdapter(ABC):
     Les erreurs retryables (HTTP 429, 5xx, timeout réseau) sont automatiquement
     retentées avec backoff exponentiel (2s, 4s, 8s par défaut). Configurable
     via ``config["max_retries"]`` et ``config["retry_backoff"]``.
+
+    Normalisation des réponses (chantier 4)
+    ---------------------------------------
+    Les sous-classes utilisent :func:`normalize_llm_content` sur la
+    réponse SDK avant de la retourner — garantit qu'une réponse de
+    type ``list[ContentChunk]`` (Mistral, parfois OpenAI) est
+    convertie en ``str`` plate.
+
+    Logging d'erreurs HTTP (chantier 4)
+    -----------------------------------
+    Les sous-classes utilisent :func:`log_http_error` pour produire
+    un log discriminant par ``status_code`` (401 → clé invalide,
+    429 → rate limit, 5xx → serveur).  Auparavant ce log était
+    dupliqué chez Mistral/OpenAI et absent chez Anthropic.
     """
+
+    # Variable d'environnement portant la clé API.  Sous-classes
+    # surchargent (ex. ``"OPENAI_API_KEY"``) ; mention utilisée par
+    # :func:`log_http_error` quand un 401 est rencontré.  ``None``
+    # pour les providers sans clé (Ollama).
+    api_key_env_var: Optional[str] = None
 
     def __init__(
         self,
@@ -150,3 +269,11 @@ class BaseLLMAdapter(ABC):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(model={self.model!r})"
+
+
+__all__ = [
+    "BaseLLMAdapter",
+    "LLMResult",
+    "log_http_error",
+    "normalize_llm_content",
+]

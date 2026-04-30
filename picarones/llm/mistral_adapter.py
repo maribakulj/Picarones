@@ -6,7 +6,11 @@ import logging
 import os
 from typing import Optional
 
-from picarones.llm.base import BaseLLMAdapter
+from picarones.llm.base import (
+    BaseLLMAdapter,
+    log_http_error,
+    normalize_llm_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +39,8 @@ class MistralAdapter(BaseLLMAdapter):
     Les modèles ``ministral-3b-latest`` et ``ministral-8b-latest`` ne supportent
     pas le mode multimodal — utiliser ``PipelineMode.TEXT_ONLY`` avec ces modèles.
     """
+
+    api_key_env_var = "MISTRAL_API_KEY"
 
     @property
     def name(self) -> str:
@@ -109,30 +115,10 @@ class MistralAdapter(BaseLLMAdapter):
                 max_tokens=max_tokens,
             )
         except Exception as exc:
-            status_code = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
-            if status_code == 401:
-                logger.warning(
-                    "[MistralAdapter] erreur HTTP 401 — clé API invalide ou expirée "
-                    "(modèle=%s). Vérifier MISTRAL_API_KEY.",
-                    self.model,
-                )
-            elif status_code == 429:
-                logger.warning(
-                    "[MistralAdapter] erreur HTTP 429 — quota dépassé ou rate-limit "
-                    "(modèle=%s). Réessayer plus tard.",
-                    self.model,
-                )
-            elif status_code is not None and status_code >= 500:
-                logger.warning(
-                    "[MistralAdapter] erreur HTTP %d — problème serveur Mistral "
-                    "(modèle=%s) : %s",
-                    status_code, self.model, exc,
-                )
-            else:
-                logger.warning(
-                    "[MistralAdapter] erreur lors de l'appel API (modèle=%s) : %s",
-                    self.model, exc,
-                )
+            log_http_error(
+                "MistralAdapter", self.model, exc,
+                env_var=self.api_key_env_var,
+            )
             raise
 
         if not response.choices:
@@ -146,15 +132,10 @@ class MistralAdapter(BaseLLMAdapter):
         raw = _choice.message.content
         _finish_reason = _choice.finish_reason
 
-        # Le SDK mistralai peut retourner une liste de ContentChunk au lieu
-        # d'une chaîne pour certains modèles/versions.  Normaliser en str.
-        if isinstance(raw, list):
-            raw = "".join(
-                chunk.text if hasattr(chunk, "text") else str(chunk)
-                for chunk in raw
-            )
-
-        text = raw or ""
+        # Chantier 4 — normalisation factorisée dans
+        # ``picarones.llm.base.normalize_llm_content`` (Sprint 15
+        # généralisé : list[ContentChunk] / list[dict] / str → str).
+        text = normalize_llm_content(raw)
 
         _completion_tokens = None
         if hasattr(response, "usage") and response.usage:

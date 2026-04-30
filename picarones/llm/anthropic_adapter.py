@@ -6,7 +6,11 @@ import logging
 import os
 from typing import Optional
 
-from picarones.llm.base import BaseLLMAdapter
+from picarones.llm.base import (
+    BaseLLMAdapter,
+    log_http_error,
+    normalize_llm_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +22,8 @@ class AnthropicAdapter(BaseLLMAdapter):
 
     Modes supportés : text_only, text_and_image, zero_shot.
     """
+
+    api_key_env_var = "ANTHROPIC_API_KEY"
 
     @property
     def name(self) -> str:
@@ -74,9 +80,12 @@ class AnthropicAdapter(BaseLLMAdapter):
                 messages=[{"role": "user", "content": content}],
             )
         except Exception as exc:
-            logger.warning(
-                "[AnthropicAdapter] erreur API (modèle=%s) : %s",
-                self.model, exc,
+            # Chantier 4 — log discriminant (401/429/5xx) factorisé.
+            # Auparavant Anthropic ne discriminait pas par code HTTP,
+            # difficile à diagnostiquer (clé invalide vs rate limit).
+            log_http_error(
+                "AnthropicAdapter", self.model, exc,
+                env_var=self.api_key_env_var,
             )
             raise
 
@@ -87,12 +96,16 @@ class AnthropicAdapter(BaseLLMAdapter):
             )
             return ""
 
-        block = response.content[0]
-        text = getattr(block, "text", None)
-        if text is None:
+        # Chantier 4 — propagation du fix Sprint 15 : le SDK Anthropic
+        # retourne ``response.content`` comme une liste de blocs
+        # (``ContentBlock`` avec attribut ``text``). ``normalize_llm_content``
+        # concatène le texte de tous les blocs au lieu de ne prendre que
+        # le premier — utile quand le modèle émet plusieurs blocs.
+        text = normalize_llm_content(response.content)
+        if not text:
+            block = response.content[0]
             logger.warning(
                 "[AnthropicAdapter] bloc de type '%s' sans texte (modèle=%s).",
                 getattr(block, "type", "unknown"), self.model,
             )
-            return ""
         return text

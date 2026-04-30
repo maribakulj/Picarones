@@ -307,41 +307,12 @@ def _extract_v3_transcription(canvas: dict) -> Optional[str]:
 # Téléchargement avec retry
 # ---------------------------------------------------------------------------
 
-def _validate_url(url: str) -> None:
-    """Vérifie que l'URL est sûre (pas de schéma file://, ftp://, etc.)."""
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError(
-            f"Schéma URL non autorisé '{parsed.scheme}' (seuls http/https sont acceptés) : {url}"
-        )
-
-
-def _download_url(
-    url: str,
-    retries: int = 4,
-    backoff: float = 2.0,
-    timeout: int = 60,
-) -> bytes:
-    """Télécharge une URL avec retry exponentiel."""
-    _validate_url(url)
-    headers = {
-        "User-Agent": "Picarones/1.0 (OCR benchmark platform; https://github.com/maribakulj/Picarones)"
-    }
-    last_exc: Optional[Exception] = None
-    for attempt in range(retries):
-        if attempt > 0:
-            wait = backoff ** attempt
-            logger.debug("Retry %d/%d dans %.1fs — %s", attempt, retries - 1, wait, url)
-            time.sleep(wait)
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return resp.read()
-        except (urllib.error.URLError, urllib.error.HTTPError) as exc:
-            last_exc = exc
-            logger.warning("Erreur téléchargement %s : %s", url, exc)
-    raise RuntimeError(f"Impossible de télécharger {url} après {retries} tentatives") from last_exc
+# Chantier 4 (post-Sprint 97) — helpers HTTP factorisés dans
+# :mod:`picarones.importers._http`. Ces noms restent disponibles
+# depuis ``iiif`` (rétrocompat des tests qui les importent
+# directement, ex. test_sprint4_normalization_iiif).
+from picarones.importers._http import download_url as _download_url
+from picarones.importers._http import validate_http_url as _validate_url
 
 
 def _fetch_manifest(url: str) -> dict:

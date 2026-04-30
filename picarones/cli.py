@@ -215,6 +215,227 @@ def run_cmd(
 
 
 # ---------------------------------------------------------------------------
+# Workflows CLI dédiés (chantier 4 post-Sprint 97)
+# ---------------------------------------------------------------------------
+#
+# Chaque commande spécialisée fixe un profil de calcul (chantier 2) et
+# émet un message identifiant la famille avant de déléguer au runner.
+# L'option ``--profile`` reste disponible mais le défaut change pour
+# chaque commande.
+
+def _run_workflow(
+    *,
+    corpus: str,
+    engines: str,
+    output: str,
+    lang: str,
+    psm: int,
+    no_progress: bool,
+    verbose: bool,
+    profile: str,
+    workflow_label: str,
+) -> None:
+    """Implémentation commune des commandes ``run``, ``diagnose``,
+    ``economics`` et ``edition``.
+
+    Les 4 commandes partagent le squelette : chargement corpus →
+    instanciation moteurs → ``run_benchmark(profile=...)`` → affichage
+    classement.  Seul le profil par défaut et le message d'en-tête
+    diffèrent.
+    """
+    _setup_logging(verbose)
+
+    from picarones.core.corpus import load_corpus_from_directory
+    from picarones.core.runner import run_benchmark
+
+    try:
+        corp = load_corpus_from_directory(corpus)
+    except (FileNotFoundError, ValueError) as exc:
+        click.echo(f"Erreur corpus : {exc}", err=True)
+        sys.exit(1)
+
+    click.echo(f"[{workflow_label}] Corpus '{corp.name}' — "
+               f"{len(corp)} documents chargés.")
+
+    engine_names = [e.strip() for e in engines.split(",") if e.strip()]
+    ocr_engines = []
+    for name in engine_names:
+        try:
+            engine = _engine_from_name(name, lang=lang, psm=psm)
+            ocr_engines.append(engine)
+        except click.BadParameter as exc:
+            click.echo(f"Erreur moteur : {exc}", err=True)
+            sys.exit(1)
+
+    if not ocr_engines:
+        click.echo("Aucun moteur valide spécifié.", err=True)
+        sys.exit(1)
+
+    click.echo(f"Moteurs : {', '.join(e.name for e in ocr_engines)}")
+    click.echo(f"Profil de métriques : {profile}")
+
+    result = run_benchmark(
+        corpus=corp,
+        engines=ocr_engines,
+        output_json=output,
+        show_progress=not no_progress,
+        profile=profile,
+    )
+
+    click.echo("\n── Classement ──────────────────────────────────")
+    for rank, entry in enumerate(result.ranking(), 1):
+        cer_pct = (
+            f"{entry['mean_cer'] * 100:.2f}%"
+            if entry["mean_cer"] is not None else "N/A"
+        )
+        wer_pct = (
+            f"{entry['mean_wer'] * 100:.2f}%"
+            if entry["mean_wer"] is not None else "N/A"
+        )
+        failed = entry["failed"]
+        failed_str = f" ({failed} erreur(s))" if failed else ""
+        click.echo(
+            f"  {rank}. {entry['engine']:<20} "
+            f"CER={cer_pct:<8} WER={wer_pct}{failed_str}"
+        )
+
+    click.echo(f"\nRésultats écrits dans : {output}")
+
+
+@cli.command("diagnose")
+@click.option(
+    "--corpus", "-c", required=True,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Dossier contenant les paires image / .gt.txt",
+)
+@click.option(
+    "--engines", "-e", default="tesseract", show_default=True,
+    help="Liste de moteurs séparés par des virgules",
+)
+@click.option(
+    "--output", "-o", default="results_diagnose.json", show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Fichier JSON de sortie",
+)
+@click.option("--lang", "-l", default="fra", show_default=True,
+              help="Code langue Tesseract")
+@click.option("--psm", default=6, show_default=True,
+              help="Page Segmentation Mode Tesseract")
+@click.option("--no-progress", is_flag=True, default=False,
+              help="Désactive la barre de progression")
+@click.option("--verbose", "-v", is_flag=True, default=False,
+              help="Mode verbeux")
+def diagnose_cmd(
+    corpus: str, engines: str, output: str, lang: str, psm: int,
+    no_progress: bool, verbose: bool,
+) -> None:
+    """Workflow diagnostic : bench + leviers d'amélioration + image_predictive.
+
+    Active le profil ``diagnostics`` (chantier 2) qui calcule les
+    métriques nécessaires à la vue HTML « Diagnostic approfondi »
+    (chantier 3) : leviers, profil d'image, baseline, longitudinal.
+    Idéal pour comprendre *pourquoi* un moteur produit ces résultats
+    sur ce corpus, pas seulement *quel CER*.
+    """
+    _run_workflow(
+        corpus=corpus, engines=engines, output=output,
+        lang=lang, psm=psm,
+        no_progress=no_progress, verbose=verbose,
+        profile="diagnostics",
+        workflow_label="diagnose",
+    )
+
+
+@cli.command("economics")
+@click.option(
+    "--corpus", "-c", required=True,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Dossier contenant les paires image / .gt.txt",
+)
+@click.option(
+    "--engines", "-e", default="tesseract", show_default=True,
+    help="Liste de moteurs séparés par des virgules",
+)
+@click.option(
+    "--output", "-o", default="results_economics.json", show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Fichier JSON de sortie",
+)
+@click.option("--lang", "-l", default="fra", show_default=True,
+              help="Code langue Tesseract")
+@click.option("--psm", default=6, show_default=True,
+              help="Page Segmentation Mode Tesseract")
+@click.option("--no-progress", is_flag=True, default=False,
+              help="Désactive la barre de progression")
+@click.option("--verbose", "-v", is_flag=True, default=False,
+              help="Mode verbeux")
+def economics_cmd(
+    corpus: str, engines: str, output: str, lang: str, psm: int,
+    no_progress: bool, verbose: bool,
+) -> None:
+    """Workflow économique : bench + throughput effectif + (cost projection).
+
+    Active le profil ``economics`` (chantier 2) qui se concentre sur
+    les métriques de décision budget : pages/h utilisable (intégrant
+    la correction humaine HTR-United à 5 s/erreur), coût marginal par
+    erreur évitée. La vue HTML « Coût et performance » (chantier 3)
+    est ensuite branchée.
+    """
+    _run_workflow(
+        corpus=corpus, engines=engines, output=output,
+        lang=lang, psm=psm,
+        no_progress=no_progress, verbose=verbose,
+        profile="economics",
+        workflow_label="economics",
+    )
+
+
+@cli.command("edition")
+@click.option(
+    "--corpus", "-c", required=True,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Dossier contenant les paires image / .gt.txt",
+)
+@click.option(
+    "--engines", "-e", default="tesseract", show_default=True,
+    help="Liste de moteurs séparés par des virgules",
+)
+@click.option(
+    "--output", "-o", default="results_edition.json", show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Fichier JSON de sortie",
+)
+@click.option("--lang", "-l", default="fra", show_default=True,
+              help="Code langue Tesseract")
+@click.option("--psm", default=6, show_default=True,
+              help="Page Segmentation Mode Tesseract")
+@click.option("--no-progress", is_flag=True, default=False,
+              help="Désactive la barre de progression")
+@click.option("--verbose", "-v", is_flag=True, default=False,
+              help="Mode verbeux")
+def edition_cmd(
+    corpus: str, engines: str, output: str, lang: str, psm: int,
+    no_progress: bool, verbose: bool,
+) -> None:
+    """Workflow édition critique : bench + métriques philologiques.
+
+    Active le profil ``philological`` (chantier 2) qui inclut les
+    modules philologiques (unicode_blocks, abbreviations, MUFI,
+    early_modern_typography, modern_archives, roman_numerals) et la
+    vue HTML « Taxonomie avancée » (chantier 3) avec comparaison
+    miroir leader vs runner-up. Cible : éditeurs de chartes,
+    paléographes, archivistes.
+    """
+    _run_workflow(
+        corpus=corpus, engines=engines, output=output,
+        lang=lang, psm=psm,
+        no_progress=no_progress, verbose=verbose,
+        profile="philological",
+        workflow_label="edition",
+    )
+
+
+# ---------------------------------------------------------------------------
 # picarones metrics
 # ---------------------------------------------------------------------------
 
