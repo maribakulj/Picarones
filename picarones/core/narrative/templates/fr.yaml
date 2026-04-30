@@ -20,8 +20,9 @@ significant_gap: >-
   (Wilcoxon, p = {p_value:.4f}, Δ CER = {delta_cer_pct} points sur {n_pairs} paires).
 
 stratum_winner: >-
-  Sur la strate « {stratum} » ({n_docs_stratum} documents), {engine} domine
-  nettement avec un CER de {cer_pct} % contre {second_cer_pct} % pour {second_engine}.
+  Sur la strate « {stratum} » ({n_docs_stratum} documents), {engine}
+  obtient le CER le plus bas ({cer_pct} % contre {second_cer_pct} %
+  pour {second_engine}).
 
 stratum_collapse: >-
   {engine} est globalement compétitif ({global_cer_pct} %) mais s'effondre sur
@@ -46,8 +47,9 @@ speed_winner: >-
   que la médiane) pour un CER comparable ({cer_pct} %).
 
 confidence_warning: >-
-  Classement fragile : l'intervalle de confiance à {confidence_level} % de {engine} s'étend
-  sur {ci_width_pct} points de CER, à comparer à l'écart de {gap_to_runner_up_pct} points avec le second.
+  Incertitude statistique élevée : l'intervalle de confiance à {confidence_level} %
+  de {engine} s'étend sur {ci_width_pct} points de CER, à comparer à l'écart de
+  {gap_to_runner_up_pct} points avec le second.
 
 pareto_alternative: >-
   À coût sensiblement inférieur, {engine} offre un compromis intéressant
