@@ -841,6 +841,26 @@ class ReportGenerator:
             _taxos, labels=labels,
         )
 
+        # Chantier 3 (post-Sprint 97) — 3 nouvelles vues thématiques
+        # qui regroupent les renderers orphelins en sections
+        # collapsibles. Adaptive : retourne "" si aucune sous-section
+        # n'a de signal, donc la carte du template est masquée.
+        from picarones.report.views import (
+            build_advanced_taxonomy_view_html,
+            build_diagnostics_view_html,
+            build_economics_view_html,
+        )
+        economics_view_html = build_economics_view_html(
+            report_data, labels=labels,
+            engine_reports=self.benchmark.engine_reports,
+        )
+        advanced_taxonomy_view_html = build_advanced_taxonomy_view_html(
+            report_data, labels=labels,
+        )
+        diagnostics_view_html = build_diagnostics_view_html(
+            report_data, labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -866,6 +886,10 @@ class ReportGenerator:
             numerical_sequences_html=numerical_sequences_html,
             readability_html=readability_html,
             specialization_html=specialization_html,
+            # Chantier 3 — vues thématiques composées
+            economics_view_html=economics_view_html,
+            advanced_taxonomy_view_html=advanced_taxonomy_view_html,
+            diagnostics_view_html=diagnostics_view_html,
         )
 
         output_path.write_text(html, encoding="utf-8")
