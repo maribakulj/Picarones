@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+from picarones.core.modules import ArtifactType, BaseModule
 
 
 @dataclass
@@ -20,6 +22,13 @@ class EngineResult:
     duration_seconds: float
     error: Optional[str] = None
     metadata: dict = field(default_factory=dict)
+    # Sprint 42 — confidences au niveau token (optionnel).
+    # Format attendu : liste de dicts ``{"token": str, "confidence": float}``
+    # avec ``confidence`` ∈ [0, 1] (ou ∈ [0, 100], normalisé par le runner).
+    # ``None`` si le moteur ne fournit pas ce signal — comportement par
+    # défaut pour tous les adapters historiques.  Quand renseigné,
+    # le runner alimente ``DocumentResult.calibration_metrics``.
+    token_confidences: Optional[list[dict[str, Any]]] = None
 
     @property
     def success(self) -> bool:
@@ -30,8 +39,15 @@ class EngineResult:
         return hashlib.sha256(Path(self.image_path).read_bytes()).hexdigest()
 
 
-class BaseOCREngine(ABC):
+class BaseOCREngine(BaseModule):
     """Classe de base dont héritent tous les adaptateurs OCR.
+
+    Sprint 33 — Phase 0.2 : ``BaseOCREngine`` hérite désormais de
+    ``BaseModule`` (cf. ``picarones.core.modules``) afin que les moteurs
+    OCR existants soient automatiquement utilisables comme nœuds d'une
+    pipeline composée (axe B du plan d'évolution).  Aucune sous-classe
+    OCR n'est touchée : la méthode ``process`` est implémentée ici et
+    délègue à ``run`` puis à ``_run_ocr``.
 
     Chaque adaptateur doit implémenter :
     - ``name`` : identifiant unique du moteur
@@ -46,6 +62,9 @@ class BaseOCREngine(ABC):
         - ``"cpu"`` → ``ProcessPoolExecutor`` (moteurs CPU-intensifs : Tesseract, Pero, Kraken)
     """
 
+    # Déclaration BaseModule — un OCR consomme une image et produit du texte.
+    input_types = (ArtifactType.IMAGE,)
+    output_types = (ArtifactType.TEXT,)
     execution_mode: str = "io"
     """``"io"`` pour ThreadPoolExecutor (défaut), ``"cpu"`` pour ProcessPoolExecutor."""
 
@@ -64,6 +83,27 @@ class BaseOCREngine(ABC):
     @abstractmethod
     def _run_ocr(self, image_path: Path) -> str:
         """Exécute l'OCR et retourne le texte brut extrait."""
+
+    # ──────────────────────────────────────────────────────────────────
+    # Implémentation BaseModule (Sprint 33)
+    # ──────────────────────────────────────────────────────────────────
+
+    def process(self, inputs: dict[ArtifactType, Any]) -> dict[ArtifactType, Any]:
+        """Exécute le moteur OCR comme un module générique.
+
+        Wrapper rétrocompatible : extrait le chemin image de ``inputs``,
+        appelle ``run()``, et retourne la sortie sous forme de dictionnaire
+        ``{ArtifactType.TEXT: text}``.  Les erreurs sont conservées dans
+        le résultat (cf. ``EngineResult.error``) plutôt que de lever, comme
+        l'implémentation historique de ``run()``.
+        """
+        self.validate_inputs(inputs)
+        result = self.run(inputs[ArtifactType.IMAGE])
+        return {ArtifactType.TEXT: result.text}
+
+    def metadata(self) -> dict:
+        """Expose la version du moteur dans les métadonnées du module."""
+        return {"engine_version": self._safe_version()}
 
     def run(self, image_path: str | Path) -> EngineResult:
         """Point d'entrée public : exécute l'OCR et mesure le temps d'exécution."""

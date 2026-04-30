@@ -57,3 +57,43 @@ pareto_alternative: >-
 cost_outlier: >-
   Coût disproportionné pour {engine} ({cost} €/{cost_unit_pages} pages, ×{ratio_to_median}
   la médiane) sans avantage de qualité compensatoire (CER {cer_pct} %).
+
+ensemble_opportunity: >-
+  Les moteurs {pair_a} et {pair_b} ont des profils d'erreurs divergents
+  ({divergence_metric}={divergence}). Sur ce corpus de {doc_count} documents,
+  {best_engine} préserve {best_recall_pct} % des tokens ; un voting majoritaire
+  entre les moteurs en préserverait {oracle_recall_pct} %, soit
+  {absolute_gap_pct} points récupérables ({relative_gap_pct} % des erreurs
+  du meilleur moteur).
+
+median_mean_gap_warning: >-
+  Distribution asymétrique pour {engine} : médiane CER {median_cer_pct} %
+  vs moyenne {mean_cer_pct} % sur {n_docs} documents (écart relatif
+  {relative_gap_pct} %). La moyenne est tirée par quelques documents
+  catastrophiques — la médiane (utilisée pour le tri par défaut) est
+  plus représentative.
+
+stratification_recommended: >-
+  Corpus hétérogène ({n_strata} strates) : {leader} performe très
+  différemment selon le type de document — médiane CER
+  {min_stratum_cer_pct} % sur « {min_stratum} » contre
+  {max_stratum_cer_pct} % sur « {max_stratum} », soit {gap_pct} points
+  d'écart. Le classement global masque cette disparité ; consulter la
+  vue stratifiée.
+
+engine_off_baseline: >-
+  {engine} a obtenu {cer_current_pct} % CER ici, vs {cer_historical_mean_pct} %
+  en moyenne sur les {n_runs} runs précédents de votre institution sur
+  ce même corpus (écart relatif {relative_delta_pct} %). Ce corpus lui
+  est plus difficile que d'habitude.
+
+engine_unstable: >-
+  Sur {n_runs} runs successifs, {engine} produit des sorties variables
+  (CV CER {cer_cv_pct} %, paires de runs identiques {identical_run_rate_pct} %).
+  La reproductibilité est limitée — interpréter le CER moyen avec prudence.
+
+regression_in_history: >-
+  Sur les {n_runs} runs historiques pour {engine}, le CER moyen
+  est passé de {first_cer_pct} % à {last_cer_pct} %
+  (variation cumulée {absolute_delta_pct} points). Vérifier ce qui
+  a changé dans le pipeline ou les modèles.

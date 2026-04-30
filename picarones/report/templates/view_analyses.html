@@ -150,6 +150,118 @@
       </details>
     </div>
 
+    <!-- Sprint 43 — Calibration des moteurs (ECE, MCE, reliability diagram) -->
+    {% if calibration_summary_html or reliability_diagrams_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_calibration">Calibration des moteurs</h3>
+      <div class="calibration-grid"
+           style="display:grid;gap:1.2rem;align-items:start">
+        {% if calibration_summary_html %}
+        <div>{{ calibration_summary_html }}</div>
+        {% endif %}
+        {% if reliability_diagrams_html %}
+        <div>{{ reliability_diagrams_html }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="calibration_note">
+        ECE (Expected Calibration Error) : moyenne pondérée des écarts
+        |confiance − précision| par bin. Plus l'ECE est bas, plus le
+        moteur est honnête sur sa fiabilité — la diagonale du diagramme
+        représente la calibration parfaite. Un ECE élevé signale qu'on
+        ne peut pas se fier au score de confiance pour cibler la
+        relecture humaine.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Sprint 41 — Précision sur entités nommées (NER) -->
+    {% if ner_summary_html or ner_per_category_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_ner">Précision sur entités nommées</h3>
+      <div class="ner-grid"
+           style="display:grid;gap:1.2rem;align-items:start">
+        {% if ner_summary_html %}
+        <div>{{ ner_summary_html }}</div>
+        {% endif %}
+        {% if ner_per_category_html %}
+        <div>{{ ner_per_category_html }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="ner_note">
+        F1 calculé par alignement IoU ≥ 0,5 sur les spans (labels
+        case-insensitive). Plus le F1 est haut, plus le moteur restitue
+        fidèlement les entités nommées (personnes, lieux, dates) — ce
+        qui prédit l'utilité aval pour l'indexation prosopographique.
+        Cette métrique mesure conjointement OCR + extracteur NER ; le
+        modèle d'extraction lui-même peut halluciner.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Sprint 62 — Profil philologique (6 sections : unicode_blocks,
+         abbreviations, mufi, early_modern, modern_archives, roman_numerals).
+         Adaptive : n'apparaît que si au moins un module a du signal. -->
+    {% if philological_profile_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ philological_profile_html }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 86 — A.II.5 : recherchabilité fuzzy + précision sur
+         séquences numériques. Adaptive : n'apparaît que si au moins
+         un moteur a du signal. -->
+    {% if searchability_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ searchability_html }}
+    </div>
+    {% endif %}
+    {% if numerical_sequences_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ numerical_sequences_html }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 87 — A.II.2 : lisibilité (delta Flesch). Adaptive :
+         n'apparaît que si au moins un moteur a du signal. -->
+    {% if readability_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ readability_html }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 89 — A.II.8b : spécialisation inter-moteurs.
+         Adaptive : n'apparaît que si ≥ 2 moteurs avec taxonomie. -->
+    {% if specialization_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ specialization_html }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
+    {% if divergence_matrix_html or oracle_gap_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_inter_engine">Analyse inter-moteurs</h3>
+      <div class="inter-engine-grid"
+           style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+        {% if divergence_matrix_html %}
+        <div>{{ divergence_matrix_html }}</div>
+        {% endif %}
+        {% if oracle_gap_html %}
+        <div>{{ oracle_gap_html }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="inter_engine_note">
+        Plus la divergence est élevée, plus deux moteurs se trompent sur des
+        classes d'erreurs différentes — ils sont alors candidats à un voting
+        ensemble. L'oracle est la borne supérieure du recall token-level
+        atteignable par ce voting (proxy bag-of-words).
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
       <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>

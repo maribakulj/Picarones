@@ -60,6 +60,46 @@ class FactType(str, Enum):
     CONFIDENCE_WARNING = "confidence_warning"
     """Intervalle de confiance très large : classement peu fiable."""
 
+    ENSEMBLE_OPPORTUNITY = "ensemble_opportunity"
+    """Deux moteurs sont fortement complémentaires : un voting majoritaire
+    pourrait améliorer significativement le CER (Sprint 36)."""
+
+    MEDIAN_MEAN_GAP_WARNING = "median_mean_gap_warning"
+    """Distribution des CER fortement asymétrique sur le corpus —
+    la moyenne du leader est tirée par quelques documents catastrophiques
+    et masque les performances réelles. La médiane (utilisée pour le tri
+    par défaut depuis Sprint 44) est plus représentative."""
+
+    STRATIFICATION_RECOMMENDED = "stratification_recommended"
+    """Le corpus est hétérogène du point de vue script_type : le moteur
+    leader varie fortement selon la strate. Le lecteur doit consulter
+    la vue stratifiée plutôt que de se fier au seul classement global
+    (Sprint 46)."""
+
+    ENGINE_OFF_BASELINE = "engine_off_baseline"
+    """Le CER courant d'un moteur s'écarte significativement de sa
+    moyenne historique sur le même corpus (lue depuis l'historique
+    SQLite, Sprint 8). Lit ``BenchmarkHistory`` via le module
+    ``baseline_comparison`` (Sprint 73). Garde-fous : ≥ 5 runs
+    historiques même corpus + |delta_relatif| > 20 %."""
+
+    ENGINE_UNSTABLE = "engine_unstable"
+    """Un moteur LLM/VLM exécuté plusieurs fois sur les mêmes
+    documents produit des sorties différentes au-delà d'un seuil
+    de variance (Sprint 90).  Lit ``compute_multirun_stability``
+    (Sprint 83).  Garde-fous : ≥ 2 runs et seuil sur le coefficient
+    de variation du CER (>10 % par défaut) ou sur le rappel de
+    runs identiques (<50 %)."""
+
+    REGRESSION_IN_HISTORY = "regression_in_history"
+    """Un moteur montre une tendance ou une rupture défavorable
+    sur l'historique SQLite : son CER moyen s'est dégradé sur
+    les N derniers runs (Sprint 92).  Lit
+    ``compute_corpus_longitudinal`` du module ``longitudinal``.
+    Garde-fous : ≥ 3 runs historiques et soit pente > seuil
+    (régression progressive), soit change-point avec delta >
+    seuil (rupture brutale)."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

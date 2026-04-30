@@ -9,9 +9,9 @@ pinned: false
 
 # Picarones
 
-> **OCR/HTR Benchmarking Platform for Heritage Documents**
+> **Plateforme d'évaluation de pipelines de post-correction OCR sur corpus ALTO XML**
 
-> **Plateforme d'Inspection Comparative et d'Audit Rigoureux d'OCR pour Numérisations et Etudes Scientifiques**
+> **OCR Post-Correction Benchmarking Platform for Existing ALTO XML Corpora**
 
 [![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -20,16 +20,56 @@ pinned: false
 
 ---
 
-**Picarones** is an open-source platform for rigorously comparing OCR and HTR engines
-(Tesseract, Pero OCR, Kraken, cloud APIs...) and OCR+LLM pipelines on historical document
-corpora -- manuscripts, early printed books, and archives.
+**Picarones** est une plateforme open source conçue pour un **contexte
+institutionnel** — services patrimoniaux, archives, bibliothèques numériques
+qui disposent déjà d'un **corpus en XML ALTO** (issu d'une chaîne d'OCR
+historique) et qui veulent **évaluer rigoureusement** des pipelines de
+**post-correction** : re-OCR alternatif, correction LLM, mappeurs ALTO
+spécialisés, voting d'ensembles, etc.
 
-It provides heritage-specific metrics (diplomatic CER, ligature scores, medieval abbreviation
-handling), composable OCR+LLM pipelines, a fully templated interactive HTML report with a
-**factual narrative synthesis**, **Friedman/Nemenyi multi-engine significance tests** with a
-**critical difference diagram**, **cost/speed Pareto analysis**, a **contextual glossary**,
-an **advanced customization panel**, and multiple corpus import sources including IIIF,
-Gallica, HuggingFace, HTR-United, and eScriptorium.
+C'est un **banc d'essai, pas un atelier de production**. Picarones charge un
+corpus ALTO existant, exécute les pipelines que le chercheur amène, mesure
+toutes les métriques pertinentes et produit un rapport HTML autonome
+**factuel et reproductible**. Pas de prescription, pas de classement
+automatique imposé : le rapport expose les chiffres, le chercheur arbitre.
+
+Métriques spécifiques aux corpus patrimoniaux (CER diplomatique, scores de
+ligatures, abréviations médiévales, numéraux romains, foliotation,
+recherchabilité fuzzy plein-texte, fidélité aux marqueurs philologiques),
+pipelines composables, **synthèse narrative factuelle** au sommet du rapport,
+**tests Friedman/Nemenyi multi-moteurs** avec **diagramme de différence
+critique**, analyse **Pareto coût/vitesse/CO₂**, **absorption d'erreur par
+jonction**, **stabilité multi-runs**, **comparaison contrôlée par slot**, et
+plusieurs sources d'import (IIIF, HuggingFace, HTR-United, eScriptorium,
+upload ZIP).
+
+---
+
+## Cas d'usage type
+
+Une institution (archive, bibliothèque numérique, service patrimonial) a
+**déjà OCRisé** un corpus de plusieurs milliers de pages — sortie au format
+**ALTO XML** avec coordonnées de zones, lignes et mots. Cette sortie a un
+CER honorable mais imparfait, des erreurs typiques sur les ligatures
+historiques, des abréviations non développées, des noms propres mal
+reconnus.
+
+L'institution veut **comparer rigoureusement** plusieurs stratégies de
+post-correction sur ce corpus existant :
+
+- ré-OCR avec un moteur alternatif (Pero OCR, Kraken, Mistral OCR…) ;
+- correction LLM (GPT-4o, Claude, Mistral) en mode texte seul ou image+texte ;
+- mappeurs ALTO spécialisés (re-segmentation des lignes, fusion des
+  abréviations, normalisation diplomatique) ;
+- pipelines composées : OCR alternatif → correction LLM → mappeur ALTO.
+
+Picarones charge le corpus ALTO, exécute chaque pipeline, mesure les
+métriques pertinentes (gain CER, recherchabilité fuzzy gagnée, séquences
+numériques préservées, **erreurs introduites par le post-correcteur** —
+critique pour les LLM qui modernisent silencieusement) et produit un
+rapport HTML factuel **directement citable dans une publication
+scientifique** : chaque chiffre est traçable au payload source, aucune
+prescription n'est imposée.
 
 ---
 
@@ -97,7 +137,7 @@ Gallica, HuggingFace, HTR-United, and eScriptorium.
 | Source | Method |
 |--------|--------|
 | Local folder | `picarones run --corpus ./corpus/` |
-| IIIF manifests (Gallica, Bodleian, BL...) | `picarones import iiif <manifest-url>` |
+| IIIF manifests (institutional repositories) | `picarones import iiif <manifest-url>` |
 | Gallica API (SRU + OCR) | `GallicaClient` / `picarones import iiif` |
 | HuggingFace Datasets | `picarones import hf <dataset-id>` |
 | HTR-United catalogue | `picarones import htr-united` |
@@ -246,7 +286,7 @@ See [INSTALL.md](INSTALL.md) for detailed instructions on Linux, macOS, Windows,
 | `picarones serve` | Launch the FastAPI web interface |
 | `picarones history` | Query longitudinal benchmark history (SQLite) |
 | `picarones robustness` | Run robustness analysis with degraded images |
-| `picarones import iiif` | Import corpus from an IIIF manifest (Gallica, Bodleian, BL, BSB...). HTR-United and HuggingFace imports are exposed through the web interface (`/api/htr-united/import`, `/api/huggingface/import`). |
+| `picarones import iiif` | Import corpus from an IIIF manifest (any institutional repository). HTR-United and HuggingFace imports are exposed through the web interface (`/api/htr-united/import`, `/api/huggingface/import`). |
 
 **Examples:**
 
@@ -258,8 +298,8 @@ picarones run --corpus ./manuscripts/ --engines tesseract --lang fra --psm 6 \
 # Compare two text files
 picarones metrics --reference ground_truth.txt --hypothesis ocr_output.txt
 
-# Import 10 pages from a Gallica IIIF manifest
-picarones import iiif https://gallica.bnf.fr/ark:/12148/xxx/manifest.json --pages 1-10
+# Import 10 pages from any IIIF manifest URL
+picarones import iiif https://institution.example/iiif/xxx/manifest.json --pages 1-10
 
 # HuggingFace and HTR-United imports are available via the web UI at
 #   http://localhost:8000/  (endpoints POST /api/huggingface/import and /api/htr-united/import)
@@ -474,7 +514,7 @@ picarones/
 │
 └── importers/
     ├── iiif.py                 # IIIF manifest importer
-    ├── gallica.py              # Gallica API client (BnF)
+    ├── gallica.py              # Gallica API client (institutional digital library)
     ├── htr_united.py           # HTR-United catalogue importer
     ├── huggingface.py          # HuggingFace Datasets importer
     └── escriptorium.py         # eScriptorium client

@@ -53,3 +53,43 @@ pareto_alternative: >-
 cost_outlier: >-
   Disproportionate cost for {engine} ({cost} €/{cost_unit_pages} pages, ×{ratio_to_median}
   the median) without a compensating quality advantage (CER {cer_pct} %).
+
+ensemble_opportunity: >-
+  Engines {pair_a} and {pair_b} have divergent error profiles
+  ({divergence_metric}={divergence}). On this corpus of {doc_count} documents,
+  {best_engine} preserves {best_recall_pct} % of tokens; a majority vote
+  among the engines would preserve {oracle_recall_pct} % — i.e.
+  {absolute_gap_pct} points recoverable ({relative_gap_pct} % of the best
+  engine's errors).
+
+median_mean_gap_warning: >-
+  Asymmetric distribution for {engine}: median CER {median_cer_pct} %
+  vs mean {mean_cer_pct} % across {n_docs} documents (relative gap
+  {relative_gap_pct} %). The mean is pulled by a few catastrophic
+  documents — the median (now used for default ranking) is more
+  representative.
+
+stratification_recommended: >-
+  Heterogeneous corpus ({n_strata} strata): {leader} performs very
+  differently depending on document type — median CER
+  {min_stratum_cer_pct} % on "{min_stratum}" vs
+  {max_stratum_cer_pct} % on "{max_stratum}", a gap of {gap_pct}
+  points. The global ranking hides this disparity; consult the
+  stratified view.
+
+engine_off_baseline: >-
+  {engine} achieved {cer_current_pct} % CER here, vs {cer_historical_mean_pct} %
+  on average over the last {n_runs} runs of your institution on this
+  same corpus (relative delta {relative_delta_pct} %). This corpus is
+  harder for it than usual.
+
+engine_unstable: >-
+  Over {n_runs} successive runs, {engine} produces variable outputs
+  (CER CV {cer_cv_pct} %, identical-run pair rate {identical_run_rate_pct} %).
+  Reproducibility is limited — interpret the average CER with caution.
+
+regression_in_history: >-
+  Over the {n_runs} historical runs for {engine}, the average CER
+  moved from {first_cer_pct} % to {last_cer_pct} %
+  (cumulative change {absolute_delta_pct} points). Investigate what
+  changed in the pipeline or the models.

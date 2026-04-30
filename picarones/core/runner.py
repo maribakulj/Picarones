@@ -45,7 +45,14 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
     toutes les métriques.  Doit être une fonction de niveau module pour être
     sérialisable par ``pickle``.
     """
-    engine_module, engine_class_name, engine_config, doc_id, image_path, ground_truth, char_exclude_chars = args
+    # Sprint 87 — args peut contenir 7 (legacy) ou 8 (avec corpus_lang) éléments
+    if len(args) == 8:
+        (engine_module, engine_class_name, engine_config, doc_id,
+         image_path, ground_truth, char_exclude_chars, corpus_lang) = args
+    else:
+        (engine_module, engine_class_name, engine_config, doc_id,
+         image_path, ground_truth, char_exclude_chars) = args
+        corpus_lang = "fr"
     import importlib
     mod = importlib.import_module(engine_module)
     engine_cls = getattr(mod, engine_class_name)
@@ -58,6 +65,7 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
         ground_truth=ground_truth,
         ocr_result=ocr_result,
         char_exclude=char_exclude,
+        corpus_lang=corpus_lang,
     )
 
 
@@ -65,6 +73,7 @@ def _io_doc_worker(
     engine: BaseOCREngine,
     doc: object,
     char_exclude: Optional[frozenset],
+    corpus_lang: str = "fr",
 ) -> "DocumentResult":
     """Worker pour ThreadPoolExecutor (moteurs IO-bound / API).
 
@@ -94,6 +103,7 @@ def _io_doc_worker(
         ground_truth=doc.ground_truth,  # type: ignore[attr-defined]
         ocr_result=ocr_result,
         char_exclude=char_exclude,
+        corpus_lang=corpus_lang,
     )
 
 
@@ -101,12 +111,74 @@ def _io_doc_worker(
 # Calcul documentaire centralisé
 # ---------------------------------------------------------------------------
 
+
+def _calibration_from_engine_result(
+    ground_truth: str,
+    token_confidences: list,
+) -> Optional[dict]:
+    """Aligne les ``token_confidences`` du moteur sur la GT (bag-of-words)
+    pour produire les listes parallèles ``confidences`` / ``is_correct``,
+    puis appelle ``compute_calibration_metrics`` (Sprint 39).
+
+    Convention d'alignement (proxy bag-of-words avec multiplicité, comme
+    ``oracle_token_recall`` du Sprint 35) : un token de l'hypothèse est
+    "correct" si la GT contient encore une occurrence de ce token.
+    Ce n'est pas un alignement séquentiel ; c'est volontaire pour rester
+    simple et robuste aux décalages d'OCR.
+
+    Les confidences ``> 1.0`` sont supposées en pourcentage et
+    normalisées à ``[0, 1]``.  Les confidences négatives (Tesseract met
+    -1 pour les non-mots) sont ignorées.
+    """
+    from collections import Counter
+
+    from picarones.core.calibration import compute_calibration_metrics
+
+    if not token_confidences:
+        return None
+
+    gt_counter = Counter((ground_truth or "").split())
+    confidences: list[float] = []
+    is_correct: list[int] = []
+
+    for tc in token_confidences:
+        if not isinstance(tc, dict):
+            continue
+        token = str(tc.get("token", ""))
+        if not token:
+            continue
+        try:
+            conf = float(tc.get("confidence"))
+        except (TypeError, ValueError):
+            continue
+        if conf < 0:
+            # -1 = non-mot dans le format Tesseract image_to_data
+            continue
+        if conf > 1.0:
+            conf = conf / 100.0
+        if not 0.0 <= conf <= 1.0:
+            continue
+        if gt_counter[token] > 0:
+            is_correct.append(1)
+            gt_counter[token] -= 1
+        else:
+            is_correct.append(0)
+        confidences.append(conf)
+
+    if not confidences:
+        return None
+    return compute_calibration_metrics(confidences, is_correct)
+
+
+
+
 def _compute_document_result(
     doc_id: str,
     image_path: str,
     ground_truth: str,
     ocr_result: EngineResult,
     char_exclude: Optional[frozenset],
+    corpus_lang: str = "fr",
 ) -> DocumentResult:
     """Calcule toutes les métriques pour un document et retourne un DocumentResult.
 
@@ -204,6 +276,18 @@ def _compute_document_result(
         except Exception as e:
             _logger.warning("[hallucination] fonctionnalité dégradée : %s", e)
 
+    # Sprint 42 — calibration des confidences moteur (en dehors du
+    # ``if ocr_result.success`` puisqu'on peut avoir des confidences même
+    # sur un succès partiel).
+    calibration_data: Optional[dict] = None
+    if ocr_result.token_confidences:
+        try:
+            calibration_data = _calibration_from_engine_result(
+                ground_truth, ocr_result.token_confidences,
+            )
+        except Exception as e:
+            _logger.warning("[calibration] fonctionnalité dégradée : %s", e)
+
     try:
         from picarones.core.image_quality import analyze_image_quality
         iq = analyze_image_quality(image_path)
@@ -211,6 +295,62 @@ def _compute_document_result(
             image_quality_data = iq.as_dict()
     except Exception as e:
         _logger.warning("[image_quality] fonctionnalité dégradée : %s", e)
+
+    # Sprint 61 — métriques philologiques (Sprints 55-60).  Calcul
+    # automatique : O(N) sur le texte, coût négligeable.  Le helper
+    # gère lui-même l'« adaptive masking » : un module n'est inclus
+    # que si la GT a du signal pour lui.
+    philological_data: Optional[dict] = None
+    try:
+        from picarones.core.philological_runner import compute_philological_metrics
+        philological_data = compute_philological_metrics(
+            ground_truth, ocr_result.text,
+        )
+    except Exception as e:
+        _logger.warning("[philological] fonctionnalité dégradée : %s", e)
+
+    # Sprint 86 — recherchabilité fuzzy (Sprint 84) avec adaptive
+    # masking. Coût O(N_gt × N_hyp × len_max), négligeable sur les
+    # tailles de documents typiques.
+    searchability_data: Optional[dict] = None
+    try:
+        from picarones.core.searchability_runner import (
+            compute_searchability_metrics,
+        )
+        searchability_data = compute_searchability_metrics(
+            ground_truth, ocr_result.text,
+        )
+    except Exception as e:
+        _logger.warning("[searchability] fonctionnalité dégradée : %s", e)
+
+    # Sprint 86 — précision sur séquences numériques (Sprint 85)
+    # avec adaptive masking.
+    numerical_sequence_data: Optional[dict] = None
+    try:
+        from picarones.core.numerical_sequences_runner import (
+            compute_numerical_sequence_metrics_adaptive,
+        )
+        numerical_sequence_data = compute_numerical_sequence_metrics_adaptive(
+            ground_truth, ocr_result.text,
+        )
+    except Exception as e:
+        _logger.warning(
+            "[numerical_sequences] fonctionnalité dégradée : %s", e,
+        )
+
+    # Sprint 87 — delta Flesch (Sprint 52) calculé automatiquement
+    # avec adaptive masking (≥ 5 mots dans la GT).  Langue lue
+    # depuis ``corpus_lang`` propagé par run_benchmark.
+    readability_data: Optional[dict] = None
+    try:
+        from picarones.core.readability_runner import (
+            compute_readability_metrics,
+        )
+        readability_data = compute_readability_metrics(
+            ground_truth, ocr_result.text, lang=corpus_lang,
+        )
+    except Exception as e:
+        _logger.warning("[readability] fonctionnalité dégradée : %s", e)
 
     return DocumentResult(
         doc_id=doc_id,
@@ -229,6 +369,11 @@ def _compute_document_result(
         image_quality=image_quality_data,
         line_metrics=line_metrics_data,
         hallucination_metrics=hallucination_data,
+        calibration_metrics=calibration_data,
+        philological_metrics=philological_data,
+        searchability_metrics=searchability_data,
+        numerical_sequence_metrics=numerical_sequence_data,
+        readability_metrics=readability_data,
     )
 
 
@@ -390,6 +535,7 @@ def run_benchmark(
     timeout_seconds: float = 60.0,
     partial_dir: Optional[str | Path] = None,
     cancel_event: Optional[threading.Event] = None,
+    entity_extractor: Optional[callable] = None,
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -446,6 +592,25 @@ def run_benchmark(
     def _is_cancelled() -> bool:
         return cancel_event is not None and cancel_event.is_set()
     engine_reports: list[EngineReport] = []
+    # Sprint 36 — collecte des hypothèses brutes par moteur avant
+    # ``compact()`` pour pouvoir calculer la divergence taxonomique et
+    # la complémentarité (oracle) en fin de benchmark.
+    per_engine_outputs: dict[str, dict[str, str]] = {}
+    ground_truths_by_doc: dict[str, str] = {}
+    # Sprint 45 — A.III stratification : capture du ``script_type`` par
+    # document avant ``compact()`` (qui efface ``image_quality``).
+    doc_strata: dict[str, str] = {}
+
+    # Sprint 87 — langue du corpus pour le delta Flesch (A.II.2).
+    # Lecture depuis corpus.metadata, fallback "fr".
+    corpus_lang: str = (corpus.metadata or {}).get("language", "fr")
+    if corpus_lang not in ("fr", "en"):
+        # Sprint 52 ne supporte que fr/en — fallback "fr" en warning.
+        logger.warning(
+            "[readability] langue '%s' non supportée, fallback 'fr'.",
+            corpus_lang,
+        )
+        corpus_lang = "fr"
 
     for engine in engines:
         if _is_cancelled():
@@ -514,10 +679,13 @@ def run_benchmark(
                         _cpu_doc_worker,
                         (engine_module, engine_class_name, engine.config,
                          doc.doc_id, str(doc.image_path), doc.ground_truth,
-                         char_exclude_tuple),
+                         char_exclude_tuple, corpus_lang),
                     )
                 else:
-                    future = executor.submit(_io_doc_worker, engine, doc, char_exclude)
+                    future = executor.submit(
+                        _io_doc_worker, engine, doc, char_exclude,
+                        corpus_lang,
+                    )
                 future_to_doc[future] = doc
                 submitted_at[future] = time.monotonic()
 
@@ -630,6 +798,33 @@ def run_benchmark(
         agg_image_quality = _aggregate_image_quality(document_results)
         agg_line_metrics = _aggregate_line_metrics(document_results)
         agg_hallucination = _aggregate_hallucination(document_results)
+        agg_calibration = _aggregate_calibration(document_results)
+        # Sprint 61 — agrégation philologique (modules Sprints 55-60).
+        from picarones.core.philological_runner import (
+            aggregate_philological_metrics,
+        )
+        agg_philological = aggregate_philological_metrics(
+            [dr.philological_metrics for dr in document_results],
+        )
+        # Sprint 86 — agrégation A.II.5
+        from picarones.core.searchability_runner import (
+            aggregate_searchability_metrics,
+        )
+        from picarones.core.numerical_sequences_runner import (
+            aggregate_numerical_sequence_metrics,
+        )
+        from picarones.core.readability_runner import (
+            aggregate_readability_metrics,
+        )
+        agg_searchability = aggregate_searchability_metrics(
+            [dr.searchability_metrics for dr in document_results],
+        )
+        agg_numerical_sequences = aggregate_numerical_sequence_metrics(
+            [dr.numerical_sequence_metrics for dr in document_results],
+        )
+        agg_readability = aggregate_readability_metrics(
+            [dr.readability_metrics for dr in document_results],
+        )
 
         report = EngineReport(
             engine_name=engine.name,
@@ -644,6 +839,11 @@ def run_benchmark(
             aggregated_image_quality=agg_image_quality,
             aggregated_line_metrics=agg_line_metrics,
             aggregated_hallucination=agg_hallucination,
+            aggregated_calibration=agg_calibration,
+            aggregated_philological=agg_philological,
+            aggregated_searchability=agg_searchability,
+            aggregated_numerical_sequences=agg_numerical_sequences,
+            aggregated_readability=agg_readability,
         )
         engine_reports.append(report)
         logger.info(
@@ -652,15 +852,76 @@ def run_benchmark(
             (report.mean_cer or 0) * 100,
         )
 
+        # Sprint 36 — capture des hypothèses brutes pour le calcul
+        # inter-moteurs (effectué après la boucle, avant la sérialisation).
+        # On clone les chaînes pour ne pas dépendre de la durée de vie des
+        # DocumentResult après ``compact()``.
+        per_engine_outputs[engine.name] = {
+            dr.doc_id: dr.hypothesis for dr in document_results
+            if dr.engine_error is None
+        }
+        for dr in document_results:
+            if dr.doc_id not in ground_truths_by_doc and dr.ground_truth:
+                ground_truths_by_doc[dr.doc_id] = dr.ground_truth
+            # Sprint 45 — capture script_type avant compact()
+            if dr.doc_id not in doc_strata and dr.image_quality:
+                st = dr.image_quality.get("script_type")
+                if st:
+                    doc_strata[dr.doc_id] = str(st)
+
+        # Sprint 40 — calcul des métriques NER si :
+        #   1. l'utilisateur a fourni un EntityExtractor au runner ;
+        #   2. ET le document a un niveau de GT ENTITIES (Sprint 32).
+        # Fait dans le main process (pas dans les sous-processus du pool)
+        # pour éviter de pickler l'extracteur (spaCy + modèle).
+        if entity_extractor is not None:
+            _attach_ner_metrics(corpus, document_results, entity_extractor)
+            agg_ner = _aggregate_ner(document_results)
+            report.aggregated_ner = agg_ner
+
         # Libérer la mémoire des analyses per-document après agrégation
         for dr in document_results:
             dr.compact()
+
+    # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+    # complémentarité / oracle).  N'est calculée qu'à partir de 2
+    # moteurs ; en deçà l'analyse n'a pas de sens.
+    inter_engine_payload: Optional[dict] = None
+    if len(engine_reports) >= 2:
+        try:
+            from picarones.core.inter_engine import compute_inter_engine_analysis
+
+            taxonomy_distros = {
+                report.engine_name: (
+                    report.aggregated_taxonomy.get("class_distribution", {})
+                    if report.aggregated_taxonomy
+                    else {}
+                )
+                for report in engine_reports
+            }
+            # Élimine les moteurs sans distribution taxonomique pour ne pas
+            # polluer la matrice.
+            taxonomy_distros = {
+                name: dist for name, dist in taxonomy_distros.items() if dist
+            }
+            inter_engine_payload = compute_inter_engine_analysis(
+                per_engine_outputs=per_engine_outputs,
+                ground_truths=ground_truths_by_doc,
+                taxonomy_distributions=taxonomy_distros or None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[runner] analyse inter-moteurs dégradée : %s — section omise du rapport",
+                exc,
+            )
 
     benchmark = BenchmarkResult(
         corpus_name=corpus.name,
         corpus_source=corpus.source_path,
         document_count=len(corpus),
         engine_reports=engine_reports,
+        inter_engine_analysis=inter_engine_payload,
+        doc_strata=dict(doc_strata) if doc_strata else None,
     )
 
     if output_json:
@@ -845,3 +1106,217 @@ def _aggregate_hallucination(doc_results: list) -> Optional[dict]:
     except Exception as e:
         logger.warning("[aggregate_hallucination] fonctionnalité dégradée : %s", e)
         return None
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Sprint 40 — extraction NER au post-process et agrégation
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _attach_ner_metrics(
+    corpus: Corpus,
+    doc_results: list,
+    entity_extractor: callable,
+) -> None:
+    """Calcule et attache ``DocumentResult.ner_metrics`` pour chaque doc
+    dont la GT possède un niveau ``ENTITIES`` (Sprint 32).
+
+    L'extracteur est appelé sur l'hypothèse OCR ``dr.hypothesis``.
+    Les erreurs sont dégradées en warnings (pas de propagation) afin
+    de ne pas casser le benchmark si un document spécifique fait
+    crasher le NER.
+    """
+    try:
+        from picarones.core.corpus import GTLevel
+        from picarones.core.ner import compute_ner_metrics
+    except ImportError as exc:
+        logger.warning("[ner.attach] imports indisponibles : %s", exc)
+        return
+
+    docs_by_id = {d.doc_id: d for d in corpus.documents}
+    n_done = 0
+    for dr in doc_results:
+        if dr.engine_error is not None or not dr.hypothesis:
+            continue
+        doc = docs_by_id.get(dr.doc_id)
+        if doc is None or not doc.has_gt(GTLevel.ENTITIES):
+            continue
+        try:
+            gt_payload = doc.get_gt(GTLevel.ENTITIES)
+            gt_entities = list(gt_payload.entities) if gt_payload else []
+            hyp_entities = entity_extractor(dr.hypothesis) or []
+            dr.ner_metrics = compute_ner_metrics(gt_entities, hyp_entities)
+            n_done += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[ner.attach] %s : extraction/comparaison NER dégradée : %s",
+                dr.doc_id, exc,
+            )
+
+    if n_done > 0:
+        logger.info("[ner] %d documents évalués pour NER.", n_done)
+
+
+def _aggregate_calibration(doc_results: list) -> Optional[dict]:
+    """Agrège la calibration micro sur tous les docs.
+
+    Recalcule ECE/MCE à partir de la **somme des bins** de chaque
+    document : pour chaque bin, on additionne ``count``, on agrège la
+    confiance moyenne pondérée par count, et on agrège l'accuracy
+    pondérée par count.  L'ECE micro est ensuite la moyenne pondérée
+    par bin de ``|conf - acc|``.
+    """
+    relevant = [
+        dr for dr in doc_results
+        if dr.calibration_metrics is not None
+        and (dr.calibration_metrics.get("bins") or [])
+    ]
+    if not relevant:
+        return None
+
+    # Aligne tous les docs sur le même nombre de bins (par sécurité, on
+    # vérifie qu'ils sont cohérents — sinon on prend le 1er en
+    # référence et on saute les incohérents avec un warning).
+    n_bins = relevant[0].calibration_metrics.get("n_bins", 10)
+    sum_conf: list[float] = [0.0] * n_bins
+    sum_acc: list[float] = [0.0] * n_bins
+    counts: list[int] = [0] * n_bins
+    bin_lows: list[float] = [
+        b["bin_low"] for b in relevant[0].calibration_metrics["bins"]
+    ]
+    bin_highs: list[float] = [
+        b["bin_high"] for b in relevant[0].calibration_metrics["bins"]
+    ]
+
+    for dr in relevant:
+        m = dr.calibration_metrics
+        if m.get("n_bins") != n_bins:
+            logger.warning(
+                "[aggregate_calibration] %s : n_bins=%s ≠ %s — ignoré",
+                dr.doc_id, m.get("n_bins"), n_bins,
+            )
+            continue
+        for k, b in enumerate(m["bins"]):
+            n = int(b.get("count") or 0)
+            if n == 0:
+                continue
+            counts[k] += n
+            sum_conf[k] += float(b.get("avg_confidence") or 0.0) * n
+            sum_acc[k] += float(b.get("accuracy") or 0.0) * n
+
+    total = sum(counts)
+    if total == 0:
+        return None
+
+    bins: list[dict] = []
+    ece = 0.0
+    mce = 0.0
+    for k in range(n_bins):
+        n = counts[k]
+        if n == 0:
+            bins.append({
+                "bin_low": bin_lows[k] if k < len(bin_lows) else k / n_bins,
+                "bin_high": bin_highs[k] if k < len(bin_highs) else (k + 1) / n_bins,
+                "avg_confidence": None,
+                "accuracy": None,
+                "count": 0,
+                "gap": None,
+            })
+            continue
+        avg_conf = sum_conf[k] / n
+        accuracy = sum_acc[k] / n
+        gap = abs(avg_conf - accuracy)
+        bins.append({
+            "bin_low": bin_lows[k] if k < len(bin_lows) else k / n_bins,
+            "bin_high": bin_highs[k] if k < len(bin_highs) else (k + 1) / n_bins,
+            "avg_confidence": avg_conf,
+            "accuracy": accuracy,
+            "count": n,
+            "gap": gap,
+        })
+        ece += (n / total) * gap
+        if gap > mce:
+            mce = gap
+
+    overall_acc = sum(sum_acc) / total
+    overall_conf = sum(sum_conf) / total
+
+    return {
+        "ece": ece,
+        "mce": mce,
+        "n_bins": n_bins,
+        "n_predictions": total,
+        "overall_accuracy": overall_acc,
+        "overall_confidence": overall_conf,
+        "bins": bins,
+        "doc_count": len(relevant),
+    }
+
+
+def _aggregate_ner(doc_results: list) -> Optional[dict]:
+    """Agrège les métriques NER au niveau du moteur.
+
+    Recalcule precision/recall/F1 *micro* à partir des sommes globales
+    de TP/FP/FN, plus le détail par catégorie, plus les compteurs
+    totaux d'hallucinations et d'entités manquées.
+    """
+    relevant = [dr for dr in doc_results if dr.ner_metrics is not None]
+    if not relevant:
+        return None
+
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+    cat_tp: dict[str, int] = {}
+    cat_fp: dict[str, int] = {}
+    cat_fn: dict[str, int] = {}
+    total_hallucinated = 0
+    total_missed = 0
+    iou_threshold = 0.5
+
+    for dr in relevant:
+        m = dr.ner_metrics
+        total_tp += int(m.get("true_positives", 0))
+        total_fp += int(m.get("false_positives", 0))
+        total_fn += int(m.get("false_negatives", 0))
+        total_hallucinated += len(m.get("hallucinated_entities", []) or [])
+        total_missed += len(m.get("missed_entities", []) or [])
+        iou_threshold = float(m.get("iou_threshold", iou_threshold))
+        for cat, stats in (m.get("per_category") or {}).items():
+            cat_tp[cat] = cat_tp.get(cat, 0)
+            cat_fp[cat] = cat_fp.get(cat, 0)
+            cat_fn[cat] = cat_fn.get(cat, 0)
+            # Reconstitue les sommes par catégorie via support et P/R
+            support = int(stats.get("support", 0))
+            recall = float(stats.get("recall", 0.0))
+            precision = float(stats.get("precision", 0.0))
+            tp_cat = round(support * recall) if support > 0 else 0
+            fn_cat = max(0, support - tp_cat)
+            fp_cat = (
+                round(tp_cat * (1 - precision) / precision)
+                if precision > 0 else 0
+            )
+            cat_tp[cat] += tp_cat
+            cat_fp[cat] += fp_cat
+            cat_fn[cat] += fn_cat
+
+    def _prf(tp: int, fp: int, fn: int) -> dict[str, float]:
+        p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
+        return {"precision": p, "recall": r, "f1": f1, "support": tp + fn}
+
+    return {
+        "global": _prf(total_tp, total_fp, total_fn),
+        "per_category": {
+            cat: _prf(cat_tp[cat], cat_fp[cat], cat_fn[cat])
+            for cat in sorted(set(cat_tp) | set(cat_fp) | set(cat_fn))
+        },
+        "true_positives": total_tp,
+        "false_positives": total_fp,
+        "false_negatives": total_fn,
+        "hallucinated_total": total_hallucinated,
+        "missed_total": total_missed,
+        "doc_count": len(relevant),
+        "iou_threshold": iou_threshold,
+    }

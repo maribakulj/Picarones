@@ -55,6 +55,10 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.STATISTICAL_TIE,
     FactType.SIGNIFICANT_GAP,
     FactType.STRATUM_WINNER,
+    # Sprint 46 — priority 45, juste après STRATUM_WINNER (40),
+    # avant STRATUM_COLLAPSE (50). La recommandation de stratification
+    # nuance directement les autres faits par strate.
+    FactType.STRATIFICATION_RECOMMENDED,
     FactType.STRATUM_COLLAPSE,
     FactType.ERROR_PROFILE_OUTLIER,
     FactType.LLM_HALLUCINATION_FLAG,
@@ -63,6 +67,22 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.SPEED_WINNER,
     FactType.COST_OUTLIER,
     FactType.CONFIDENCE_WARNING,
+    FactType.ENSEMBLE_OPPORTUNITY,
+    FactType.MEDIAN_MEAN_GAP_WARNING,
+    # Sprint 73 — priority 150, après MEDIAN_MEAN_GAP_WARNING (140).
+    # Le détecteur off-baseline donne le contexte historique, qui
+    # vient en fin de synthèse comme « note ».
+    FactType.ENGINE_OFF_BASELINE,
+    # Sprint 90 — priority 160, ferme la synthèse avec la mise en
+    # garde sur la reproductibilité.  Une instabilité multi-runs
+    # discrédite toute autre conclusion sur ce moteur ; on la
+    # remonte en dernier pour ne pas l'enterrer.
+    FactType.ENGINE_UNSTABLE,
+    # Sprint 92 — priority 170, après ENGINE_UNSTABLE.  La
+    # régression historique complète A.I.3 (off-baseline) en
+    # caractérisant la tendance : l'écart courant est-il une
+    # dégradation graduelle, une rupture brutale, ou un bruit ?
+    FactType.REGRESSION_IN_HISTORY,
 )
 
 
@@ -85,6 +105,26 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.SPEED_WINNER}),
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.CONFIDENCE_WARNING}),
     frozenset({FactType.STATISTICAL_TIE, FactType.SPEED_WINNER}),
+    # Sprint 44 — l'avertissement d'asymétrie nuance le leader
+    # plutôt que de le doubler : on veut les deux phrases ensemble.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.MEDIAN_MEAN_GAP_WARNING}),
+    # Sprint 46 — la recommandation de stratification est un méta-conseil
+    # qui s'ajoute au leader sans le contredire ; les deux peuvent
+    # cohabiter même quand ils concernent le même moteur.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.STRATIFICATION_RECOMMENDED}),
+    # Sprint 90 — l'instabilité multi-runs nuance les conclusions
+    # sur le moteur leader sans les contredire : un moteur peut être
+    # leader **et** instable, et c'est précisément l'information
+    # critique pour la reproductibilité scientifique.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.ENGINE_UNSTABLE}),
+    # Sprint 92 — la régression historique caractérise la tendance
+    # du leader : un leader peut être en régression progressive,
+    # info critique pour décider quand re-tester.
+    frozenset({FactType.GLOBAL_LEADER_CER, FactType.REGRESSION_IN_HISTORY}),
+    # Off-baseline (Sprint 73) dit "écart anormal sur ce corpus" ;
+    # regression-in-history (Sprint 92) dit "tendance dans le
+    # temps" — les deux se complètent sans se redonder.
+    frozenset({FactType.ENGINE_OFF_BASELINE, FactType.REGRESSION_IN_HISTORY}),
 })
 
 

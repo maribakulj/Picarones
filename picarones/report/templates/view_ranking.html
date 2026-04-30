@@ -43,6 +43,12 @@
         <span class="legend-dot" style="background:#dc2626"></span>&gt; 30 %
       </div>
     </div>
+
+    <!-- Sprint 46 — vue stratifiée par script_type (rapport adaptatif :
+         section omise quand aucune strate n'est disponible) -->
+    {% if stratified_ranking_html %}
+    {{ stratified_ranking_html }}
+    {% endif %}
   </div>
 
   <!-- ── Métriques robustes ────────────────────────────────────── -->

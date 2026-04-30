@@ -191,6 +191,22 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
             "length_ratio": _safe(report.aggregated_hallucination.get("length_ratio_mean")) if report.aggregated_hallucination else None,
             "hallucinating_doc_rate": _safe(report.aggregated_hallucination.get("hallucinating_doc_rate")) if report.aggregated_hallucination else None,
             "aggregated_hallucination": report.aggregated_hallucination,
+            # Sprint 41 — NER agrégé (None si aucun calcul effectué)
+            "aggregated_ner": report.aggregated_ner,
+            # Sprint 43 — calibration agrégée (None si aucune confidence
+            # n'a été exposée par le moteur sur ce corpus)
+            "aggregated_calibration": report.aggregated_calibration,
+            # Sprint 62 — profil philologique agrégé (None si aucun
+            # signal philologique sur le corpus pour ce moteur)
+            "aggregated_philological": report.aggregated_philological,
+            # Sprint 86 — A.II.5 (recherchabilité fuzzy + séquences
+            # numériques). None si aucun document n'a de signal.
+            "aggregated_searchability": report.aggregated_searchability,
+            "aggregated_numerical_sequences": (
+                report.aggregated_numerical_sequences
+            ),
+            # Sprint 87 — A.II.2 (delta Flesch agrégé)
+            "aggregated_readability": report.aggregated_readability,
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }
         engines_summary.append(entry)
@@ -564,6 +580,13 @@ def _build_report_data(benchmark: BenchmarkResult, images_b64: dict[str, str]) -
         "ratio_vs_anchor": ratio_vs_anchor,
         # Sprint 19 — vue Pareto coût/qualité avec variantes d'axe
         "pareto": pareto_data,
+        # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+        # complémentarité / oracle).  ``None`` si moins de 2 moteurs.
+        "inter_engine_analysis": benchmark.inter_engine_analysis,
+        # Sprint 45-46 — stratification par script_type
+        "available_strata": benchmark.available_strata(),
+        "stratified_ranking": benchmark.stratified_ranking() or None,
+        "corpus_homogeneity": benchmark.corpus_homogeneity(),
     }
 
 
@@ -703,6 +726,121 @@ class ReportGenerator:
         glossary = load_glossary(self.lang)
         glossary_json = json.dumps(glossary, ensure_ascii=False, separators=(",", ":"))
 
+        # Sprint 37 — section inter-moteurs (matrice de divergence + oracle)
+        # rendue côté serveur. Vide si moins de 2 moteurs ou taxonomie absente.
+        from picarones.report.inter_engine_render import (
+            build_divergence_matrix_html,
+            build_oracle_gap_html,
+        )
+        divergence_matrix_html = build_divergence_matrix_html(
+            report_data.get("inter_engine_analysis"),
+            labels=labels,
+        )
+        oracle_gap_html = build_oracle_gap_html(
+            report_data.get("inter_engine_analysis"),
+            labels=labels,
+        )
+
+        # Sprint 41 — section NER (résumé F1 par moteur + heatmap par
+        # catégorie). Vide si aucun moteur n'a de aggregated_ner.
+        from picarones.report.ner_render import (
+            build_ner_per_category_html,
+            build_ner_summary_html,
+        )
+        ner_summary_html = build_ner_summary_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+        ner_per_category_html = build_ner_per_category_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+
+        # Sprint 43 — section calibration (tableau ECE/MCE + grille de
+        # reliability diagrams par moteur). Vide si aucun moteur n'a
+        # de aggregated_calibration.
+        from picarones.report.calibration_render import (
+            build_calibration_summary_html,
+            build_reliability_diagrams_grid_html,
+        )
+        calibration_summary_html = build_calibration_summary_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+        reliability_diagrams_html = build_reliability_diagrams_grid_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+
+        # Sprint 46 — section stratifiée (tableau par strate). Vide si
+        # aucune strate disponible.
+        from picarones.report.stratification_render import (
+            build_stratified_ranking_html,
+        )
+        stratified_ranking_html = build_stratified_ranking_html(
+            report_data.get("stratified_ranking"),
+            report_data.get("available_strata"),
+            report_data.get("corpus_homogeneity"),
+            labels=labels,
+        )
+
+        # Sprint 62 — profil philologique (6 sections adaptive sur les
+        # modules philologiques Sprints 55-60). Vide si aucun moteur
+        # n'a de aggregated_philological.
+        from picarones.report.philological_render import (
+            build_philological_profile_html,
+        )
+        philological_profile_html = build_philological_profile_html(
+            report_data.get("engines", []),
+            labels=labels,
+        )
+
+        # Sprint 86 — A.II.5 : recherchabilité fuzzy +
+        # séquences numériques. Adaptive : "" si aucun signal.
+        from picarones.report.searchability_render import (
+            build_searchability_summary_html,
+        )
+        from picarones.report.numerical_sequences_render import (
+            build_numerical_sequences_html,
+        )
+        searchability_html = build_searchability_summary_html(
+            report_data.get("engines", []), labels=labels,
+        )
+        numerical_sequences_html = build_numerical_sequences_html(
+            report_data.get("engines", []), labels=labels,
+        )
+
+        # Sprint 87 — A.II.2 : lisibilité (delta Flesch).
+        # Adaptive : "" si aucun moteur n'a de signal.
+        from picarones.report.readability_render import (
+            build_readability_summary_html,
+        )
+        readability_html = build_readability_summary_html(
+            report_data.get("engines", []), labels=labels,
+        )
+
+        # Sprint 89 — A.II.8b : spécialisation inter-moteurs.
+        # Adaptive : "" si moins de 2 moteurs avec taxonomie.
+        from picarones.report.specialization_render import (
+            build_specialization_html,
+        )
+        # Construit une map {engine: counts} depuis les
+        # ``aggregated_taxonomy`` ; un moteur sans taxonomie
+        # est exclu.
+        _taxos: dict = {}
+        for eng in report_data.get("engines", []):
+            tax = eng.get("aggregated_taxonomy")
+            if isinstance(tax, dict):
+                counts = tax.get("counts") if "counts" in tax else tax
+                if isinstance(counts, dict) and counts:
+                    _taxos[eng.get("name", "?")] = {
+                        k: float(v) for k, v in counts.items()
+                        if isinstance(v, (int, float))
+                    }
+        specialization_html = build_specialization_html(
+            _taxos, labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -716,6 +854,18 @@ class ReportGenerator:
             friedman=report_data.get("statistics", {}).get("friedman", {}),
             synthesis=synthesis,
             glossary_json=glossary_json,
+            divergence_matrix_html=divergence_matrix_html,
+            oracle_gap_html=oracle_gap_html,
+            ner_summary_html=ner_summary_html,
+            ner_per_category_html=ner_per_category_html,
+            calibration_summary_html=calibration_summary_html,
+            reliability_diagrams_html=reliability_diagrams_html,
+            stratified_ranking_html=stratified_ranking_html,
+            philological_profile_html=philological_profile_html,
+            searchability_html=searchability_html,
+            numerical_sequences_html=numerical_sequences_html,
+            readability_html=readability_html,
+            specialization_html=specialization_html,
         )
 
         output_path.write_text(html, encoding="utf-8")

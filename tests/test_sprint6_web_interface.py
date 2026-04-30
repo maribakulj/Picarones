@@ -1278,9 +1278,12 @@ class TestMistralOCRNativeAPI:
         img.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
         native_called = []
         vision_called = []
+        # Sprint 49 — _run_ocr_native_api retourne maintenant
+        # ``(text, raw_response_dict)`` pour permettre l'extraction
+        # des confidences ; on aligne le mock.
         def fake_native(url):
             native_called.append(url)
-            return "texte extrait via OCR natif"
+            return "texte extrait via OCR natif", {}
         def fake_vision(url):
             vision_called.append(url)
             return "texte extrait via vision"

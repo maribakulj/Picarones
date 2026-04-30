@@ -718,6 +718,479 @@ def detect_confidence_warning(benchmark_data: dict) -> list[Fact]:
 
 
 # ---------------------------------------------------------------------------
+# Détecteur Sprint 44 — distribution asymétrique (médiane vs moyenne)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.MEDIAN_MEAN_GAP_WARNING,
+    priority=140,
+    importance=FactImportance.MEDIUM,
+)
+def detect_median_mean_gap_warning(benchmark_data: dict) -> list[Fact]:
+    """Avertit quand le ratio ``|moyenne - médiane| / médiane`` du leader
+    dépasse 30 %, ce qui indique une distribution fortement asymétrique
+    où la moyenne masque les performances réelles.
+
+    Sprint 44 — A.I.2 du plan d'évolution. Cohérent avec le passage du
+    tri par défaut sur la médiane : si la moyenne du leader diverge
+    fortement de la médiane, l'utilisateur doit le savoir pour
+    interpréter correctement les chiffres.
+    """
+    ranking = benchmark_data.get("ranking") or []
+    valid = [
+        r for r in ranking
+        if r.get("median_cer") is not None
+        and r.get("mean_cer") is not None
+    ]
+    if not valid:
+        return []
+
+    leader = valid[0]
+    median_cer = float(leader["median_cer"])
+    mean_cer = float(leader["mean_cer"])
+
+    if median_cer <= 0:
+        # Médiane nulle (corpus très facile pour ce moteur) — l'écart
+        # relatif n'est pas calculable de manière utile, on s'abstient.
+        return []
+
+    relative_gap = abs(mean_cer - median_cer) / median_cer
+    if relative_gap < 0.30:
+        return []
+
+    importance = (
+        FactImportance.HIGH if relative_gap >= 1.0 else FactImportance.MEDIUM
+    )
+
+    return [Fact(
+        type=FactType.MEDIAN_MEAN_GAP_WARNING,
+        importance=importance,
+        payload={
+            "engine": leader["engine"],
+            "median_cer_pct": round(median_cer * 100, 2),
+            "mean_cer_pct": round(mean_cer * 100, 2),
+            "relative_gap_pct": round(relative_gap * 100, 1),
+            "n_docs": int(leader.get("documents") or 0),
+        },
+        engines_involved=(leader["engine"],),
+    )]
+
+
+# ---------------------------------------------------------------------------
+# Détecteur Sprint 46 — stratification recommandée (corpus hétérogène)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.STRATIFICATION_RECOMMENDED,
+    priority=45,  # juste après STRATUM_WINNER (40), avant STRATUM_COLLAPSE (50)
+    importance=FactImportance.HIGH,
+)
+def detect_stratification_recommended(benchmark_data: dict) -> list[Fact]:
+    """Avertit quand le corpus est hétérogène et que la vue stratifiée
+    apporte un éclairage qualitativement différent du classement global.
+
+    Critère : ``corpus_homogeneity.max_inter_strata_gap > 5 points`` de
+    CER médian sur le moteur leader.  Au-delà de 10 points, importance
+    ``HIGH`` (situation très hétérogène où le seul classement global
+    serait trompeur).
+
+    Lit ``benchmark_data["corpus_homogeneity"]`` exposé par
+    ``BenchmarkResult.as_dict()`` (Sprint 45).
+    """
+    homog = benchmark_data.get("corpus_homogeneity")
+    if not homog:
+        return []
+
+    gap = homog.get("max_inter_strata_gap")
+    if gap is None:
+        return []
+
+    gap = float(gap)
+    if gap < 0.05:
+        return []  # 5 points de CER : seuil de pertinence éditoriale
+
+    leader = str(homog.get("leader") or "")
+    n_strata = int(homog.get("n_strata") or 0)
+    pair = homog.get("leader_max_gap_strata") or ["", ""]
+    if len(pair) < 2:
+        return []
+    min_strat, max_strat = str(pair[0]), str(pair[1])
+
+    leader_per_stratum = homog.get("leader_per_stratum_median") or {}
+    min_med = float(leader_per_stratum.get(min_strat, 0.0))
+    max_med = float(leader_per_stratum.get(max_strat, 0.0))
+
+    importance = (
+        FactImportance.HIGH if gap >= 0.10 else FactImportance.MEDIUM
+    )
+
+    return [Fact(
+        type=FactType.STRATIFICATION_RECOMMENDED,
+        importance=importance,
+        payload={
+            "leader": leader,
+            "n_strata": n_strata,
+            "gap_pct": round(gap * 100, 1),
+            "min_stratum": min_strat,
+            "max_stratum": max_strat,
+            "min_stratum_cer_pct": round(min_med * 100, 2),
+            "max_stratum_cer_pct": round(max_med * 100, 2),
+        },
+        engines_involved=(leader,) if leader else (),
+    )]
+
+
+# ---------------------------------------------------------------------------
+# Détecteur Sprint 73 — moteur hors baseline historique (A.I.3)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.ENGINE_OFF_BASELINE,
+    priority=150,
+    importance=FactImportance.MEDIUM,
+)
+def detect_engine_off_baseline(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact pour chaque moteur dont le CER courant s'écarte
+    significativement de sa moyenne historique sur le **même corpus**.
+
+    Lit ``benchmark_data["baseline_comparisons"]`` (liste de dicts
+    produits par ``compute_engine_baseline`` du module
+    ``baseline_comparison`` Sprint 73).  Si la clé est absente ou
+    vide, le détecteur reste silencieux — typiquement le cas quand
+    aucun historique SQLite n'a été chargé.
+
+    Garde-fous :
+
+    - Si ``n_runs < 5`` (déjà filtré par ``compute_engine_baseline``
+      qui retourne ``None`` dans ce cas).
+    - Si ``relative_delta`` n'est pas calculable (baseline = 0).
+    - Importance ``HIGH`` si ``|relative_delta| ≥ 50 %``, sinon
+      ``MEDIUM``.
+    """
+    comparisons = benchmark_data.get("baseline_comparisons") or []
+    if not isinstance(comparisons, (list, tuple)):
+        return []
+    facts: list[Fact] = []
+    for comp in comparisons:
+        if not isinstance(comp, dict):
+            continue
+        if not comp.get("off_baseline"):
+            continue
+        rel = comp.get("relative_delta")
+        if rel is None:
+            continue
+        engine = comp.get("engine_name")
+        cer_current = comp.get("cer_current")
+        cer_hist_mean = comp.get("cer_historical_mean")
+        n_runs = comp.get("n_runs")
+        if engine is None or cer_current is None or cer_hist_mean is None:
+            continue
+        importance = (
+            FactImportance.HIGH if abs(float(rel)) >= 0.50
+            else FactImportance.MEDIUM
+        )
+        facts.append(Fact(
+            type=FactType.ENGINE_OFF_BASELINE,
+            importance=importance,
+            payload={
+                "engine": engine,
+                "cer_current_pct": round(float(cer_current) * 100, 2),
+                "cer_historical_mean_pct": round(
+                    float(cer_hist_mean) * 100, 2,
+                ),
+                "n_runs": int(n_runs or 0),
+                "relative_delta_pct": round(float(rel) * 100, 1),
+                "direction": "higher" if float(rel) > 0 else "lower",
+            },
+            engines_involved=(engine,),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
+# Détecteur Sprint 90 — moteur instable multi-runs (A.II.4)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.ENGINE_UNSTABLE,
+    priority=160,
+    importance=FactImportance.HIGH,
+)
+def detect_engine_unstable(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact pour chaque moteur dont la stabilité multi-runs
+    est insuffisante (Sprint 83 + 90).
+
+    Lit ``benchmark_data["multirun_stability"]`` : liste de dicts
+    avec ``engine_name`` + champs de ``compute_multirun_stability``
+    (cer_cv, identical_run_rate, n_runs, etc.).  Si la clé est
+    absente ou vide, le détecteur reste silencieux — typiquement
+    le cas quand l'utilisateur n'a pas exécuté `--repeats N`.
+
+    Garde-fous :
+
+    - ``n_runs ≥ 2`` (déjà filtré par
+      ``compute_multirun_stability`` qui retourne ``None``).
+    - Déclenche si ``cer_cv > 0.10`` (variance relative > 10 % du
+      CER moyen) **ou** ``identical_run_rate < 0.50`` (moins
+      d'une paire de runs sur deux est identique).
+    - Importance ``HIGH`` (l'instabilité discrédite les
+      conclusions).
+    """
+    stabilities = benchmark_data.get("multirun_stability") or []
+    if not isinstance(stabilities, (list, tuple)):
+        return []
+    facts: list[Fact] = []
+    for stab in stabilities:
+        if not isinstance(stab, dict):
+            continue
+        engine = stab.get("engine_name") or stab.get("engine")
+        if not engine:
+            continue
+        n_runs = stab.get("n_runs")
+        if not isinstance(n_runs, int) or n_runs < 2:
+            continue
+        cer_cv = stab.get("cer_cv")
+        identical_rate = stab.get("identical_run_rate")
+        # Critères de déclenchement
+        cv_high = (
+            isinstance(cer_cv, (int, float)) and float(cer_cv) > 0.10
+        )
+        runs_diverge = (
+            isinstance(identical_rate, (int, float))
+            and float(identical_rate) < 0.50
+        )
+        if not (cv_high or runs_diverge):
+            continue
+        payload: dict = {
+            "engine": engine,
+            "n_runs": int(n_runs),
+        }
+        if isinstance(cer_cv, (int, float)):
+            payload["cer_cv"] = float(cer_cv)
+            payload["cer_cv_pct"] = round(float(cer_cv) * 100, 1)
+        if isinstance(identical_rate, (int, float)):
+            payload["identical_run_rate"] = float(identical_rate)
+            payload["identical_run_rate_pct"] = round(
+                float(identical_rate) * 100, 1,
+            )
+        # Champs additionnels pour la phrase de synthèse
+        cer_mean = stab.get("cer_mean")
+        cer_stdev = stab.get("cer_stdev")
+        if isinstance(cer_mean, (int, float)):
+            payload["cer_mean_pct"] = round(float(cer_mean) * 100, 2)
+        if isinstance(cer_stdev, (int, float)):
+            payload["cer_stdev_pct"] = round(float(cer_stdev) * 100, 2)
+        n_distinct = stab.get("n_distinct_outputs")
+        if isinstance(n_distinct, int):
+            payload["n_distinct_outputs"] = int(n_distinct)
+        facts.append(Fact(
+            type=FactType.ENGINE_UNSTABLE,
+            importance=FactImportance.HIGH,
+            payload=payload,
+            engines_involved=(engine,),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
+# Détecteur Sprint 92 — régression dans l'historique (A.II.9)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.REGRESSION_IN_HISTORY,
+    priority=170,
+    importance=FactImportance.MEDIUM,
+)
+def detect_regression_in_history(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact pour chaque moteur dont l'historique montre
+    une dégradation : pente positive significative ou rupture
+    brutale (Sprint 92).
+
+    Lit ``benchmark_data["longitudinal_trends"]`` : liste de
+    dicts produits par ``compute_corpus_longitudinal`` du module
+    ``longitudinal``.  Si la clé est absente ou vide, le
+    détecteur reste silencieux — typiquement le cas quand
+    aucun historique n'a été chargé ou que la série est trop
+    courte.
+
+    Garde-fous :
+
+    - ``n_runs ≥ 3`` (déjà filtré par
+      ``compute_engine_longitudinal``).
+    - Déclenche si **soit** ``trend.slope`` traduit une
+      régression d'au moins ``slope_threshold`` (en CER/jour,
+      défaut équivalent à +1 point CER sur 365 jours), **soit**
+      ``change_point.delta > change_threshold`` (défaut
+      0.01 = +1 point de CER d'un segment à l'autre).
+    - Importance ``HIGH`` si la dégradation cumulée
+      ``absolute_delta`` ≥ 5 points de CER.
+    """
+    trends = benchmark_data.get("longitudinal_trends") or []
+    if not isinstance(trends, (list, tuple)):
+        return []
+    slope_threshold = (
+        0.01 / 365.0  # +1 point de CER sur 365 jours minimum
+    )
+    change_threshold = 0.01
+    facts: list[Fact] = []
+    for entry in trends:
+        if not isinstance(entry, dict):
+            continue
+        engine = entry.get("engine_name")
+        if not engine:
+            continue
+        n_runs = entry.get("n_runs")
+        if not isinstance(n_runs, int) or n_runs < 3:
+            continue
+        trend = entry.get("trend") or {}
+        cp = entry.get("change_point")
+        slope = trend.get("slope")
+        slope_high = (
+            isinstance(slope, (int, float))
+            and float(slope) > slope_threshold
+        )
+        cp_high = (
+            isinstance(cp, dict)
+            and isinstance(cp.get("delta"), (int, float))
+            and float(cp["delta"]) > change_threshold
+        )
+        if not (slope_high or cp_high):
+            continue
+        absolute_delta = entry.get("absolute_delta") or 0.0
+        importance = (
+            FactImportance.HIGH
+            if isinstance(absolute_delta, (int, float))
+            and abs(float(absolute_delta)) >= 0.05
+            else FactImportance.MEDIUM
+        )
+        payload: dict = {
+            "engine": engine,
+            "n_runs": int(n_runs),
+            "absolute_delta_pct": round(
+                float(absolute_delta) * 100, 2,
+            ) if isinstance(absolute_delta, (int, float)) else 0.0,
+            "first_cer_pct": round(
+                float(entry.get("first_cer") or 0.0) * 100, 2,
+            ),
+            "last_cer_pct": round(
+                float(entry.get("last_cer") or 0.0) * 100, 2,
+            ),
+        }
+        if slope_high:
+            payload["slope_per_year_pct"] = round(
+                float(slope) * 365 * 100, 2,
+            )
+            payload["r_squared"] = round(
+                float(trend.get("r_squared") or 0.0), 3,
+            )
+            payload["pattern"] = "trend"
+        if cp_high:
+            payload["change_point_timestamp"] = str(
+                cp.get("timestamp") or "?",
+            )
+            payload["change_delta_pct"] = round(
+                float(cp["delta"]) * 100, 2,
+            )
+            payload["mean_before_pct"] = round(
+                float(cp.get("mean_before") or 0.0) * 100, 2,
+            )
+            payload["mean_after_pct"] = round(
+                float(cp.get("mean_after") or 0.0) * 100, 2,
+            )
+            # Si on a aussi une rupture, le pattern domine
+            payload["pattern"] = (
+                "trend_and_change_point" if slope_high else "change_point"
+            )
+        facts.append(Fact(
+            type=FactType.REGRESSION_IN_HISTORY,
+            importance=importance,
+            payload=payload,
+            engines_involved=(engine,),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
+# Détecteur Sprint 36 — opportunité d'ensemble (complémentarité)
+# ---------------------------------------------------------------------------
+
+@register_detector(
+    FactType.ENSEMBLE_OPPORTUNITY,
+    priority=130,
+    importance=FactImportance.MEDIUM,
+)
+def detect_ensemble_opportunity(benchmark_data: dict) -> list[Fact]:
+    """Deux moteurs très complémentaires : un voting majoritaire entre eux
+    pourrait améliorer significativement le CER token-level.
+
+    Lit la structure ``inter_engine_analysis`` produite par le runner
+    (Sprint 35-36) et déclenche si la fraction d'erreurs du meilleur
+    moteur récupérable par un ensemble dépasse 25 %.
+
+    L'importance monte à ``HIGH`` quand le gap relatif dépasse 50 %
+    (ensemble franchement profitable) — sinon reste à ``MEDIUM``.
+    """
+    iea = benchmark_data.get("inter_engine_analysis") or {}
+    comp = iea.get("complementarity") or {}
+    if not comp:
+        return []
+
+    relative_gap = float(comp.get("relative_gap") or 0.0)
+    if relative_gap < 0.25:
+        # En deçà de 25 %, l'ensemble n'apporterait quasi rien — on ne
+        # remonte pas le fait pour ne pas bruiter la synthèse.
+        return []
+
+    best_engine = comp.get("best_engine") or ""
+    if not best_engine:
+        return []
+
+    payload: dict = {
+        "best_engine": best_engine,
+        "best_recall_pct": round(float(comp.get("best_single_recall") or 0.0) * 100, 2),
+        "oracle_recall_pct": round(float(comp.get("oracle_recall") or 0.0) * 100, 2),
+        "absolute_gap_pct": round(float(comp.get("absolute_gap") or 0.0) * 100, 2),
+        "relative_gap_pct": round(relative_gap * 100, 1),
+        "doc_count": int(comp.get("doc_count") or 0),
+    }
+
+    # Paire la plus complémentaire — la divergence taxonomique, quand
+    # disponible, fournit deux moteurs « candidats naturels ».  Sinon on
+    # tombe sur le best + le second-best en recall individuel.
+    div = iea.get("taxonomy_divergence") or {}
+    pair = div.get("max_pair") or []
+    pair_a = ""
+    pair_b = ""
+    divergence_value: Optional[float] = None
+    if pair and len(pair) >= 3 and isinstance(pair[2], (int, float)) and pair[2] > 0:
+        pair_a, pair_b, divergence_value = str(pair[0]), str(pair[1]), float(pair[2])
+    else:
+        # Fallback : best engine + second-best engine par recall individuel
+        per_engine = comp.get("per_engine_recall") or {}
+        if len(per_engine) >= 2:
+            ranked = sorted(per_engine.items(), key=lambda kv: kv[1], reverse=True)
+            pair_a, pair_b = ranked[0][0], ranked[1][0]
+
+    payload["pair_a"] = pair_a
+    payload["pair_b"] = pair_b
+    payload["divergence"] = round(divergence_value, 3) if divergence_value is not None else 0.0
+    payload["divergence_metric"] = (div.get("metric") or "js")
+
+    importance = (
+        FactImportance.HIGH if relative_gap >= 0.5 else FactImportance.MEDIUM
+    )
+    engines_involved: tuple[str, ...] = (
+        (pair_a, pair_b) if pair_a and pair_b else (best_engine,)
+    )
+    return [Fact(
+        type=FactType.ENSEMBLE_OPPORTUNITY,
+        importance=importance,
+        payload=payload,
+        engines_involved=engines_involved,
+    )]
+
+
+# ---------------------------------------------------------------------------
 # Enregistrement par défaut — Sprint 29
 # ---------------------------------------------------------------------------
 #
