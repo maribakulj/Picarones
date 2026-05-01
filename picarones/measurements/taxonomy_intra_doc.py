@@ -42,7 +42,7 @@ import logging
 import unicodedata
 from typing import Optional
 
-from picarones.core.taxonomy import (
+from picarones.measurements.taxonomy import (
     ERROR_CLASSES,
     _is_abbreviation_error,
     _is_diacritic_error,
