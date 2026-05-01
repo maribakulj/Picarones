@@ -37,7 +37,7 @@ async def api_benchmark_synthesis_preview(job_id: str, lang: str = "fr") -> dict
         lang = "fr"
 
     # Statut courant : RAM si dispo, sinon DB.
-    ram_job = state.JOBS.get(job_id)
+    ram_job = state.get_job_in_memory(job_id)
     db_job = state.JOB_STORE.get_job(job_id)
     if ram_job is None and db_job is None:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")

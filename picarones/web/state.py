@@ -219,12 +219,43 @@ class BenchmarkJob:
 # ──────────────────────────────────────────────────────────────────────────
 
 JOBS: dict[str, BenchmarkJob] = {}
-"""Registre en mémoire des jobs (par ``job_id``)."""
+"""Registre en mémoire des jobs (par ``job_id``).
+
+**Discipline d'accès** : tous les ``read`` et ``write`` doivent passer
+par les helpers ``register_job``, ``get_job_in_memory``,
+``unregister_job`` qui prennent ``JOBS_LOCK``. Lire ou muter ce dict
+sans verrou expose à un ``RuntimeError: dictionary changed size
+during iteration`` sous charge concurrente (le GIL protège l'atomicité
+d'une opération mais pas la cohérence d'une boucle).
+"""
 
 JOBS_MAX = 100
 """Nombre maximum de jobs conservés en mémoire avant nettoyage."""
 
 JOBS_LOCK = threading.Lock()
+
+
+def register_job(job: BenchmarkJob) -> None:
+    """Enregistre ``job`` dans le registre mémoire (thread-safe)."""
+    with JOBS_LOCK:
+        JOBS[job.job_id] = job
+
+
+def get_job_in_memory(job_id: str) -> Optional[BenchmarkJob]:
+    """Récupère un ``BenchmarkJob`` du registre mémoire (thread-safe).
+
+    Retourne ``None`` si le job n'est pas (ou plus) en RAM. Les
+    consommateurs qui veulent un fallback DB doivent appeler
+    ``JOB_STORE.get_job(job_id)`` séparément.
+    """
+    with JOBS_LOCK:
+        return JOBS.get(job_id)
+
+
+def unregister_job(job_id: str) -> None:
+    """Retire un job du registre mémoire (thread-safe ; idempotent)."""
+    with JOBS_LOCK:
+        JOBS.pop(job_id, None)
 
 
 def cleanup_old_jobs() -> None:
@@ -256,5 +287,8 @@ __all__ = [
     "JOBS",
     "JOBS_MAX",
     "JOBS_LOCK",
+    "register_job",
+    "get_job_in_memory",
+    "unregister_job",
     "cleanup_old_jobs",
 ]

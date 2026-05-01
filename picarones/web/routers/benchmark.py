@@ -87,7 +87,7 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
     job_id = str(uuid.uuid4())
     job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
     state.JOB_STORE.create_job(job_id)
-    state.JOBS[job_id] = job
+    state.register_job(job)
     state.cleanup_old_jobs()
 
     _start_job_thread(job, run_benchmark_thread, req)
@@ -136,7 +136,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     job_id = str(uuid.uuid4())
     job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
     state.JOB_STORE.create_job(job_id)
-    state.JOBS[job_id] = job
+    state.register_job(job)
 
     _start_job_thread(job, run_benchmark_thread_v2, req)
     return {"job_id": job_id, "status": "pending"}
@@ -149,7 +149,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
 @router.get("/api/benchmark/{job_id}/status")
 async def api_benchmark_status(job_id: str) -> dict:
     """Statut courant d'un job (RAM si disponible, sinon DB)."""
-    job = state.JOBS.get(job_id)
+    job = state.get_job_in_memory(job_id)
     if job is not None:
         return job.as_dict()
     # Sprint 26 — fallback DB : le job n'est pas (plus) en RAM dans ce
@@ -174,7 +174,7 @@ async def api_benchmark_status(job_id: str) -> dict:
 @router.post("/api/benchmark/{job_id}/cancel")
 async def api_benchmark_cancel(job_id: str) -> dict:
     """Annule un job en cours (no-op si déjà terminé)."""
-    job = state.JOBS.get(job_id)
+    job = state.get_job_in_memory(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
     if job.status in ("complete", "error"):
@@ -216,7 +216,7 @@ async def api_benchmark_stream(job_id: str, request: Request) -> StreamingRespon
     except ValueError:
         last_seq = 0
 
-    job = state.JOBS.get(job_id)
+    job = state.get_job_in_memory(job_id)
     db_job = state.JOB_STORE.get_job(job_id)
     if job is None and db_job is None:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
