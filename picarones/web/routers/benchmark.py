@@ -110,11 +110,10 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
         raise HTTPException(
             status_code=400, detail=f"Corpus non trouvé : {req.corpus_path}",
         )
-    if not req.competitors:
-        raise HTTPException(status_code=400, detail="Aucun concurrent défini.")
+    # ``competitors`` non vide est garanti par Pydantic ``min_length=1``.
 
-    # Sprint 24 — mode public : refuse les pipelines LLM mutualisés et
-    # les moteurs OCR cloud sollicités par n'importe quel concurrent.
+    # Mode public : refuse les pipelines LLM mutualisés et les moteurs
+    # OCR cloud sollicités par n'importe quel concurrent.
     try:
         for comp in req.competitors:
             assert_engines_allowed([comp.ocr_engine] if comp.ocr_engine else [])

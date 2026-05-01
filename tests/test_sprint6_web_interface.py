@@ -1127,7 +1127,9 @@ class TestFastAPIBenchmarkRun:
             "corpus_path": str(tmp_corpus),
             "competitors": [],
         })
-        assert r.status_code == 400
+        # Pydantic ``min_length=1`` rejette en 422 Unprocessable Entity
+        # (code HTTP standard pour payload invalide).
+        assert r.status_code == 422
 
     def test_run_missing_ocr_engine_accepted(self, client, tmp_corpus):
         """ocr_engine est désormais optionnel (vide = post-correction corpus)."""
