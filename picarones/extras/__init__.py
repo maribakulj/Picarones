@@ -1,22 +1,21 @@
 """Plugins Picarones — Cercle 3 de l'architecture.
 
-Modules optionnels, niche, ou préventifs qui ne servent pas
-directement la question centrale du produit (« peut-on déployer ce
-moteur en prod sur ce corpus ? »). Ils sont **séparables** : leur
-absence ne casse pas le bench standard.
+Modules optionnels et **séparables** : leur absence ne casse pas
+le bench standard. Ils étendent Picarones avec des fonctionnalités
+qui ne servent pas directement la question centrale (« peut-on
+déployer ce moteur en prod sur ce corpus ? ») et qui dépendent
+typiquement de sources externes (IIIF, eScriptorium, HuggingFace…).
 
-À terme, certains de ces sous-packages pourront être distribués comme
-packages PyPI séparés (``picarones-historical``, ``picarones-importers``).
-Pour l'instant ils vivent comme sous-packages internes pour limiter le
-churn.
+Sous-packages
+-------------
+- :mod:`importers` — connecteurs corpus (IIIF, Gallica, HTR-United,
+  HuggingFace, eScriptorium). Les modules ``huggingface`` et
+  ``escriptorium`` émettent un ``UserWarning`` à l'import car ils
+  n'ont pas été validés sur des instances de production.
 
-Convention de rétrocompat
--------------------------
-Pour chaque module déplacé depuis ``picarones/core/`` ou
-``picarones/report/`` vers ``picarones/extras/``, un fichier-shim est
-laissé à l'ancien emplacement qui réexporte les noms publics. Les
-imports historiques (``from picarones.measurements.taxonomy_intra_doc import
-...``) continuent à fonctionner sans modification.
+À terme, ces sous-packages pourront être distribués comme packages
+PyPI séparés (``picarones-importers``…). Pour l'instant ils vivent
+comme sous-packages internes pour limiter le churn.
 
 Voir :doc:`docs/architecture.md` pour la cartographie complète
 et les critères d'assignation au Cercle 3.
