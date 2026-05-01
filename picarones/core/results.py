@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from picarones import __version__
-from picarones.measurements.metrics import MetricsResult, aggregate_metrics
+from picarones.core.metrics import MetricsResult, aggregate_metrics
 
 
 @dataclass
