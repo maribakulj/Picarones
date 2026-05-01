@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import urllib.request
@@ -28,7 +29,18 @@ router = APIRouter()
 
 @router.get("/api/engines")
 async def api_engines() -> dict:
-    """Statut des 5 moteurs OCR (locaux + cloud) et 4 providers LLM."""
+    """Statut des 5 moteurs OCR (locaux + cloud) et 4 providers LLM.
+
+    Les détections (``check_engine``, ``fetch_ollama_info``,
+    ``get_tesseract_langs``) font des imports + un appel HTTP local
+    qui peuvent bloquer plusieurs centaines de ms ; déléguées à un
+    thread via ``asyncio.to_thread`` pour ne pas figer l'event loop.
+    """
+    return await asyncio.to_thread(_collect_engines_sync)
+
+
+def _collect_engines_sync() -> dict:
+    """Implémentation synchrone de :func:`api_engines`."""
     engines = []
 
     # OCR locaux
@@ -133,7 +145,16 @@ async def api_models(
     déterminées par heuristique sur le nom du modèle quand l'API ne
     fournit pas cette information directement. Le paramètre
     ``capability`` filtre les résultats.
+
+    Délègue à un thread (``asyncio.to_thread``) car ``urllib`` est
+    synchrone — un timeout de 10 s figerait sinon tout l'event loop
+    FastAPI pendant l'attente.
     """
+    return await asyncio.to_thread(_models_for_provider_sync, provider, capability)
+
+
+def _models_for_provider_sync(provider: str, capability: str) -> dict:
+    """Implémentation synchrone de :func:`api_models`."""
     if provider == "tesseract":
         langs = get_tesseract_langs()
         return {"provider": provider, "models": langs, "model_ids": langs}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import shutil
@@ -79,40 +80,39 @@ async def api_corpus_browse(
 
 @router.post("/api/corpus/upload")
 async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
-    """Upload un corpus : soit un ``.zip``, soit une sélection d'images + ``.gt.txt``."""
+    """Upload un corpus : soit un ``.zip``, soit une sélection d'images + ``.gt.txt``.
+
+    Pour chaque fichier, la lecture multipart (``uf.read()``) reste
+    sur l'event loop car FastAPI/Starlette gèrent l'asynchronisme du
+    streaming HTTP. L'écriture disque (potentiellement 500 Mo pour
+    un ZIP) et l'analyse du corpus sont déléguées à un thread.
+    """
     corpus_id = str(uuid.uuid4())
     corpus_dir = UPLOADS_DIR / corpus_id
     corpus_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        # Étape 1 (async) : lire les bytes multipart pour ne pas
+        # bloquer l'event loop sur la réception réseau.
+        payloads: list[tuple[str, bytes]] = []
         for uf in files:
             filename = uf.filename or "upload"
             # Sprint 24 — empêcher la traversée via le nom de fichier reçu
             # depuis le client (multipart). On garde uniquement le basename.
             safe_name = Path(filename).name
             data = await uf.read()
-            suffix = Path(safe_name).suffix.lower()
+            payloads.append((safe_name, data))
 
-            if suffix == ".zip":
-                with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                    flatten_zip_to_dir(zf, corpus_dir)
-            elif suffix in IMAGE_EXTS:
-                # Sprint 24 — valider l'image avant écriture (Pillow.verify,
-                # taille max, rejet des bombes de décompression).
-                try:
-                    validate_image_safe(data, filename=safe_name)
-                except ValueError as exc:
-                    raise HTTPException(status_code=415, detail=str(exc))
-                (corpus_dir / safe_name).write_bytes(data)
-            elif (
-                safe_name.endswith(".gt.txt")
-                or safe_name.endswith(".ocr.txt")
-                or suffix in (".txt", ".xml")
-            ):
-                (corpus_dir / safe_name).write_bytes(data)
-            # Ignorer les autres types
+        # Étape 2 (thread) : écriture disque + analyse synchrone.
+        try:
+            summary = await asyncio.to_thread(
+                _write_payloads_and_analyze, corpus_dir, payloads,
+            )
+        except ValueError as exc:
+            # Validation d'image rejetée (taille, format, bombe de
+            # décompression, ZIP trop volumineux, etc.).
+            raise HTTPException(status_code=415, detail=str(exc))
 
-        summary = analyze_corpus_dir(corpus_dir)
         if not summary["usable"]:
             shutil.rmtree(corpus_dir, ignore_errors=True)
             raise HTTPException(
@@ -130,6 +130,36 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(corpus_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+def _write_payloads_and_analyze(
+    corpus_dir: Path, payloads: list[tuple[str, bytes]],
+) -> dict:
+    """Écrit les bytes multipart sur disque puis analyse le résultat.
+
+    Exécuté dans un thread (lib appelante : ``api_corpus_upload``).
+    Lève ``ValueError`` sur image invalide ou ZIP corrompu —
+    l'appelant doit traduire en HTTP 415.
+    """
+    for safe_name, data in payloads:
+        suffix = Path(safe_name).suffix.lower()
+        if suffix == ".zip":
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                flatten_zip_to_dir(zf, corpus_dir)
+        elif suffix in IMAGE_EXTS:
+            # Sprint 24 — valider l'image avant écriture (Pillow.verify,
+            # taille max, rejet des bombes de décompression).
+            validate_image_safe(data, filename=safe_name)
+            (corpus_dir / safe_name).write_bytes(data)
+        elif (
+            safe_name.endswith(".gt.txt")
+            or safe_name.endswith(".ocr.txt")
+            or suffix in (".txt", ".xml")
+        ):
+            (corpus_dir / safe_name).write_bytes(data)
+        # Sinon : type ignoré (silence intentionnel).
+
+    return analyze_corpus_dir(corpus_dir)
 
 
 @router.get("/api/corpus/uploads")

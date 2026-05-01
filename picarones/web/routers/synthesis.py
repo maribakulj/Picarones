@@ -1,4 +1,4 @@
-"""Router de la synthèse narrative en preview (Sprint 28).
+"""Router de la synthèse narrative en preview.
 
 Permet à un client d'obtenir la synthèse narrative d'un job terminé
 sans devoir ouvrir le rapport HTML complet — utile pour un encart
@@ -8,6 +8,7 @@ en tête de page.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Optional
@@ -32,11 +33,15 @@ async def api_benchmark_synthesis_preview(job_id: str, lang: str = "fr") -> dict
 
     Renvoie ``409 Conflict`` si le job n'est pas terminé, ``404`` si
     introuvable, ``422`` si le JSON associé est manquant ou cassé.
+
+    La lecture du JSON et l'appel narrative sont délégués à un thread
+    (``asyncio.to_thread``) pour ne pas bloquer l'event loop FastAPI
+    sur l'I/O disque (rapports volumineux : plusieurs Mo).
     """
     if lang not in state.SUPPORTED_LANGS:
         lang = "fr"
 
-    # Statut courant : RAM si dispo, sinon DB.
+    # Statut courant : RAM si dispo, sinon DB. Lookups rapides, pas de thread.
     ram_job = state.get_job_in_memory(job_id)
     db_job = state.JOB_STORE.get_job(job_id)
     if ram_job is None and db_job is None:
@@ -59,6 +64,15 @@ async def api_benchmark_synthesis_preview(job_id: str, lang: str = "fr") -> dict
     if not output_path:
         raise HTTPException(status_code=422, detail="Aucun rapport produit pour ce job.")
 
+    return await asyncio.to_thread(_build_synthesis_payload, job_id, lang, output_path)
+
+
+def _build_synthesis_payload(job_id: str, lang: str, output_path: str) -> dict:
+    """Localise le JSON associé au HTML, le lit, appelle ``build_synthesis``.
+
+    Exécuté dans un thread — ``read_text`` peut bloquer plusieurs ms
+    sur des rapports volumineux.
+    """
     # Le HTML est à ``output_path`` ; le JSON associé est à côté
     # (convention ``picarones run -o results.json --output-html``).
     html_path = Path(output_path)
