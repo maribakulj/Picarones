@@ -1,19 +1,22 @@
 """Configuration pytest globale.
 
-Sprint 24 a introduit dans ``picarones.web.app`` :
-  - un sémaphore borné (`_JOBS_SEMAPHORE`) pour les benchmarks concurrents,
-  - un rate limiter par IP (`_RATE_LIMITER`),
-  - une liste cachée de browse roots (`_BROWSE_ROOTS`) calculée au chargement.
+Picarones expose dans ``picarones.web.state`` trois états globaux
+partagés :
+  - un sémaphore borné (``JOBS_SEMAPHORE``) pour les benchmarks
+    concurrents,
+  - un rate limiter par IP (``RATE_LIMITER``),
+  - une liste cachée de browse roots dérivée à l'import dans
+    ``picarones.web.app._BROWSE_ROOTS``.
 
-Ces trois états sont **globaux et partagés** entre tests, ce qui peut polluer
-des tests indépendants. Ce conftest :
+Ces états peuvent polluer des tests indépendants. Ce conftest :
 
-1. Force des défauts test-friendly via env vars **avant** l'import du module
-   ``picarones.web.app`` — sinon le sémaphore est déjà créé avec la valeur
-   prod (2) au moment où le premier test l'utilise.
-2. Restaure l'état entre chaque test via une fixture autouse qui purge le
-   rate limiter, ré-injecte un sémaphore frais à `_JOBS_SEMAPHORE`, et
-   recalcule `_BROWSE_ROOTS` selon l'environnement courant.
+1. Force des défauts test-friendly via env vars **avant** l'import
+   du module ``picarones.web.app`` — sinon le sémaphore est déjà
+   créé avec la valeur prod (2) au moment où le premier test
+   l'utilise.
+2. Restaure l'état entre chaque test via une fixture autouse qui
+   purge le rate limiter, ré-injecte un sémaphore frais, et recalcule
+   les browse roots selon l'environnement courant.
 """
 
 from __future__ import annotations
@@ -59,6 +62,7 @@ def _isolate_web_app_state():
     try:
         from picarones.web import app as web_app
         from picarones.web import security as web_sec
+        from picarones.web import state as web_state
     except ImportError:
         # Tests non-web : aucun état à restaurer.
         yield
@@ -67,13 +71,17 @@ def _isolate_web_app_state():
     # Sauvegarde
     original_browse_roots = list(web_app._BROWSE_ROOTS)
 
-    # Sémaphore frais à chaque test (capacité large, voir conftest top-level)
-    web_app._JOBS_SEMAPHORE = threading.Semaphore(web_sec.get_max_concurrent_jobs())
-    web_app._RATE_LIMITER.reset()
-    web_app._RATE_LIMITER.max_per_hour = web_sec.get_rate_limit_per_hour()
+    # Sémaphore frais à chaque test (capacité large, voir conftest top-level).
+    # Le module ``state`` détient le singleton ; ``app`` en a juste une
+    # référence (importée comme ``_JOBS_SEMAPHORE``) — on synchronise les deux.
+    new_sem = threading.Semaphore(web_sec.get_max_concurrent_jobs())
+    web_state.JOBS_SEMAPHORE = new_sem
+    web_app._JOBS_SEMAPHORE = new_sem
+    web_state.RATE_LIMITER.reset()
+    web_state.RATE_LIMITER.max_per_hour = web_sec.get_rate_limit_per_hour()
 
     yield
 
     # Restauration
     web_app._BROWSE_ROOTS[:] = original_browse_roots
-    web_app._RATE_LIMITER.reset()
+    web_state.RATE_LIMITER.reset()

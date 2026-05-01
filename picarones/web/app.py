@@ -35,7 +35,6 @@ import threading
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
@@ -44,20 +43,37 @@ from contextlib import asynccontextmanager
 
 from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
-from pydantic import BaseModel
 
 from picarones import __version__
-from picarones.web.jobs import JobStore, get_default_store
+from picarones.web.models import (
+    BenchmarkRequest,
+    BenchmarkRunRequest,
+    CompetitorConfig,
+    HTRUnitedImportRequest,
+    HuggingFaceImportRequest,
+)
 from picarones.web.security import (
-    RateLimiter,
     assert_engines_allowed,
     assert_llm_provider_allowed,
     compute_browse_roots,
     csp_middleware,
     get_max_concurrent_jobs,
-    get_rate_limit_per_hour,
     validate_image_safe,
 )
+from picarones.web.state import (
+    IMAGE_EXTS as _IMAGE_EXTS,
+    JOB_STORE as _JOB_STORE,
+    JOBS as _JOBS,
+    JOBS_SEMAPHORE as _JOBS_SEMAPHORE,
+    SUPPORTED_LANGS as _SUPPORTED_LANGS,
+    UPLOADS_DIR as _UPLOADS_DIR,
+    BenchmarkJob,
+    cleanup_old_jobs as _cleanup_old_jobs,
+    enforce_rate_limit as _enforce_rate_limit,
+    iso_now as _iso_now,
+)
+
+_logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # App initialization
@@ -98,214 +114,6 @@ if _STATIC_DIR.is_dir():
     from fastapi.staticfiles import StaticFiles
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
-# Sprint 24 — rate limiter global (no-op si non public ou quota = 0)
-_RATE_LIMITER = RateLimiter(max_per_hour=get_rate_limit_per_hour())
-
-# Sprint 24 — sémaphore borné le nombre de benchmarks concurrents.
-_JOBS_SEMAPHORE = threading.Semaphore(get_max_concurrent_jobs())
-
-
-def _client_ip(request: Request) -> str:
-    """Récupère l'IP client en respectant ``X-Forwarded-For`` derrière un proxy."""
-    fwd = request.headers.get("x-forwarded-for") or ""
-    if fwd:
-        return fwd.split(",")[0].strip()
-    return (request.client.host if request.client else "unknown")
-
-
-def _enforce_rate_limit(request: Request) -> None:
-    """Applique le rate limit ; lève HTTPException 429 si dépassé."""
-    try:
-        _RATE_LIMITER.check(_client_ip(request))
-    except PermissionError as exc:
-        raise HTTPException(status_code=429, detail=str(exc))
-
-# ---------------------------------------------------------------------------
-# Job management
-# ---------------------------------------------------------------------------
-
-_logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BenchmarkJob:
-    job_id: str
-    status: str = "pending"   # pending | running | complete | error | cancelled | interrupted
-    progress: float = 0.0     # 0.0 – 1.0
-    current_engine: str = ""
-    total_docs: int = 0
-    processed_docs: int = 0
-    output_path: str = ""
-    error: str = ""
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    events: list[dict] = field(default_factory=list)
-    _subscribers: list[asyncio.Queue] = field(default_factory=list)
-    _lock: threading.Lock = field(default_factory=threading.Lock)
-    _cancel_event: threading.Event = field(default_factory=threading.Event)
-    # Sprint 26 — store SQLite optionnel injecté à la création.
-    _store: Optional[JobStore] = None
-
-    def add_event(self, kind: str, data: Any) -> None:
-        # Sprint 26 — persister d'abord dans le store pour récupérer le ``seq``.
-        # Si le store est indisponible, on continue en mémoire seulement.
-        seq: Optional[int] = None
-        if self._store is not None:
-            try:
-                seq = self._store.append_event(self.job_id, kind, data)
-                # Synchronise l'état de progression à chaque événement —
-                # garantit qu'à chaque seq persisté, le snapshot du job
-                # en base est cohérent avec ce que vit le client.
-                self._store.update_progress(
-                    self.job_id,
-                    progress=self.progress,
-                    current_engine=self.current_engine,
-                    total_docs=self.total_docs,
-                    processed_docs=self.processed_docs,
-                    output_path=self.output_path,
-                )
-            except Exception as exc:  # pragma: no cover — défense en profondeur
-                _logger.warning(
-                    "[jobs] persistance d'événement échouée pour %s : %s",
-                    self.job_id, exc,
-                )
-        event = {"kind": kind, "data": data, "ts": _iso_now(), "seq": seq}
-        with self._lock:
-            self.events.append(event)
-            subscribers = list(self._subscribers)
-        for q in subscribers:
-            try:
-                q.put_nowait(event)
-            except asyncio.QueueFull:
-                # Sprint 26 — la perte ici n'est plus silencieuse sur le
-                # plan applicatif : le client peut reprendre via
-                # Last-Event-ID en relisant le store.
-                _logger.warning(
-                    "[jobs] queue SSE pleine pour job %s — événement déjà persisté seq=%s",
-                    self.job_id, seq,
-                )
-
-    def set_status(self, status: str, error: str = "") -> None:
-        """Met à jour le statut + persiste vers le store (Sprint 26)."""
-        self.status = status
-        if error:
-            self.error = error
-        if status in ("complete", "error", "cancelled", "interrupted"):
-            self.finished_at = _iso_now()
-        if self._store is not None:
-            try:
-                self._store.set_status(
-                    self.job_id, status, error=error or None
-                )
-            except Exception as exc:  # pragma: no cover
-                _logger.warning(
-                    "[jobs] set_status persisté en échec pour %s : %s",
-                    self.job_id, exc,
-                )
-
-    def subscribe(self) -> asyncio.Queue:
-        q: asyncio.Queue = asyncio.Queue(maxsize=200)
-        with self._lock:
-            self._subscribers.append(q)
-        return q
-
-    def unsubscribe(self, q: asyncio.Queue) -> None:
-        with self._lock:
-            try:
-                self._subscribers.remove(q)
-            except ValueError:
-                pass
-
-    def as_dict(self) -> dict:
-        return {
-            "job_id": self.job_id,
-            "status": self.status,
-            "progress": self.progress,
-            "current_engine": self.current_engine,
-            "total_docs": self.total_docs,
-            "processed_docs": self.processed_docs,
-            "output_path": self.output_path,
-            "error": self.error,
-            "started_at": self.started_at,
-            "finished_at": self.finished_at,
-        }
-
-
-_JOBS: dict[str, BenchmarkJob] = {}
-_JOBS_MAX = 100  # Nombre max de jobs conservés en mémoire
-_JOBS_LOCK = threading.Lock()
-
-# Sprint 26 — store SQLite singleton, injecté dans chaque BenchmarkJob.
-# Le hook de marquage des orphelins est branché via le ``lifespan`` plus
-# haut dans le fichier (voir ``_lifespan``).
-_JOB_STORE: JobStore = get_default_store()
-
-
-def _cleanup_old_jobs() -> None:
-    """Supprime les jobs terminés les plus anciens si le nombre dépasse _JOBS_MAX."""
-    with _JOBS_LOCK:
-        if len(_JOBS) <= _JOBS_MAX:
-            return
-        finished = [
-            (jid, j) for jid, j in _JOBS.items()
-            if j.status in ("complete", "error", "cancelled")
-        ]
-        finished.sort(key=lambda x: x[1].finished_at or "")
-        to_remove = len(_JOBS) - _JOBS_MAX
-        for jid, _ in finished[:to_remove]:
-            del _JOBS[jid]
-
-
-_IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp"})
-_UPLOADS_DIR = Path("./uploads")
-
-# ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
-
-class BenchmarkRequest(BaseModel):
-    corpus_path: str
-    engines: list[str] = ["tesseract"]
-    normalization_profile: str = "nfc"
-    char_exclude: str = ""   # Caractères à ignorer (séparés par virgule, ex: "',–")
-    output_dir: str = "./rapports/"
-    report_name: str = ""
-    lang: str = "fra"
-    report_lang: str = "fr"   # langue du rapport HTML : "fr" ou "en"
-
-class HTRUnitedImportRequest(BaseModel):
-    entry_id: str
-    output_dir: str = "./corpus/"
-    max_samples: int = 100
-
-class HuggingFaceImportRequest(BaseModel):
-    dataset_id: str
-    output_dir: str = "./corpus/"
-    split: str = "train"
-    max_samples: int = 100
-
-
-class CompetitorConfig(BaseModel):
-    name: str = ""
-    ocr_engine: str = ""
-    """Moteur OCR : 'tesseract', 'mistral_ocr', ... ou 'corpus' pour utiliser l'OCR pré-calculé."""
-    ocr_model: str = ""
-    llm_provider: str = ""
-    llm_model: str = ""
-    pipeline_mode: str = ""
-    prompt_file: str = ""
-
-
-class BenchmarkRunRequest(BaseModel):
-    corpus_path: str
-    competitors: list[CompetitorConfig]
-    normalization_profile: str = "nfc"
-    char_exclude: str = ""   # Caractères à ignorer (séparés par virgule, ex: "',–")
-    output_dir: str = "./rapports/"
-    report_name: str = ""
-    report_lang: str = "fr"
-
-
 # ---------------------------------------------------------------------------
 # API — status
 # ---------------------------------------------------------------------------
@@ -324,8 +132,7 @@ async def api_status() -> dict:
 # API — langue / i18n
 # ---------------------------------------------------------------------------
 
-_SUPPORTED_LANGS = ("fr", "en")
-_LANG_COOKIE = "picarones_lang"
+from picarones.web.state import LANG_COOKIE as _LANG_COOKIE
 
 
 @app.get("/api/lang")
@@ -2054,12 +1861,4 @@ def _render_index(lang: str) -> str:
 async def index(picarones_lang: str = Cookie(default="fr")) -> HTMLResponse:
     lang = picarones_lang if picarones_lang in _SUPPORTED_LANGS else "fr"
     return HTMLResponse(content=_render_index(lang))
-
-
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
-
-def _iso_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 

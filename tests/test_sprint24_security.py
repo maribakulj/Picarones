@@ -245,8 +245,9 @@ class TestPublicModeBlocksLLMBenchmark:
         monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
         # Désactive le rate limit dans cette session
         from picarones.web import app as web_app
-        web_app._RATE_LIMITER.reset()
-        web_app._RATE_LIMITER.max_per_hour = 0  # type: ignore[attr-defined]
+        from picarones.web import state as web_state
+        web_state.RATE_LIMITER.reset()
+        web_state.RATE_LIMITER.max_per_hour = 0  # type: ignore[attr-defined]
         # Crée un faux corpus pour passer le contrôle d'existence
         corpus = tmp_path / "corp"
         corpus.mkdir()
