@@ -406,6 +406,7 @@ class TestCercle1IsLean:
     EXPECTED_CERCLE1 = {
         "corpus.py", "facts.py", "metric_hooks.py", "metric_registry.py",
         "metrics.py", "modules.py", "pipeline.py", "results.py",
+        "xml_utils.py",
     }
 
     def test_cercle1_files_lean(self):

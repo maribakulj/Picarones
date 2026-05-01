@@ -51,7 +51,8 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
-from xml.etree import ElementTree as ET
+
+from picarones.core.xml_utils import safe_parse_xml
 
 from picarones.core.metric_registry import register_metric
 from picarones.core.modules import ArtifactType
@@ -125,12 +126,14 @@ def extract_text_from_alto(payload: Any) -> str:
     xml = _coerce_alto_to_str(payload).strip()
     if not xml:
         return ""
-    try:
-        root = ET.fromstring(xml)
-    except ET.ParseError as exc:
+    # ``safe_parse_xml`` neutralise XXE / Billion Laughs / DTD
+    # retrieval — l'ALTO peut venir d'un module ``BaseModule`` tiers
+    # qui n'a pas de garantie de provenance.
+    root = safe_parse_xml(xml.encode("utf-8") if isinstance(xml, str) else xml)
+    if root is None:
         logger.warning(
-            "[alto_metrics] ALTO non parsable (%s) — texte extrait vide",
-            exc,
+            "[alto_metrics] ALTO non parsable (XML invalide ou défense XXE "
+            "déclenchée) — texte extrait vide",
         )
         return ""
 

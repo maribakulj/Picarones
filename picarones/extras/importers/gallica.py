@@ -30,6 +30,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+
+from picarones.core.xml_utils import safe_parse_xml
 from dataclasses import dataclass
 from typing import Optional
 
@@ -261,10 +263,12 @@ class GallicaClient:
     def _parse_sru_response(self, xml_bytes: bytes, max_results: int) -> list[GallicaRecord]:
         """Parse la réponse SRU XML de Gallica."""
         records: list[GallicaRecord] = []
-        try:
-            root = ET.fromstring(xml_bytes)
-        except ET.ParseError as exc:
-            logger.error("Impossible de parser la réponse SRU: %s", exc)
+        # ``safe_parse_xml`` neutralise XXE / Billion Laughs / DTD
+        # retrieval — Gallica est de confiance institutionnelle mais
+        # on ne baisse pas la garde sur du XML reçu via le réseau.
+        root = safe_parse_xml(xml_bytes)
+        if root is None:
+            logger.error("Impossible de parser la réponse SRU (XML invalide ou défense XXE déclenchée)")
             return records
 
         # Les enregistrements sont dans srw:records/srw:record/srw:recordData
@@ -446,9 +450,15 @@ class GallicaClient:
         url = f"{_GALLICA_BASE}/services/OAIRecord?ark=ark:/12148/{ark}"
         try:
             raw = self._fetch_url(url)
-            root = ET.fromstring(raw)
-        except (RuntimeError, ET.ParseError) as exc:
-            logger.error("Erreur métadonnées OAI %s: %s", ark, exc)
+        except RuntimeError as exc:
+            logger.error("Erreur fetch métadonnées OAI %s: %s", ark, exc)
+            return {"ark": ark}
+        root = safe_parse_xml(raw)
+        if root is None:
+            logger.error(
+                "Erreur parse XML métadonnées OAI %s (XML invalide ou défense XXE déclenchée)",
+                ark,
+            )
             return {"ark": ark}
 
         def find_text(tag_suffix: str) -> str:
