@@ -40,8 +40,8 @@ from typing import Any, AsyncIterator, Optional
 
 from contextlib import asynccontextmanager
 
-from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi import FastAPI, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
 
 from picarones import __version__
 from picarones.web.benchmark_utils import (
@@ -70,8 +70,6 @@ from picarones.web.engine_utils import (
 from picarones.web.models import (
     BenchmarkRequest,
     BenchmarkRunRequest,
-    HTRUnitedImportRequest,
-    HuggingFaceImportRequest,
 )
 from picarones.web.security import (
     assert_engines_allowed,
@@ -80,6 +78,13 @@ from picarones.web.security import (
     csp_middleware,
     get_max_concurrent_jobs,
     validate_image_safe,
+)
+from picarones.web.routers import (
+    home as _home_router,
+    importers as _importers_router,
+    normalization as _normalization_router,
+    reports as _reports_router,
+    system as _system_router,
 )
 from picarones.web.state import (
     IMAGE_EXTS as _IMAGE_EXTS,
@@ -91,7 +96,6 @@ from picarones.web.state import (
     BenchmarkJob,
     cleanup_old_jobs as _cleanup_old_jobs,
     enforce_rate_limit as _enforce_rate_limit,
-    iso_now as _iso_now,
 )
 
 _logger = logging.getLogger(__name__)
@@ -136,54 +140,14 @@ if _STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 # ---------------------------------------------------------------------------
-# API — status
+# Routers thématiques (extraits dans picarones.web.routers)
 # ---------------------------------------------------------------------------
 
-@app.get("/api/status")
-async def api_status() -> dict:
-    return {
-        "app": "Picarones",
-        "version": __version__,
-        "status": "ok",
-        "timestamp": _iso_now(),
-    }
-
-
-# ---------------------------------------------------------------------------
-# API — langue / i18n
-# ---------------------------------------------------------------------------
-
-from picarones.web.state import LANG_COOKIE as _LANG_COOKIE
-
-
-@app.get("/api/lang")
-async def api_get_lang(
-    picarones_lang: str = Cookie(default="fr"),
-) -> dict:
-    """Retourne la langue courante de l'interface (lue depuis le cookie de session)."""
-    lang = picarones_lang if picarones_lang in _SUPPORTED_LANGS else "fr"
-    return {"lang": lang, "supported": list(_SUPPORTED_LANGS)}
-
-
-@app.post("/api/lang/{lang_code}")
-async def api_set_lang(lang_code: str, response: Response) -> dict:
-    """Définit la langue de l'interface et la persiste dans un cookie de session.
-
-    Langues supportées : ``fr`` (français), ``en`` (anglais patrimonial).
-    """
-    if lang_code not in _SUPPORTED_LANGS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Langue non supportée : '{lang_code}'. Disponibles : {', '.join(_SUPPORTED_LANGS)}",
-        )
-    response.set_cookie(
-        key=_LANG_COOKIE,
-        value=lang_code,
-        max_age=60 * 60 * 24 * 365,  # 1 an
-        httponly=False,
-        samesite="lax",
-    )
-    return {"lang": lang_code, "message": f"Langue définie : {lang_code}"}
+app.include_router(_system_router.router)
+app.include_router(_normalization_router.router)
+app.include_router(_reports_router.router)
+app.include_router(_importers_router.router)
+app.include_router(_home_router.router)
 
 
 # ---------------------------------------------------------------------------
@@ -627,28 +591,6 @@ async def api_corpus_delete(corpus_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# API — normalization profiles
-# ---------------------------------------------------------------------------
-
-@app.get("/api/normalization/profiles")
-async def api_normalization_profiles() -> dict:
-    from picarones.measurements.normalization import NORMALIZATION_PROFILES
-
-    profiles = [
-        {
-            "id": pid,
-            "name": p.name,
-            "description": p.description or p.name,
-            "caseless": p.caseless,
-            "diplomatic_rules": len(p.diplomatic_table),
-            "exclude_chars": sorted(p.exclude_chars),
-        }
-        for pid, p in NORMALIZATION_PROFILES.items()
-    ]
-    return {"profiles": profiles}
-
-
-# ---------------------------------------------------------------------------
 # API — reports
 # ---------------------------------------------------------------------------
 
@@ -855,133 +797,6 @@ async def api_history_regressions(
         "regressions": out,
         "count": len(out),
     }
-
-
-@app.get("/api/reports")
-async def api_reports(reports_dir: str = Query(default=".", description="Dossier rapports")) -> dict:
-    target = Path(reports_dir).resolve()
-    reports = []
-
-    search_dirs = [target, Path(".").resolve(), Path("./rapports").resolve()]
-    seen: set[str] = set()
-
-    for d in search_dirs:
-        if not d.exists():
-            continue
-        for f in sorted(d.glob("*.html"), key=lambda x: x.stat().st_mtime, reverse=True):
-            if str(f) not in seen:
-                seen.add(str(f))
-                stat = f.stat()
-                reports.append({
-                    "filename": f.name,
-                    "path": str(f),
-                    "size_kb": round(stat.st_size / 1024, 1),
-                    "modified": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-                    "url": f"/reports/{f.name}",
-                })
-
-    return {"reports": reports}
-
-
-@app.get("/reports/{filename}", response_class=HTMLResponse)
-async def serve_report(filename: str) -> HTMLResponse:
-    # Sécurité : interdire les path traversal
-    if "/" in filename or "\\" in filename or ".." in filename:
-        raise HTTPException(status_code=400, detail="Nom de fichier invalide")
-    # Cherche dans le répertoire courant et ./rapports/
-    # Lecture directe + renvoi en text/html pour fonctionner depuis un Codespace
-    # ou tout reverse-proxy distant (pas de redirect vers fichier statique).
-    for d in [Path("."), Path("./rapports")]:
-        f = d / filename
-        if f.exists() and f.suffix == ".html":
-            content = f.read_text(encoding="utf-8")
-            return HTMLResponse(content=content)
-    raise HTTPException(status_code=404, detail=f"Rapport non trouvé : {filename}")
-
-
-# ---------------------------------------------------------------------------
-# API — HTR-United
-# ---------------------------------------------------------------------------
-
-@app.get("/api/htr-united/catalogue")
-async def api_htr_united_catalogue(
-    query: str = Query(default="", description="Recherche textuelle"),
-    language: str = Query(default="", description="Filtre langue"),
-    script: str = Query(default="", description="Filtre type d'écriture"),
-) -> dict:
-    from picarones.extras.importers.htr_united import HTRUnitedCatalogue
-
-    cat = HTRUnitedCatalogue.from_demo()
-    results = cat.search(
-        query=query,
-        language=language or None,
-        script=script or None,
-    )
-    return {
-        "source": cat.source,
-        "total": len(results),
-        "entries": [e.as_dict() for e in results],
-        "available_languages": cat.available_languages(),
-        "available_scripts": cat.available_scripts(),
-    }
-
-
-@app.post("/api/htr-united/import")
-async def api_htr_united_import(req: HTRUnitedImportRequest) -> dict:
-    from picarones.extras.importers.htr_united import HTRUnitedCatalogue, import_htr_united_corpus
-
-    cat = HTRUnitedCatalogue.from_demo()
-    entry = cat.get_by_id(req.entry_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail=f"Entrée non trouvée : {req.entry_id}")
-
-    result = import_htr_united_corpus(
-        entry=entry,
-        output_dir=req.output_dir,
-        max_samples=req.max_samples,
-    )
-    return result
-
-
-# ---------------------------------------------------------------------------
-# API — HuggingFace
-# ---------------------------------------------------------------------------
-
-@app.get("/api/huggingface/search")
-async def api_huggingface_search(
-    query: str = Query(default="", description="Requête de recherche"),
-    language: str = Query(default="", description="Filtre langue"),
-    tags: str = Query(default="", description="Tags séparés par des virgules"),
-    limit: int = Query(default=20, ge=1, le=50),
-) -> dict:
-    from picarones.extras.importers.huggingface import HuggingFaceImporter
-
-    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
-    importer = HuggingFaceImporter()
-    results = importer.search(
-        query=query,
-        tags=tag_list,
-        language=language or None,
-        limit=limit,
-    )
-    return {
-        "total": len(results),
-        "datasets": [ds.as_dict() for ds in results],
-    }
-
-
-@app.post("/api/huggingface/import")
-async def api_huggingface_import(req: HuggingFaceImportRequest) -> dict:
-    from picarones.extras.importers.huggingface import HuggingFaceImporter
-
-    importer = HuggingFaceImporter()
-    result = importer.import_dataset(
-        dataset_id=req.dataset_id,
-        output_dir=req.output_dir,
-        split=req.split,
-        max_samples=req.max_samples,
-    )
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -1201,43 +1016,4 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     )
     thread.start()
     return {"job_id": job_id, "status": "pending"}
-
-
-# ---------------------------------------------------------------------------
-# Page principale HTML (SPA)
-# ---------------------------------------------------------------------------
-
-# Sprint 25 — environnement Jinja2 partagé pour la SPA.
-# Le HTML/CSS/JS inline qui vivait dans ``_HTML_TEMPLATE`` (3000+ lignes
-# de string Python) est maintenant découpé en :
-#   - picarones/web/templates/  (base + 6 partials Jinja2)
-#   - picarones/web/static/web-app.js  (toute la logique JS)
-# Ce découpage permet :
-#   1. de tester chaque vue indépendamment ;
-#   2. de durcir la CSP à ``script-src 'self'`` (le JS n'est plus inline) ;
-#   3. de toucher l'UI sans relire un fichier de 3000 lignes.
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-
-_TEMPLATES_DIR = Path(__file__).parent / "templates"
-_jinja_env = Environment(
-    loader=FileSystemLoader(str(_TEMPLATES_DIR)),
-    autoescape=select_autoescape(["html", "j2"]),
-    trim_blocks=False,
-    lstrip_blocks=False,
-)
-
-
-def _render_index(lang: str) -> str:
-    """Rend la SPA depuis ``base.html.j2``. Déterministe pour un même couple
-    (lang, version) — utilisé par le test de non-régression Sprint 25."""
-    return _jinja_env.get_template("base.html.j2").render(
-        lang=lang,
-        version=__version__,
-    )
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index(picarones_lang: str = Cookie(default="fr")) -> HTMLResponse:
-    lang = picarones_lang if picarones_lang in _SUPPORTED_LANGS else "fr"
-    return HTMLResponse(content=_render_index(lang))
 
