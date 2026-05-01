@@ -31,8 +31,7 @@ compares each output to the ground truth at every relevant level (text,
 ALTO, PAGE, entities, reading order), and produces a self-contained HTML
 report with factual numbers, statistical tests and a reproducibility
 snapshot. Without ground truth, no benchmark — Picarones measures how
-well an AI matches a known reference, not how well it transcribes an
-arbitrary document.
+well an AI matches a known reference.
 
 Typical workflow: assemble a small golden dataset whose profile (script
 type, period, language) matches the production corpus you intend to
