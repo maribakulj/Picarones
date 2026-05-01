@@ -1,7 +1,5 @@
 """Importeurs de corpus depuis sources distantes (Cercle 3).
 
-Phase C du chantier de refonte en 3 cercles.
-
 Importeurs livrés
 -----------------
 - :mod:`_http`         — helpers HTTP partagés (validate_http_url, download_url)
@@ -16,12 +14,32 @@ Modules expérimentaux
 ``huggingface`` et ``escriptorium`` émettent un ``UserWarning`` à
 l'import. Ils sont fonctionnellement présents mais leur usage en
 production n'est pas garanti — l'API HuggingFace Datasets évolue
-fréquemment et eScriptorium n'a qu'un test isolé. À utiliser à vos
-risques jusqu'à ce qu'un cas d'usage institutionnel valide leur API.
-
-Plugin séparable
-----------------
-Distribué via l'extra pip ``picarones[importers]``. Les imports
-historiques ``from picarones.importers.iiif import ...`` restent
-fonctionnels via des fichiers-shims dans :mod:`picarones.importers`.
+fréquemment et eScriptorium n'a qu'un test isolé.
 """
+
+from picarones.extras.importers.iiif import IIIFImporter, import_iiif_manifest
+from picarones.extras.importers.gallica import (
+    GallicaClient,
+    GallicaRecord,
+    search_gallica,
+    import_gallica_document,
+)
+from picarones.extras.importers.escriptorium import (
+    EScriptoriumClient,
+    EScriptoriumProject,
+    EScriptoriumDocument,
+    connect_escriptorium,
+)
+
+__all__ = [
+    "IIIFImporter",
+    "import_iiif_manifest",
+    "GallicaClient",
+    "GallicaRecord",
+    "search_gallica",
+    "import_gallica_document",
+    "EScriptoriumClient",
+    "EScriptoriumProject",
+    "EScriptoriumDocument",
+    "connect_escriptorium",
+]

@@ -24,7 +24,7 @@ Les endpoints principaux utilisés ici :
 
 Usage
 -----
->>> from picarones.importers.escriptorium import EScriptoriumClient
+>>> from picarones.extras.importers.escriptorium import EScriptoriumClient
 >>> client = EScriptoriumClient("https://escriptorium.example.org", token="abc123")
 >>> projects = client.list_projects()
 >>> corpus = client.import_document(doc_id=42, transcription_layer="manual")

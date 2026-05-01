@@ -3,8 +3,8 @@
 Chantier 4 du plan d'évolution post-Sprint 97 — fusion Gallica vers IIIF.
 
 Auparavant les fonctions ``_validate_url`` et ``_download_url`` étaient
-dupliquées entre :mod:`picarones.importers.iiif` (lignes 310-344) et
-:mod:`picarones.importers.gallica` (lignes 125-155). Le module Gallica
+dupliquées entre :mod:`picarones.extras.importers.iiif` (lignes 310-344) et
+:mod:`picarones.extras.importers.gallica` (lignes 125-155). Le module Gallica
 faisait 549 lignes dont une bonne partie réimplémentait les mêmes
 abstractions HTTP que IIIF (validation de schéma, retry exponentiel,
 gestion des codes HTTP).
