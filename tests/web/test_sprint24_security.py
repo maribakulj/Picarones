@@ -212,7 +212,9 @@ class TestCSPHeaders:
         from picarones.web.app import app
         return TestClient(app)
 
-    def test_csp_header_present(self, client):
+    def test_csp_header_present(self, client, monkeypatch):
+        # Mode local strict — pas de SPACE_ID dans l'env.
+        monkeypatch.delenv("SPACE_ID", raising=False)
         r = client.get("/api/status")
         assert r.status_code == 200
         assert "Content-Security-Policy" in r.headers
@@ -220,11 +222,49 @@ class TestCSPHeaders:
         assert "default-src 'self'" in csp
         assert "frame-ancestors 'none'" in csp
 
-    def test_security_headers_present(self, client):
+    def test_security_headers_present(self, client, monkeypatch):
+        monkeypatch.delenv("SPACE_ID", raising=False)
         r = client.get("/api/status")
         assert r.headers.get("X-Content-Type-Options") == "nosniff"
         assert r.headers.get("X-Frame-Options") == "DENY"
         assert r.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+
+    def test_csp_allows_huggingface_iframe_when_on_space(self, client, monkeypatch):
+        """Sur HF Space (``SPACE_ID`` défini), la CSP doit autoriser l'embed.
+
+        Garde-fou contre la régression historique « page blanche sur HF » :
+        ``frame-ancestors 'none'`` masquait la SPA dans l'iframe parente du
+        Hub HuggingFace.
+        """
+        monkeypatch.setenv("SPACE_ID", "Ma-Ri-Ba-Ku/Picarones")
+        r = client.get("/api/status")
+        csp = r.headers["Content-Security-Policy"]
+        assert "frame-ancestors" in csp
+        assert "'none'" not in csp.split("frame-ancestors")[1].split(";")[0]
+        assert "huggingface.co" in csp
+        assert "*.hf.space" in csp
+
+    def test_x_frame_options_omitted_on_huggingface_space(self, client, monkeypatch):
+        """Sur HF Space, ``X-Frame-Options: DENY`` doit être absent.
+
+        Ce header a priorité absolue sur ``frame-ancestors`` dans les anciens
+        navigateurs (et reste un fallback moderne) ; le laisser à ``DENY``
+        bloque l'iframe parente même avec la CSP permissive.
+        """
+        monkeypatch.setenv("SPACE_ID", "Ma-Ri-Ba-Ku/Picarones")
+        r = client.get("/api/status")
+        assert "X-Frame-Options" not in r.headers
+        # Les autres headers de durcissement restent intacts.
+        assert r.headers.get("X-Content-Type-Options") == "nosniff"
+        assert r.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+
+    def test_csp_override_via_env_takes_precedence(self, client, monkeypatch):
+        """``PICARONES_CSP`` reste un override absolu pour l'admin."""
+        monkeypatch.setenv("PICARONES_CSP", "default-src 'self'; frame-ancestors 'self'")
+        monkeypatch.setenv("SPACE_ID", "Ma-Ri-Ba-Ku/Picarones")  # ignoré
+        r = client.get("/api/status")
+        csp = r.headers["Content-Security-Policy"]
+        assert csp == "default-src 'self'; frame-ancestors 'self'"
 
 
 # ---------------------------------------------------------------------------
