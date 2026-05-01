@@ -31,6 +31,10 @@ dependencies = [
     "tqdm>=4.66.0",
     "numpy>=1.24.0",
     "jinja2>=3.1.0",
+    # XML parsing sécurisé contre les attaques XXE / Billion Laughs.
+    # Utilisé par ``picarones.web.corpus_utils`` pour le parsing ALTO/PAGE
+    # quand un utilisateur uploade un corpus XML.
+    "defusedxml>=0.7.1",
 ]
 
 [project.urls]

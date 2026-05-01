@@ -40,7 +40,13 @@ OLLAMA_VISION_FAMILIES = frozenset({
 # ──────────────────────────────────────────────────────────────────────────
 
 def check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
-    """Vérifie qu'un moteur OCR local est installé et retourne son statut."""
+    """Vérifie qu'un moteur OCR local est installé et retourne son statut.
+
+    On ne fait que ``__import__(module_name)`` + ``getattr(mod, "__version__")`` —
+    seules ``ImportError`` et ``AttributeError`` peuvent légitimement
+    survenir. Tout autre type d'exception (panne disque, OSError…) est
+    propagé pour ne pas masquer un vrai bug.
+    """
     label = label or engine_id.replace("_", " ").title()
     try:
         __import__(module_name)
@@ -53,13 +59,15 @@ def check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
         try:
             import pytesseract
             version = str(pytesseract.get_tesseract_version())
-        except Exception:  # noqa: BLE001
+        except (ImportError, pytesseract.TesseractNotFoundError, OSError):
+            # ``TesseractNotFoundError`` : binaire absent ; ``OSError`` :
+            # ``PATH`` manquant ; ``ImportError`` : racine du sous-import.
             version = "installé"
     elif installed:
         try:
             mod = __import__(module_name)
             version = getattr(mod, "__version__", "installé")
-        except Exception:  # noqa: BLE001
+        except (ImportError, AttributeError):
             version = "installé"
 
     return {
@@ -73,7 +81,14 @@ def check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
 
 
 def fetch_ollama_info() -> tuple[bool, list[str]]:
-    """Vérifie la disponibilité d'Ollama et liste ses modèles en un seul appel HTTP."""
+    """Vérifie la disponibilité d'Ollama et liste ses modèles en un seul appel HTTP.
+
+    Capture explicitement ``URLError`` (Ollama pas démarré, port fermé,
+    timeout) et ``json.JSONDecodeError`` (réponse non-JSON inattendue).
+    Toute autre exception (par ex. ``OSError`` sur lecture réseau,
+    ``UnicodeDecodeError``) est aussi traitée comme "Ollama
+    indisponible" — c'est l'intention du caller (UX dégradée gracieuse).
+    """
     import urllib.error
     import urllib.request
     try:
@@ -81,19 +96,26 @@ def fetch_ollama_info() -> tuple[bool, list[str]]:
             if r.status != 200:
                 return False, []
             data = json.loads(r.read().decode())
-        models = [m.get("name", "") for m in data.get("models", [])]
-        return True, models
-    except Exception:  # noqa: BLE001
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, UnicodeDecodeError):
         return False, []
+    models = [m.get("name", "") for m in data.get("models", [])]
+    return True, models
 
 
 def get_tesseract_langs() -> list[str]:
-    """Liste les langues Tesseract installées (avec fallback éditorial)."""
+    """Liste les langues Tesseract installées (avec fallback éditorial).
+
+    ``TesseractNotFoundError`` quand le binaire est absent du ``PATH``,
+    ``ImportError`` si pytesseract n'est pas installé, ``OSError`` sur
+    appel système échoué — tous traités comme "lister les langues
+    indisponible, fallback à la liste éditoriale historique".
+    """
     try:
         import pytesseract
         langs = pytesseract.get_languages(config="")
         return sorted(lg for lg in langs if lg != "osd")
-    except Exception:  # noqa: BLE001
+    except (ImportError, OSError):
+        # ``pytesseract.TesseractNotFoundError`` hérite d'``OSError``.
         return ["fra", "lat", "eng", "deu", "ita", "spa"]
 
 

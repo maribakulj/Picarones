@@ -7,10 +7,14 @@ ZIP avec garde-fous (taille décompressée, nombre de fichiers).
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 from typing import Optional
+
+import xml.etree.ElementTree as ET
+
+import defusedxml
+import defusedxml.ElementTree as _SafeET
 
 from picarones.web.state import IMAGE_EXTS
 
@@ -27,17 +31,23 @@ MAX_ZIP_FILES = 2000
 # ──────────────────────────────────────────────────────────────────────────
 
 def safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
-    """Parse du XML en désactivant les entités externes (protection XXE)."""
+    """Parse du XML en bloquant les entités externes (protection XXE).
+
+    Délègue à :mod:`defusedxml` (dépendance dure du projet) qui durcit
+    le parser stdlib contre :
+
+    - **XXE** (``XML External Entity``) — résolution d'entités vers
+      des fichiers locaux ou des URL distantes ;
+    - **Billion Laughs** — expansion exponentielle d'entités ;
+    - **DTD retrieval** — fetch d'une DTD distante.
+
+    Retourne ``None`` si le payload n'est pas un XML valide ou si
+    ``defusedxml`` détecte une attaque (``EntitiesForbidden``,
+    ``ExternalReferenceForbidden``, etc.).
+    """
     try:
-        import defusedxml.ElementTree as SafeET
-        return SafeET.fromstring(xml_bytes)
-    except ImportError:
-        pass
-    # Fallback : parser standard
-    parser = ET.XMLParser()
-    try:
-        return ET.fromstring(xml_bytes, parser=parser)
-    except ET.ParseError:
+        return _SafeET.fromstring(xml_bytes)
+    except (ET.ParseError, defusedxml.DefusedXmlException):
         return None
 
 

@@ -26,6 +26,7 @@ logique métier vit dans les sous-modules :
 from __future__ import annotations
 
 import logging
+import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -70,8 +71,15 @@ async def _lifespan(app: FastAPI):
     # un store isolé soient effectivement vues par le lifespan.
     try:
         state.JOB_STORE.mark_orphaned_jobs_interrupted()
-    except Exception as exc:  # pragma: no cover — défense en profondeur
-        _logger.warning("[jobs] mark_orphaned_jobs_interrupted échoué : %s", exc)
+    except sqlite3.Error as exc:  # pragma: no cover — défense en profondeur
+        # Si la base de jobs est cassée au démarrage, on log en ``error``
+        # (pas ``warning``) — c'est un signal opérationnel : l'app
+        # tourne dans un état dégradé, le tableau de bord va être incorrect.
+        _logger.error(
+            "[jobs] mark_orphaned_jobs_interrupted ÉCHOUÉ — "
+            "base SQLite inaccessible (%s) : le tableau de bord "
+            "affichera des jobs zombies.", exc,
+        )
     yield
 
 
