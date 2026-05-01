@@ -78,20 +78,11 @@ class GoogleVisionEngine(BaseOCREngine):
         self._feature_type: str = self.config.get("feature_type", "DOCUMENT_TEXT_DETECTION")
 
     def _run_ocr(self, image_path: Path) -> str:
-        """API rétrocompat : retourne uniquement le texte."""
+        """Retourne uniquement le texte (interface ``BaseOCREngine``)."""
         text, _full = self._run_with_native(image_path)
         return text
 
     def _run_with_native(
-        self, image_path: Path,
-    ) -> tuple[str, Optional[dict]]:
-        """Hook framework (chantier 1) — délègue à ``_run_ocr_with_full_annotation``
-        pour permettre aux tests Sprint 50 de monkeypatcher l'appel réseau
-        sous son nom historique.
-        """
-        return self._run_ocr_with_full_annotation(image_path)
-
-    def _run_ocr_with_full_annotation(
         self, image_path: Path,
     ) -> tuple[str, Optional[dict]]:
         """Exécute l'OCR et retourne ``(text, full_text_annotation_dict)``.
@@ -263,14 +254,3 @@ class GoogleVisionEngine(BaseOCREngine):
                             continue
                         out.append({"token": text, "confidence": conf})
         return out or None
-
-    def _extract_token_confidences_from_full_text(
-        self, full: Any,
-    ) -> Optional[list[dict[str, Any]]]:
-        """Alias rétrocompat (Sprint 50) — extrait les confidences d'un ``fullTextAnnotation``.
-
-        Wrapper qui chaîne ``_extract_raw_confidences`` puis
-        ``_normalize_token_confidences`` (filtrage tokens vides / négatifs).
-        """
-        raw = self._extract_raw_confidences(full)
-        return self._normalize_token_confidences(raw)

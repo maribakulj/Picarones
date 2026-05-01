@@ -172,22 +172,18 @@ class BaseOCREngine(BaseModule):
     def _normalize_token_confidences(
         raw: Optional[list[dict[str, Any]]],
     ) -> Optional[list[dict[str, Any]]]:
-        """Filtre les confidences brutes (sans changer l'échelle).
+        """Filtre les confidences brutes (échelle native conservée).
 
         - Tokens vides ou ``None`` → écartés.
         - Confidences négatives (Tesseract met -1 pour les non-mots) → écartées.
         - Confidences non convertibles en float → écartées.
 
-        L'**échelle native** des moteurs (Tesseract en [0, 100],
-        Google/Anthropic/Mistral en [0, 1]) est **conservée**. Le
-        runner Sprint 42 (``_calibration_from_engine_result`` dans
-        ``builtin_hooks``) normalise lui-même au moment du calcul de
-        calibration. Cette discipline préserve la rétrocompat des
-        tests Sprints 47-51 qui inspectent ``EngineResult.token_confidences``.
+        L'échelle native des moteurs ([0, 100] pour Tesseract,
+        [0, 1] pour les autres) est conservée. La normalisation finale
+        au moment du calcul de calibration est faite dans
+        :func:`picarones.measurements.builtin_hooks.calibration_from_engine_result`.
 
-        Retourne ``None`` si aucune entrée n'est exploitable (au
-        lieu d'une liste vide), ce qui signale au runner de sauter
-        le calcul de calibration sur ce document.
+        Retourne ``None`` si aucune entrée n'est exploitable.
         """
         if not raw:
             return None
