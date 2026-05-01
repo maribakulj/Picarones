@@ -18,4 +18,21 @@ jobs:
           HF_SPACE: ${{ vars.HF_SPACE || 'Ma-Ri-Ba-Ku/Picarones' }}
         run: |
           git remote add hf "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" || true
-          git push --force hf main
+          # HuggingFace renvoie régulièrement des 500/503 transitoires sur
+          # ses miroirs Git. On retry 5 fois avec backoff linéaire
+          # (15s, 30s, 45s, 60s) — total max ~2,5 min, suffisant pour
+          # absorber un incident court côté HF.
+          attempts=5
+          for i in $(seq 1 $attempts); do
+            if git push --force hf main; then
+              echo "Push HuggingFace réussi (tentative $i/$attempts)"
+              exit 0
+            fi
+            if [ "$i" -lt "$attempts" ]; then
+              delay=$((15 * i))
+              echo "Tentative $i/$attempts échouée — nouvelle tentative dans ${delay}s..."
+              sleep $delay
+            fi
+          done
+          echo "::error::Push HuggingFace échoué après $attempts tentatives (incident HF probable, réessayer plus tard via workflow_dispatch)" >&2
+          exit 1

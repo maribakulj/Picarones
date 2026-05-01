@@ -20,56 +20,34 @@ pinned: false
 
 ---
 
-**Picarones** is an open-source benchmarking platform for OCR, HTR, VLM and
-post-correction pipelines on heritage documents.
+**Picarones** is an open-source benchmarking platform for OCR, HTR, VLM
+and post-correction pipelines on heritage documents.
 
-### Input contract: pairs of (image, ground truth)
-
-The user provides a **golden dataset** — a folder of pairs `image.{jpg,png,…}`
-+ ground truth, where the ground truth is plain text (`image.gt.txt`),
-**ALTO XML** (`image.xml`), or **PAGE XML** (`image.xml`). The ground truth
-must be hand-annotated (or come from a curated reference corpus); Picarones
-auto-detects the format and converts ALTO/PAGE to plain text for the
-text-level metrics while keeping the structured GT for the ALTO/PAGE/entity
-metrics.
-
-### Evaluation contract: every metric is computed against the GT in the input pair
-
-The user plugs in one or several AIs to evaluate — OCR engines, VLMs,
-OCR+LLM correction pipelines, alternative re-OCR + LLM + ALTO mappers
-chained, etc. Picarones runs each AI on every page of the dataset,
-compares the output to the ground truth at every relevant level (text,
+The input is a folder of `(image, ground truth)` pairs — ground truth in
+plain text (`.gt.txt`), ALTO XML, or PAGE XML, hand-annotated or sourced
+from a reference corpus. Picarones runs the AIs you plug in (OCR engines,
+VLMs, OCR+LLM pipelines, ALTO mappers, ensembles…) on every page,
+compares each output to the ground truth at every relevant level (text,
 ALTO, PAGE, entities, reading order), and produces a self-contained HTML
 report with factual numbers, statistical tests and a reproducibility
-snapshot. **A benchmark on a corpus without GT is impossible by design**:
-Picarones measures how well an AI matches a known annotated reference,
-not how well it transcribes an arbitrary document.
+snapshot. Without ground truth, no benchmark — Picarones measures how
+well an AI matches a known reference, not how well it transcribes an
+arbitrary document.
 
-### Decision contract: the researcher reads the numbers and decides
-
-This is a **benchmarking platform, not a production workshop**. The
-typical workflow is: build a small golden dataset whose script type,
-period and language match the production corpus you eventually want to
-process; benchmark candidate AIs on that dataset; read the report and
-decide which AI is reliable enough to deploy on your real (unlabelled)
-production corpus. No prescriptions, no automatic verdicts.
-
-### Each researcher brings their own dataset
-
-Picarones does not yet maintain a curated library of standard golden
-datasets. The corpus importers (IIIF, Gallica, HuggingFace, HTR-United,
-eScriptorium, ZIP upload) help **fetch and ingest** existing datasets,
-but the **choice and curation** are the researcher's responsibility.
-
----
+Typical workflow: assemble a small golden dataset whose profile (script
+type, period, language) matches the production corpus you intend to
+process; benchmark candidate AIs on it; read the report; decide which AI
+to deploy. Picarones does not yet ship a curated library of standard
+datasets — the importers (IIIF, Gallica, HuggingFace, HTR-United,
+eScriptorium, ZIP) help fetch existing data, curation remains yours.
 
 Heritage-specific metrics (diplomatic CER, ligature and diacritic scores,
-medieval abbreviations, Roman numerals, foliation, fuzzy full-text
-searchability, philological marker fidelity), composable pipelines, a
-**factual narrative synthesis** at the top of the report, **multi-engine
-Friedman/Nemenyi significance tests** with a **critical difference
-diagram**, **cost / speed / CO₂ Pareto analysis**, **per-junction error
-absorption**, **multi-run stability**, **controlled per-slot comparison**.
+medieval abbreviations, Roman numerals, foliation, fuzzy searchability,
+philological marker fidelity), composable pipelines, factual narrative
+synthesis at the top of the report, multi-engine Friedman/Nemenyi tests
+with critical difference diagram, cost / speed / CO₂ Pareto analysis,
+per-junction error absorption, multi-run stability, controlled per-slot
+comparison.
 
 > *Version française ci-dessous.*
 
@@ -77,35 +55,18 @@ absorption**, **multi-run stability**, **controlled per-slot comparison**.
 
 ## Use case
 
-A heritage institution wants to choose an OCR / HTR / post-correction
-pipeline to deploy on a future production corpus — say, several thousand
-17th-century parish registers, or 19th-century newspapers, or medieval
-glossed manuscripts. They cannot benchmark candidate AIs directly on that
-production corpus: there is no ground truth for it, so no metric can be
-computed.
+An archive, a digital library or a heritage service plans to OCR a
+production corpus — say, several thousand 17th-century parish registers,
+19th-century newspapers, or medieval glossed manuscripts. Several
+candidate pipelines are on the table (alternative OCR, LLM correction,
+ALTO mappers, ensembles); the question is which one to deploy.
 
-Instead, they assemble (or borrow) a **golden dataset** of a few hundred
-hand-annotated pages whose script type, period and language match the
-target corpus. Each page is a pair: the image, plus a ground truth in
-plain text, ALTO XML, or PAGE XML. They feed the dataset to Picarones and
-plug in the AIs to compare:
-
-- alternative re-OCR (Pero OCR, Kraken, Mistral OCR…);
-- LLM correction (GPT-4o, Claude, Mistral) in text-only or image+text mode;
-- specialised ALTO mappers (line re-segmentation, abbreviation expansion,
-  diplomatic normalisation);
-- composed pipelines: alternative OCR → LLM correction → ALTO mapper.
-
-Picarones runs each AI on every page of the golden dataset, compares the
-output to the ground truth at every relevant level, measures the metrics
-(CER gain, recovered fuzzy searchability, preserved numerical sequences,
-**errors introduced by the post-corrector** — critical for LLMs that
-silently modernise) and produces a factual HTML report that is **directly
-citable in a scientific publication**: every number is traceable to its
-source payload, no prescription imposed.
-
-The researcher reads the numbers and decides which pipeline is reliable
-enough to deploy on the actual (unlabelled) production corpus.
+The candidates cannot be benchmarked on the production corpus itself
+(no ground truth). A small golden dataset matching the target profile is
+assembled; Picarones runs each candidate on it and reports CER gain,
+recovered fuzzy searchability, preserved numerical sequences, errors
+introduced by post-correctors and statistical significance. The numbers
+inform the deployment decision.
 
 ---
 
@@ -115,90 +76,50 @@ enough to deploy on the actual (unlabelled) production corpus.
 d'OCR, HTR, VLM et des pipelines de post-correction sur documents
 patrimoniaux.
 
-### Contrat d'entrée : paires (image, vérité terrain)
+L'entrée est un dossier de paires `(image, vérité terrain)` — VT en
+texte brut (`.gt.txt`), ALTO XML, ou PAGE XML, annotée à la main ou
+issue d'un corpus de référence. Picarones exécute les IA que vous
+branchez (moteurs OCR, VLM, pipelines OCR+LLM, mappeurs ALTO,
+ensembles…) sur chaque page, compare la sortie à la VT à tous les
+niveaux pertinents (texte, ALTO, PAGE, entités, ordre de lecture) et
+produit un rapport HTML autonome avec chiffres factuels, tests
+statistiques et snapshot de reproductibilité. Sans vérité terrain, pas
+de benchmark — Picarones mesure à quel point une IA matche une référence
+connue, pas à quel point elle transcrit un document quelconque.
 
-L'utilisateur amène un **golden dataset** — un dossier de paires
-`image.{jpg,png,…}` + vérité terrain, où la VT est en texte brut
-(`image.gt.txt`), en **ALTO XML** (`image.xml`), ou en **PAGE XML**
-(`image.xml`). La VT doit être annotée à la main (ou provenir d'un corpus
-de référence curaté) ; Picarones détecte automatiquement le format et
-convertit l'ALTO / PAGE en texte brut pour les métriques textuelles tout
-en conservant la VT structurée pour les métriques ALTO / PAGE / entités.
+Workflow type : constituer un golden dataset dont le profil (type
+d'écriture, période, langue) correspond au corpus de production à
+traiter ; benchmarker les IA candidates dessus ; lire le rapport ;
+décider quelle IA déployer. Picarones ne fournit pas encore de
+bibliothèque curatée de datasets standards — les importers (IIIF,
+Gallica, HuggingFace, HTR-United, eScriptorium, ZIP) aident à récupérer
+des données existantes, la curation reste à votre charge.
 
-### Contrat d'évaluation : chaque métrique est calculée contre la VT de la paire en entrée
-
-L'utilisateur branche une ou plusieurs IA à évaluer — moteurs OCR, VLM,
-pipelines OCR+LLM, ré-OCR alternatif + LLM + mappeur ALTO chaînés, etc.
-Picarones exécute chaque IA sur chaque page du dataset, compare la sortie
-à la vérité terrain à tous les niveaux pertinents (texte, ALTO, PAGE,
-entités, ordre de lecture) et produit un rapport HTML autonome avec
-chiffres factuels, tests statistiques et snapshot de reproductibilité.
-**Un benchmark sur un corpus sans VT est impossible par design** :
-Picarones mesure à quel point une IA matche une référence annotée connue,
-pas à quel point elle transcrit un document quelconque.
-
-### Contrat de décision : le chercheur lit les chiffres et arbitre
-
-C'est un **banc d'essai, pas un atelier de production**. Le workflow type
-est : constituer un golden dataset de quelques pages annotées dont le
-type d'écriture, la période et la langue correspondent au corpus de
-production qu'on veut traiter ; benchmarker les IA candidates sur ce
-dataset ; lire le rapport et décider quelle IA est assez fiable pour la
-passer en prod sur le vrai corpus (non annoté). Pas de prescription, pas
-de verdict automatique.
-
-### Chaque chercheur amène son propre dataset
-
-Picarones ne maintient pas (encore) de bibliothèque curatée de golden
-datasets standards. Les importers de corpus (IIIF, Gallica, HuggingFace,
-HTR-United, eScriptorium, upload ZIP) aident à **récupérer et ingérer**
-des datasets existants, mais le **choix et la curation** restent à la
-charge du chercheur.
-
----
-
-Métriques spécifiques aux corpus patrimoniaux (CER diplomatique, scores de
-ligatures, abréviations médiévales, numéraux romains, foliotation,
-recherchabilité fuzzy plein-texte, fidélité aux marqueurs philologiques),
-pipelines composables, **synthèse narrative factuelle** au sommet du rapport,
-**tests Friedman/Nemenyi multi-moteurs** avec **diagramme de différence
-critique**, analyse **Pareto coût/vitesse/CO₂**, **absorption d'erreur par
-jonction**, **stabilité multi-runs**, **comparaison contrôlée par slot**.
+Métriques spécifiques aux corpus patrimoniaux (CER diplomatique, scores
+de ligatures et diacritiques, abréviations médiévales, numéraux romains,
+foliotation, recherchabilité fuzzy, fidélité aux marqueurs
+philologiques), pipelines composables, synthèse narrative factuelle au
+sommet du rapport, tests Friedman/Nemenyi multi-moteurs avec diagramme
+de différence critique, analyse Pareto coût/vitesse/CO₂, absorption
+d'erreur par jonction, stabilité multi-runs, comparaison contrôlée par
+slot.
 
 ### Cas d'usage type
 
-Une institution patrimoniale veut choisir un pipeline OCR / HTR /
-post-correction à déployer sur un futur corpus de production — par
-exemple plusieurs milliers de registres paroissiaux du XVIIᵉ siècle, ou
-de presse du XIXᵉ, ou de manuscrits glosés médiévaux. Elle ne peut pas
-benchmarker les IA candidates directement sur ce corpus de production :
-il n'y a pas de vérité terrain pour lui, donc aucune métrique ne peut
-être calculée.
+Une archive, une bibliothèque numérique ou un service patrimonial
+prévoit d'OCRiser un corpus de production — par exemple plusieurs
+milliers de registres paroissiaux du XVIIᵉ, de presse du XIXᵉ ou de
+manuscrits glosés médiévaux. Plusieurs pipelines candidats sont sur la
+table (OCR alternatif, correction LLM, mappeurs ALTO, ensembles) ;
+reste à décider lequel déployer.
 
-À la place, elle constitue (ou récupère) un **golden dataset** de
-quelques centaines de pages annotées à la main dont le type d'écriture,
-la période et la langue correspondent au corpus cible. Chaque page est
-une paire : l'image, plus une vérité terrain en texte brut, ALTO XML, ou
-PAGE XML. Elle alimente Picarones avec ce dataset et branche les IA à
-comparer :
-
-- ré-OCR avec un moteur alternatif (Pero OCR, Kraken, Mistral OCR…) ;
-- correction LLM (GPT-4o, Claude, Mistral) en mode texte seul ou image+texte ;
-- mappeurs ALTO spécialisés (re-segmentation des lignes, fusion des
-  abréviations, normalisation diplomatique) ;
-- pipelines composées : OCR alternatif → correction LLM → mappeur ALTO.
-
-Picarones exécute chaque IA sur chaque page du golden dataset, compare la
-sortie à la vérité terrain à tous les niveaux pertinents, mesure les
-métriques (gain CER, recherchabilité fuzzy gagnée, séquences numériques
-préservées, **erreurs introduites par le post-correcteur** — critique
-pour les LLM qui modernisent silencieusement) et produit un rapport HTML
-factuel **directement citable dans une publication scientifique** :
-chaque chiffre est traçable au payload source, aucune prescription n'est
-imposée.
-
-Le chercheur lit les chiffres et décide quel pipeline est assez fiable
-pour le déployer sur son corpus de production réel (non annoté).
+Les candidats ne peuvent pas être benchmarkés sur le corpus de
+production lui-même (pas de VT). On constitue un golden dataset
+matching le profil cible ; Picarones exécute chaque candidat dessus et
+remonte le gain CER, la recherchabilité fuzzy gagnée, les séquences
+numériques préservées, les erreurs introduites par les post-correcteurs
+et la significativité statistique. Les chiffres nourrissent la décision
+de déploiement.
 
 ---
 
