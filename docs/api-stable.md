@@ -79,7 +79,7 @@ class EngineReport:      # agrégat moteur sur tout le corpus
 class BenchmarkResult:   # résultat global multi-moteurs
 ```
 
-### `picarones.core.metrics`
+### `picarones.measurements.metrics`
 
 ```python
 class MetricsResult:     # CER, WER, MER, WIL + variantes diplomatique/caseless
@@ -87,7 +87,7 @@ def compute_metrics(reference, hypothesis, char_exclude=None) -> MetricsResult
 def aggregate_metrics(results: list) -> dict
 ```
 
-### `picarones.core.runner`
+### `picarones.measurements.runner`
 
 ```python
 def run_benchmark(
@@ -105,7 +105,7 @@ def run_benchmark(
 ) -> BenchmarkResult
 ```
 
-### `picarones.core.pipeline_runner`
+### `picarones.core.pipeline`
 
 ```python
 class PipelineStep:
@@ -115,7 +115,7 @@ class PipelineResult:
 class PipelineRunner:
 ```
 
-### `picarones.core.pipeline_benchmark`
+### `picarones.measurements.pipeline_benchmark`
 
 ```python
 class StepAggregate:
@@ -125,7 +125,7 @@ def default_initial_inputs(doc) -> dict
 def run_pipeline_benchmark(spec, corpus, factory=...) -> PipelineBenchmarkResult
 ```
 
-### `picarones.core.pipeline_comparison`
+### `picarones.measurements.pipeline_comparison`
 
 ```python
 class PipelineComparisonResult:
@@ -133,7 +133,7 @@ class PipelineComparisonResult:
 def compare_pipelines(specs, corpus, factories=None) -> PipelineComparisonResult
 ```
 
-### `picarones.core.pipeline_spec_loader`
+### `picarones.measurements.pipeline_spec_loader`
 
 ```python
 class PipelineSpecLoadError(ValueError):
@@ -183,7 +183,7 @@ def run_document_hooks(profile, *, ground_truth, hypothesis, image_path, corpus_
 def run_corpus_aggregators(profile, document_results) -> dict
 ```
 
-### `picarones.core.builtin_metrics`
+### `picarones.measurements.builtin_metrics`
 
 Métriques scalaires natives, enregistrées dans le registre typé :
 
@@ -197,7 +197,7 @@ def wil(reference, hypothesis) -> float
 def text_preservation_after_reconstruction(reference_text, hypothesis_alto) -> float
 ```
 
-### `picarones.core.alto_metrics`
+### `picarones.measurements.alto_metrics`
 
 Métriques (ALTO, ALTO) + helper :
 
@@ -210,7 +210,7 @@ def alto_text_mer(reference_alto, hypothesis_alto) -> float
 def alto_text_wil(reference_alto, hypothesis_alto) -> float
 ```
 
-### `picarones.core.jobs`
+### `picarones.web.jobs`
 
 Persistance des jobs benchmark (utilisé par l'interface web) :
 
@@ -241,7 +241,7 @@ def reset_default_store(...)
   reflètent ces changements.
 - **Modules `picarones.extras/`** : statut variable selon le
   sous-package (academic / governance / historical / importers).
-  Voir `docs/architecture-cercles.md`.
+  Voir `docs/architecture.md`.
 - **Comportement des renderers HTML** : la structure des fichiers HTML
   peut évoluer entre versions mineures. Nous gardons les noms des
   vues principales.
@@ -268,15 +268,15 @@ version mineure si une RFC le justifie.
 
 ```python
 # Mesures (déplacées vers picarones.measurements/)
-from picarones.core.confusion import build_confusion_matrix
-from picarones.core.taxonomy import classify_errors
-from picarones.core.calibration import compute_calibration_metrics
+from picarones.measurements.confusion import build_confusion_matrix
+from picarones.measurements.taxonomy import classify_errors
+from picarones.measurements.calibration import compute_calibration_metrics
 # ... ~40 modules métriques ...
 
 # Moteur narratif (déplacé vers picarones.measurements.narrative/)
-from picarones.core.narrative import build_synthesis
-from picarones.core.narrative.facts import Fact
-from picarones.core.narrative.detectors import detect_global_leader_cer
+from picarones.measurements.narrative import build_synthesis
+from picarones.core.facts import Fact, FactType, FactImportance
+from picarones.measurements.narrative.detectors import detect_global_leader_cer
 
 # Plugins (déplacés vers picarones.extras/)
 from picarones.core.taxonomy_intra_doc import compute_taxonomy_position_heatmap
@@ -296,7 +296,7 @@ Pour les **nouvelles** intégrations, préférer les chemins canoniques :
 
 ## Voir aussi
 
-- [`docs/architecture-cercles.md`](architecture-cercles.md) — cartographie
+- [`docs/architecture.md`](architecture.md) — cartographie
   des 3 cercles + critères d'assignation.
 - [`docs/architecture.md`](architecture.md) — vue d'ensemble post-chantiers.
 - [`tests/test_public_api.py`](../tests/test_public_api.py) — test

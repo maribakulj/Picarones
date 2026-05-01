@@ -82,6 +82,6 @@ Tous les modules historiquement dans ``picarones.core.X`` restent
 accessibles via des fichiers-shims qui les redirigent vers le nouvel
 emplacement. Aucun import existant ne casse.
 
-Voir :doc:`docs/architecture-cercles.md` et la phase E du plan de
+Voir :doc:`docs/architecture.md` et la phase E du plan de
 refonte.
 """

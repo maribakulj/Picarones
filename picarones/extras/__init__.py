@@ -15,9 +15,9 @@ Convention de rétrocompat
 Pour chaque module déplacé depuis ``picarones/core/`` ou
 ``picarones/report/`` vers ``picarones/extras/``, un fichier-shim est
 laissé à l'ancien emplacement qui réexporte les noms publics. Les
-imports historiques (``from picarones.core.taxonomy_intra_doc import
+imports historiques (``from picarones.measurements.taxonomy_intra_doc import
 ...``) continuent à fonctionner sans modification.
 
-Voir :doc:`docs/architecture-cercles.md` pour la cartographie complète
+Voir :doc:`docs/architecture.md` pour la cartographie complète
 et les critères d'assignation au Cercle 3.
 """
