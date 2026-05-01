@@ -60,7 +60,7 @@ _logger = logging.getLogger(__name__)
 async def _lifespan(app: FastAPI):
     """Hook de démarrage : marque les jobs orphelins comme ``interrupted``.
 
-    Sprint 26 — au démarrage d'un nouveau processus, tous les jobs
+    Au démarrage d'un nouveau processus, tous les jobs
     encore en statut ``pending`` ou ``running`` en base sont
     forcément orphelins (le processus précédent est mort sans les
     finir). On les bascule en ``interrupted`` pour ne pas laisser
@@ -98,7 +98,7 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
-# Sprint 24 — middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
+# Middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
 app.middleware("http")(csp_middleware)
 
 

@@ -1,6 +1,6 @@
-"""Router des régressions détectées dans l'historique longitudinal (Sprint 28).
+"""Router des régressions détectées dans l'historique longitudinal.
 
-Surface de l'infrastructure ``BenchmarkHistory`` (Sprint 8) qui était
+Surface de l'infrastructure ``BenchmarkHistory`` qui était
 limitée au CLI ``picarones history --regression``. Le rapport HTML
 peut désormais consommer cet endpoint pour afficher un encart
 *« ⚠ Tesseract a régressé de 0,8 pp depuis le 12 janvier »* en tête.

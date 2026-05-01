@@ -22,7 +22,7 @@ router = APIRouter()
 _logger = logging.getLogger(__name__)
 
 
-# Sprint 24 — racines configurables via PICARONES_BROWSE_ROOTS, sinon
+# Racines configurables via PICARONES_BROWSE_ROOTS, sinon
 # défaut restreint en mode public, défaut historique en mode dev.
 _BROWSE_ROOTS = compute_browse_roots(UPLOADS_DIR)
 
@@ -97,7 +97,7 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
         payloads: list[tuple[str, bytes]] = []
         for uf in files:
             filename = uf.filename or "upload"
-            # Sprint 24 — empêcher la traversée via le nom de fichier reçu
+            # Empêcher la traversée via le nom de fichier reçu
             # depuis le client (multipart). On garde uniquement le basename.
             safe_name = Path(filename).name
             data = await uf.read()
@@ -147,7 +147,7 @@ def _write_payloads_and_analyze(
             with zipfile.ZipFile(io.BytesIO(data)) as zf:
                 flatten_zip_to_dir(zf, corpus_dir)
         elif suffix in IMAGE_EXTS:
-            # Sprint 24 — valider l'image avant écriture (Pillow.verify,
+            # Valider l'image avant écriture (Pillow.verify,
             # taille max, rejet des bombes de décompression).
             validate_image_safe(data, filename=safe_name)
             (corpus_dir / safe_name).write_bytes(data)

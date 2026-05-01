@@ -3,7 +3,7 @@
 API publique
 ------------
 - ``sse_format`` : sérialisation d'un événement Server-Sent Events
-  avec ``Last-Event-ID`` (Sprint 26).
+  avec ``Last-Event-ID``.
 - ``run_benchmark_thread`` / ``run_benchmark_thread_v2`` : workers
   threadés qui exécutent le benchmark, émettent des événements SSE
   via le ``BenchmarkJob``, génèrent le rapport HTML final.
@@ -36,7 +36,7 @@ from picarones.web.state import BenchmarkJob, iso_now
 def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
     """Format Server-Sent Events.
 
-    Sprint 26 — émet une ligne ``id: <seq>`` quand le ``seq`` est connu.
+    Émet une ligne ``id: <seq>`` quand le ``seq`` est connu.
     C'est la valeur que le navigateur renvoie automatiquement dans
     ``Last-Event-ID`` à la prochaine connexion (cf.
     https://html.spec.whatwg.org/multipage/server-sent-events.html).

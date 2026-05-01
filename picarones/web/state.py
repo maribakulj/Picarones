@@ -86,17 +86,17 @@ def enforce_rate_limit(request: Request) -> None:
 # ──────────────────────────────────────────────────────────────────────────
 
 RATE_LIMITER = RateLimiter(max_per_hour=get_rate_limit_per_hour())
-"""Rate limiter global (no-op si non public ou quota = 0). Sprint 24."""
+"""Rate limiter global (no-op si non public ou quota = 0)."""
 
 JOBS_SEMAPHORE = threading.Semaphore(get_max_concurrent_jobs())
-"""Sémaphore qui borne le nombre de benchmarks concurrents. Sprint 24."""
+"""Sémaphore qui borne le nombre de benchmarks concurrents."""
 
 JOB_STORE: JobStore = get_default_store()
-"""Store SQLite singleton injecté dans chaque ``BenchmarkJob``. Sprint 26."""
+"""Store SQLite singleton injecté dans chaque ``BenchmarkJob``."""
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Modèle de job (avec persistance Sprint 26)
+# Modèle de job (avec persistance SQLite)
 # ──────────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -107,7 +107,7 @@ class BenchmarkJob:
     un flux d'événements consommé via SSE. La persistance est gérée
     par un ``JobStore`` SQLite optionnel — si présent, chaque
     événement est sérialisé en base avant d'être diffusé aux abonnés
-    SSE, ce qui permet la reprise via ``Last-Event-ID`` (Sprint 26).
+    SSE, ce qui permet la reprise via ``Last-Event-ID``.
     """
 
     job_id: str
@@ -169,7 +169,7 @@ class BenchmarkJob:
                 )
 
     def set_status(self, status: str, error: str = "") -> None:
-        """Met à jour le statut + persiste vers le store (Sprint 26)."""
+        """Met à jour le statut + persiste vers le store."""
         self.status = status
         if error:
             self.error = error

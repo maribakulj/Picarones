@@ -1,4 +1,4 @@
-"""Router de sauvegarde / chargement des configs utilisateur (Sprint 28)."""
+"""Router de sauvegarde / chargement des configs utilisateur."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ router = APIRouter()
 async def api_config_save(payload: dict) -> Response:
     """Sérialise un dict de config en JSON téléchargeable.
 
-    Sprint 28 — supprime la friction *« reconfigurer chaque session »*.
+    Supprime la friction *« reconfigurer chaque session »*.
     Le client envoie sa config courante (engines, profil, options),
     le serveur retourne un fichier JSON à télécharger ; un autre
     utilisateur peut le réimporter via ``/api/config/load``.

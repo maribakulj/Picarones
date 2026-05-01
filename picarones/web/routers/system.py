@@ -42,11 +42,16 @@ async def api_set_lang(lang_code: str, response: Response) -> dict:
                 f"Disponibles : {', '.join(SUPPORTED_LANGS)}"
             ),
         )
+    # ``httponly=False`` est volontaire : le frontend lit ce cookie en
+    # JS pour adapter l'UI sans round-trip serveur. ``samesite="strict"``
+    # car aucun usage légitime ne demande que ce cookie soit envoyé
+    # depuis une navigation cross-site — on resserre le cran qu'on
+    # peut sans casser l'UX.
     response.set_cookie(
         key=LANG_COOKIE,
         value=lang_code,
         max_age=60 * 60 * 24 * 365,  # 1 an
         httponly=False,
-        samesite="lax",
+        samesite="strict",
     )
     return {"lang": lang_code, "message": f"Langue définie : {lang_code}"}
