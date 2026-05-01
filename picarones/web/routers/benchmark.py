@@ -12,12 +12,12 @@ import asyncio
 import threading
 import uuid
 from pathlib import Path
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Callable, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from picarones.web import state as _state
+from picarones.web import state
 from picarones.web.benchmark_utils import (
     run_benchmark_thread,
     run_benchmark_thread_v2,
@@ -31,6 +31,27 @@ from picarones.web.security import (
 )
 
 router = APIRouter()
+
+
+def _start_job_thread(
+    job: state.BenchmarkJob,
+    worker: Callable[..., None],
+    req,
+) -> None:
+    """Démarre ``worker`` dans un thread daemon en libérant le sémaphore à la fin.
+
+    Helper partagé par les deux endpoints qui lancent un benchmark
+    (``/api/benchmark/start`` et ``/api/benchmark/run``). Garantit
+    que ``JOBS_SEMAPHORE`` est libéré, succès ou échec, sans avoir
+    à dupliquer le ``try/finally`` au site d'appel.
+    """
+    def _release_after_worker():
+        try:
+            worker(job, req)
+        finally:
+            state.JOBS_SEMAPHORE.release()
+
+    threading.Thread(target=_release_after_worker, daemon=True).start()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -53,8 +74,8 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
         raise HTTPException(status_code=403, detail=str(exc))
 
     # Sprint 24 — rate limit + sémaphore concurrents.
-    _state.enforce_rate_limit(request)
-    if not _state.JOBS_SEMAPHORE.acquire(blocking=False):
+    state.enforce_rate_limit(request)
+    if not state.JOBS_SEMAPHORE.acquire(blocking=False):
         raise HTTPException(
             status_code=429,
             detail=(
@@ -64,24 +85,12 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
         )
 
     job_id = str(uuid.uuid4())
-    job = _state.BenchmarkJob(job_id=job_id, _store=_state.JOB_STORE)
-    _state.JOB_STORE.create_job(job_id)
-    _state.JOBS[job_id] = job
-    _state.cleanup_old_jobs()
+    job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
+    state.JOB_STORE.create_job(job_id)
+    state.JOBS[job_id] = job
+    state.cleanup_old_jobs()
 
-    def _release_after(job_, fn, *args):
-        try:
-            fn(job_, *args)
-        finally:
-            _state.JOBS_SEMAPHORE.release()
-
-    thread = threading.Thread(
-        target=_release_after,
-        args=(job, run_benchmark_thread, req),
-        daemon=True,
-    )
-    thread.start()
-
+    _start_job_thread(job, run_benchmark_thread, req)
     return {"job_id": job_id, "status": "pending"}
 
 
@@ -114,8 +123,8 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
         raise HTTPException(status_code=403, detail=str(exc))
 
     # Sprint 24 — rate limit + sémaphore concurrents.
-    _state.enforce_rate_limit(request)
-    if not _state.JOBS_SEMAPHORE.acquire(blocking=False):
+    state.enforce_rate_limit(request)
+    if not state.JOBS_SEMAPHORE.acquire(blocking=False):
         raise HTTPException(
             status_code=429,
             detail=(
@@ -125,22 +134,11 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
         )
 
     job_id = str(uuid.uuid4())
-    job = _state.BenchmarkJob(job_id=job_id, _store=_state.JOB_STORE)
-    _state.JOB_STORE.create_job(job_id)
-    _state.JOBS[job_id] = job
+    job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
+    state.JOB_STORE.create_job(job_id)
+    state.JOBS[job_id] = job
 
-    def _release_after(job_, fn, *args):
-        try:
-            fn(job_, *args)
-        finally:
-            _state.JOBS_SEMAPHORE.release()
-
-    thread = threading.Thread(
-        target=_release_after,
-        args=(job, run_benchmark_thread_v2, req),
-        daemon=True,
-    )
-    thread.start()
+    _start_job_thread(job, run_benchmark_thread_v2, req)
     return {"job_id": job_id, "status": "pending"}
 
 
@@ -151,12 +149,12 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
 @router.get("/api/benchmark/{job_id}/status")
 async def api_benchmark_status(job_id: str) -> dict:
     """Statut courant d'un job (RAM si disponible, sinon DB)."""
-    job = _state.JOBS.get(job_id)
+    job = state.JOBS.get(job_id)
     if job is not None:
         return job.as_dict()
     # Sprint 26 — fallback DB : le job n'est pas (plus) en RAM dans ce
     # worker mais peut exister en base (autre worker, ou redémarrage).
-    db_job = _state.JOB_STORE.get_job(job_id)
+    db_job = state.JOB_STORE.get_job(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
     return {
@@ -176,7 +174,7 @@ async def api_benchmark_status(job_id: str) -> dict:
 @router.post("/api/benchmark/{job_id}/cancel")
 async def api_benchmark_cancel(job_id: str) -> dict:
     """Annule un job en cours (no-op si déjà terminé)."""
-    job = _state.JOBS.get(job_id)
+    job = state.JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
     if job.status in ("complete", "error"):
@@ -218,8 +216,8 @@ async def api_benchmark_stream(job_id: str, request: Request) -> StreamingRespon
     except ValueError:
         last_seq = 0
 
-    job = _state.JOBS.get(job_id)
-    db_job = _state.JOB_STORE.get_job(job_id)
+    job = state.JOBS.get(job_id)
+    db_job = state.JOB_STORE.get_job(job_id)
     if job is None and db_job is None:
         raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
 
@@ -229,7 +227,7 @@ async def api_benchmark_stream(job_id: str, request: Request) -> StreamingRespon
             queue = job.subscribe()
         try:
             # 1) Backlog depuis la base — l'autorité de vérité (Sprint 26).
-            backlog = _state.JOB_STORE.get_events_after(job_id, last_seq=last_seq)
+            backlog = state.JOB_STORE.get_events_after(job_id, last_seq=last_seq)
             seen_seqs: set[int] = set()
             for ev in backlog:
                 seen_seqs.add(ev["seq"])

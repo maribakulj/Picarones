@@ -32,7 +32,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from picarones import __version__
-from picarones.web import state as _state
+from picarones.web import state
 from picarones.web.routers import (
     benchmark as _benchmark_router,
     config as _config_router,
@@ -65,8 +65,11 @@ async def _lifespan(app: FastAPI):
     finir). On les bascule en ``interrupted`` pour ne pas laisser
     d'état mensonger sur le tableau de bord.
     """
+    # NB : on accède via ``state.JOB_STORE`` (pas un import direct) pour
+    # que les fixtures de tests qui ré-affectent ``state.JOB_STORE`` à
+    # un store isolé soient effectivement vues par le lifespan.
     try:
-        _state.JOB_STORE.mark_orphaned_jobs_interrupted()
+        state.JOB_STORE.mark_orphaned_jobs_interrupted()
     except Exception as exc:  # pragma: no cover — défense en profondeur
         _logger.warning("[jobs] mark_orphaned_jobs_interrupted échoué : %s", exc)
     yield

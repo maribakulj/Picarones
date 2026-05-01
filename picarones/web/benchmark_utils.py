@@ -1,16 +1,21 @@
 """Utilitaires d'exécution de benchmark côté web.
 
+API publique
+------------
 - ``sse_format`` : sérialisation d'un événement Server-Sent Events
   avec ``Last-Event-ID`` (Sprint 26).
-- ``build_llm_adapter`` : factory adapter LLM depuis une config
-  ``CompetitorConfig``.
-- ``engine_from_competitor`` : factory moteur OCR ou pipeline
-  OCR+LLM depuis une ``CompetitorConfig``.
 - ``run_benchmark_thread`` / ``run_benchmark_thread_v2`` : workers
   threadés qui exécutent le benchmark, émettent des événements SSE
   via le ``BenchmarkJob``, génèrent le rapport HTML final.
 
-Ces utilitaires sont consommés par les routeurs ``/api/benchmark/*``.
+Helpers internes (préfixe ``_``)
+--------------------------------
+- ``_build_llm_adapter`` : factory adapter LLM depuis une config
+  ``CompetitorConfig``.
+- ``_engine_from_competitor`` : factory moteur OCR ou pipeline
+  OCR+LLM depuis une ``CompetitorConfig``.
+
+Ces utilitaires sont consommés par le router ``/api/benchmark/*``.
 """
 
 from __future__ import annotations
@@ -41,7 +46,7 @@ def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
     return f"{head}event: {event_type}\ndata: {payload}\n\n"
 
 
-def build_llm_adapter(comp: CompetitorConfig) -> Any:
+def _build_llm_adapter(comp: CompetitorConfig) -> Any:
     """Instancie un adaptateur LLM depuis la config d'un concurrent."""
     if comp.llm_provider == "openai":
         from picarones.llm.openai_adapter import OpenAIAdapter
@@ -59,7 +64,7 @@ def build_llm_adapter(comp: CompetitorConfig) -> Any:
         raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
 
 
-def engine_from_competitor(comp: CompetitorConfig) -> Any:
+def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig.
 
     Modes supportés :
@@ -121,7 +126,7 @@ def engine_from_competitor(comp: CompetitorConfig) -> Any:
     }
     mode = mode_map.get(comp.pipeline_mode, "text_only")
 
-    llm = build_llm_adapter(comp)
+    llm = _build_llm_adapter(comp)
 
     from picarones.pipelines.base import OCRLLMPipeline
     prompt = comp.prompt_file or "correction_medieval_french.txt"
@@ -160,7 +165,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         engines = []
         for comp in req.competitors:
             try:
-                eng = engine_from_competitor(comp)
+                eng = _engine_from_competitor(comp)
                 engines.append(eng)
                 job.add_event("log", {"message": f"Concurrent : {eng.name}"})
             except Exception as exc:  # noqa: BLE001
@@ -339,8 +344,6 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
 
 __all__ = [
     "sse_format",
-    "build_llm_adapter",
-    "engine_from_competitor",
     "run_benchmark_thread",
     "run_benchmark_thread_v2",
 ]

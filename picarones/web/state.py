@@ -4,11 +4,11 @@ Ce module centralise tout ce qui est partagé entre routeurs : la
 classe ``BenchmarkJob`` qui modélise un job en cours, le store SQLite
 qui le persiste, le rate limiter, le sémaphore qui borne le nombre
 de jobs concurrents, ainsi que les constantes et utilitaires
-HTTP/datetime utilisés à plusieurs endroits.
+datetime/HTTP utilisés à plusieurs endroits.
 
-Discipline : aucun routeur ne doit définir ses propres helpers
-``_iso_now`` / ``_client_ip`` / ``_enforce_rate_limit`` — tous
-passent par ce module pour garantir la cohérence.
+Discipline : aucun routeur ne doit définir ses propres ``iso_now`` /
+``enforce_rate_limit`` — tous passent par ce module pour garantir
+la cohérence.
 """
 
 from __future__ import annotations
@@ -59,8 +59,14 @@ def iso_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def client_ip(request: Request) -> str:
-    """Récupère l'IP client en respectant ``X-Forwarded-For`` derrière un proxy."""
+def _client_ip(request: Request) -> str:
+    """IP client en respectant ``X-Forwarded-For`` derrière un proxy.
+
+    Helper interne au module — utilisé uniquement par
+    ``enforce_rate_limit``. Pas exposé dans ``__all__`` car aucun
+    consommateur externe n'en a besoin (un router qui veut l'IP doit
+    appeler ``enforce_rate_limit`` directement).
+    """
     fwd = request.headers.get("x-forwarded-for") or ""
     if fwd:
         return fwd.split(",")[0].strip()
@@ -70,7 +76,7 @@ def client_ip(request: Request) -> str:
 def enforce_rate_limit(request: Request) -> None:
     """Applique le rate limit ; lève ``HTTPException 429`` si dépassé."""
     try:
-        RATE_LIMITER.check(client_ip(request))
+        RATE_LIMITER.check(_client_ip(request))
     except PermissionError as exc:
         raise HTTPException(status_code=429, detail=str(exc))
 
@@ -242,7 +248,6 @@ __all__ = [
     "SUPPORTED_LANGS",
     "LANG_COOKIE",
     "iso_now",
-    "client_ip",
     "enforce_rate_limit",
     "RATE_LIMITER",
     "JOBS_SEMAPHORE",
