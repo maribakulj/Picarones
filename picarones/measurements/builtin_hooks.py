@@ -247,7 +247,7 @@ def _image_quality_hook(*, image_path, **_):
     # — comportement adaptive intact.
 )
 def _philological_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.philological_runner import compute_philological_metrics
+    from picarones.measurements.philological_hooks import compute_philological_metrics
     return compute_philological_metrics(ground_truth, hypothesis)
 
 
@@ -257,7 +257,7 @@ def _philological_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _searchability_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.searchability_runner import compute_searchability_metrics
+    from picarones.measurements.searchability_hooks import compute_searchability_metrics
     return compute_searchability_metrics(ground_truth, hypothesis)
 
 
@@ -267,7 +267,7 @@ def _searchability_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _numerical_sequences_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.numerical_sequences_runner import (
+    from picarones.measurements.numerical_sequences_hooks import (
         compute_numerical_sequence_metrics_adaptive,
     )
     return compute_numerical_sequence_metrics_adaptive(ground_truth, hypothesis)
@@ -279,7 +279,7 @@ def _numerical_sequences_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _readability_hook(*, ground_truth, hypothesis, corpus_lang, **_):
-    from picarones.measurements.readability_runner import compute_readability_metrics
+    from picarones.measurements.readability_hooks import compute_readability_metrics
     return compute_readability_metrics(ground_truth, hypothesis, lang=corpus_lang)
 
 
@@ -543,7 +543,7 @@ def _aggregate_calibration(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_philological(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.philological_runner import aggregate_philological_metrics
+    from picarones.measurements.philological_hooks import aggregate_philological_metrics
     return aggregate_philological_metrics(
         [dr.philological_metrics for dr in doc_results],
     )
@@ -555,7 +555,7 @@ def _aggregate_philological(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_searchability(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.searchability_runner import aggregate_searchability_metrics
+    from picarones.measurements.searchability_hooks import aggregate_searchability_metrics
     return aggregate_searchability_metrics(
         [dr.searchability_metrics for dr in doc_results],
     )
@@ -567,7 +567,7 @@ def _aggregate_searchability(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_numerical_sequences(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.numerical_sequences_runner import (
+    from picarones.measurements.numerical_sequences_hooks import (
         aggregate_numerical_sequence_metrics,
     )
     return aggregate_numerical_sequence_metrics(
@@ -581,7 +581,7 @@ def _aggregate_numerical_sequences(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_readability(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.readability_runner import aggregate_readability_metrics
+    from picarones.measurements.readability_hooks import aggregate_readability_metrics
     return aggregate_readability_metrics(
         [dr.readability_metrics for dr in doc_results],
     )

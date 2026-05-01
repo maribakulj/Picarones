@@ -123,7 +123,7 @@ def compute_philological_metrics(
             result = compute_fn(ref, hypothesis or "")
         except Exception as exc:  # pragma: no cover — défense en profondeur
             logger.warning(
-                "[philological_runner] module %s a échoué : %s", name, exc,
+                "[philological_hooks] module %s a échoué : %s", name, exc,
             )
             continue
         if has_signal_fn(result):
@@ -350,7 +350,7 @@ def aggregate_philological_metrics(
         aggregator = _AGGREGATORS.get(module)
         if aggregator is None:  # pragma: no cover
             logger.warning(
-                "[philological_runner] aucun agrégateur pour %s", module,
+                "[philological_hooks] aucun agrégateur pour %s", module,
             )
             continue
         out[module] = aggregator(payloads)

@@ -8,8 +8,8 @@ Avant ce chantier, ``picarones.measurements.runner._compute_document_result``
 contenait **11 imports tardifs codés en dur** vers
 ``picarones.measurements.confusion``, ``char_scores``, ``taxonomy``, ``structure``,
 ``image_quality``, ``line_metrics``, ``hallucination``,
-``philological_runner``, ``searchability_runner``,
-``numerical_sequences_runner``, ``readability_runner`` — chacun enrobé
+``philological_hooks``, ``searchability_hooks``,
+``numerical_sequences_hooks``, ``readability_hooks`` — chacun enrobé
 dans un ``try/except Exception`` qui logue un warning. Symétriquement,
 la phase d'agrégation contenait 11 fonctions ``_aggregate_*`` ou
 ``aggregate_*``. Ajouter une nouvelle métrique exigeait de patcher

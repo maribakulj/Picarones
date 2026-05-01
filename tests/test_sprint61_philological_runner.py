@@ -24,7 +24,7 @@ Couvre :
 
 from __future__ import annotations
 
-from picarones.measurements.philological_runner import (
+from picarones.measurements.philological_hooks import (
     aggregate_philological_metrics,
     compute_philological_metrics,
 )

@@ -86,7 +86,6 @@ Philologie historique :
 - :mod:`modern_archives`      marqueurs XIXᵉ-XXᵉ
 - :mod:`roman_numerals`       numéraux romains
 - :mod:`lexical_modernization` sur-normalisation lexicale
-- :mod:`philological_runner`  câblage runner adaptive
 
 Pipelines composées (axe B) :
 
@@ -99,11 +98,14 @@ Aide à la décision :
 - :mod:`equivalence_profile`  curseur fin équivalences diplomatiques
 - :mod:`module_policy`        manifest + audit modules contribués
 
-Câblages adaptifs (suffixe ``_runner``) :
+Câblages adaptifs (suffixe ``_hooks``) :
 
-- :mod:`readability_runner`, :mod:`searchability_runner`,
-  :mod:`numerical_sequences_runner` — adaptive masking
-  document-par-document, consommés par :mod:`builtin_hooks`.
+- :mod:`readability_hooks`, :mod:`searchability_hooks`,
+  :mod:`numerical_sequences_hooks`, :mod:`philological_hooks` —
+  adaptive masking document-par-document, consommés par
+  :mod:`builtin_hooks`. Ces modules sont des couches d'adaptation
+  entre le calcul pur (sans I/O) et le runner principal (avec
+  agrégation par moteur).
 
 Moteur narratif :
 
