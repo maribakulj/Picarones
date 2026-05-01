@@ -31,6 +31,10 @@ dependencies = [
     "tqdm>=4.66.0",
     "numpy>=1.24.0",
     "jinja2>=3.1.0",
+    # XML parsing sécurisé contre les attaques XXE / Billion Laughs.
+    # Utilisé par ``picarones.web.corpus_utils`` pour le parsing ALTO/PAGE
+    # quand un utilisateur uploade un corpus XML.
+    "defusedxml>=0.7.1",
 ]
 
 [project.urls]
@@ -69,9 +73,27 @@ ocr-cloud = [
     "boto3>=1.34.0",
     "azure-ai-formrecognizer>=3.3.0",
 ]
+# Métriques philologiques pour documents historiques (Cercle 3, phase B
+# du chantier de refonte post-Sprint 97). Aujourd'hui les modules
+# philologiques (`picarones.extras.historical.*`) sont livrés dans le
+# package principal sans dépendance externe — l'extra ``[historical]``
+# n'ajoute donc aucun paquet à installer. Il est déclaré ici pour
+# **documenter l'intention** : un usage purement moderne (sans cas
+# d'usage patrimonial) peut ignorer le sous-package extras/historical/
+# entièrement, et un futur split en package PyPI séparé
+# ``picarones-historical`` réutilisera ce nom d'extra.
+historical = []
+# Importeurs de corpus depuis sources distantes (Cercle 3, phase C).
+# Les 6 importeurs (sous extras/importers/, dotted
+# ``picarones.extras.importers.*``) sont livrés dans le package
+# principal. ``[importers]`` documente l'intention de séparation
+# future en package PyPI ``picarones-importers``. Les modules
+# ``huggingface`` et ``escriptorium`` émettent un ``UserWarning`` à
+# l'import (statut expérimental).
+importers = []
 # Installation complète (tous les extras sauf les OCR cloud)
 all = [
-    "picarones[web,hf,llm,dev]",
+    "picarones[web,hf,llm,dev,historical,importers]",
 ]
 
 [project.scripts]

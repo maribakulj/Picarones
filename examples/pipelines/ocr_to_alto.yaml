@@ -1,0 +1,35 @@
+# Pipeline de référence — chantier 1 post-Sprint 97.
+#
+# Démontre une chaîne OCR → reconstruction ALTO avec évaluation
+# automatique aux deux jonctions :
+#   - après l'OCR : CER/WER (TEXT vs GT TEXT)
+#   - après le reconstructeur : alto_text_cer (ALTO vs GT ALTO)
+#
+# Pré-requis :
+#   - tesseract installé (sinon remplacer par un autre moteur)
+#   - corpus avec au moins .gt.txt par document ; .gt.alto.xml
+#     optionnel mais nécessaire pour voir la jonction (ALTO, ALTO).
+#
+# Lancement :
+#   picarones pipeline run examples/pipelines/ocr_to_alto.yaml \
+#       --corpus ./mon_corpus \
+#       --output-html rapport.html
+
+name: ocr_to_alto_baseline
+steps:
+  - name: ocr
+    module: picarones.engines.tesseract.TesseractEngine
+    args:
+      lang: fra
+      psm: 6
+      expose_confidences: true
+
+  - name: alto
+    module: picarones.modules.alto_text_to_mono_region.TextToAltoMonoRegion
+    args:
+      name: alto_baseline
+    # IMAGE est consommé en plus du TEXT : le reconstructeur
+    # baseline lit les dimensions de l'image source pour produire
+    # un ALTO 4.2 spatialement cohérent.  IMAGE est conservé
+    # automatiquement dans le bag par le pipeline_runner (entrée
+    # initiale jamais écrasée, cf. Sprint 66).

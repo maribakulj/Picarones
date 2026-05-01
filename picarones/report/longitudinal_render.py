@@ -18,8 +18,8 @@ Module pur — l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.core.history import BenchmarkHistory
-    from picarones.core.longitudinal import compute_corpus_longitudinal
+    from picarones.measurements.history import BenchmarkHistory
+    from picarones.measurements.longitudinal import compute_corpus_longitudinal
     from picarones.report.longitudinal_render import build_longitudinal_html
 
     hist = BenchmarkHistory(db_path)

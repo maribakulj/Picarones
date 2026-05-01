@@ -1,7 +1,7 @@
 """Comparaison de deux runs de benchmark (Sprint 28).
 
 Le Sprint 8 a livré la persistance longitudinale via SQLite
-(``picarones.core.history``) et un détecteur de régression CLI. Mais
+(``picarones.measurements.history``) et un détecteur de régression CLI. Mais
 aucun outil n'exposait la **comparaison** de deux runs côté rapport :
 un chercheur qui itère sur 8 prompts ne pouvait pas voir d'un coup
 *« Tesseract → GPT-4o version V2 a régressé de 0,8 pp en CER moyen

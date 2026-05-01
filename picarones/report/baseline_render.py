@@ -161,7 +161,7 @@ def build_corpus_difficulty_baseline_html(
     ----------
     percentile_data:
         Sortie de
-        ``picarones.core.baseline_comparison.compute_corpus_difficulty_percentile``.
+        ``picarones.measurements.baseline_comparison.compute_corpus_difficulty_percentile``.
         Si ``None``, retourne ``""`` (rapport adaptatif —
         historique trop court ou difficulté absente).
     historical_values:

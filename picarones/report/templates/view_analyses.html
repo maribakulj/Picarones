@@ -262,6 +262,26 @@
     </div>
     {% endif %}
 
+    <!-- Chantier 3 (post-Sprint 97) — vues thématiques composées
+         qui regroupent les renderers orphelins en sections
+         collapsibles. Adaptive : ne s'affichent que si la vue
+         retourne du contenu (au moins une sous-section avec signal). -->
+    {% if economics_view_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ economics_view_html }}
+    </div>
+    {% endif %}
+    {% if advanced_taxonomy_view_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ advanced_taxonomy_view_html }}
+    </div>
+    {% endif %}
+    {% if diagnostics_view_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ diagnostics_view_html }}
+    </div>
+    {% endif %}
+
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
       <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>

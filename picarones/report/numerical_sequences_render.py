@@ -23,7 +23,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.core.numerical_sequences import CATEGORIES
+from picarones.measurements.numerical_sequences import CATEGORIES
 
 
 def _color_for_score(score: float) -> str:

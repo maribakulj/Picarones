@@ -18,7 +18,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.core.worst_lines import WorstLineEntry
+from picarones.measurements.worst_lines import WorstLineEntry
 from picarones.report.diff_utils import compute_char_diff
 
 

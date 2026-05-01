@@ -1,4 +1,4 @@
-"""Garde-fous sécurité pour l'interface web (Sprint 24).
+"""Garde-fous sécurité pour l'interface web.
 
 Ce module centralise quatre durcissements pour rendre Picarones déployable
 sur un Space HuggingFace public ou un serveur d'institution sans donner

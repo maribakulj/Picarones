@@ -18,7 +18,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.core.lexical_modernization import top_modernized_tokens
+from picarones.measurements.lexical_modernization import top_modernized_tokens
 
 
 def _color_for_rate(rate: float) -> str:

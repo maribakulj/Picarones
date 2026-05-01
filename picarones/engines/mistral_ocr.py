@@ -16,6 +16,12 @@ récursivement les paires ``(text, confidence)`` exploitables et les
 retourne au format Sprint 42.  Si la réponse ne contient aucun champ
 de confidence (cas de l'API chat/vision pour ``pixtral-*``),
 ``token_confidences = None``.
+
+Refactor du chantier 1 (post-Sprint 97)
+---------------------------------------
+L'adapter ne surcharge plus ``run()`` — il implémente ``_run_with_native``
+et ``_extract_raw_confidences`` (les hooks factorisés dans ``BaseOCREngine``).
+Comportement externe et octets de sortie strictement identiques.
 """
 
 from __future__ import annotations
@@ -23,11 +29,10 @@ from __future__ import annotations
 import base64
 import logging
 import os
-import time
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.engines.base import BaseOCREngine
 
 
 logger = logging.getLogger(__name__)
@@ -71,11 +76,11 @@ class MistralOCREngine(BaseOCREngine):
         self._max_tokens = int(self.config.get("max_tokens", 4096))
 
     def _run_ocr(self, image_path: Path) -> str:
-        """API rétrocompat : retourne uniquement le texte."""
-        text, _raw = self._run_ocr_with_response(image_path)
+        """Retourne uniquement le texte (interface ``BaseOCREngine``)."""
+        text, _raw = self._run_with_native(image_path)
         return text
 
-    def _run_ocr_with_response(
+    def _run_with_native(
         self, image_path: Path,
     ) -> tuple[str, Optional[dict]]:
         """Exécute l'OCR et retourne ``(text, raw_response)``.
@@ -160,8 +165,8 @@ class MistralOCREngine(BaseOCREngine):
         )
         return response.choices[0].message.content or ""
 
-    def _extract_token_confidences_from_response(
-        self, raw_response: Optional[dict],
+    def _extract_raw_confidences(
+        self, native: Any,
     ) -> Optional[list[dict[str, Any]]]:
         """Extrait les paires ``(token, confidence)`` de la réponse
         ``/v1/ocr`` quand elles existent.
@@ -181,38 +186,26 @@ class MistralOCREngine(BaseOCREngine):
         n'est trouvé (cas le plus courant si l'API renvoie uniquement
         du markdown sans annotation, ou si on est sur le chemin
         chat/vision ``pixtral-*``).
-
-        Les exceptions sont absorbées en warning (best-effort).
         """
         if not self.config.get("expose_confidences", True):
             return None
-        if not raw_response or not isinstance(raw_response, dict):
+        if not native or not isinstance(native, dict):
             return None
-        try:
-            out: list[dict[str, Any]] = []
-            pages = raw_response.get("pages") or []
-            for page in pages:
-                if not isinstance(page, dict):
-                    continue
-                # Niveau 1 : words explicites
-                words = page.get("words") or []
-                for w in words:
-                    self._maybe_emit_word(w, out)
-                # Niveau 2 : lines avec confidence propagée
-                lines = page.get("lines") or []
-                for line in lines:
-                    self._emit_lines_or_blocks(line, out)
-                # Niveau 3 : blocks avec confidence propagée
-                blocks = page.get("blocks") or []
-                for block in blocks:
-                    self._emit_lines_or_blocks(block, out)
-            return out or None
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "[mistral_ocr] extraction des token_confidences dégradée : %s",
-                exc,
-            )
-            return None
+        out: list[dict[str, Any]] = []
+        pages = native.get("pages") or []
+        for page in pages:
+            if not isinstance(page, dict):
+                continue
+            # Niveau 1 : words explicites
+            for w in page.get("words") or []:
+                self._maybe_emit_word(w, out)
+            # Niveau 2 : lines avec confidence propagée
+            for line in page.get("lines") or []:
+                self._emit_lines_or_blocks(line, out)
+            # Niveau 3 : blocks avec confidence propagée
+            for block in page.get("blocks") or []:
+                self._emit_lines_or_blocks(block, out)
+        return out or None
 
     @staticmethod
     def _maybe_emit_word(word: Any, out: list) -> None:
@@ -222,13 +215,7 @@ class MistralOCREngine(BaseOCREngine):
         conf = word.get("confidence")
         if not text or conf is None:
             return
-        try:
-            conf_val = float(conf)
-        except (TypeError, ValueError):
-            return
-        if conf_val < 0:
-            return
-        out.append({"token": text, "confidence": conf_val})
+        out.append({"token": text, "confidence": conf})
 
     @staticmethod
     def _emit_lines_or_blocks(item: Any, out: list) -> None:
@@ -239,48 +226,6 @@ class MistralOCREngine(BaseOCREngine):
         conf = item.get("confidence")
         if not text or conf is None:
             return
-        try:
-            conf_val = float(conf)
-        except (TypeError, ValueError):
-            return
-        if conf_val < 0:
-            return
         for word in text.split():
             if word:
-                out.append({"token": word, "confidence": conf_val})
-
-    def run(self, image_path: str | Path) -> EngineResult:
-        """Exécute Mistral OCR et expose les ``token_confidences``
-        natifs (Sprint 49).
-
-        L'API ``/v1/ocr`` est appelée une seule fois ; le texte et la
-        réponse brute sont récupérés ensemble. Si la réponse expose
-        des ``confidence`` (par mot/ligne/block), elles sont extraites
-        au format Sprint 42.  Sinon ``token_confidences = None``.
-
-        Le chemin chat/vision (``pixtral-*``) ne fournit pas de
-        confidences ; ``token_confidences`` y est toujours ``None``.
-        """
-        image_path = Path(image_path)
-        start = time.perf_counter()
-        text = ""
-        error: Optional[str] = None
-        token_confidences: Optional[list[dict[str, Any]]] = None
-        try:
-            text, raw_response = self._run_ocr_with_response(image_path)
-        except Exception as exc:  # noqa: BLE001
-            error = str(exc)
-        else:
-            token_confidences = self._extract_token_confidences_from_response(
-                raw_response,
-            )
-        duration = time.perf_counter() - start
-        return EngineResult(
-            engine_name=self.name,
-            image_path=str(image_path),
-            text=text,
-            duration_seconds=round(duration, 4),
-            error=error,
-            metadata={"engine_version": self._safe_version()},
-            token_confidences=token_confidences,
-        )
+                out.append({"token": word, "confidence": conf})

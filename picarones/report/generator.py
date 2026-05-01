@@ -37,7 +37,7 @@ def _load_vendor_js(name: str) -> str:
 
 from picarones.core.results import BenchmarkResult
 from picarones.report.diff_utils import compute_char_diff, compute_word_diff
-from picarones.core.statistics import (
+from picarones.measurements.statistics import (
     compute_pairwise_stats,
     compute_reliability_curve,
     compute_correlation_matrix,
@@ -49,8 +49,8 @@ from picarones.core.statistics import (
     build_critical_difference_svg,
     compute_pareto_front,
 )
-from picarones.core.pricing import build_costs_for_benchmark, load_pricing_database
-from picarones.core.difficulty import compute_all_difficulties, difficulty_label
+from picarones.measurements.pricing import build_costs_for_benchmark, load_pricing_database
+from picarones.measurements.difficulty import compute_all_difficulties, difficulty_label
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ def _encode_images_b64_from_result(benchmark: "BenchmarkResult", max_width: int 
 
 def _cer_color(cer: float) -> str:
     """Retourne une couleur CSS pour un score CER donné (0→vert, 1→rouge)."""
-    from picarones.core.colors import COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED
+    from picarones.report.colors import COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED
     if cer < 0.05:
         return COLOR_GREEN
     if cer < 0.15:
@@ -114,7 +114,7 @@ def _cer_color(cer: float) -> str:
 
 
 def _cer_bg(cer: float) -> str:
-    from picarones.core.colors import BG_GREEN, BG_YELLOW, BG_ORANGE, BG_RED
+    from picarones.report.colors import BG_GREEN, BG_YELLOW, BG_ORANGE, BG_RED
     if cer < 0.05:
         return BG_GREEN
     if cer < 0.15:
@@ -718,7 +718,7 @@ class ReportGenerator:
         )
 
         # Sprint 18 — synthèse factuelle narrative (déterministe, sans LLM)
-        from picarones.core.narrative import build_synthesis
+        from picarones.measurements.narrative import build_synthesis
         synthesis = build_synthesis(report_data, lang=self.lang)
 
         # Sprint 20 — glossaire contextuel chargé depuis YAML
@@ -841,6 +841,26 @@ class ReportGenerator:
             _taxos, labels=labels,
         )
 
+        # Chantier 3 (post-Sprint 97) — 3 nouvelles vues thématiques
+        # qui regroupent les renderers orphelins en sections
+        # collapsibles. Adaptive : retourne "" si aucune sous-section
+        # n'a de signal, donc la carte du template est masquée.
+        from picarones.report.views import (
+            build_advanced_taxonomy_view_html,
+            build_diagnostics_view_html,
+            build_economics_view_html,
+        )
+        economics_view_html = build_economics_view_html(
+            report_data, labels=labels,
+            engine_reports=self.benchmark.engine_reports,
+        )
+        advanced_taxonomy_view_html = build_advanced_taxonomy_view_html(
+            report_data, labels=labels,
+        )
+        diagnostics_view_html = build_diagnostics_view_html(
+            report_data, labels=labels,
+        )
+
         env = _build_jinja_env()
         template = env.get_template("base.html.j2")
         html = template.render(
@@ -866,6 +886,10 @@ class ReportGenerator:
             numerical_sequences_html=numerical_sequences_html,
             readability_html=readability_html,
             specialization_html=specialization_html,
+            # Chantier 3 — vues thématiques composées
+            economics_view_html=economics_view_html,
+            advanced_taxonomy_view_html=advanced_taxonomy_view_html,
+            diagnostics_view_html=diagnostics_view_html,
         )
 
         output_path.write_text(html, encoding="utf-8")
@@ -884,7 +908,7 @@ class ReportGenerator:
         data = _json.loads(Path(json_path).read_text(encoding="utf-8"))
 
         # Reconstruction minimale d'un BenchmarkResult depuis le dict
-        from picarones.core.metrics import MetricsResult
+        from picarones.measurements.metrics import MetricsResult
         from picarones.core.results import DocumentResult, EngineReport
 
         engine_reports = []

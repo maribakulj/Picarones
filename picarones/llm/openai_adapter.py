@@ -6,7 +6,11 @@ import logging
 import os
 from typing import Optional
 
-from picarones.llm.base import BaseLLMAdapter
+from picarones.llm.base import (
+    BaseLLMAdapter,
+    log_http_error,
+    normalize_llm_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +22,8 @@ class OpenAIAdapter(BaseLLMAdapter):
 
     Modes supportés : text_only, text_and_image, zero_shot.
     """
+
+    api_key_env_var = "OPENAI_API_KEY"
 
     @property
     def name(self) -> str:
@@ -70,21 +76,10 @@ class OpenAIAdapter(BaseLLMAdapter):
                 max_tokens=max_tokens,
             )
         except Exception as exc:
-            status_code = getattr(exc, "status_code", None)
-            if status_code == 401:
-                logger.warning(
-                    "[OpenAIAdapter] erreur HTTP 401 — clé API invalide (modèle=%s).",
-                    self.model,
-                )
-            elif status_code == 429:
-                logger.warning(
-                    "[OpenAIAdapter] erreur HTTP 429 — rate limit (modèle=%s).",
-                    self.model,
-                )
-            else:
-                logger.warning(
-                    "[OpenAIAdapter] erreur API (modèle=%s) : %s", self.model, exc,
-                )
+            log_http_error(
+                "OpenAIAdapter", self.model, exc,
+                env_var=self.api_key_env_var,
+            )
             raise
 
         if not response.choices:
@@ -92,4 +87,8 @@ class OpenAIAdapter(BaseLLMAdapter):
                 "[OpenAIAdapter] response.choices vide (modèle=%s).", self.model,
             )
             return ""
-        return response.choices[0].message.content or ""
+        # Chantier 4 — propagation du fix Sprint 15 : le SDK OpenAI
+        # peut retourner une ``list[ContentBlock]`` selon l'API
+        # (Responses, structured outputs).  ``normalize_llm_content``
+        # gère les deux cas (str et list).
+        return normalize_llm_content(response.choices[0].message.content)
