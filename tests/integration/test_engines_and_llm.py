@@ -4,13 +4,13 @@ Chantier 6 du plan d'évolution post-Sprint 97.
 
 Tests couvrant cette feature
 ----------------------------
-- :mod:`tests.test_engines` — 5 adapters OCR (Tesseract, Pero,
+- :mod:`tests.engines.test_engines` — 5 adapters OCR (Tesseract, Pero,
   Mistral OCR, Google Vision, Azure DI), `BaseOCREngine` factorisé.
-- :mod:`tests.test_engines_cloud` — tests cloud-only (gated).
-- :mod:`tests.test_chantier4` (sous-classes ``TestNormalizeLlmContent``,
+- :mod:`tests.engines.test_engines_cloud` — tests cloud-only (gated).
+- :mod:`tests.integration.test_chantier4` (sous-classes ``TestNormalizeLlmContent``,
   ``TestLogHttpError``, ``TestLlmAdaptersInheritEnvVar``) — helpers
   factorisés `picarones.llm.base`.
-- :mod:`tests.test_alto_baseline` (chantier 1) — `BaseOCREngine`
+- :mod:`tests.integration.test_alto_baseline` (chantier 1) — `BaseOCREngine`
   refondu (hooks `_run_with_native` + `_extract_raw_confidences`).
 
 Sprints d'origine

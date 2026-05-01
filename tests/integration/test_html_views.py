@@ -7,9 +7,9 @@ rapport et aux renderers atomiques.
 
 Tests couvrant cette feature
 ----------------------------
-- :mod:`tests.test_views` (chantier 3) — 5 vues thématiques,
+- :mod:`tests.report.test_views` (chantier 3) — 5 vues thématiques,
   adaptive masking, anti-injection, câblage générator → vues.
-- :mod:`tests.test_alto_baseline` (chantier 1) — métriques ALTO
+- :mod:`tests.integration.test_alto_baseline` (chantier 1) — métriques ALTO
   + reconstructeur baseline, partagé avec la vue pipeline.
 - :mod:`tests.test_chantier3_views` — alias.
 

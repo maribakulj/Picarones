@@ -5,9 +5,9 @@ Chantier 6 du plan d'évolution post-Sprint 97.
 
 Tests couvrant cette feature
 ----------------------------
-- :mod:`tests.test_chantier5` (classe ``TestDetectorsPackage``) —
+- :mod:`tests.integration.test_chantier5` (classe ``TestDetectorsPackage``) —
   package thématique des détecteurs (chantier 5).
-- :mod:`tests.test_views` (chantier 3) — vue diagnostics qui consomme
+- :mod:`tests.report.test_views` (chantier 3) — vue diagnostics qui consomme
   les leviers calculés depuis ``picarones.measurements.levers``.
 
 Sprints d'origine du moteur narratif

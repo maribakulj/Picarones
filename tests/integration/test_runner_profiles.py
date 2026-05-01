@@ -7,12 +7,12 @@ runner et au registre central de métriques (chantier 2).
 
 Tests couvrant cette feature
 ----------------------------
-- :mod:`tests.test_metric_hooks` (chantier 2) — registre,
+- :mod:`tests.core.test_metric_hooks` (chantier 2) — registre,
   décorateurs, sélection par profil, exécution.
-- :mod:`tests.test_chantier4` (sous-classes
+- :mod:`tests.integration.test_chantier4` (sous-classes
   ``TestNormalizeLlmContent``, ``TestLogHttpError``,
   ``TestLlmAdaptersInheritEnvVar``) pour les helpers LLM partagés.
-- :mod:`tests.test_chantier5` (classe ``TestRunnerStillReachable``)
+- :mod:`tests.integration.test_chantier5` (classe ``TestRunnerStillReachable``)
   pour la rétrocompat des fonctions privées du runner.
 
 Sprints d'origine
