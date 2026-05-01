@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "picarones"
-version = "1.3.0"
+version = "1.0.0"
 description = "Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -80,11 +80,12 @@ ocr-cloud = [
 # ``picarones-historical`` réutilisera ce nom d'extra.
 historical = []
 # Importeurs de corpus depuis sources distantes (Cercle 3, phase C).
-# Les 6 importeurs (``picarones.extras.importers.*``) sont livrés dans
-# le package principal. ``[importers]`` documente l'intention de
-# séparation future en package PyPI ``picarones-importers``. Les
-# modules ``huggingface`` et ``escriptorium`` émettent un
-# ``UserWarning`` à l'import (statut expérimental).
+# Les 6 importeurs (sous extras/importers/, dotted
+# ``picarones.extras.importers.*``) sont livrés dans le package
+# principal. ``[importers]`` documente l'intention de séparation
+# future en package PyPI ``picarones-importers``. Les modules
+# ``huggingface`` et ``escriptorium`` émettent un ``UserWarning`` à
+# l'import (statut expérimental).
 importers = []
 # Installation complète (tous les extras sauf les OCR cloud)
 all = [

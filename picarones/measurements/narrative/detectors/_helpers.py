@@ -32,12 +32,28 @@ def _n_docs(data: dict) -> int:
 
 
 def _mean_duration_per_engine(data: dict) -> dict[str, float]:
-    """Retourne ``{engine_name: mean_duration_seconds}`` quand disponible.
+    """Durée moyenne d'exécution par moteur (en secondes par document).
 
-    Lit ``benchmark_data["engines"][i]["mean_duration"]`` (renseigné
-    par le runner depuis ``durations_by_engine`` Sprint 4). Filtre les
-    durées non-numériques.
+    Source primaire : ``benchmark_data["documents"][i]["engine_results"][j]["duration"]``
+    (format historique du runner). Fallback secondaire :
+    ``benchmark_data["engines"][i]["mean_duration"]`` (champ agrégé
+    quand fourni). Filtre les durées non-numériques.
     """
+    durations: dict[str, list[float]] = {}
+    for doc in data.get("documents") or []:
+        for er in doc.get("engine_results") or []:
+            engine_name = er.get("engine")
+            d = er.get("duration")
+            if engine_name is None or d is None:
+                continue
+            try:
+                d_f = float(d)
+            except (TypeError, ValueError):
+                continue
+            durations.setdefault(engine_name, []).append(d_f)
+    if durations:
+        return {k: sum(v) / len(v) for k, v in durations.items() if v}
+    # Fallback : champ agrégé sur le résumé moteur
     out: dict[str, float] = {}
     for e in _engines_summary(data):
         name = e.get("name")

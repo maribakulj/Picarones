@@ -13,7 +13,6 @@ Couvre :
 
 from __future__ import annotations
 
-from typing import Any
 
 import pytest
 
@@ -238,12 +237,15 @@ class TestAdvancedTaxonomyView:
         # Sans lexical_modernization, la sous-section n'apparaît pas
         html_no = build_advanced_taxonomy_view_html(report_data, {})
         # Avec, elle apparaît
+        # Le format attendu par ``top_modernized_tokens`` est
+        # ``{"tokens": {gt_token: {n_total, n_modernized, rate_modernized,
+        # variants}}}`` (cf. ``aggregate_lexical_modernization``).
         lex_data = {
-            "per_token": {
+            "tokens": {
                 "maistre": {
                     "n_total": 10, "n_modernized": 8,
                     "rate_modernized": 0.8,
-                    "variants": [{"token": "maître", "count": 8}],
+                    "variants": {"maître": 8},
                 },
             },
         }

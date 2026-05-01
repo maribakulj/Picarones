@@ -87,6 +87,15 @@ class AzureDocIntelEngine(BaseOCREngine):
     def _run_with_native(
         self, image_path: Path,
     ) -> tuple[str, Optional[dict]]:
+        """Hook framework (chantier 1) — délègue à ``_run_ocr_with_result``
+        pour permettre aux tests Sprint 51 de monkeypatcher l'appel réseau
+        sous son nom historique.
+        """
+        return self._run_ocr_with_result(image_path)
+
+    def _run_ocr_with_result(
+        self, image_path: Path,
+    ) -> tuple[str, Optional[dict]]:
         """Exécute l'OCR et retourne ``(text, analyze_result_dict)``.
 
         ``analyze_result_dict`` est la sous-structure
@@ -243,3 +252,14 @@ class AzureDocIntelEngine(BaseOCREngine):
                     continue
                 out.append({"token": content, "confidence": conf})
         return out or None
+
+    def _extract_token_confidences_from_result(
+        self, result: Any,
+    ) -> Optional[list[dict[str, Any]]]:
+        """Alias rétrocompat (Sprint 51) — extrait les confidences d'un ``analyzeResult``.
+
+        Wrapper qui chaîne ``_extract_raw_confidences`` puis
+        ``_normalize_token_confidences`` (filtrage tokens vides / négatifs).
+        """
+        raw = self._extract_raw_confidences(result)
+        return self._normalize_token_confidences(raw)

@@ -9,14 +9,10 @@ Comportement et signatures inchangés — uniquement de la modularisation.
 
 from __future__ import annotations
 
-import json
-import logging
-import sys
-from pathlib import Path
 
 import click
 
-from picarones.cli import cli, _engine_from_name, _setup_logging
+from picarones.cli import cli, _setup_logging
 
 # ---------------------------------------------------------------------------
 # picarones history

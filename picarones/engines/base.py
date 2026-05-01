@@ -172,22 +172,26 @@ class BaseOCREngine(BaseModule):
     def _normalize_token_confidences(
         raw: Optional[list[dict[str, Any]]],
     ) -> Optional[list[dict[str, Any]]]:
-        """Filtre + normalise les confidences brutes.
+        """Filtre les confidences brutes (sans changer l'échelle).
 
         - Tokens vides ou ``None`` → écartés.
         - Confidences négatives (Tesseract met -1 pour les non-mots) → écartées.
         - Confidences non convertibles en float → écartées.
-        - Détection automatique d'échelle : si la valeur max observée
-          est > 1.0, on suppose une échelle [0, 100] et on divise par 100.
+
+        L'**échelle native** des moteurs (Tesseract en [0, 100],
+        Google/Anthropic/Mistral en [0, 1]) est **conservée**. Le
+        runner Sprint 42 (``_calibration_from_engine_result`` dans
+        ``builtin_hooks``) normalise lui-même au moment du calcul de
+        calibration. Cette discipline préserve la rétrocompat des
+        tests Sprints 47-51 qui inspectent ``EngineResult.token_confidences``.
 
         Retourne ``None`` si aucune entrée n'est exploitable (au
-        lieu d'une liste vide), ce qui signale au runner Sprint 42
-        de sauter le calcul de calibration sur ce document.
+        lieu d'une liste vide), ce qui signale au runner de sauter
+        le calcul de calibration sur ce document.
         """
         if not raw:
             return None
-        valid_floats: list[float] = []
-        cleaned: list[tuple[str, float]] = []
+        cleaned: list[dict[str, Any]] = []
         for entry in raw:
             if not isinstance(entry, dict):
                 continue
@@ -206,15 +210,8 @@ class BaseOCREngine(BaseModule):
                 continue
             if conf_val < 0:
                 continue
-            valid_floats.append(conf_val)
-            cleaned.append((tok, conf_val))
-        if not cleaned:
-            return None
-        scale = 100.0 if max(valid_floats) > 1.0 else 1.0
-        return [
-            {"token": tok, "confidence": conf / scale}
-            for tok, conf in cleaned
-        ]
+            cleaned.append({"token": tok, "confidence": conf_val})
+        return cleaned or None
 
     # ──────────────────────────────────────────────────────────────────
     # Implémentation BaseModule (Sprint 33)

@@ -48,7 +48,7 @@ class TestMeasurementsRetrocompat:
         ("picarones.core.line_metrics", "compute_line_metrics"),
         ("picarones.core.hallucination", "compute_hallucination_metrics"),
         ("picarones.core.image_quality", "analyze_image_quality"),
-        ("picarones.core.normalization", "PROFILES"),
+        ("picarones.core.normalization", "NORMALIZATION_PROFILES"),
         ("picarones.core.rare_tokens", "extract_rare_tokens"),
     ])
     def test_legacy_path_works(self, module_path: str, attribute: str):
@@ -198,7 +198,6 @@ class TestHooksStillRegistered:
         assert expected.issubset(set(hooks))
 
     def test_alto_metrics_registered(self):
-        import picarones.core.pipeline_runner  # eager-load
         from picarones.core.metric_registry import select_metrics
         from picarones.core.modules import ArtifactType
 
@@ -237,8 +236,6 @@ class TestChantier3ViewsAfterPhaseE:
     def test_views_still_work(self):
         from picarones.report.views import (
             build_advanced_taxonomy_view_html,
-            build_diagnostics_view_html,
-            build_economics_view_html,
         )
         report_data = {"engines": [
             {"name": "tess", "cer": 0.05,

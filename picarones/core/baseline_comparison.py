@@ -1,19 +1,26 @@
 """Alias rétrocompat — module déplacé dans :mod:`picarones.measurements.baseline_comparison`.
 
-Phase E du chantier de refonte en 3 cercles. Cette mesure (Cercle 2)
-n'est plus dans ``picarones.core/`` ; elle vit dans
-``picarones.measurements/``. L'alias ici permet aux imports
-historiques (``from picarones.core.baseline_comparison import ...``) de continuer
-à fonctionner sans modification.
+Le contenu vit désormais dans son cercle d'origine. Cet alias permet
+aux imports historiques (y compris les noms privés ``_*``) de
+continuer à fonctionner sans modification.
 
-Voir :doc:`docs/architecture-cercles.md` pour la cartographie des
-3 cercles. Le ``core/`` strict ne contient plus que les abstractions
-du domaine et l'orchestration (Cercle 1).
+Voir :doc:`docs/architecture-cercles.md` pour la cartographie.
 """
 
 from picarones.measurements.baseline_comparison import *  # noqa: F401, F403
 
-import picarones.measurements.baseline_comparison as _module
-__all__ = getattr(_module, "__all__", [
-    nm for nm in dir(_module) if not nm.startswith("_")
-])
+# Réexport explicite de TOUS les noms (privés inclus) pour la
+# rétrocompatibilité des tests Sprints qui importent ``_helper``,
+# ``_compute_X``, ``_SCIPY_AVAILABLE``, etc. Sans cette boucle, ``import *``
+# ne propage que les noms publics et casse les imports historiques.
+import picarones.measurements.baseline_comparison as _shim_module
+for _shim_name in dir(_shim_module):
+    if _shim_name == "__builtins__":
+        continue
+    if _shim_name not in globals():
+        globals()[_shim_name] = getattr(_shim_module, _shim_name)
+del _shim_module, _shim_name
+
+__all__ = [
+    _n for _n in dir() if not _n.startswith("__")
+]

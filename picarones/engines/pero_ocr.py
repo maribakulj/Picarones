@@ -177,6 +177,17 @@ class PeroOCREngine(BaseOCREngine):
                         out.append({"token": word, "confidence": conf})
         return out or None
 
+    def _extract_token_confidences_from_layout(
+        self, layout: Any,
+    ) -> Optional[list[dict[str, Any]]]:
+        """Alias rétrocompat (Sprint 48) — extrait les confidences d'un ``page_layout``.
+
+        Wrapper qui chaîne ``_extract_raw_confidences`` puis
+        ``_normalize_token_confidences`` (filtrage tokens vides / négatifs).
+        """
+        raw = self._extract_raw_confidences(layout)
+        return self._normalize_token_confidences(raw)
+
     @classmethod
     def from_config(cls, config: Optional[dict] = None) -> "PeroOCREngine":
         return cls(config=config or {})

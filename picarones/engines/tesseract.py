@@ -144,8 +144,9 @@ class TesseractEngine(BaseOCREngine):
             return text, data
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "[tesseract] image_to_data indisponible (%s) — "
-                "calibration sautée pour ce document",
+                "[tesseract] extraction des token_confidences "
+                "(image_to_data) indisponible : %s — calibration "
+                "sautée pour ce document",
                 exc,
             )
             return text, None
@@ -170,6 +171,28 @@ class TesseractEngine(BaseOCREngine):
         for tok_text, conf in zip(texts, confs):
             out.append({"token": tok_text, "confidence": conf})
         return out or None
+
+    def _extract_token_confidences(
+        self, image_path: Path,
+    ) -> Optional[list[dict[str, Any]]]:
+        """Alias rétrocompat (Sprint 47) — extrait les confidences depuis ``image_path``.
+
+        Pipeline interne du chantier 1 : ``_run_with_native`` → ``_extract_raw_confidences``
+        → ``_normalize_token_confidences``. Retourne ``None`` si pytesseract est
+        absent ou si l'extraction échoue (signal au runner de sauter la calibration).
+        """
+        if not _PYTESSERACT_AVAILABLE:
+            return None
+        try:
+            _text, native = self._run_with_native(Path(image_path))
+            raw = self._extract_raw_confidences(native)
+            return self._normalize_token_confidences(raw)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[tesseract] extraction des token_confidences indisponible : %s",
+                exc,
+            )
+            return None
 
     @classmethod
     def from_config(cls, config: Optional[dict] = None) -> "TesseractEngine":

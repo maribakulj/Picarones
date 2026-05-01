@@ -203,14 +203,19 @@ class TestGallicaDelegatesToHttp:
 
     def test_gallica_uses_iiif_for_image_download(self):
         """``GallicaClient.import_document`` délègue à IIIFImporter."""
-        # Lecture statique du source — pas d'appel réseau
+        # Lecture statique du source — pas d'appel réseau.
+        # Chantier 5 (3 cercles) : le contenu vit désormais dans
+        # ``picarones/extras/importers/gallica.py`` ; le module
+        # historique ``picarones.importers.gallica`` est un alias.
         from pathlib import Path
         gallica_src = (
             Path(__file__).parent.parent
-            / "picarones" / "importers" / "gallica.py"
+            / "picarones" / "extras" / "importers" / "gallica.py"
         ).read_text(encoding="utf-8")
         # Confirme que Gallica importe IIIFImporter
-        assert "from picarones.importers.iiif import IIIFImporter" in gallica_src
+        assert "IIIFImporter" in gallica_src
+        assert "from picarones.extras.importers.iiif" in gallica_src or \
+            "from picarones.importers.iiif" in gallica_src
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -223,7 +228,7 @@ class TestCliWorkflows:
         from pathlib import Path
 
         cli_src = (
-            Path(__file__).parent.parent / "picarones" / "cli.py"
+            Path(__file__).parent.parent / "picarones" / "cli" / "_workflows.py"
         ).read_text(encoding="utf-8")
         # Vérification statique : les 3 commandes existent
         assert '@cli.command("diagnose")' in cli_src
@@ -236,7 +241,7 @@ class TestCliWorkflows:
     def test_workflows_map_correct_profile(self):
         from pathlib import Path
         cli_src = (
-            Path(__file__).parent.parent / "picarones" / "cli.py"
+            Path(__file__).parent.parent / "picarones" / "cli" / "_workflows.py"
         ).read_text(encoding="utf-8")
         # Chaque commande doit fixer le bon profil
         # diagnose → diagnostics, economics → economics, edition → philological
@@ -252,7 +257,7 @@ class TestCliWorkflows:
         from pathlib import Path
 
         cli_src = (
-            Path(__file__).parent.parent / "picarones" / "cli.py"
+            Path(__file__).parent.parent / "picarones" / "cli" / "_workflows.py"
         ).read_text(encoding="utf-8")
         tree = ast.parse(cli_src)
         funcs = {

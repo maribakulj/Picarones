@@ -14,11 +14,6 @@ from typing import Optional
 from picarones.measurements.narrative.facts import Fact, FactImportance, FactType
 from picarones.measurements.narrative.registry import register_detector
 
-from picarones.measurements.narrative.detectors._helpers import (
-    _engine_by_name,
-    _engines_summary,
-    _n_docs,
-)
 
 
 @register_detector(

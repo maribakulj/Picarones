@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from typing import Any, Optional
+from typing import Optional
 
 from picarones.core.metric_hooks import (
     PROFILE_DIAGNOSTICS,
@@ -297,14 +297,22 @@ def _aggregate_confusion(doc_results: list) -> Optional[dict]:
     from picarones.core.confusion import (
         ConfusionMatrix, aggregate_confusion_matrices,
     )
-    matrices = [
-        ConfusionMatrix(**dr.confusion_matrix)
-        for dr in doc_results
-        if dr.confusion_matrix is not None
-    ]
-    if not matrices:
+    try:
+        matrices = [
+            ConfusionMatrix(**dr.confusion_matrix)
+            for dr in doc_results
+            if dr.confusion_matrix is not None
+        ]
+        if not matrices:
+            return None
+        return aggregate_confusion_matrices(matrices).as_compact_dict(min_count=2)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "[runner] aggregate_confusion : agrégation indisponible (%s) — "
+            "matrice de confusion absente du rapport pour ce moteur",
+            exc,
+        )
         return None
-    return aggregate_confusion_matrices(matrices).as_compact_dict(min_count=2)
 
 
 @register_corpus_aggregator(

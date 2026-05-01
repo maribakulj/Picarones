@@ -41,7 +41,7 @@ fournir via :func:`build_advanced_taxonomy_view_html`.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 

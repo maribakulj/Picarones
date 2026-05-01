@@ -421,7 +421,9 @@ class TestCercle1IsLean:
         real_modules = set()
         for path in core_dir.glob("*.py"):
             content = path.read_text(encoding="utf-8")
-            n_lines = len([l for l in content.splitlines() if l.strip()])
+            n_lines = len(
+                [line for line in content.splitlines() if line.strip()],
+            )
             # Un shim a < 30 lignes ; un module Cercle 1 a > 30 lignes
             if n_lines > 30:
                 real_modules.add(path.name)

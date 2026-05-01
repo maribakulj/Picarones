@@ -85,6 +85,15 @@ class GoogleVisionEngine(BaseOCREngine):
     def _run_with_native(
         self, image_path: Path,
     ) -> tuple[str, Optional[dict]]:
+        """Hook framework (chantier 1) — délègue à ``_run_ocr_with_full_annotation``
+        pour permettre aux tests Sprint 50 de monkeypatcher l'appel réseau
+        sous son nom historique.
+        """
+        return self._run_ocr_with_full_annotation(image_path)
+
+    def _run_ocr_with_full_annotation(
+        self, image_path: Path,
+    ) -> tuple[str, Optional[dict]]:
         """Exécute l'OCR et retourne ``(text, full_text_annotation_dict)``.
 
         ``full_text_annotation_dict`` est :
@@ -254,3 +263,14 @@ class GoogleVisionEngine(BaseOCREngine):
                             continue
                         out.append({"token": text, "confidence": conf})
         return out or None
+
+    def _extract_token_confidences_from_full_text(
+        self, full: Any,
+    ) -> Optional[list[dict[str, Any]]]:
+        """Alias rétrocompat (Sprint 50) — extrait les confidences d'un ``fullTextAnnotation``.
+
+        Wrapper qui chaîne ``_extract_raw_confidences`` puis
+        ``_normalize_token_confidences`` (filtrage tokens vides / négatifs).
+        """
+        raw = self._extract_raw_confidences(full)
+        return self._normalize_token_confidences(raw)

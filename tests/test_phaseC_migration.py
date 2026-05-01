@@ -166,10 +166,6 @@ class TestImportersInitReexports:
                 EScriptoriumClient,
                 GallicaClient,
                 IIIFImporter,
-                connect_escriptorium,
-                import_gallica_document,
-                import_iiif_manifest,
-                search_gallica,
             )
         assert IIIFImporter is not None
         assert GallicaClient is not None

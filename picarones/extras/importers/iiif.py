@@ -34,9 +34,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Optional
@@ -308,11 +305,16 @@ def _extract_v3_transcription(canvas: dict) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 # Chantier 4 (post-Sprint 97) — helpers HTTP factorisés dans
-# :mod:`picarones.importers._http`. Ces noms restent disponibles
+# :mod:`picarones.extras.importers._http`. Ces noms restent disponibles
 # depuis ``iiif`` (rétrocompat des tests qui les importent
-# directement, ex. test_sprint4_normalization_iiif).
-from picarones.importers._http import download_url as _download_url
-from picarones.importers._http import validate_http_url as _validate_url
+# directement, ex. test_sprint4_normalization_iiif et test_chantier4).
+# On importe directement depuis le module pair (``extras.importers._http``)
+# plutôt que via le shim ``picarones.importers._http`` pour éviter une
+# import circulaire au moment du chargement de ``picarones.importers``.
+from picarones.extras.importers._http import (  # noqa: F401
+    download_url as _download_url,
+    validate_http_url as _validate_url,
+)
 
 
 def _fetch_manifest(url: str) -> dict:
