@@ -453,44 +453,10 @@ class TestBuildSynthesisE2E:
 # Garde-fou anti-hallucination : traçabilité des nombres
 # ---------------------------------------------------------------------------
 
-def _numbers_in_payload(payload: dict) -> set[str]:
-    """Collecte tous les nombres d'un payload de Fact sous formes multiples.
-
-    Inclut les représentations usuelles produites par ``str.format`` :
-    ``5``, ``5.0``, ``5.00``, ``5.000``, etc., pour tolérer les formats
-    ``{x}`` et ``{x:.2f}`` dans les templates.
-    """
-    out: set[str] = set()
-
-    def _add_variants(v):
-        try:
-            f = float(v)
-        except (TypeError, ValueError):
-            return
-        out.add(str(v))
-        out.add(str(f))
-        if f == int(f):
-            out.add(str(int(f)))
-        for dec in (1, 2, 3, 4):
-            out.add(f"{f:.{dec}f}")
-
-    def _walk(x):
-        if isinstance(x, dict):
-            for v in x.values():
-                _walk(v)
-        elif isinstance(x, (list, tuple)):
-            for v in x:
-                _walk(v)
-        elif isinstance(x, bool):
-            return
-        elif isinstance(x, (int, float)):
-            _add_variants(x)
-        elif isinstance(x, str):
-            for n in re.findall(r"\d+(?:\.\d+)?", x):
-                _add_variants(n)
-
-    _walk(payload)
-    return out
+# ``_numbers_in_payload`` vit dans ``tests/measurements/_helpers.py`` ;
+# on le ré-expose sous son ancien nom privé pour compatibilité avec les
+# tests qui l'importent depuis ce module (ex. test_sprint23).
+from tests.measurements._helpers import numbers_in_payload as _numbers_in_payload  # noqa: E402
 
 
 # Sprint 23 : whitelist vidée. Tout nombre rendu dans la synthèse doit

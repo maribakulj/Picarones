@@ -264,22 +264,7 @@ class TestSynthesisIntegration:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def _numbers_in_payload(payload: dict) -> set[str]:
-    """Extrait toutes les représentations numériques du payload."""
-    found: set[str] = set()
-    for v in payload.values():
-        if isinstance(v, (int, float)):
-            s = f"{v}"
-            found.add(s)
-            # ajoute la version sans .0 pour les floats entiers
-            if isinstance(v, float) and v.is_integer():
-                found.add(str(int(v)))
-            # ajoute la version "70.0" si valeur "70.0"
-            try:
-                found.add(f"{float(v)}")
-            except (TypeError, ValueError):
-                pass
-    return found
+from tests.measurements._helpers import numbers_in_payload as _numbers_in_payload  # noqa: E402
 
 
 class TestTraceability:
