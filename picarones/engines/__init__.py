@@ -1,6 +1,7 @@
 """Adaptateurs moteurs OCR."""
 
 from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.engines.factory import engine_from_name
 from picarones.engines.tesseract import TesseractEngine
 from picarones.engines.mistral_ocr import MistralOCREngine
 from picarones.engines.google_vision import GoogleVisionEngine
@@ -9,6 +10,7 @@ from picarones.engines.azure_doc_intel import AzureDocIntelEngine
 __all__ = [
     "BaseOCREngine",
     "EngineResult",
+    "engine_from_name",
     "TesseractEngine",
     "MistralOCREngine",
     "GoogleVisionEngine",

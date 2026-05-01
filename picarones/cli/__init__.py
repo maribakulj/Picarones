@@ -49,24 +49,21 @@ def _setup_logging(verbose: bool) -> None:
 
 
 def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCREngine":
-    """Instancie un moteur par son nom."""
-    from picarones.engines.tesseract import TesseractEngine
+    """Instancie un moteur OCR par son nom (wrapper Click).
 
-    if engine_name in {"tesseract", "tess"}:
-        return TesseractEngine(config={"lang": lang, "psm": psm})
+    Délègue à :func:`picarones.engines.factory.engine_from_name`
+    (cercle 2) puis traduit toute ``ValueError`` en
+    ``click.BadParameter`` pour rester compatible avec les sous-modules
+    CLI (``_workflows.py``, ``_robustness.py``) qui attrappent ce type
+    d'exception. Les commandes CLI continuent donc à fonctionner sans
+    aucune modification.
+    """
+    from picarones.engines.factory import engine_from_name
 
     try:
-        from picarones.engines.pero_ocr import PeroOCREngine
-
-        if engine_name in {"pero_ocr", "pero"}:
-            return PeroOCREngine(config={"name": "pero_ocr"})
-    except ImportError:
-        pass
-
-    raise click.BadParameter(
-        f"Moteur inconnu ou non disponible : '{engine_name}'. "
-        "Moteurs supportés : tesseract, pero_ocr"
-    )
+        return engine_from_name(engine_name, lang=lang, psm=psm)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------

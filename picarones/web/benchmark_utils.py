@@ -259,17 +259,17 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         if job.status == "cancelled":
             return
 
-        # Instancier les moteurs
-        from picarones.cli import _engine_from_name
-        import click
+        # Instancier les moteurs via la factory cercle 2 (pas de
+        # dépendance ``click`` dans le code web).
+        from picarones.engines.factory import engine_from_name
 
         ocr_engines = []
         for engine_name in req.engines:
             try:
-                eng = _engine_from_name(engine_name, lang=req.lang, psm=6)
+                eng = engine_from_name(engine_name, lang=req.lang, psm=6)
                 ocr_engines.append(eng)
                 job.add_event("log", {"message": f"Moteur chargé : {engine_name}"})
-            except (click.BadParameter, Exception) as exc:
+            except Exception as exc:
                 job.add_event("warning", {"message": f"Moteur ignoré '{engine_name}' : {exc}"})
 
         if not ocr_engines:
