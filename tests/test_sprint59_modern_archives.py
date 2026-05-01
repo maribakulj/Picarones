@@ -36,7 +36,7 @@ from __future__ import annotations
 import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modern_archives import (
+from picarones.measurements.modern_archives import (
     ADDRESS,
     ADMINISTRATIVE,
     BIBLIOGRAPHIC,
@@ -497,7 +497,7 @@ class TestShortcuts:
 
 class TestRegistryIntegration:
     def test_strict_metric_registered(self) -> None:
-        import picarones.core.modern_archives  # noqa: F401
+        import picarones.measurements.modern_archives  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

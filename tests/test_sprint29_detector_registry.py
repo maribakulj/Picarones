@@ -28,13 +28,13 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.narrative import build_synthesis
-from picarones.core.narrative.facts import (
+from picarones.measurements.narrative import build_synthesis
+from picarones.core.facts import (
     Fact,
     FactImportance,
     FactType,
 )
-from picarones.core.narrative.registry import (
+from picarones.measurements.narrative.registry import (
     clear_registry,
     default_type_order,
     detector_for,
@@ -68,7 +68,7 @@ class TestRegistryPopulatedAtImport:
     def test_priorities_match_historical_order(self):
         """Les priorités définies au Sprint 29 doivent reproduire l'ordre
         canonique pré-Sprint 29 pour ne pas casser la lecture du rapport."""
-        from picarones.core.narrative.arbiter import _FALLBACK_TYPE_ORDER
+        from picarones.measurements.narrative.arbiter import _FALLBACK_TYPE_ORDER
         live = default_type_order()
         # Ils doivent contenir les mêmes types dans le même ordre.
         assert live == _FALLBACK_TYPE_ORDER
@@ -225,7 +225,7 @@ class TestEmptyRegistryFallback:
     et ne pas planter."""
 
     def test_select_facts_works_on_empty_registry(self):
-        from picarones.core.narrative.arbiter import select_facts
+        from picarones.measurements.narrative.arbiter import select_facts
         # Sauvegarder l'état complet pour le restaurer
         backup = list(iter_detectors())
         try:
@@ -256,7 +256,7 @@ class TestEmptyRegistryFallback:
 
 class TestLegacyAliasStillWorks:
     def test_detectors_by_type_matches_registry(self):
-        from picarones.core.narrative.detectors import DETECTORS_BY_TYPE
+        from picarones.measurements.narrative.detectors import DETECTORS_BY_TYPE
         registry_types = {e.fact_type for e in iter_detectors()}
         legacy_types = set(DETECTORS_BY_TYPE)
         # Les deux ensembles peuvent diverger si DETECTORS_BY_TYPE est

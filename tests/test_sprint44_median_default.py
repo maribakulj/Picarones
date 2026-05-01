@@ -23,10 +23,10 @@ import re
 
 import pytest
 
-from picarones.core.metrics import MetricsResult
-from picarones.core.narrative.detectors import detect_median_mean_gap_warning
-from picarones.core.narrative.facts import FactImportance, FactType
-from picarones.core.narrative.renderer import extract_numbers, render_fact
+from picarones.measurements.metrics import MetricsResult
+from picarones.measurements.narrative.detectors import detect_median_mean_gap_warning
+from picarones.core.facts import FactImportance, FactType
+from picarones.measurements.narrative.renderer import extract_numbers, render_fact
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
 
 
@@ -225,7 +225,7 @@ class TestTraceability:
             )
 
     def test_template_has_no_hardcoded_numbers(self) -> None:
-        from picarones.core.narrative.renderer import _load_templates
+        from picarones.measurements.narrative.renderer import _load_templates
         for lang in ("fr", "en"):
             tpl = _load_templates(lang).get("median_mean_gap_warning", "")
             assert tpl, f"Template absent pour {lang}"
@@ -242,12 +242,12 @@ class TestTraceability:
 
 class TestSynthesisIntegration:
     def test_detector_registered_by_default(self) -> None:
-        from picarones.core.narrative.registry import iter_detectors
+        from picarones.measurements.narrative.registry import iter_detectors
         types = {entry.fact_type for entry in iter_detectors()}
         assert FactType.MEDIAN_MEAN_GAP_WARNING in types
 
     def test_synthesis_includes_warning_when_asymmetric(self) -> None:
-        from picarones.core.narrative import build_synthesis
+        from picarones.measurements.narrative import build_synthesis
         data = {"ranking": [{
             "engine": "tess", "median_cer": 0.03, "mean_cer": 0.07,
             "documents": 100,

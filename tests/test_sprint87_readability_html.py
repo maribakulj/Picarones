@@ -16,8 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.metrics import MetricsResult
-from picarones.core.readability_runner import (
+from picarones.measurements.metrics import MetricsResult
+from picarones.measurements.readability_runner import (
     aggregate_readability_metrics,
     compute_readability_metrics,
 )

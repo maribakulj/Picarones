@@ -192,7 +192,7 @@ def difficulty_label(score: float) -> str:
 
 def difficulty_color(score: float) -> str:
     """Retourne une couleur CSS pour un score de difficulté."""
-    from picarones.core.colors import COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED
+    from picarones.report.colors import COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED
     if score < 0.25:
         return COLOR_GREEN
     if score < 0.50:

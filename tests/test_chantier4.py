@@ -5,7 +5,7 @@ Couvre :
 - Sous-chantier 4.A : ``normalize_llm_content`` + ``log_http_error``
   factorisés dans :mod:`picarones.llm.base`, propagés aux 4 adapters.
 - Sous-chantier 4.B : helpers HTTP factorisés dans
-  :mod:`picarones.importers._http`, Gallica et IIIF y délèguent.
+  :mod:`picarones.extras.importers._http`, Gallica et IIIF y délèguent.
 - Sous-chantier 4.C : 3 nouvelles sous-commandes CLI ``diagnose``,
   ``economics``, ``edition`` qui mappent un profil de calcul
   (chantier 2) à un workflow.
@@ -160,40 +160,40 @@ class TestLlmAdaptersInheritEnvVar:
 
 class TestHttpHelpers:
     def test_validate_http_url_accepts_https(self):
-        from picarones.importers._http import validate_http_url
+        from picarones.extras.importers._http import validate_http_url
         validate_http_url("https://gallica.bnf.fr/test")  # ne lève pas
 
     def test_validate_http_url_accepts_http(self):
-        from picarones.importers._http import validate_http_url
+        from picarones.extras.importers._http import validate_http_url
         validate_http_url("http://localhost:8080/x")
 
     @pytest.mark.parametrize("scheme", ["file", "ftp", "data", "javascript", "ssh"])
     def test_validate_http_url_rejects_other_schemes(self, scheme):
-        from picarones.importers._http import validate_http_url
+        from picarones.extras.importers._http import validate_http_url
         with pytest.raises(ValueError, match="non autorisé"):
             validate_http_url(f"{scheme}://example.com/x")
 
 
 class TestIiifAliasesDelegateToHttp:
     """Les noms ``_validate_url`` et ``_download_url`` exposés depuis
-    :mod:`picarones.importers.iiif` doivent rester disponibles
+    :mod:`picarones.extras.importers.iiif` doivent rester disponibles
     (rétrocompat des tests Sprint 4) — ils délèguent aux helpers
     factorisés."""
 
     def test_iiif_validate_url_is_alias(self):
-        from picarones.importers import iiif
-        from picarones.importers._http import validate_http_url
+        from picarones.extras.importers import iiif
+        from picarones.extras.importers._http import validate_http_url
         assert iiif._validate_url is validate_http_url
 
     def test_iiif_download_url_is_alias(self):
-        from picarones.importers import iiif
-        from picarones.importers._http import download_url
+        from picarones.extras.importers import iiif
+        from picarones.extras.importers._http import download_url
         assert iiif._download_url is download_url
 
 
 class TestGallicaDelegatesToHttp:
     def test_gallica_validate_url_delegates(self):
-        from picarones.importers.gallica import GallicaClient
+        from picarones.extras.importers.gallica import GallicaClient
         client = GallicaClient()
         # Doit accepter https
         client._validate_url("https://gallica.bnf.fr/x")
@@ -206,7 +206,7 @@ class TestGallicaDelegatesToHttp:
         # Lecture statique du source — pas d'appel réseau.
         # Chantier 5 (3 cercles) : le contenu vit désormais dans
         # ``picarones/extras/importers/gallica.py`` ; le module
-        # historique ``picarones.importers.gallica`` est un alias.
+        # historique ``picarones.extras.importers.gallica`` est un alias.
         from pathlib import Path
         gallica_src = (
             Path(__file__).parent.parent
@@ -215,7 +215,7 @@ class TestGallicaDelegatesToHttp:
         # Confirme que Gallica importe IIIFImporter
         assert "IIIFImporter" in gallica_src
         assert "from picarones.extras.importers.iiif" in gallica_src or \
-            "from picarones.importers.iiif" in gallica_src
+            "from picarones.extras.importers.iiif" in gallica_src
 
 
 # ──────────────────────────────────────────────────────────────────────────

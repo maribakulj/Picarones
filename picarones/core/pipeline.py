@@ -61,21 +61,21 @@ from picarones.core.modules import ArtifactType, BaseModule
 # registre typé (Sprint 34) — sans ces imports, ``compute_at_junction``
 # trouverait un registre vide et ne calculerait rien aux jonctions.
 # Sprint 34 : cer / wer / mer / wil + stub TEXT→ALTO
-import picarones.core.builtin_metrics  # noqa: F401
+import picarones.measurements.builtin_metrics  # noqa: F401
 # Sprints 55-60 : métriques philologiques.
-import picarones.core.unicode_blocks  # noqa: F401
-import picarones.core.abbreviations  # noqa: F401
-import picarones.core.mufi  # noqa: F401
-import picarones.core.early_modern_typography  # noqa: F401
-import picarones.core.modern_archives  # noqa: F401
-import picarones.core.roman_numerals  # noqa: F401
+import picarones.measurements.unicode_blocks  # noqa: F401
+import picarones.measurements.abbreviations  # noqa: F401
+import picarones.measurements.mufi  # noqa: F401
+import picarones.measurements.early_modern_typography  # noqa: F401
+import picarones.measurements.modern_archives  # noqa: F401
+import picarones.measurements.roman_numerals  # noqa: F401
 # Sprint 53 : reading order F1.  Sprints 38, 52 : NER, readability.
-import picarones.core.reading_order  # noqa: F401
-import picarones.core.readability  # noqa: F401
-import picarones.core.ner  # noqa: F401
+import picarones.measurements.reading_order  # noqa: F401
+import picarones.measurements.readability  # noqa: F401
+import picarones.measurements.ner  # noqa: F401
 # Chantier 1 (post-Sprint 97) : métriques (ALTO, ALTO) pour évaluer
 # les reconstructeurs ALTO contre une GT ALTO du document.
-import picarones.core.alto_metrics  # noqa: F401
+import picarones.measurements.alto_metrics  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

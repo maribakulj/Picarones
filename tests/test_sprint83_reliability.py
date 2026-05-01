@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.reliability import (
+from picarones.measurements.reliability import (
     _aligned_char_pairs,
     cohen_kappa,
     compute_iaa,

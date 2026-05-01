@@ -103,7 +103,7 @@ def cli() -> None:
 @click.option("--json-output", is_flag=True, default=False, help="Sortie en JSON")
 def metrics_cmd(reference: str, hypothesis: str, json_output: bool) -> None:
     """Calcule CER et WER entre deux fichiers texte."""
-    from picarones.core.metrics import compute_metrics
+    from picarones.measurements.metrics import compute_metrics
 
     ref_text = Path(reference).read_text(encoding="utf-8").strip()
     hyp_text = Path(hypothesis).read_text(encoding="utf-8").strip()
@@ -309,7 +309,7 @@ def demo_cmd(
     # Suivi longitudinal
     if with_history:
         click.echo("\n── Démonstration suivi longitudinal ──────────────")
-        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
         history = BenchmarkHistory(":memory:")
         generate_demo_history(history, n_runs=8)
         entries = history.query(engine="tesseract")
@@ -333,7 +333,7 @@ def demo_cmd(
     # Analyse de robustesse
     if with_robustness:
         click.echo("\n── Démonstration analyse de robustesse ───────────")
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report(
             engine_names=["tesseract", "pero_ocr"]
         )

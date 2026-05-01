@@ -1,6 +1,6 @@
 """Tests Sprint 35 — métriques inter-moteurs (Étape 2 du plan).
 
-Couvre les deux familles de mesures du module ``picarones.core.inter_engine`` :
+Couvre les deux familles de mesures du module ``picarones.measurements.inter_engine`` :
 
 1. **Divergence taxonomique** : KL et JS-divergence sur les
    distributions de classes d'erreur, plus la matrice triangulaire
@@ -23,7 +23,7 @@ import math
 
 import pytest
 
-from picarones.core.inter_engine import (
+from picarones.measurements.inter_engine import (
     complementarity_gap,
     jensen_shannon_divergence,
     kl_divergence,
@@ -187,7 +187,7 @@ class TestOracleTokenRecall:
         }
         assert oracle_token_recall(ref, hyps) == pytest.approx(1.0)
         # Et chacun seul ne fait que la moitié
-        from picarones.core.inter_engine import complementarity_gap
+        from picarones.measurements.inter_engine import complementarity_gap
         gap = complementarity_gap(ref, hyps)
         assert gap["best_single_recall"] == pytest.approx(0.5)
         assert gap["oracle_recall"] == pytest.approx(1.0)

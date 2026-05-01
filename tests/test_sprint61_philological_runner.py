@@ -24,12 +24,12 @@ Couvre :
 
 from __future__ import annotations
 
-from picarones.core.philological_runner import (
+from picarones.measurements.philological_runner import (
     aggregate_philological_metrics,
     compute_philological_metrics,
 )
 from picarones.core.results import DocumentResult, EngineReport
-from picarones.core.metrics import MetricsResult
+from picarones.measurements.metrics import MetricsResult
 
 
 def _make_doc(
@@ -255,7 +255,7 @@ class TestRunnerIntegration:
     ``philological_metrics`` quand la GT a du signal."""
 
     def test_runner_attaches_philological(self, tmp_path) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         # Créer une image fictive (le module image_quality échouera
@@ -280,7 +280,7 @@ class TestRunnerIntegration:
         assert "roman_numerals" in dr.philological_metrics
 
     def test_runner_omits_philological_on_plain_text(self, tmp_path) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         img = tmp_path / "doc.png"

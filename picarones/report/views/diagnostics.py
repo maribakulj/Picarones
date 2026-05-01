@@ -21,7 +21,7 @@ résultats »* :
 
 Sources de données automatiques
 -------------------------------
-- *Leviers* : :func:`picarones.core.levers.detect_levers` est appelée
+- *Leviers* : :func:`picarones.measurements.levers.detect_levers` est appelée
   sur ``report_data``. Couvre :
   ``dominant_recoverable_class``, ``pareto_concentration``,
   ``complementarity_observation``, ``lexical_modernization_observation``,
@@ -32,10 +32,10 @@ Sources de données opt-in (via ``opts``)
 - ``opts["benchmark"]``        : ``BenchmarkResult`` non compacté (worst lines).
 - ``opts["image_qualities"]``  : liste de dicts image_quality par doc.
 - ``opts["baseline_data"]``    : sortie de
-  :func:`picarones.core.baseline_comparison.compute_corpus_difficulty_percentile`.
+  :func:`picarones.measurements.baseline_comparison.compute_corpus_difficulty_percentile`.
 - ``opts["longitudinal"]``     : map ``{engine: longitudinal_data}``.
 - ``opts["stability"]``        : sortie de
-  :func:`picarones.core.reliability.compute_multirun_stability`.
+  :func:`picarones.measurements.reliability.compute_multirun_stability`.
 """
 
 from __future__ import annotations
@@ -76,16 +76,16 @@ def build_diagnostics_view_html(
         depuis les ``EngineReport.document_results`` avant compact).
     baseline_data:
         Sortie de
-        :func:`picarones.core.baseline_comparison.compute_corpus_difficulty_percentile`.
+        :func:`picarones.measurements.baseline_comparison.compute_corpus_difficulty_percentile`.
         Active l'encart « ce corpus est-il habituel ? ».
     longitudinal:
         Sortie de
-        :func:`picarones.core.longitudinal.compute_corpus_longitudinal`.
+        :func:`picarones.measurements.longitudinal.compute_corpus_longitudinal`.
         Active la table d'évolution.
     stability:
         Liste enrichie de ``{engine_name, ...stability_data}`` par
         moteur, sortie de
-        :func:`picarones.core.reliability.compute_multirun_stability`.
+        :func:`picarones.measurements.reliability.compute_multirun_stability`.
         Active la table de stabilité multi-runs.
     history_values:
         Valeurs historiques de difficulté du corpus, utilisées pour
@@ -102,7 +102,7 @@ def build_diagnostics_view_html(
 
     # Sous-section 1 : leviers (calculés automatiquement)
     try:
-        from picarones.core.levers import detect_levers
+        from picarones.measurements.levers import detect_levers
         from picarones.report.levers_render import build_levers_section_html
         levers = detect_levers(report_data)
         html = build_levers_section_html(levers, labels=labels)
@@ -141,7 +141,7 @@ def build_diagnostics_view_html(
     # Sous-section 3 : profil d'image du corpus (opt-in)
     if image_qualities:
         try:
-            from picarones.core.image_predictive import (
+            from picarones.measurements.image_predictive import (
                 aggregate_corpus_predictive,
             )
             from picarones.report.image_predictive_render import (
@@ -205,7 +205,7 @@ def build_diagnostics_view_html(
     # Sous-section 6 : worst lines (opt-in via benchmark non compacté)
     if benchmark is not None:
         try:
-            from picarones.core.worst_lines import extract_worst_lines
+            from picarones.measurements.worst_lines import extract_worst_lines
             from picarones.report.worst_lines_render import (
                 build_worst_lines_table_html,
             )

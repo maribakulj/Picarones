@@ -52,13 +52,13 @@ from typing import Optional
 
 from picarones.core.corpus import Corpus
 from picarones.core.modules import ArtifactType
-from picarones.core.pipeline_benchmark import (
+from picarones.measurements.pipeline_benchmark import (
     InitialInputsFactory,
     PipelineBenchmarkResult,
     default_initial_inputs,
     run_pipeline_benchmark,
 )
-from picarones.core.pipeline_runner import PipelineSpec
+from picarones.core.pipeline import PipelineSpec
 
 logger = logging.getLogger(__name__)
 

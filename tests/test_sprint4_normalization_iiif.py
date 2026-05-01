@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.normalization import (
+from picarones.measurements.normalization import (
     NormalizationProfile,
     DEFAULT_DIPLOMATIC_PROFILE,
     _apply_diplomatic_table,
     get_builtin_profile,
 )
-from picarones.core.metrics import compute_metrics, aggregate_metrics, MetricsResult
-from picarones.importers.iiif import (
+from picarones.measurements.metrics import compute_metrics, aggregate_metrics, MetricsResult
+from picarones.extras.importers.iiif import (
     IIIFManifestParser,
     parse_page_selector,
     _extract_label,
@@ -205,7 +205,7 @@ class TestDiplomaticCER:
         assert "diplomatic_profile_name" in d
 
     def test_cer_diplomatic_with_custom_profile(self):
-        from picarones.core.normalization import NormalizationProfile
+        from picarones.measurements.normalization import NormalizationProfile
         profile = NormalizationProfile(
             name="test_profile",
             diplomatic_table={"ſ": "s"}

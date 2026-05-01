@@ -34,7 +34,7 @@ import pytest
 from picarones.core.corpus import AltoGT, Document, GTLevel, TextGT
 from picarones.core.metric_registry import select_metrics
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline_runner import (
+from picarones.core.pipeline import (
     PipelineRunner,
     PipelineSpec,
     PipelineStep,
@@ -193,7 +193,7 @@ class TestYamlSpec:
             import yaml  # noqa: F401
         except ImportError:
             pytest.skip("PyYAML absent")
-        from picarones.core.pipeline_spec_loader import load_pipeline_spec_from_yaml
+        from picarones.measurements.pipeline_spec_loader import load_pipeline_spec_from_yaml
 
         repo_root = Path(__file__).resolve().parents[2]
         yaml_path = repo_root / "examples" / "pipelines" / "ocr_to_alto.yaml"
@@ -206,7 +206,7 @@ class TestYamlSpec:
             # quand pytesseract ou pero-ocr ne sont pas installés
             # (CI minimaliste).  Le test vérifie que la structure
             # YAML est syntaxiquement valide.
-            from picarones.core.pipeline_spec_loader import PipelineSpecLoadError
+            from picarones.measurements.pipeline_spec_loader import PipelineSpecLoadError
             if isinstance(exc, PipelineSpecLoadError) and (
                 "tesseract" in str(exc).lower() or "pytesseract" in str(exc).lower()
             ):

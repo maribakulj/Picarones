@@ -14,7 +14,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.core.specialization import (
+from picarones.measurements.specialization import (
     compute_specialization_matrix,
     top_specialized_pairs,
 )

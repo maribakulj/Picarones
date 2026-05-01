@@ -261,7 +261,7 @@ class TestSynthesisPreviewEndpoint:
     def job_with_results(self, monkeypatch, tmp_path):
         """Crée un job 'complete' + JSON résultat sur disque."""
         from picarones import fixtures
-        from picarones.core.jobs import get_default_store, reset_default_store
+        from picarones.web.jobs import get_default_store, reset_default_store
         from picarones.web import app as web_app
         # Isolate store
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
@@ -295,7 +295,7 @@ class TestSynthesisPreviewEndpoint:
         assert r.status_code == 404
 
     def test_409_when_job_not_complete(self, monkeypatch, tmp_path):
-        from picarones.core.jobs import get_default_store, reset_default_store
+        from picarones.web.jobs import get_default_store, reset_default_store
         from picarones.web import app as web_app
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()

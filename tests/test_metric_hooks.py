@@ -4,11 +4,11 @@ Couvre :
 
 - :mod:`picarones.core.metric_hooks` : profils, registre, décorateurs,
   sélection par profil, exécution avec gestion d'erreurs.
-- :mod:`picarones.core.builtin_hooks` : enregistre les 12+12 hooks
+- :mod:`picarones.measurements.builtin_hooks` : enregistre les 12+12 hooks
   historiques sur le profil ``standard``.
 - Rétrocompat : les fonctions privées ``_aggregate_*`` et
   ``_calibration_from_engine_result`` restent accessibles depuis
-  ``picarones.core.runner`` (tests Sprint 13/42).
+  ``picarones.measurements.runner`` (tests Sprint 13/42).
 - Le profil ``standard`` (défaut) couvre **exactement** les 12 hooks
   documentaires et 12 agrégateurs historiques.
 - Le profil ``minimal`` n'active aucun hook (bench rapide).
@@ -63,7 +63,7 @@ class TestProfiles:
 class TestBuiltinHooksRegistration:
     def test_twelve_document_hooks_registered(self):
         # Import déclenche l'enregistrement via décorateurs.
-        import picarones.core.builtin_hooks  # noqa: F401
+        import picarones.measurements.builtin_hooks  # noqa: F401
         from picarones.core.metric_hooks import _all_document_hook_names
 
         names = set(_all_document_hook_names())
@@ -76,7 +76,7 @@ class TestBuiltinHooksRegistration:
         assert expected.issubset(names), f"manquants : {expected - names}"
 
     def test_twelve_corpus_aggregators_registered(self):
-        import picarones.core.builtin_hooks  # noqa: F401
+        import picarones.measurements.builtin_hooks  # noqa: F401
         from picarones.core.metric_hooks import _all_corpus_aggregator_names
 
         names = set(_all_corpus_aggregator_names())
@@ -89,7 +89,7 @@ class TestBuiltinHooksRegistration:
         assert expected.issubset(names), f"manquants : {expected - names}"
 
     def test_standard_profile_activates_all_hooks(self):
-        import picarones.core.builtin_hooks  # noqa: F401
+        import picarones.measurements.builtin_hooks  # noqa: F401
         from picarones.core.metric_hooks import (
             select_corpus_aggregators, select_document_hooks,
         )
@@ -100,7 +100,7 @@ class TestBuiltinHooksRegistration:
         assert len(agg_hooks) == 12, [a.name for a in agg_hooks]
 
     def test_minimal_profile_activates_zero_hooks(self):
-        import picarones.core.builtin_hooks  # noqa: F401
+        import picarones.measurements.builtin_hooks  # noqa: F401
         from picarones.core.metric_hooks import (
             select_corpus_aggregators, select_document_hooks,
         )
@@ -112,7 +112,7 @@ class TestBuiltinHooksRegistration:
         """Les attributs déclarés par les hooks doivent correspondre aux
         champs réels du DocumentResult — sinon le runner planterait à
         l'instanciation du dataclass."""
-        import picarones.core.builtin_hooks  # noqa: F401
+        import picarones.measurements.builtin_hooks  # noqa: F401
         from dataclasses import fields
 
         from picarones.core.metric_hooks import select_document_hooks
@@ -126,7 +126,7 @@ class TestBuiltinHooksRegistration:
             )
 
     def test_aggregator_attribute_names_match_enginereport(self):
-        import picarones.core.builtin_hooks  # noqa: F401
+        import picarones.measurements.builtin_hooks  # noqa: F401
         from dataclasses import fields
 
         from picarones.core.metric_hooks import select_corpus_aggregators
@@ -264,7 +264,7 @@ class TestRunDocumentHooks:
 
 class TestRunnerBackwardCompat:
     """Les tests Sprint 13 et Sprint 42 importent directement depuis
-    ``picarones.core.runner``. Ces noms doivent rester disponibles
+    ``picarones.measurements.runner``. Ces noms doivent rester disponibles
     après le chantier 2."""
 
     @pytest.mark.parametrize("name", [
@@ -281,11 +281,11 @@ class TestRunnerBackwardCompat:
     def test_helper_still_exported_from_runner(self, name):
         # Skip si tqdm ou autres deps absents (sandbox minimaliste).
         pytest.importorskip("tqdm")
-        from picarones.core import runner
+        from picarones.measurements import runner
 
         assert hasattr(runner, name), (
             f"runner.{name} a disparu — casse les tests Sprint 13/42 "
-            "qui font ``from picarones.core.runner import {name}``"
+            "qui font ``from picarones.measurements.runner import {name}``"
         )
         assert callable(getattr(runner, name))
 

@@ -27,7 +27,7 @@ import pytest
 from click.testing import CliRunner
 
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline_spec_loader import (
+from picarones.measurements.pipeline_spec_loader import (
     PipelineSpecLoadError,
     _resolve_class,
     load_comparison_specs_from_dict,

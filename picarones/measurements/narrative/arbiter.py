@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Iterable, Sequence
 
-from picarones.measurements.narrative.facts import Fact, FactImportance, FactType
+from picarones.core.facts import Fact, FactImportance, FactType
 
 
 # Ordre canonique des types pour départager les ex-aequo à l'importance égale.

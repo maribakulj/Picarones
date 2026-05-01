@@ -69,7 +69,7 @@ from picarones.measurements.narrative.detectors.ensemble import (
 
 # Snapshot du registre + helper d'enregistrement legacy — déplacés
 # verbatim depuis l'ancien ``detectors.py`` (lignes 1193-1229).
-from picarones.measurements.narrative.facts import DetectorFn, FactType
+from picarones.core.facts import DetectorFn, FactType
 from picarones.measurements.narrative.registry import (
     iter_detectors as _iter_detectors,
     populate_legacy_registry as _populate_legacy_registry,

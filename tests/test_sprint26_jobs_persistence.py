@@ -27,7 +27,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from picarones.core.jobs import JobStore, get_default_store, reset_default_store
+from picarones.web.jobs import JobStore, get_default_store, reset_default_store
 
 
 # ---------------------------------------------------------------------------

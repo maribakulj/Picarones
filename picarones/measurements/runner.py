@@ -24,7 +24,7 @@ from typing import Optional
 from tqdm import tqdm
 
 from picarones.core.corpus import Corpus
-from picarones.core.metrics import MetricsResult, compute_metrics
+from picarones.measurements.metrics import MetricsResult, compute_metrics
 from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
 from picarones.engines.base import BaseOCREngine, EngineResult
 
@@ -126,19 +126,19 @@ def _io_doc_worker(
 
 
 # Chantier 2 (post-Sprint 97) — la logique du helper calibration vit
-# désormais dans :mod:`picarones.core.builtin_hooks`. Ce nom reste exposé
+# désormais dans :mod:`picarones.measurements.builtin_hooks`. Ce nom reste exposé
 # ici pour la rétrocompat des tests Sprint 42 qui font
-# ``from picarones.core.runner import _calibration_from_engine_result``.
+# ``from picarones.measurements.runner import _calibration_from_engine_result``.
 def _calibration_from_engine_result(
     ground_truth: str,
     token_confidences: list,
 ) -> Optional[dict]:
-    """Délégation vers :func:`picarones.core.builtin_hooks.calibration_from_engine_result`.
+    """Délégation vers :func:`picarones.measurements.builtin_hooks.calibration_from_engine_result`.
 
     Conservé pour la rétrocompat des tests existants ; toute évolution
     du calcul doit se faire dans ``builtin_hooks``.
     """
-    from picarones.core.builtin_hooks import calibration_from_engine_result
+    from picarones.measurements.builtin_hooks import calibration_from_engine_result
     return calibration_from_engine_result(ground_truth, token_confidences)
 
 
@@ -162,7 +162,7 @@ def _compute_document_result(
     Chantier 2 (post-Sprint 97) — refonte
     ------------------------------------
     Les 11 ``try/except`` codés en dur (Sprints 5+10+39+42+61+86+87) sont
-    désormais centralisés dans ``picarones.core.builtin_hooks`` et
+    désormais centralisés dans ``picarones.measurements.builtin_hooks`` et
     sélectionnés via ``run_document_hooks(profile)``.  Le profil
     ``"standard"`` (défaut) reproduit strictement le comportement
     pré-chantier-2.  Les profils ``"minimal"``, ``"philological"``,
@@ -175,7 +175,7 @@ def _compute_document_result(
     # Eager-load des hooks natifs pour peupler le registre dans les
     # sous-processus du pool (le top-level ``import`` du runner ne le fait
     # pas pour ne pas pénaliser le démarrage des moteurs minimaux).
-    import picarones.core.builtin_hooks  # noqa: F401
+    import picarones.measurements.builtin_hooks  # noqa: F401
     from picarones.core.metric_hooks import run_document_hooks
 
     if ocr_result.success:
@@ -476,7 +476,7 @@ def run_benchmark(
     # aux pools.  Eager-load des hooks natifs pour peupler le registre
     # dans le main process (les sous-processus du pool feront leur
     # propre import dans ``_compute_document_result``).
-    import picarones.core.builtin_hooks  # noqa: F401
+    import picarones.measurements.builtin_hooks  # noqa: F401
     from picarones.core.metric_hooks import (
         run_corpus_aggregators, validate_profile,
     )
@@ -754,7 +754,7 @@ def run_benchmark(
     inter_engine_payload: Optional[dict] = None
     if len(engine_reports) >= 2:
         try:
-            from picarones.core.inter_engine import compute_inter_engine_analysis
+            from picarones.measurements.inter_engine import compute_inter_engine_analysis
 
             taxonomy_distros = {
                 report.engine_name: (
@@ -842,50 +842,50 @@ def _build_pipeline_info(engine: BaseOCREngine, doc_results: list[DocumentResult
 # Helpers d'agrégation — délégations rétrocompat
 # ---------------------------------------------------------------------------
 # Chantier 2 (post-Sprint 97) : les implémentations vivent désormais dans
-# :mod:`picarones.core.builtin_hooks` (single source of truth, exposé via
+# :mod:`picarones.measurements.builtin_hooks` (single source of truth, exposé via
 # le registre :mod:`picarones.core.metric_hooks`).  Les noms ci-dessous
-# restent disponibles depuis ``picarones.core.runner`` pour la rétrocompat
+# restent disponibles depuis ``picarones.measurements.runner`` pour la rétrocompat
 # des tests Sprint 13 / 42 qui les importent directement.
 
 def _aggregate_confusion(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_confusion`."""
-    from picarones.core.builtin_hooks import _aggregate_confusion as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_confusion as _impl
     return _impl(doc_results)
 
 
 def _aggregate_char_scores(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_char_scores`."""
-    from picarones.core.builtin_hooks import _aggregate_char_scores as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_char_scores as _impl
     return _impl(doc_results)
 
 
 def _aggregate_taxonomy(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_taxonomy`."""
-    from picarones.core.builtin_hooks import _aggregate_taxonomy as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_taxonomy as _impl
     return _impl(doc_results)
 
 
 def _aggregate_structure(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_structure`."""
-    from picarones.core.builtin_hooks import _aggregate_structure as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_structure as _impl
     return _impl(doc_results)
 
 
 def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_image_quality`."""
-    from picarones.core.builtin_hooks import _aggregate_image_quality as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_image_quality as _impl
     return _impl(doc_results)
 
 
 def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_line_metrics`."""
-    from picarones.core.builtin_hooks import _aggregate_line_metrics as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_line_metrics as _impl
     return _impl(doc_results)
 
 
 def _aggregate_hallucination(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_hallucination`."""
-    from picarones.core.builtin_hooks import _aggregate_hallucination as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_hallucination as _impl
     return _impl(doc_results)
 
 
@@ -909,7 +909,7 @@ def _attach_ner_metrics(
     """
     try:
         from picarones.core.corpus import GTLevel
-        from picarones.core.ner import compute_ner_metrics
+        from picarones.measurements.ner import compute_ner_metrics
     except ImportError as exc:
         logger.warning("[ner.attach] imports indisponibles : %s", exc)
         return
@@ -942,11 +942,11 @@ def _aggregate_calibration(doc_results: list) -> Optional[dict]:
     """Délégation vers :func:`builtin_hooks._aggregate_calibration`.
 
     Conservé pour la rétrocompat du test ``test_sprint42_calibration_runner``
-    qui importe directement depuis ``picarones.core.runner``. La logique
-    réelle vit dans :mod:`picarones.core.builtin_hooks` (chantier 2
+    qui importe directement depuis ``picarones.measurements.runner``. La logique
+    réelle vit dans :mod:`picarones.measurements.builtin_hooks` (chantier 2
     post-Sprint 97).
     """
-    from picarones.core.builtin_hooks import _aggregate_calibration as _impl
+    from picarones.measurements.builtin_hooks import _aggregate_calibration as _impl
     return _impl(doc_results)
 
 

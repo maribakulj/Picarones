@@ -15,18 +15,18 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.narrative import build_synthesis
-from picarones.core.narrative.detectors import (
+from picarones.measurements.narrative import build_synthesis
+from picarones.measurements.narrative.detectors import (
     detect_cost_outlier,
     detect_pareto_alternative,
 )
-from picarones.core.narrative.facts import FactType
-from picarones.core.pricing import (
+from picarones.core.facts import FactType
+from picarones.measurements.pricing import (
     build_costs_for_benchmark,
     estimate_cost,
     load_pricing_database,
 )
-from picarones.core.statistics import compute_pareto_front
+from picarones.measurements.statistics import compute_pareto_front
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +306,7 @@ class TestReportIntegration:
 
     def test_pricing_yaml_is_packaged(self):
         """Garde-fou : le YAML doit être accessible depuis le package."""
-        from picarones.core.pricing import _DEFAULT_PRICING_PATH
+        from picarones.measurements.pricing import _DEFAULT_PRICING_PATH
         assert Path(_DEFAULT_PRICING_PATH).exists()
 
     def test_english_locale_renders_pareto_labels(self, benchmark_result, tmp_path):

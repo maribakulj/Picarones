@@ -31,7 +31,7 @@ def _estimate_engine_throughput_inputs(
     engine_reports: list,
 ) -> list[dict]:
     """Construit les entrées attendues par
-    :func:`picarones.core.throughput.aggregate_effective_throughput`
+    :func:`picarones.measurements.throughput.aggregate_effective_throughput`
     à partir des ``EngineReport`` du benchmark.
 
     Pour chaque moteur :
@@ -131,7 +131,7 @@ def build_economics_view_html(
     # Sous-section 1 : throughput effectif
     if engine_reports:
         try:
-            from picarones.core.throughput import (
+            from picarones.measurements.throughput import (
                 aggregate_effective_throughput,
             )
             from picarones.report.throughput_render import (

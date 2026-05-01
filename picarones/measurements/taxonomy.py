@@ -53,7 +53,7 @@ for _a, _b in _VISUAL_PAIRS:
     VISUAL_CONFUSIONS[frozenset({_a, _b})] = f"{_a}/{_b}"
 
 #: Couples de ligatures pour la détection des erreurs de ligatures
-from picarones.core.char_scores import LIGATURE_TABLE, DIACRITIC_MAP  # noqa: E402
+from picarones.measurements.char_scores import LIGATURE_TABLE, DIACRITIC_MAP  # noqa: E402
 
 # Caractères hors-ASCII présumés hors-vocabulaire (alphabet non latin de base)
 _LATIN_BASIC = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

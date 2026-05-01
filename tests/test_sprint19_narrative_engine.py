@@ -15,7 +15,7 @@ import re
 
 import pytest
 
-from picarones.core.narrative import (
+from picarones.measurements.narrative import (
     Fact,
     FactImportance,
     FactType,
@@ -25,7 +25,7 @@ from picarones.core.narrative import (
     render_synthesis,
     select_facts,
 )
-from picarones.core.narrative.detectors import (
+from picarones.measurements.narrative.detectors import (
     detect_confidence_warning,
     detect_error_profile_outlier,
     detect_global_leader_cer,
@@ -579,8 +579,8 @@ class TestReportIntegration:
                hashlib.sha256(s2.group().encode()).hexdigest()
 
     def test_default_registry_has_all_types_registered(self):
-        from picarones.core.narrative import _DEFAULT_REGISTRY
-        from picarones.core.narrative.facts import FactType
+        from picarones.measurements.narrative import _DEFAULT_REGISTRY
+        from picarones.core.facts import FactType
 
         registered = set(_DEFAULT_REGISTRY.registered_types())
         # Tous les types de FactType doivent avoir un détecteur enregistré.

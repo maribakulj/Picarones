@@ -32,7 +32,7 @@ intuitive :
 
 Dépendances
 -----------
-S'appuie strictement sur ``picarones.core.inter_engine`` (Sprint
+S'appuie strictement sur ``picarones.measurements.inter_engine`` (Sprint
 35) — pas de double calcul, pas de logique nouvelle de
 divergence.
 """
@@ -42,7 +42,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from picarones.core.inter_engine import jensen_shannon_divergence
+from picarones.measurements.inter_engine import jensen_shannon_divergence
 
 logger = logging.getLogger(__name__)
 

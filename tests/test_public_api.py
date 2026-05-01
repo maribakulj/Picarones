@@ -151,24 +151,24 @@ class TestResultsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 4. picarones.core.metrics — métriques de base
+# 4. picarones.measurements.metrics — métriques de base
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestMetricsApi:
     def test_metrics_result_class(self):
-        _assert_class("picarones.core.metrics", "MetricsResult")
+        _assert_class("picarones.measurements.metrics", "MetricsResult")
 
     @pytest.mark.parametrize("name", [
         "compute_metrics", "aggregate_metrics",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.metrics", name)
+        _assert_function("picarones.measurements.metrics", name)
 
     def test_compute_metrics_signature(self):
         """``compute_metrics(reference, hypothesis, char_exclude=None)`` est
         contractuel — les 2 premiers args sont positionnels, le 3ᵉ keyword."""
-        from picarones.core.metrics import compute_metrics
+        from picarones.measurements.metrics import compute_metrics
         sig = inspect.signature(compute_metrics)
         params = list(sig.parameters.values())
         # Au moins 2 paramètres positionnels (reference, hypothesis)
@@ -182,14 +182,14 @@ class TestMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 5. picarones.core.runner — run_benchmark
+# 5. picarones.measurements.runner — run_benchmark
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestRunnerApi:
     def test_run_benchmark_exists(self):
         try:
-            _assert_function("picarones.core.runner", "run_benchmark")
+            _assert_function("picarones.measurements.runner", "run_benchmark")
         except ImportError as exc:
             if "tqdm" in str(exc):
                 pytest.skip("tqdm non installé en sandbox")
@@ -199,7 +199,7 @@ class TestRunnerApi:
         """Les paramètres clés (corpus, engines, profile…) doivent rester
         accessibles. Ajout d'un argument requis = breaking change."""
         try:
-            from picarones.core.runner import run_benchmark
+            from picarones.measurements.runner import run_benchmark
         except ImportError as exc:
             if "tqdm" in str(exc):
                 pytest.skip("tqdm non installé")
@@ -218,7 +218,7 @@ class TestRunnerApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 6. picarones.core.pipeline_runner — banc d'essai pipelines
+# 6. picarones.core.pipeline — banc d'essai pipelines
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -228,7 +228,7 @@ class TestPipelineRunnerApi:
         "StepResult", "PipelineResult", "PipelineRunner",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.pipeline_runner", name)
+        _assert_class("picarones.core.pipeline", name)
 
 
 class TestPipelineBenchmarkApi:
@@ -236,31 +236,31 @@ class TestPipelineBenchmarkApi:
         "StepAggregate", "PipelineBenchmarkResult",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.pipeline_benchmark", name)
+        _assert_class("picarones.measurements.pipeline_benchmark", name)
 
     @pytest.mark.parametrize("name", [
         "default_initial_inputs", "run_pipeline_benchmark",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.pipeline_benchmark", name)
+        _assert_function("picarones.measurements.pipeline_benchmark", name)
 
 
 class TestPipelineComparisonApi:
     def test_pipeline_comparison_result(self):
         _assert_class(
-            "picarones.core.pipeline_comparison", "PipelineComparisonResult",
+            "picarones.measurements.pipeline_comparison", "PipelineComparisonResult",
         )
 
     def test_compare_pipelines(self):
         _assert_function(
-            "picarones.core.pipeline_comparison", "compare_pipelines",
+            "picarones.measurements.pipeline_comparison", "compare_pipelines",
         )
 
 
 class TestPipelineSpecLoaderApi:
     def test_pipeline_spec_load_error(self):
         cls = _assert_class(
-            "picarones.core.pipeline_spec_loader", "PipelineSpecLoadError",
+            "picarones.measurements.pipeline_spec_loader", "PipelineSpecLoadError",
         )
         assert issubclass(cls, ValueError)
 
@@ -271,7 +271,7 @@ class TestPipelineSpecLoaderApi:
         "load_comparison_specs_from_dict",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.pipeline_spec_loader", name)
+        _assert_function("picarones.measurements.pipeline_spec_loader", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -343,7 +343,7 @@ class TestMetricHooksApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 9. picarones.core.builtin_metrics — CER/WER/MER/WIL natifs
+# 9. picarones.measurements.builtin_metrics — CER/WER/MER/WIL natifs
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -353,40 +353,40 @@ class TestBuiltinMetricsApi:
         "text_preservation_after_reconstruction",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.builtin_metrics", name)
+        _assert_function("picarones.measurements.builtin_metrics", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 10. picarones.core.alto_metrics — métriques (ALTO, ALTO)
+# 10. picarones.measurements.alto_metrics — métriques (ALTO, ALTO)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestAltoMetricsApi:
     def test_extract_text_from_alto(self):
-        _assert_function("picarones.core.alto_metrics", "extract_text_from_alto")
+        _assert_function("picarones.measurements.alto_metrics", "extract_text_from_alto")
 
     @pytest.mark.parametrize("name", [
         "alto_text_cer", "alto_text_wer",
         "alto_text_mer", "alto_text_wil",
     ])
     def test_alto_metric_function(self, name):
-        _assert_function("picarones.core.alto_metrics", name)
+        _assert_function("picarones.measurements.alto_metrics", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 11. picarones.core.jobs — JobStore (utilisé par web/)
+# 11. picarones.web.jobs — JobStore (utilisé par web/)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestJobsApi:
     def test_job_store(self):
-        _assert_class("picarones.core.jobs", "JobStore")
+        _assert_class("picarones.web.jobs", "JobStore")
 
     @pytest.mark.parametrize("name", [
         "get_default_store", "reset_default_store",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.jobs", name)
+        _assert_function("picarones.web.jobs", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -399,17 +399,13 @@ class TestCercle1IsLean:
     (les autres sont des shims). Ce test garde-fou empêche un module
     métrique d'être réintroduit dans le cœur sans RFC."""
 
-    # Modules Cercle 1 « gros » (> 30 lignes de logique). ``colors.py``
-    # est un fichier utilitaire de constantes (13 lignes) co-localisé
-    # dans ``core/`` pour éviter le churn — il n'est pas dans cette
-    # liste car le seuil 30 lignes ne le détecte pas comme « réel »,
-    # mais sa présence dans le dossier est tolérée.
+    # Modules Cercle 1 — abstractions pures (corpus, contrats, registres).
+    # Tout module avec de la logique métier (calcul, orchestration)
+    # appartient au Cercle 2 (``measurements/``) ou au Cercle 3
+    # (``extras/``, ``report/``).
     EXPECTED_CERCLE1 = {
-        "alto_metrics.py", "builtin_metrics.py", "corpus.py", "jobs.py",
-        "metric_hooks.py", "metric_registry.py", "metrics.py", "modules.py",
-        "pipeline_benchmark.py", "pipeline_comparison.py",
-        "pipeline_runner.py", "pipeline_spec_loader.py",
-        "results.py", "runner.py",
+        "corpus.py", "facts.py", "metric_hooks.py", "metric_registry.py",
+        "modules.py", "pipeline.py", "results.py",
     }
 
     def test_cercle1_files_lean(self):
@@ -460,17 +456,17 @@ class TestApiStableDoc:
             "picarones.core.corpus",
             "picarones.core.modules",
             "picarones.core.results",
-            "picarones.core.metrics",
-            "picarones.core.runner",
-            "picarones.core.pipeline_runner",
-            "picarones.core.pipeline_benchmark",
-            "picarones.core.pipeline_comparison",
-            "picarones.core.pipeline_spec_loader",
+            "picarones.measurements.metrics",
+            "picarones.measurements.runner",
+            "picarones.core.pipeline",
+            "picarones.measurements.pipeline_benchmark",
+            "picarones.measurements.pipeline_comparison",
+            "picarones.measurements.pipeline_spec_loader",
             "picarones.core.metric_registry",
             "picarones.core.metric_hooks",
-            "picarones.core.builtin_metrics",
-            "picarones.core.alto_metrics",
-            "picarones.core.jobs",
+            "picarones.measurements.builtin_metrics",
+            "picarones.measurements.alto_metrics",
+            "picarones.web.jobs",
         ]:
             assert module in content, (
                 f"docs/api-stable.md ne mentionne pas {module}"

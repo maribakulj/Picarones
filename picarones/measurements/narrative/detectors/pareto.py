@@ -11,7 +11,7 @@ from __future__ import annotations
 import statistics as _stats
 from typing import Optional
 
-from picarones.measurements.narrative.facts import Fact, FactImportance, FactType
+from picarones.core.facts import Fact, FactImportance, FactType
 from picarones.measurements.narrative.registry import register_detector
 
 

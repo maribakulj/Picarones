@@ -14,7 +14,7 @@ import re
 
 import pytest
 
-from picarones.core.statistics import (
+from picarones.measurements.statistics import (
     build_critical_difference_svg,
     friedman_test,
     nemenyi_posthoc,
@@ -361,8 +361,8 @@ class TestReportIntegration:
 
 class TestStatisticalTieDetector:
     def test_detector_emits_fact_when_engines_are_tied(self):
-        from picarones.core.narrative.detectors import detect_statistical_tie
-        from picarones.core.narrative.facts import FactType
+        from picarones.measurements.narrative.detectors import detect_statistical_tie
+        from picarones.core.facts import FactType
 
         benchmark_data = {
             "statistics": {
@@ -384,7 +384,7 @@ class TestStatisticalTieDetector:
         assert f.payload["critical_distance"] == 0.9
 
     def test_detector_ignores_singletons(self):
-        from picarones.core.narrative.detectors import detect_statistical_tie
+        from picarones.measurements.narrative.detectors import detect_statistical_tie
 
         benchmark_data = {
             "statistics": {
@@ -401,14 +401,14 @@ class TestStatisticalTieDetector:
         assert facts == []
 
     def test_detector_returns_empty_on_missing_data(self):
-        from picarones.core.narrative.detectors import detect_statistical_tie
+        from picarones.measurements.narrative.detectors import detect_statistical_tie
         assert detect_statistical_tie({}) == []
         assert detect_statistical_tie({"statistics": {}}) == []
         assert detect_statistical_tie({"statistics": {"nemenyi": {"error": "no_data"}}}) == []
 
     def test_non_leader_tie_is_high_not_critical(self):
-        from picarones.core.narrative.detectors import detect_statistical_tie
-        from picarones.core.narrative.facts import FactImportance
+        from picarones.measurements.narrative.detectors import detect_statistical_tie
+        from picarones.core.facts import FactImportance
 
         benchmark_data = {
             "statistics": {

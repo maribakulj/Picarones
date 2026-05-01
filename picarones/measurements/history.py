@@ -21,7 +21,7 @@ Table ``runs`` :
 
 Usage
 -----
->>> from picarones.core.history import BenchmarkHistory
+>>> from picarones.measurements.history import BenchmarkHistory
 >>> history = BenchmarkHistory("~/.picarones/history.db")
 >>> history.record(benchmark_result)
 >>> df = history.query(engine="tesseract", corpus="chroniques")

@@ -27,14 +27,14 @@ from pathlib import Path
 import pytest
 
 from picarones.core.corpus import Corpus, Document, EntitiesGT, GTLevel, TextGT
-from picarones.core.ner_backends import (
+from picarones.measurements.ner_backends import (
     SPACY_PROFILES,
     SpacyEntityExtractor,
     get_extractor,
     is_spacy_available,
 )
 from picarones.core.results import DocumentResult, EngineReport
-from picarones.core.runner import _aggregate_ner, _attach_ner_metrics
+from picarones.measurements.runner import _aggregate_ner, _attach_ner_metrics
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ class TestSpacyExtractor:
         """Sans spaCy installé, l'extracteur retourne [] avec un warning
         explicite et ne lève pas."""
         ext = SpacyEntityExtractor("fr_core_news_sm")
-        with caplog.at_level("WARNING", logger="picarones.core.ner_backends"):
+        with caplog.at_level("WARNING", logger="picarones.measurements.ner_backends"):
             result = ext("Marie de Bourgogne en 1477.")
         # Sans spaCy, on a toujours [] et un warning
         if not is_spacy_available():
@@ -97,7 +97,7 @@ def _make_document_result(
     hypothesis: str = "Marie de Bourgogne en 1477.",
     ner_metrics: dict | None = None,
 ) -> DocumentResult:
-    from picarones.core.metrics import MetricsResult
+    from picarones.measurements.metrics import MetricsResult
 
     return DocumentResult(
         doc_id=doc_id,
@@ -291,7 +291,7 @@ class TestRobustness:
         dr1 = _make_document_result(
             doc_id="doc1", hypothesis="Marie de Bourgogne en 1477.",
         )
-        with caplog.at_level("WARNING", logger="picarones.core.runner"):
+        with caplog.at_level("WARNING", logger="picarones.measurements.runner"):
             _attach_ner_metrics(corpus, [dr1], _broken_extractor)
 
         # Pas de propagation, ner_metrics reste None

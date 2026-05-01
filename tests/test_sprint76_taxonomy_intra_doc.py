@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.taxonomy_intra_doc import (
+from picarones.measurements.taxonomy_intra_doc import (
     compute_taxonomy_position_heatmap,
 )
 from picarones.report.taxonomy_intra_doc_render import (

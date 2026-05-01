@@ -249,7 +249,7 @@ class TestEndToEndWithRunner:
     def test_runner_picks_up_confidences_and_computes_calibration(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     ) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         # Simulation : on appelle directement _compute_document_result
@@ -289,5 +289,5 @@ class TestPytesseractAbsent:
         monkeypatch.setattr(tesseract_module, "_PYTESSERACT_AVAILABLE", False)
 
         engine = TesseractEngine()
-        result = engine._extract_token_confidences(tmp_path / "p.png")
+        result = engine.run(tmp_path / "p.png").token_confidences
         assert result is None

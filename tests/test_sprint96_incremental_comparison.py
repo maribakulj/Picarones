@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.incremental_comparison import (
+from picarones.measurements.incremental_comparison import (
     PipelineRun,
     compare_isolated_effect,
 )

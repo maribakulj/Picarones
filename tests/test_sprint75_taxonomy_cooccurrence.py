@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.taxonomy_cooccurrence import (
+from picarones.measurements.taxonomy_cooccurrence import (
     compute_taxonomy_cooccurrence,
 )
 from picarones.report.taxonomy_cooccurrence_render import (

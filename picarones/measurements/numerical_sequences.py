@@ -17,7 +17,7 @@ Catégories couvertes
    (le module détecte les **années** sur 4 chiffres dans la
    plage [1000-2099]).
 2. **Numéraux romains** : ``MDCLXVIII``, ``XIV``, ``Tome IV``.
-   Réutilise ``picarones.core.roman_numerals`` (Sprint 60).
+   Réutilise ``picarones.measurements.roman_numerals`` (Sprint 60).
 3. **Foliotation** : ``f. 12``, ``f. 12r``, ``fol. 24v``,
    ``p. 5``, ``pp. 12-15``, ``n° 42``.
 4. **Montants** : ``12 livres``, ``5 sols``, ``8 deniers``,
@@ -86,7 +86,7 @@ from typing import Optional
 
 from picarones.core.metric_registry import register_metric
 from picarones.core.modules import ArtifactType
-from picarones.core.roman_numerals import (
+from picarones.measurements.roman_numerals import (
     detect_roman_numerals,
     roman_to_int,
 )

@@ -47,7 +47,7 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from picarones import __version__
-from picarones.core.jobs import JobStore, get_default_store
+from picarones.web.jobs import JobStore, get_default_store
 from picarones.web.security import (
     RateLimiter,
     assert_engines_allowed,
@@ -1095,7 +1095,7 @@ async def api_corpus_delete(corpus_id: str) -> dict:
 
 @app.get("/api/normalization/profiles")
 async def api_normalization_profiles() -> dict:
-    from picarones.core.normalization import NORMALIZATION_PROFILES
+    from picarones.measurements.normalization import NORMALIZATION_PROFILES
 
     profiles = [
         {
@@ -1283,7 +1283,7 @@ async def api_benchmark_synthesis_preview(job_id: str, lang: str = "fr") -> dict
     except (OSError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=422, detail=f"Lecture JSON échouée : {exc}")
 
-    from picarones.core.narrative import build_synthesis
+    from picarones.measurements.narrative import build_synthesis
 
     synthesis = build_synthesis(report_json, lang=lang)
     return {
@@ -1313,7 +1313,7 @@ async def api_history_regressions(
     un encart *« ⚠ Tesseract a régressé de 0,8 pp depuis le 12 janvier »*
     en tête de page.
     """
-    from picarones.core.history import BenchmarkHistory
+    from picarones.measurements.history import BenchmarkHistory
 
     try:
         history = BenchmarkHistory(db_path) if db_path else BenchmarkHistory()
@@ -1412,7 +1412,7 @@ async def api_htr_united_catalogue(
     language: str = Query(default="", description="Filtre langue"),
     script: str = Query(default="", description="Filtre type d'écriture"),
 ) -> dict:
-    from picarones.importers.htr_united import HTRUnitedCatalogue
+    from picarones.extras.importers.htr_united import HTRUnitedCatalogue
 
     cat = HTRUnitedCatalogue.from_demo()
     results = cat.search(
@@ -1431,7 +1431,7 @@ async def api_htr_united_catalogue(
 
 @app.post("/api/htr-united/import")
 async def api_htr_united_import(req: HTRUnitedImportRequest) -> dict:
-    from picarones.importers.htr_united import HTRUnitedCatalogue, import_htr_united_corpus
+    from picarones.extras.importers.htr_united import HTRUnitedCatalogue, import_htr_united_corpus
 
     cat = HTRUnitedCatalogue.from_demo()
     entry = cat.get_by_id(req.entry_id)
@@ -1457,7 +1457,7 @@ async def api_huggingface_search(
     tags: str = Query(default="", description="Tags séparés par des virgules"),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> dict:
-    from picarones.importers.huggingface import HuggingFaceImporter
+    from picarones.extras.importers.huggingface import HuggingFaceImporter
 
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     importer = HuggingFaceImporter()
@@ -1475,7 +1475,7 @@ async def api_huggingface_search(
 
 @app.post("/api/huggingface/import")
 async def api_huggingface_import(req: HuggingFaceImportRequest) -> dict:
-    from picarones.importers.huggingface import HuggingFaceImporter
+    from picarones.extras.importers.huggingface import HuggingFaceImporter
 
     importer = HuggingFaceImporter()
     result = importer.import_dataset(
@@ -1823,7 +1823,7 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
 
     try:
         from picarones.core.corpus import load_corpus_from_directory
-        from picarones.core.runner import run_benchmark
+        from picarones.measurements.runner import run_benchmark
 
         corpus = load_corpus_from_directory(req.corpus_path)
         job.total_docs = len(corpus)
@@ -1872,7 +1872,7 @@ def _run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> Non
                 "total": total_steps,
             })
 
-        from picarones.core.normalization import _parse_exclude_chars
+        from picarones.measurements.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
         result = run_benchmark(
@@ -1919,7 +1919,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
 
     try:
         from picarones.core.corpus import load_corpus_from_directory
-        from picarones.core.runner import run_benchmark
+        from picarones.measurements.runner import run_benchmark
 
         # Charger le corpus
         job.add_event("log", {"message": f"Chargement du corpus : {req.corpus_path}"})
@@ -1975,7 +1975,7 @@ def _run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
                 "total": total_steps,
             })
 
-        from picarones.core.normalization import _parse_exclude_chars
+        from picarones.measurements.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
         # Lancer le benchmark

@@ -2,7 +2,7 @@
 
 Couvre :
 
-- 5.A : :mod:`picarones.core.narrative.detectors` est désormais un
+- 5.A : :mod:`picarones.measurements.narrative.detectors` est désormais un
   package thématique de 6 sous-modules (1229 lignes → 6 fichiers).
   Tous les imports historiques restent accessibles.
 - 5.B : :mod:`picarones.cli` est désormais un package avec 6
@@ -23,7 +23,7 @@ import pytest
 class TestDetectorsPackage:
     def test_detectors_is_now_a_package(self):
         """``detectors.py`` est devenu ``detectors/`` (package)."""
-        from picarones.core.narrative import detectors
+        from picarones.measurements.narrative import detectors
         # Un package a __path__, un module simple ne l'a pas
         assert hasattr(detectors, "__path__"), (
             "detectors devrait être un package depuis le chantier 5"
@@ -52,19 +52,19 @@ class TestDetectorsPackage:
     def test_all_18_detectors_importable_from_root(self, name):
         """Rétrocompat : les 18 détecteurs s'importent depuis le package
         comme avant le chantier 5 (tests Sprints 20, 23, 29, 36, 44, 46, 73)."""
-        from picarones.core.narrative import detectors
+        from picarones.measurements.narrative import detectors
         assert hasattr(detectors, name), f"{name} disparu après chantier 5"
         assert callable(getattr(detectors, name))
 
     def test_DETECTORS_BY_TYPE_still_exposed(self):
-        from picarones.core.narrative.detectors import DETECTORS_BY_TYPE
+        from picarones.measurements.narrative.detectors import DETECTORS_BY_TYPE
         assert isinstance(DETECTORS_BY_TYPE, dict)
         assert len(DETECTORS_BY_TYPE) == 18, (
             f"DETECTORS_BY_TYPE doit contenir 18 entrées, en a {len(DETECTORS_BY_TYPE)}"
         )
 
     def test_register_default_detectors_still_callable(self):
-        from picarones.core.narrative.detectors import register_default_detectors
+        from picarones.measurements.narrative.detectors import register_default_detectors
         assert callable(register_default_detectors)
 
     @pytest.mark.parametrize("submodule, detector_count", [
@@ -80,7 +80,7 @@ class TestDetectorsPackage:
         import importlib
 
         mod = importlib.import_module(
-            f"picarones.core.narrative.detectors.{submodule}"
+            f"picarones.measurements.narrative.detectors.{submodule}"
         )
         detectors_in_sub = [
             n for n in dir(mod)
@@ -94,15 +94,15 @@ class TestDetectorsPackage:
     def test_identity_through_submodule_and_root(self):
         """Le détecteur exposé depuis __init__.py et depuis son sous-module
         est la même fonction (pas de redéfinition)."""
-        from picarones.core.narrative.detectors import detect_global_leader_cer
-        from picarones.core.narrative.detectors.ranking import (
+        from picarones.measurements.narrative.detectors import detect_global_leader_cer
+        from picarones.measurements.narrative.detectors.ranking import (
             detect_global_leader_cer as via_submodule,
         )
         assert detect_global_leader_cer is via_submodule
 
     def test_detector_smoke_via_root(self):
         """Smoke test : un détecteur fonctionne via l'import root."""
-        from picarones.core.narrative.detectors import detect_global_leader_cer
+        from picarones.measurements.narrative.detectors import detect_global_leader_cer
         result = detect_global_leader_cer({
             "ranking": [
                 {"engine": "tess", "mean_cer": 0.05},
@@ -115,7 +115,7 @@ class TestDetectorsPackage:
     def test_helpers_are_in_dedicated_module(self):
         """Les helpers internes (_engines_summary, etc.) vivent dans
         ``_helpers.py`` (pattern modulaire propre)."""
-        from picarones.core.narrative.detectors import _helpers
+        from picarones.measurements.narrative.detectors import _helpers
         assert hasattr(_helpers, "_engines_summary")
         assert hasattr(_helpers, "_engine_by_name")
         assert hasattr(_helpers, "_n_docs")
@@ -227,12 +227,12 @@ class TestRunnerStillReachable:
     ])
     def test_function_still_in_runner(self, name):
         try:
-            from picarones.core import runner
+            from picarones.measurements import runner
         except ImportError as exc:
             if "tqdm" in str(exc):
                 pytest.skip("tqdm non installé")
             raise
         assert hasattr(runner, name), (
-            f"runner.{name} a disparu — chantier 5 n'aurait pas dû y toucher"
+            f"runner.{name} a disparu"
         )
         assert callable(getattr(runner, name))

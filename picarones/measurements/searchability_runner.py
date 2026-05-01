@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from typing import Iterable, Optional
 
-from picarones.core.searchability import (
+from picarones.measurements.searchability import (
     _split_words,
     compute_searchability,
 )

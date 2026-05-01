@@ -67,7 +67,7 @@ class TestExtractFromLayout:
                 _mock_line("Bonjour le monde", 0.92),
             ]),
         ])
-        out = engine._extract_token_confidences_from_layout(layout)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(layout))
         assert out is not None
         assert out == [
             {"token": "Bonjour", "confidence": 0.92},
@@ -83,7 +83,7 @@ class TestExtractFromLayout:
                 _mock_line("Deuxième ligne", 0.80),
             ]),
         ])
-        out = engine._extract_token_confidences_from_layout(layout)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(layout))
         assert out is not None
         # Chaque mot porte la confidence de SA ligne
         assert {"token": "Première", "confidence": 0.95} in out
@@ -98,7 +98,7 @@ class TestExtractFromLayout:
                 _mock_line("ok", 0.95),     # ok
             ]),
         ])
-        out = engine._extract_token_confidences_from_layout(layout)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(layout))
         assert out == [{"token": "ok", "confidence": 0.95}]
 
     def test_skips_none_confidence(self) -> None:
@@ -109,7 +109,7 @@ class TestExtractFromLayout:
                 _mock_line("sans_conf", None),
             ]),
         ])
-        out = engine._extract_token_confidences_from_layout(layout)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(layout))
         assert out == [{"token": "avec_conf", "confidence": 0.85}]
 
     def test_skips_negative_confidence(self) -> None:
@@ -120,7 +120,7 @@ class TestExtractFromLayout:
                 _mock_line("dropped", -0.1),
             ]),
         ])
-        out = engine._extract_token_confidences_from_layout(layout)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(layout))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
 
@@ -135,7 +135,7 @@ class TestExposeFlag:
         layout = _mock_layout([
             _mock_region([_mock_line("hello", 0.9)]),
         ])
-        assert engine._extract_token_confidences_from_layout(layout) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(layout)) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -146,12 +146,12 @@ class TestExposeFlag:
 class TestDegenerateLayouts:
     def test_none_layout(self) -> None:
         engine = PeroOCREngine()
-        assert engine._extract_token_confidences_from_layout(None) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(None)) is None
 
     def test_empty_regions(self) -> None:
         engine = PeroOCREngine()
         layout = _mock_layout([])
-        assert engine._extract_token_confidences_from_layout(layout) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(layout)) is None
 
     def test_only_lines_without_conf_returns_none(self) -> None:
         engine = PeroOCREngine()
@@ -161,7 +161,7 @@ class TestDegenerateLayouts:
                 _mock_line("ok2", None),
             ]),
         ])
-        assert engine._extract_token_confidences_from_layout(layout) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(layout)) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -242,7 +242,7 @@ class TestRunPipeline:
 
 class TestEndToEndWithRunner:
     def test_runner_picks_up_confidences(self) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         ocr = EngineResult(

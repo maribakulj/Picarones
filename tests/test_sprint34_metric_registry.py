@@ -34,7 +34,7 @@ from picarones.core.modules import ArtifactType
 # tests s'exécutent avec ce registre peuplé ; on n'utilise pas
 # ``_reset_registry_for_tests`` parce qu'on veut justement tester l'état
 # par défaut visible par le runner en production.
-import picarones.core.builtin_metrics  # noqa: F401
+import picarones.measurements.builtin_metrics  # noqa: F401
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ class TestParityWithLegacy:
         ],
     )
     def test_cer_matches_compute_metrics(self, ref: str, hyp: str) -> None:
-        from picarones.core.metrics import compute_metrics
+        from picarones.measurements.metrics import compute_metrics
 
         legacy = compute_metrics(ref, hyp)
         registered = compute_at_junction(

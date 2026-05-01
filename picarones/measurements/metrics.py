@@ -195,7 +195,7 @@ def compute_metrics(
         cer_diplomatic: Optional[float] = None
         diplomatic_profile_name: Optional[str] = None
         try:
-            from picarones.core.normalization import DEFAULT_DIPLOMATIC_PROFILE
+            from picarones.measurements.normalization import DEFAULT_DIPLOMATIC_PROFILE
             profile = normalization_profile or DEFAULT_DIPLOMATIC_PROFILE
             ref_diplo = profile.normalize(reference)
             hyp_diplo = profile.normalize(hypothesis)
@@ -288,4 +288,4 @@ def aggregate_metrics(results: list[MetricsResult]) -> dict:
 # Import paresseux pour éviter les imports circulaires
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from picarones.core.normalization import NormalizationProfile
+    from picarones.measurements.normalization import NormalizationProfile

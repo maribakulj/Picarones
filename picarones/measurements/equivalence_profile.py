@@ -42,7 +42,7 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-from picarones.core.normalization import (
+from picarones.measurements.normalization import (
     DIPLOMATIC_EN_EARLY_MODERN,
     DIPLOMATIC_FR_EARLY_MODERN,
     DIPLOMATIC_LATIN_MEDIEVAL,
@@ -178,10 +178,10 @@ def compute_cer_with_equivalences(
     """Calcule le CER après application des équivalences sélectionnées
     sur les **deux** côtés (GT et hypothèse).
 
-    Utilise ``picarones.core.metrics.compute_metrics`` et extrait
+    Utilise ``picarones.measurements.metrics.compute_metrics`` et extrait
     le champ ``cer`` du résultat.
     """
-    from picarones.core.metrics import compute_metrics
+    from picarones.measurements.metrics import compute_metrics
 
     selected_list = list(selected_names)
     ref = apply_selected_equivalences(reference or "", selected_list)

@@ -33,7 +33,7 @@ import logging
 import statistics
 from typing import Iterable, Optional
 
-from picarones.core.readability import (
+from picarones.measurements.readability import (
     Language,
     count_words,
     flesch_delta,

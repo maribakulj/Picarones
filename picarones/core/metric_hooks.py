@@ -4,9 +4,9 @@ Chantier 2 du plan d'évolution post-Sprint 97.
 
 Pourquoi ce module
 ------------------
-Avant ce chantier, ``picarones.core.runner._compute_document_result``
+Avant ce chantier, ``picarones.measurements.runner._compute_document_result``
 contenait **11 imports tardifs codés en dur** vers
-``picarones.core.confusion``, ``char_scores``, ``taxonomy``, ``structure``,
+``picarones.measurements.confusion``, ``char_scores``, ``taxonomy``, ``structure``,
 ``image_quality``, ``line_metrics``, ``hallucination``,
 ``philological_runner``, ``searchability_runner``,
 ``numerical_sequences_runner``, ``readability_runner`` — chacun enrobé

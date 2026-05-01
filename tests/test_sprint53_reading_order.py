@@ -28,7 +28,7 @@ import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
 from picarones.core.modules import ArtifactType
-from picarones.core.reading_order import (
+from picarones.measurements.reading_order import (
     compute_reading_order_metrics,
     reading_order_f1,
 )
@@ -184,7 +184,7 @@ class TestDetailedCounts:
 class TestRegistryIntegration:
     def test_metric_registered_for_reading_order_pair(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.core.reading_order  # noqa: F401
+        import picarones.measurements.reading_order  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.READING_ORDER, ArtifactType.READING_ORDER),

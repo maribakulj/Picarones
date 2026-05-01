@@ -90,7 +90,7 @@ def run_cmd(
     _setup_logging(verbose)
 
     from picarones.core.corpus import load_corpus_from_directory
-    from picarones.core.runner import run_benchmark
+    from picarones.measurements.runner import run_benchmark
 
     # Chargement du corpus
     try:
@@ -183,7 +183,7 @@ def _run_workflow(
     _setup_logging(verbose)
 
     from picarones.core.corpus import load_corpus_from_directory
-    from picarones.core.runner import run_benchmark
+    from picarones.measurements.runner import run_benchmark
 
     try:
         corp = load_corpus_from_directory(corpus)

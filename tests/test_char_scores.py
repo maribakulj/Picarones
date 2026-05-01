@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.char_scores import (
+from picarones.measurements.char_scores import (
     DiacriticScore,
     LigatureScore,
     aggregate_diacritic_scores,

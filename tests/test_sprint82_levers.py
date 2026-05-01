@@ -19,7 +19,7 @@ import json
 import re
 from pathlib import Path
 
-from picarones.core.levers import (
+from picarones.measurements.levers import (
     Lever,
     LeverImportance,
     LeverType,

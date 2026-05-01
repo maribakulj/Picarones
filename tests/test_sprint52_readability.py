@@ -30,7 +30,7 @@ import pytest
 
 from picarones.core.metric_registry import select_metrics
 from picarones.core.modules import ArtifactType
-from picarones.core.readability import (
+from picarones.measurements.readability import (
     count_sentences,
     count_syllables,
     count_syllables_word,
@@ -226,7 +226,7 @@ class TestFleschDelta:
 class TestRegistryIntegration:
     def test_flesch_metrics_registered_for_text_text(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.core.readability  # noqa: F401
+        import picarones.measurements.readability  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

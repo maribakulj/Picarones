@@ -4,7 +4,7 @@ Chantier 2 du plan d'évolution post-Sprint 97.
 
 Ce module **migre** les 12 hooks document-level et 12 agrégateurs
 corpus-level qui étaient codés en dur dans
-``picarones.core.runner._compute_document_result`` et autour de la
+``picarones.measurements.runner._compute_document_result`` et autour de la
 boucle d'agrégation (lignes 794-827 du runner pré-chantier-2).
 
 Approche additive — rétrocompat stricte
@@ -97,7 +97,7 @@ def calibration_from_engine_result(
     normalisées à ``[0, 1]``. Les confidences négatives (Tesseract met
     -1 pour les non-mots) sont ignorées.
     """
-    from picarones.core.calibration import compute_calibration_metrics
+    from picarones.measurements.calibration import compute_calibration_metrics
 
     if not token_confidences:
         return None
@@ -146,7 +146,7 @@ def calibration_from_engine_result(
     requires_success=True,
 )
 def _confusion_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.confusion import build_confusion_matrix
+    from picarones.measurements.confusion import build_confusion_matrix
     return build_confusion_matrix(ground_truth, hypothesis).as_dict()
 
 
@@ -157,7 +157,7 @@ def _confusion_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _char_scores_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.char_scores import (
+    from picarones.measurements.char_scores import (
         compute_diacritic_score,
         compute_ligature_score,
     )
@@ -173,7 +173,7 @@ def _char_scores_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _taxonomy_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.taxonomy import classify_errors
+    from picarones.measurements.taxonomy import classify_errors
     return classify_errors(ground_truth, hypothesis).as_dict()
 
 
@@ -184,7 +184,7 @@ def _taxonomy_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _structure_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.structure import analyze_structure
+    from picarones.measurements.structure import analyze_structure
     return analyze_structure(ground_truth, hypothesis).as_dict()
 
 
@@ -195,7 +195,7 @@ def _structure_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _line_metrics_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.line_metrics import compute_line_metrics
+    from picarones.measurements.line_metrics import compute_line_metrics
     return compute_line_metrics(ground_truth, hypothesis).as_dict()
 
 
@@ -206,7 +206,7 @@ def _line_metrics_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _hallucination_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.hallucination import compute_hallucination_metrics
+    from picarones.measurements.hallucination import compute_hallucination_metrics
     return compute_hallucination_metrics(ground_truth, hypothesis).as_dict()
 
 
@@ -230,7 +230,7 @@ def _calibration_hook(*, ground_truth, ocr_result, **_):
     # résultat OCR (pour comparer un échec OCR à la qualité image).
 )
 def _image_quality_hook(*, image_path, **_):
-    from picarones.core.image_quality import analyze_image_quality
+    from picarones.measurements.image_quality import analyze_image_quality
     iq = analyze_image_quality(image_path)
     if iq.error is not None:
         return None
@@ -247,7 +247,7 @@ def _image_quality_hook(*, image_path, **_):
     # — comportement adaptive intact.
 )
 def _philological_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.philological_runner import compute_philological_metrics
+    from picarones.measurements.philological_runner import compute_philological_metrics
     return compute_philological_metrics(ground_truth, hypothesis)
 
 
@@ -257,7 +257,7 @@ def _philological_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _searchability_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.searchability_runner import compute_searchability_metrics
+    from picarones.measurements.searchability_runner import compute_searchability_metrics
     return compute_searchability_metrics(ground_truth, hypothesis)
 
 
@@ -267,7 +267,7 @@ def _searchability_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _numerical_sequences_hook(*, ground_truth, hypothesis, **_):
-    from picarones.core.numerical_sequences_runner import (
+    from picarones.measurements.numerical_sequences_runner import (
         compute_numerical_sequence_metrics_adaptive,
     )
     return compute_numerical_sequence_metrics_adaptive(ground_truth, hypothesis)
@@ -279,7 +279,7 @@ def _numerical_sequences_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _readability_hook(*, ground_truth, hypothesis, corpus_lang, **_):
-    from picarones.core.readability_runner import compute_readability_metrics
+    from picarones.measurements.readability_runner import compute_readability_metrics
     return compute_readability_metrics(ground_truth, hypothesis, lang=corpus_lang)
 
 
@@ -294,7 +294,7 @@ def _readability_hook(*, ground_truth, hypothesis, corpus_lang, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_confusion(doc_results: list) -> Optional[dict]:
-    from picarones.core.confusion import (
+    from picarones.measurements.confusion import (
         ConfusionMatrix, aggregate_confusion_matrices,
     )
     try:
@@ -321,7 +321,7 @@ def _aggregate_confusion(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_char_scores(doc_results: list) -> Optional[dict]:
-    from picarones.core.char_scores import (
+    from picarones.measurements.char_scores import (
         DiacriticScore,
         LigatureScore,
         aggregate_diacritic_scores,
@@ -351,7 +351,7 @@ def _aggregate_char_scores(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_taxonomy(doc_results: list) -> Optional[dict]:
-    from picarones.core.taxonomy import TaxonomyResult, aggregate_taxonomy
+    from picarones.measurements.taxonomy import TaxonomyResult, aggregate_taxonomy
     results = [
         TaxonomyResult.from_dict(dr.taxonomy)
         for dr in doc_results
@@ -368,7 +368,7 @@ def _aggregate_taxonomy(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_structure(doc_results: list) -> Optional[dict]:
-    from picarones.core.structure import StructureResult, aggregate_structure
+    from picarones.measurements.structure import StructureResult, aggregate_structure
     results = [
         StructureResult.from_dict(dr.structure)
         for dr in doc_results
@@ -385,7 +385,7 @@ def _aggregate_structure(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
-    from picarones.core.image_quality import (
+    from picarones.measurements.image_quality import (
         ImageQualityResult, aggregate_image_quality,
     )
     results = [
@@ -404,7 +404,7 @@ def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
-    from picarones.core.line_metrics import (
+    from picarones.measurements.line_metrics import (
         LineMetrics, aggregate_line_metrics,
     )
     results = [
@@ -423,7 +423,7 @@ def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_hallucination(doc_results: list) -> Optional[dict]:
-    from picarones.core.hallucination import (
+    from picarones.measurements.hallucination import (
         HallucinationMetrics, aggregate_hallucination_metrics,
     )
     results = [
@@ -543,7 +543,7 @@ def _aggregate_calibration(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_philological(doc_results: list) -> Optional[dict]:
-    from picarones.core.philological_runner import aggregate_philological_metrics
+    from picarones.measurements.philological_runner import aggregate_philological_metrics
     return aggregate_philological_metrics(
         [dr.philological_metrics for dr in doc_results],
     )
@@ -555,7 +555,7 @@ def _aggregate_philological(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_searchability(doc_results: list) -> Optional[dict]:
-    from picarones.core.searchability_runner import aggregate_searchability_metrics
+    from picarones.measurements.searchability_runner import aggregate_searchability_metrics
     return aggregate_searchability_metrics(
         [dr.searchability_metrics for dr in doc_results],
     )
@@ -567,7 +567,7 @@ def _aggregate_searchability(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_numerical_sequences(doc_results: list) -> Optional[dict]:
-    from picarones.core.numerical_sequences_runner import (
+    from picarones.measurements.numerical_sequences_runner import (
         aggregate_numerical_sequence_metrics,
     )
     return aggregate_numerical_sequence_metrics(
@@ -581,7 +581,7 @@ def _aggregate_numerical_sequences(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_readability(doc_results: list) -> Optional[dict]:
-    from picarones.core.readability_runner import aggregate_readability_metrics
+    from picarones.measurements.readability_runner import aggregate_readability_metrics
     return aggregate_readability_metrics(
         [dr.readability_metrics for dr in doc_results],
     )

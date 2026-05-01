@@ -52,7 +52,7 @@ class TestExtractFromResult:
             _word("Bonjour", 0.97),
             _word("monde", 0.93),
         ])
-        out = engine._extract_token_confidences_from_result(result)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(result))
         assert out == [
             {"token": "Bonjour", "confidence": 0.97},
             {"token": "monde",   "confidence": 0.93},
@@ -65,7 +65,7 @@ class TestExtractFromResult:
             {"content": "no_conf"},      # pas de confidence
             _word("none_conf", None),
         ])
-        out = engine._extract_token_confidences_from_result(result)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(result))
         assert out == [{"token": "ok", "confidence": 0.95}]
 
     def test_skips_negative_confidence(self) -> None:
@@ -74,7 +74,7 @@ class TestExtractFromResult:
             _word("ok", 0.9),
             _word("dropped", -0.1),
         ])
-        out = engine._extract_token_confidences_from_result(result)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(result))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
     def test_skips_empty_content(self) -> None:
@@ -83,7 +83,7 @@ class TestExtractFromResult:
             _word("", 0.95),
             _word("ok", 0.9),
         ])
-        out = engine._extract_token_confidences_from_result(result)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(result))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
     def test_traverses_multiple_pages(self) -> None:
@@ -94,7 +94,7 @@ class TestExtractFromResult:
                 {"words": [_word("gamma", 0.8)]},
             ],
         }
-        out = engine._extract_token_confidences_from_result(result)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(result))
         assert [tc["token"] for tc in (out or [])] == ["alpha", "beta", "gamma"]
 
 
@@ -106,8 +106,8 @@ class TestExtractFromResult:
 class TestExposeFlag:
     def test_disabled_returns_none(self) -> None:
         engine = AzureDocIntelEngine(config={"expose_confidences": False})
-        assert engine._extract_token_confidences_from_result(
-            _result([_word("ok", 0.9)]),
+        assert engine._normalize_token_confidences(
+            engine._extract_raw_confidences(_result([_word("ok", 0.9)])),
         ) is None
 
 
@@ -119,23 +119,23 @@ class TestExposeFlag:
 class TestDegenerateInputs:
     def test_none(self) -> None:
         engine = AzureDocIntelEngine()
-        assert engine._extract_token_confidences_from_result(None) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(None)) is None
 
     def test_empty_dict(self) -> None:
         engine = AzureDocIntelEngine()
-        assert engine._extract_token_confidences_from_result({}) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences({})) is None
 
     def test_no_pages(self) -> None:
         engine = AzureDocIntelEngine()
-        assert engine._extract_token_confidences_from_result(
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(
             {"pages": []},
-        ) is None
+        )) is None
 
     def test_pages_without_words(self) -> None:
         engine = AzureDocIntelEngine()
-        assert engine._extract_token_confidences_from_result(
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(
             {"pages": [{"lines": [{"content": "no words"}]}]},
-        ) is None
+        )) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ def _patch_run_with_result(
         return text, analyze_result
 
     monkeypatch.setattr(
-        AzureDocIntelEngine, "_run_ocr_with_result", _fake,
+        AzureDocIntelEngine, "_run_with_native", _fake,
     )
     return engine
 
@@ -252,7 +252,7 @@ class TestRunOverride:
 
 class TestEndToEndWithRunner:
     def test_runner_picks_up_azure_confidences(self) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         ocr = EngineResult(

@@ -66,8 +66,8 @@ def pipeline_run_cmd(
     import json as _json
 
     from picarones.core.corpus import load_corpus_from_directory
-    from picarones.core.pipeline_benchmark import run_pipeline_benchmark
-    from picarones.core.pipeline_spec_loader import load_pipeline_spec_from_yaml
+    from picarones.measurements.pipeline_benchmark import run_pipeline_benchmark
+    from picarones.measurements.pipeline_spec_loader import load_pipeline_spec_from_yaml
 
     spec = load_pipeline_spec_from_yaml(spec_path)
     corpus = load_corpus_from_directory(str(corpus_dir))
@@ -163,8 +163,8 @@ def pipeline_compare_cmd(
     """Compare N pipelines décrites dans SPECS_PATH sur le même corpus."""
     from picarones.core.corpus import load_corpus_from_directory
     from picarones.core.modules import ArtifactType
-    from picarones.core.pipeline_comparison import compare_pipelines
-    from picarones.core.pipeline_spec_loader import (
+    from picarones.measurements.pipeline_comparison import compare_pipelines
+    from picarones.measurements.pipeline_spec_loader import (
         load_comparison_specs_from_yaml,
     )
 

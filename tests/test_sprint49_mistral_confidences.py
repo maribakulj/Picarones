@@ -42,7 +42,7 @@ class TestExtractFromResponse:
                 ],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out == [
             {"token": "Bonjour", "confidence": 0.95},
             {"token": "monde",   "confidence": 0.90},
@@ -58,7 +58,7 @@ class TestExtractFromResponse:
                 ],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out is not None
         # 3 tokens (2 mots + 1 mot), avec leurs confidences respectives
         assert {"token": "première", "confidence": 0.88} in out
@@ -74,7 +74,7 @@ class TestExtractFromResponse:
                 ],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out == [
             {"token": "bloc1", "confidence": 0.82},
             {"token": "mot2",  "confidence": 0.82},
@@ -90,7 +90,7 @@ class TestExtractFromResponse:
                 ],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
     def test_skips_none_confidence(self) -> None:
@@ -104,7 +104,7 @@ class TestExtractFromResponse:
                 ],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out == [{"token": "avec_conf", "confidence": 0.85}]
 
     def test_skips_negative_confidence(self) -> None:
@@ -117,7 +117,7 @@ class TestExtractFromResponse:
                 ],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
     def test_combines_words_and_lines(self) -> None:
@@ -128,7 +128,7 @@ class TestExtractFromResponse:
                 "lines": [{"text": "ligne mots", "confidence": 0.7}],
             }],
         }
-        out = engine._extract_token_confidences_from_response(response)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(response))
         assert out is not None
         assert len(out) == 3  # 1 word explicit + 2 mots de la ligne
 
@@ -141,17 +141,17 @@ class TestExtractFromResponse:
 class TestDegenerateResponses:
     def test_none_response(self) -> None:
         engine = MistralOCREngine()
-        assert engine._extract_token_confidences_from_response(None) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(None)) is None
 
     def test_empty_dict(self) -> None:
         engine = MistralOCREngine()
-        assert engine._extract_token_confidences_from_response({}) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences({})) is None
 
     def test_no_pages(self) -> None:
         engine = MistralOCREngine()
-        assert engine._extract_token_confidences_from_response(
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(
             {"pages": []},
-        ) is None
+        )) is None
 
     def test_pages_without_confidences(self) -> None:
         engine = MistralOCREngine()
@@ -160,12 +160,12 @@ class TestDegenerateResponses:
                 {"markdown": "Texte sans annotation de confidence"},
             ],
         }
-        assert engine._extract_token_confidences_from_response(response) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(response)) is None
 
     def test_non_dict_input(self) -> None:
         engine = MistralOCREngine()
-        assert engine._extract_token_confidences_from_response("not a dict") is None
-        assert engine._extract_token_confidences_from_response([1, 2, 3]) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences("not a dict")) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences([1, 2, 3])) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ class TestExposeFlag:
                 "words": [{"text": "ok", "confidence": 0.9}],
             }],
         }
-        assert engine._extract_token_confidences_from_response(response) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(response)) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ def _mock_run_with_response(
         return text, raw_response
 
     monkeypatch.setattr(
-        MistralOCREngine, "_run_ocr_with_response", _fake,
+        MistralOCREngine, "_run_with_native", _fake,
     )
     return engine
 
@@ -274,7 +274,7 @@ class TestRunOverride:
 
 class TestEndToEndWithRunner:
     def test_runner_picks_up_mistral_confidences(self) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         ocr = EngineResult(

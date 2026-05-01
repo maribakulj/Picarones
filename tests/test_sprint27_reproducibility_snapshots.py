@@ -101,7 +101,7 @@ class TestGlossarySnapshot:
 
 class TestNormalizationSnapshot:
     def test_builtin_profile_serializes(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         from picarones.report.snapshot import normalization_snapshot
         p = get_builtin_profile("medieval_french")
         s = normalization_snapshot(p)
@@ -117,7 +117,7 @@ class TestNormalizationSnapshot:
         assert s["available"] is False
 
     def test_exclude_chars_sorted(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         from picarones.report.snapshot import normalization_snapshot
         p = get_builtin_profile("sans_ponctuation")
         s = normalization_snapshot(p)
@@ -171,7 +171,7 @@ class TestSnapshotAll:
         assert s["schema_version"] == 1
 
     def test_deterministic_for_same_inputs(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         from picarones.report.snapshot import snapshot_all
         profile = get_builtin_profile("nfc")
 
@@ -192,7 +192,7 @@ class TestSnapshotAll:
 def generated_report_html(tmp_path_factory) -> str:
     """Génère un rapport démo et retourne son contenu HTML."""
     from picarones import fixtures
-    from picarones.core.normalization import get_builtin_profile
+    from picarones.measurements.normalization import get_builtin_profile
     from picarones.report.generator import ReportGenerator
 
     b = fixtures.generate_sample_benchmark(n_docs=6)

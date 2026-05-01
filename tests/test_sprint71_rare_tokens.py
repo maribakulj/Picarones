@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.rare_tokens import (
+from picarones.measurements.rare_tokens import (
     compute_rare_token_recall,
     extract_rare_tokens,
     frequency_distribution,

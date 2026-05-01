@@ -333,7 +333,7 @@ def compute_multirun_stability(
     cer_stdev: Optional[float] = None
     cer_cv: Optional[float] = None
     if reference is not None:
-        from picarones.core.metrics import _cer_from_strings
+        from picarones.measurements.metrics import _cer_from_strings
         cer_per_run = [_cer_from_strings(reference, r) for r in runs_list]
         cer_per_run = [v for v in cer_per_run if v is not None]
         if cer_per_run:

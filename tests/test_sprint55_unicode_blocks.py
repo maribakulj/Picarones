@@ -25,7 +25,7 @@ import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
 from picarones.core.modules import ArtifactType
-from picarones.core.unicode_blocks import (
+from picarones.measurements.unicode_blocks import (
     compute_unicode_block_accuracy,
     get_block,
     unicode_block_global_accuracy,
@@ -187,7 +187,7 @@ class TestShortcut:
 class TestRegistryIntegration:
     def test_metric_registered_for_text_text(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.core.unicode_blocks  # noqa: F401
+        import picarones.measurements.unicode_blocks  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

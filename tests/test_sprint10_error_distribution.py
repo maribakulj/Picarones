@@ -41,31 +41,31 @@ HYP_HALLUCINATED = (
 # ===========================================================================
 
 class TestLineMetrics:
-    """Tests pour picarones.core.line_metrics.compute_line_metrics."""
+    """Tests pour picarones.measurements.line_metrics.compute_line_metrics."""
 
     def test_import(self):
-        from picarones.core.line_metrics import compute_line_metrics, LineMetrics
+        from picarones.measurements.line_metrics import compute_line_metrics, LineMetrics
         assert callable(compute_line_metrics)
         assert LineMetrics is not None
 
     def test_perfect_match_cer_zero(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_PERFECT)
         assert result.mean_cer == pytest.approx(0.0, abs=1e-9)
         assert all(v == pytest.approx(0.0, abs=1e-9) for v in result.cer_per_line)
 
     def test_line_count(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         assert result.line_count == 3
 
     def test_cer_per_line_length(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         assert len(result.cer_per_line) == 3
 
     def test_percentiles_keys(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         for key in ("p50", "p75", "p90", "p95", "p99"):
             assert key in result.percentiles
@@ -73,23 +73,23 @@ class TestLineMetrics:
 
     def test_percentile_ordering(self):
         """p50 ≤ p75 ≤ p90 ≤ p95 ≤ p99."""
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         p = result.percentiles
         assert p["p50"] <= p["p75"] <= p["p90"] <= p["p95"] <= p["p99"]
 
     def test_gini_zero_for_perfect(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_PERFECT)
         assert result.gini == pytest.approx(0.0, abs=1e-9)
 
     def test_gini_range(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         assert 0.0 <= result.gini <= 1.0
 
     def test_catastrophic_rate_keys(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS,
                                       thresholds=[0.30, 0.50, 1.00])
         for t in (0.30, 0.50, 1.00):
@@ -97,12 +97,12 @@ class TestLineMetrics:
             assert 0.0 <= result.catastrophic_rate[t] <= 1.0
 
     def test_heatmap_length(self):
-        from picarones.core.line_metrics import compute_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS, heatmap_bins=5)
         assert len(result.heatmap) == 5
 
     def test_as_dict_and_from_dict_roundtrip(self):
-        from picarones.core.line_metrics import compute_line_metrics, LineMetrics
+        from picarones.measurements.line_metrics import compute_line_metrics, LineMetrics
         result = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         d = result.as_dict()
         restored = LineMetrics.from_dict(d)
@@ -111,7 +111,7 @@ class TestLineMetrics:
         assert len(restored.cer_per_line) == len(result.cer_per_line)
 
     def test_aggregate_line_metrics(self):
-        from picarones.core.line_metrics import compute_line_metrics, aggregate_line_metrics
+        from picarones.measurements.line_metrics import compute_line_metrics, aggregate_line_metrics
         r1 = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_PERFECT)
         r2 = compute_line_metrics(GT_MULTILINE, HYP_MULTILINE_ERRORS)
         agg = aggregate_line_metrics([r1, r2])
@@ -128,64 +128,64 @@ class TestLineMetrics:
 # ===========================================================================
 
 class TestHallucinationMetrics:
-    """Tests pour picarones.core.hallucination.compute_hallucination_metrics."""
+    """Tests pour picarones.measurements.hallucination.compute_hallucination_metrics."""
 
     def test_import(self):
-        from picarones.core.hallucination import compute_hallucination_metrics, HallucinationMetrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics, HallucinationMetrics
         assert callable(compute_hallucination_metrics)
         assert HallucinationMetrics is not None
 
     def test_perfect_match_anchor_one(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_SIMPLE, HYP_PERFECT)
         # Ancrage parfait → score proche de 1.0
         assert result.anchor_score == pytest.approx(1.0, abs=0.05)
         assert result.is_hallucinating is False
 
     def test_length_ratio_perfect(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_SIMPLE, HYP_PERFECT)
         assert result.length_ratio == pytest.approx(1.0, abs=0.05)
 
     def test_hallucination_detected(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_MEDIEVAL, HYP_HALLUCINATED)
         # L'hypothèse est beaucoup plus longue
         assert result.length_ratio > 1.0
         assert result.is_hallucinating is True
 
     def test_hallucinated_blocks_detected(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_MEDIEVAL, HYP_HALLUCINATED,
                                                anchor_threshold=0.5, min_block_length=3)
         # Des blocs hallucinés doivent être détectés
         assert len(result.hallucinated_blocks) > 0
 
     def test_net_insertion_rate_range(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_MEDIEVAL, HYP_HALLUCINATED)
         assert 0.0 <= result.net_insertion_rate <= 1.0
 
     def test_word_counts(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_SIMPLE, HYP_PERFECT)
         assert result.gt_word_count > 0
         assert result.hyp_word_count > 0
 
     def test_empty_reference(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics("", "some text here added by model")
         # Référence vide : insertion nette maximale
         assert result.net_insertion_rate == pytest.approx(1.0, abs=0.05)
 
     def test_empty_hypothesis(self):
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(GT_SIMPLE, "")
         assert result.hyp_word_count == 0
         assert result.net_insertion_rate == pytest.approx(0.0)
 
     def test_as_dict_and_from_dict_roundtrip(self):
-        from picarones.core.hallucination import compute_hallucination_metrics, HallucinationMetrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics, HallucinationMetrics
         result = compute_hallucination_metrics(GT_MEDIEVAL, HYP_HALLUCINATED)
         d = result.as_dict()
         restored = HallucinationMetrics.from_dict(d)
@@ -194,7 +194,7 @@ class TestHallucinationMetrics:
         assert len(restored.hallucinated_blocks) == len(result.hallucinated_blocks)
 
     def test_aggregate_hallucination_metrics(self):
-        from picarones.core.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
         r1 = compute_hallucination_metrics(GT_SIMPLE, HYP_PERFECT)
         r2 = compute_hallucination_metrics(GT_MEDIEVAL, HYP_HALLUCINATED)
         agg = aggregate_hallucination_metrics([r1, r2])
@@ -207,7 +207,7 @@ class TestHallucinationMetrics:
 
     def test_anchor_threshold_respected(self):
         """Un ancrage très bas déclenche le badge hallucination."""
-        from picarones.core.hallucination import compute_hallucination_metrics
+        from picarones.measurements.hallucination import compute_hallucination_metrics
         result = compute_hallucination_metrics(
             "abc def ghi", "xyz uvw rst opq lmn",
             anchor_threshold=0.5
@@ -225,7 +225,7 @@ class TestLineMetricsInResults:
 
     def test_document_result_has_line_metrics_field(self):
         from picarones.core.results import DocumentResult
-        from picarones.core.metrics import MetricsResult
+        from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_001",
             image_path="/test/img.jpg",
@@ -245,7 +245,7 @@ class TestLineMetricsInResults:
 
     def test_document_result_has_hallucination_metrics_field(self):
         from picarones.core.results import DocumentResult
-        from picarones.core.metrics import MetricsResult
+        from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_002",
             image_path="/test/img.jpg",
@@ -265,7 +265,7 @@ class TestLineMetricsInResults:
 
     def test_document_result_as_dict_includes_sprint10_fields(self):
         from picarones.core.results import DocumentResult
-        from picarones.core.metrics import MetricsResult
+        from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_003",
             image_path="/test/img.jpg",
@@ -287,7 +287,7 @@ class TestLineMetricsInResults:
 
     def test_engine_report_has_aggregated_sprint10_fields(self):
         from picarones.core.results import EngineReport, DocumentResult
-        from picarones.core.metrics import MetricsResult
+        from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_004",
             image_path="/test/img.jpg",

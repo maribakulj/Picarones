@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.lexical_modernization import (
+from picarones.measurements.lexical_modernization import (
     aggregate_lexical_modernization,
     compute_lexical_modernization,
     top_modernized_tokens,

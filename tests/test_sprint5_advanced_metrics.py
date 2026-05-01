@@ -17,7 +17,7 @@ import pytest
 # Tests ConfusionMatrix
 # ===========================================================================
 
-from picarones.core.confusion import (
+from picarones.measurements.confusion import (
     EMPTY_CHAR,
     build_confusion_matrix,
     aggregate_confusion_matrices,
@@ -146,7 +146,7 @@ class TestTopConfusedChars:
 # Tests LigatureScore
 # ===========================================================================
 
-from picarones.core.char_scores import (
+from picarones.measurements.char_scores import (
     LIGATURE_TABLE,
     LigatureScore,
     DiacriticScore,
@@ -288,7 +288,7 @@ class TestAggregateDiacriticScores:
 # Tests TaxonomyResult
 # ===========================================================================
 
-from picarones.core.taxonomy import (
+from picarones.measurements.taxonomy import (
     TaxonomyResult,
     ERROR_CLASSES,
     classify_errors,
@@ -395,7 +395,7 @@ class TestAggregateTaxonomy:
 # Tests StructureResult
 # ===========================================================================
 
-from picarones.core.structure import (
+from picarones.measurements.structure import (
     StructureResult,
     analyze_structure,
     aggregate_structure,
@@ -504,7 +504,7 @@ class TestAggregateStructure:
 # Tests ImageQualityResult
 # ===========================================================================
 
-from picarones.core.image_quality import (
+from picarones.measurements.image_quality import (
     ImageQualityResult,
     generate_mock_quality_scores,
     aggregate_image_quality,

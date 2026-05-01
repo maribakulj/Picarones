@@ -51,7 +51,7 @@ import threading
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from picarones.measurements.narrative.facts import (
+from picarones.core.facts import (
     DetectorFn,
     DetectorRegistry,
     FactImportance,

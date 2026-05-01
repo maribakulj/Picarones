@@ -33,11 +33,11 @@ import pytest
 
 from picarones.core.corpus import Corpus, Document, GTLevel, TextGT
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline_comparison import (
+from picarones.measurements.pipeline_comparison import (
     PipelineComparisonResult,
     compare_pipelines,
 )
-from picarones.core.pipeline_runner import PipelineSpec, PipelineStep
+from picarones.core.pipeline import PipelineSpec, PipelineStep
 
 
 # ──────────────────────────────────────────────────────────────────────────

@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.image_predictive import (
+from picarones.measurements.image_predictive import (
     DEFAULT_COMPLEXITY_WEIGHTS,
     aggregate_corpus_predictive,
     compute_corpus_homogeneity,

@@ -20,7 +20,7 @@ le chercheur arbitre selon son budget.
 
 Dépendance
 ----------
-S'appuie sur ``picarones.core.pricing`` (Sprint 20) qui expose
+S'appuie sur ``picarones.measurements.pricing`` (Sprint 20) qui expose
 ``EngineCost.cost_per_1k_pages_eur`` et
 ``co2_per_1k_pages_g``.
 """
@@ -31,7 +31,7 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from picarones.core.pricing import EngineCost
+from picarones.measurements.pricing import EngineCost
 
 logger = logging.getLogger(__name__)
 

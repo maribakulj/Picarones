@@ -24,15 +24,15 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.longitudinal import (
+from picarones.measurements.longitudinal import (
     compute_corpus_longitudinal,
     compute_engine_longitudinal,
     compute_linear_trend,
     detect_change_point,
 )
-from picarones.core.narrative import build_synthesis
-from picarones.core.narrative.detectors import detect_regression_in_history
-from picarones.core.narrative.facts import FactImportance, FactType
+from picarones.measurements.narrative import build_synthesis
+from picarones.measurements.narrative.detectors import detect_regression_in_history
+from picarones.core.facts import FactImportance, FactType
 from picarones.report.longitudinal_render import build_longitudinal_html
 
 

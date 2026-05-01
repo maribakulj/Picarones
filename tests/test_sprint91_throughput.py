@@ -20,11 +20,11 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.marginal_cost import (
+from picarones.measurements.marginal_cost import (
     compute_marginal_cost,
     compute_marginal_cost_matrix,
 )
-from picarones.core.throughput import (
+from picarones.measurements.throughput import (
     aggregate_effective_throughput,
     compute_effective_throughput,
 )

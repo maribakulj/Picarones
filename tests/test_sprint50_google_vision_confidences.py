@@ -65,7 +65,7 @@ class TestExtractFromFullText:
     def test_reconstructs_word_from_symbols(self) -> None:
         engine = GoogleVisionEngine()
         full = _full_text([_word("Bonjour", 0.95)])
-        assert engine._extract_token_confidences_from_full_text(full) == [
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(full)) == [
             {"token": "Bonjour", "confidence": 0.95},
         ]
 
@@ -75,7 +75,7 @@ class TestExtractFromFullText:
             _word("Bonjour", 0.95),
             _word("monde", 0.88),
         ])
-        out = engine._extract_token_confidences_from_full_text(full)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(full))
         assert out == [
             {"token": "Bonjour", "confidence": 0.95},
             {"token": "monde",   "confidence": 0.88},
@@ -88,7 +88,7 @@ class TestExtractFromFullText:
             {"symbols": [{"text": "nope"}]},          # pas de confidence
             {"confidence": None, "symbols": [{"text": "nope"}]},  # None
         ])
-        out = engine._extract_token_confidences_from_full_text(full)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(full))
         assert out == [{"token": "ok", "confidence": 0.95}]
 
     def test_skips_negative_confidence(self) -> None:
@@ -97,7 +97,7 @@ class TestExtractFromFullText:
             _word("ok", 0.9),
             _word("dropped", -0.1),
         ])
-        out = engine._extract_token_confidences_from_full_text(full)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(full))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
     def test_skips_empty_text(self) -> None:
@@ -106,7 +106,7 @@ class TestExtractFromFullText:
             _word("", 0.95),
             _word("ok", 0.9),
         ])
-        out = engine._extract_token_confidences_from_full_text(full)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(full))
         assert out == [{"token": "ok", "confidence": 0.9}]
 
     def test_traverses_multiple_pages_and_blocks(self) -> None:
@@ -122,7 +122,7 @@ class TestExtractFromFullText:
                 ]},
             ],
         }
-        out = engine._extract_token_confidences_from_full_text(full)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(full))
         assert out is not None
         tokens = [tc["token"] for tc in out]
         assert tokens == ["alpha", "beta", "gamma"]
@@ -137,7 +137,7 @@ class TestExposeFlag:
     def test_disabled_returns_none(self) -> None:
         engine = GoogleVisionEngine(config={"expose_confidences": False})
         full = _full_text([_word("ok", 0.95)])
-        assert engine._extract_token_confidences_from_full_text(full) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(full)) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -148,23 +148,23 @@ class TestExposeFlag:
 class TestDegenerateInputs:
     def test_none(self) -> None:
         engine = GoogleVisionEngine()
-        assert engine._extract_token_confidences_from_full_text(None) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(None)) is None
 
     def test_empty_dict(self) -> None:
         engine = GoogleVisionEngine()
-        assert engine._extract_token_confidences_from_full_text({}) is None
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences({})) is None
 
     def test_no_pages(self) -> None:
         engine = GoogleVisionEngine()
-        assert engine._extract_token_confidences_from_full_text(
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(
             {"pages": []},
-        ) is None
+        )) is None
 
     def test_pages_without_blocks(self) -> None:
         engine = GoogleVisionEngine()
-        assert engine._extract_token_confidences_from_full_text(
+        assert engine._normalize_token_confidences(engine._extract_raw_confidences(
             {"pages": [{"text": "raw text only"}]},
-        ) is None
+        )) is None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ def _patch_run_with_full(
         return text, full
 
     monkeypatch.setattr(
-        GoogleVisionEngine, "_run_ocr_with_full_annotation", _fake,
+        GoogleVisionEngine, "_run_with_native", _fake,
     )
     return engine
 
@@ -320,7 +320,7 @@ class TestRESTPath:
         assert "pages" in full
 
         # L'extraction passe ensuite normalement
-        out = engine._extract_token_confidences_from_full_text(full)
+        out = engine._normalize_token_confidences(engine._extract_raw_confidences(full))
         assert out == [{"token": "Bonjour", "confidence": 0.97}]
 
 
@@ -331,7 +331,7 @@ class TestRESTPath:
 
 class TestEndToEndWithRunner:
     def test_runner_picks_up_google_vision_confidences(self) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         from picarones.engines.base import EngineResult
 
         ocr = EngineResult(

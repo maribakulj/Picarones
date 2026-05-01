@@ -12,9 +12,9 @@ de la CLI puisse composer un mini-rapport HTML autonome.
 Sources de données
 ------------------
 - ``opts["projection"]`` : sortie de
-  :func:`picarones.core.robustness_projection.project_robustness_on_corpus`.
+  :func:`picarones.measurements.robustness_projection.project_robustness_on_corpus`.
 - ``opts["aggregated"]`` : sortie de
-  :func:`picarones.core.robustness_projection.aggregate_projection_per_engine`.
+  :func:`picarones.measurements.robustness_projection.aggregate_projection_per_engine`.
 """
 
 from __future__ import annotations
@@ -43,10 +43,10 @@ def build_robustness_view_html(
         Dict i18n complet.
     projection:
         Sortie de
-        :func:`picarones.core.robustness_projection.project_robustness_on_corpus`.
+        :func:`picarones.measurements.robustness_projection.project_robustness_on_corpus`.
     aggregated:
         Sortie de
-        :func:`picarones.core.robustness_projection.aggregate_projection_per_engine`.
+        :func:`picarones.measurements.robustness_projection.aggregate_projection_per_engine`.
         Si ``None`` mais ``projection`` fourni, recalculé.
 
     Returns

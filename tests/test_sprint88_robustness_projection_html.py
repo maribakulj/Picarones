@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.robustness_projection import (
+from picarones.measurements.robustness_projection import (
     aggregate_projection_per_engine,
     project_robustness_on_corpus,
 )

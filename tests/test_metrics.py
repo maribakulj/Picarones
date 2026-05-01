@@ -1,8 +1,8 @@
-"""Tests unitaires pour le module picarones.core.metrics."""
+"""Tests unitaires pour le module picarones.measurements.metrics."""
 
 import pytest
 
-from picarones.core.metrics import aggregate_metrics, compute_metrics, MetricsResult
+from picarones.measurements.metrics import aggregate_metrics, compute_metrics, MetricsResult
 
 
 class TestComputeMetrics:

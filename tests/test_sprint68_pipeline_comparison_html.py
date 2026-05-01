@@ -32,11 +32,11 @@ import json
 from pathlib import Path
 
 from picarones.core.modules import ArtifactType
-from picarones.core.pipeline_benchmark import (
+from picarones.measurements.pipeline_benchmark import (
     PipelineBenchmarkResult,
     StepAggregate,
 )
-from picarones.core.pipeline_comparison import PipelineComparisonResult
+from picarones.measurements.pipeline_comparison import PipelineComparisonResult
 from picarones.report.pipeline_render import (
     RankingSpec,
     build_pipeline_comparison_report_html,

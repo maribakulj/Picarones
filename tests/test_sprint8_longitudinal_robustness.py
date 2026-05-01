@@ -29,11 +29,11 @@ class TestBenchmarkHistory:
 
     @pytest.fixture
     def db(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         return BenchmarkHistory(":memory:")
 
     def test_import_module(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         assert BenchmarkHistory is not None
 
     def test_init_in_memory(self, db):
@@ -142,11 +142,11 @@ class TestBenchmarkHistory:
 class TestHistoryEntry:
 
     def test_import(self):
-        from picarones.core.history import HistoryEntry
+        from picarones.measurements.history import HistoryEntry
         assert HistoryEntry is not None
 
     def test_cer_percent(self):
-        from picarones.core.history import HistoryEntry
+        from picarones.measurements.history import HistoryEntry
         entry = HistoryEntry(
             run_id="r1", timestamp="2025-01-01T00:00:00+00:00",
             corpus_name="C", engine_name="tesseract",
@@ -155,12 +155,12 @@ class TestHistoryEntry:
         assert abs(entry.cer_percent - 12.0) < 0.01
 
     def test_cer_percent_none(self):
-        from picarones.core.history import HistoryEntry
+        from picarones.measurements.history import HistoryEntry
         entry = HistoryEntry("r", "2025", "C", "e", None, None, 0)
         assert entry.cer_percent is None
 
     def test_as_dict_keys(self):
-        from picarones.core.history import HistoryEntry
+        from picarones.measurements.history import HistoryEntry
         entry = HistoryEntry("r1", "2025-01-01", "C", "tesseract", 0.10, 0.18, 5)
         d = entry.as_dict()
         assert "run_id" in d
@@ -168,14 +168,14 @@ class TestHistoryEntry:
         assert "engine_name" in d
 
     def test_as_dict_metadata(self):
-        from picarones.core.history import HistoryEntry
+        from picarones.measurements.history import HistoryEntry
         entry = HistoryEntry("r1", "2025-01-01", "C", "tesseract", 0.10, 0.18, 5,
                              metadata={"key": "value"})
         d = entry.as_dict()
         assert d["metadata"] == {"key": "value"}
 
     def test_query_result_is_history_entry(self):
-        from picarones.core.history import BenchmarkHistory, HistoryEntry
+        from picarones.measurements.history import BenchmarkHistory, HistoryEntry
         db = BenchmarkHistory(":memory:")
         db.record_single("r1", "C", "tesseract", 0.10, 0.18, 5)
         entries = db.query()
@@ -190,7 +190,7 @@ class TestRegressionResult:
 
     @pytest.fixture
     def db_with_runs(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         db = BenchmarkHistory(":memory:")
         db.record_single("r1", "C", "tesseract", 0.12, 0.20, 10, timestamp="2025-01-01T00:00:00+00:00")
         db.record_single("r2", "C", "tesseract", 0.15, 0.25, 10, timestamp="2025-06-01T00:00:00+00:00")
@@ -212,7 +212,7 @@ class TestRegressionResult:
         assert result.current_cer is not None
 
     def test_detect_no_regression(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         db = BenchmarkHistory(":memory:")
         # CER diminue = amélioration = pas de régression
         db.record_single("r1", "C", "tesseract", 0.15, 0.25, 5, timestamp="2025-01-01T00:00:00+00:00")
@@ -222,14 +222,14 @@ class TestRegressionResult:
         assert result.is_regression is False
 
     def test_detect_regression_none_if_single_run(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         db = BenchmarkHistory(":memory:")
         db.record_single("r1", "C", "tesseract", 0.12, 0.20, 5)
         result = db.detect_regression("tesseract")
         assert result is None
 
     def test_detect_all_regressions(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         db = BenchmarkHistory(":memory:")
         db.record_single("r1", "C", "tesseract", 0.10, 0.18, 5, timestamp="2025-01-01T00:00:00+00:00")
         db.record_single("r2", "C", "tesseract", 0.20, 0.35, 5, timestamp="2025-06-01T00:00:00+00:00")
@@ -244,7 +244,7 @@ class TestRegressionResult:
         assert "engine_name" in d
 
     def test_regression_threshold_respected(self):
-        from picarones.core.history import BenchmarkHistory
+        from picarones.measurements.history import BenchmarkHistory
         db = BenchmarkHistory(":memory:")
         db.record_single("r1", "C", "tesseract", 0.100, 0.18, 5, timestamp="2025-01-01T00:00:00+00:00")
         db.record_single("r2", "C", "tesseract", 0.105, 0.19, 5, timestamp="2025-06-01T00:00:00+00:00")
@@ -264,27 +264,27 @@ class TestRegressionResult:
 class TestGenerateDemoHistory:
 
     def test_generate_fills_db(self):
-        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
         db = BenchmarkHistory(":memory:")
         generate_demo_history(db, n_runs=5)
         assert db.count() > 0
 
     def test_generate_creates_multiple_engines(self):
-        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
         db = BenchmarkHistory(":memory:")
         generate_demo_history(db, n_runs=4)
         engines = db.list_engines()
         assert len(engines) >= 2
 
     def test_generate_n_runs(self):
-        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
         db = BenchmarkHistory(":memory:")
         generate_demo_history(db, n_runs=8)
         # 8 runs × 3 moteurs = 24 entrées
         assert db.count() == 8 * 3
 
     def test_cer_values_in_range(self):
-        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
         db = BenchmarkHistory(":memory:")
         generate_demo_history(db, n_runs=5)
         entries = db.query()
@@ -294,7 +294,7 @@ class TestGenerateDemoHistory:
 
     def test_regression_detectable_in_demo(self):
         """La démo inclut une régression simulée au run 5 (tesseract)."""
-        from picarones.core.history import BenchmarkHistory, generate_demo_history
+        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
         db = BenchmarkHistory(":memory:")
         generate_demo_history(db, n_runs=8, seed=42)
         # Vérifier que l'historique a été créé
@@ -311,33 +311,33 @@ class TestGenerateDemoHistory:
 class TestDegradationLevels:
 
     def test_import_constants(self):
-        from picarones.core.robustness import DEGRADATION_LEVELS, ALL_DEGRADATION_TYPES
+        from picarones.measurements.robustness import DEGRADATION_LEVELS, ALL_DEGRADATION_TYPES
         assert len(DEGRADATION_LEVELS) > 0
         assert len(ALL_DEGRADATION_TYPES) > 0
 
     def test_all_types_in_levels(self):
-        from picarones.core.robustness import DEGRADATION_LEVELS, ALL_DEGRADATION_TYPES
+        from picarones.measurements.robustness import DEGRADATION_LEVELS, ALL_DEGRADATION_TYPES
         for t in ALL_DEGRADATION_TYPES:
             assert t in DEGRADATION_LEVELS
 
     def test_noise_levels(self):
-        from picarones.core.robustness import DEGRADATION_LEVELS
+        from picarones.measurements.robustness import DEGRADATION_LEVELS
         levels = DEGRADATION_LEVELS["noise"]
         assert len(levels) >= 2
         assert 0 in levels  # niveau original
 
     def test_blur_levels(self):
-        from picarones.core.robustness import DEGRADATION_LEVELS
+        from picarones.measurements.robustness import DEGRADATION_LEVELS
         levels = DEGRADATION_LEVELS["blur"]
         assert 0 in levels
 
     def test_resolution_levels_include_1(self):
-        from picarones.core.robustness import DEGRADATION_LEVELS
+        from picarones.measurements.robustness import DEGRADATION_LEVELS
         levels = DEGRADATION_LEVELS["resolution"]
         assert 1.0 in levels  # résolution originale
 
     def test_labels_match_levels(self):
-        from picarones.core.robustness import DEGRADATION_LEVELS, DEGRADATION_LABELS
+        from picarones.measurements.robustness import DEGRADATION_LEVELS, DEGRADATION_LABELS
         for dtype in DEGRADATION_LEVELS:
             if dtype in DEGRADATION_LABELS:
                 assert len(DEGRADATION_LABELS[dtype]) == len(DEGRADATION_LEVELS[dtype])
@@ -355,60 +355,60 @@ class TestDegradationFunctions:
         return _make_placeholder_png(40, 30)
 
     def test_degrade_image_bytes_imports(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         assert callable(degrade_image_bytes)
 
     def test_degrade_noise_returns_bytes(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "noise", 0)
         assert isinstance(result, bytes)
         assert len(result) > 0
 
     def test_degrade_blur_returns_bytes(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "blur", 0)
         assert isinstance(result, bytes)
 
     def test_degrade_rotation_returns_bytes(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "rotation", 0)
         assert isinstance(result, bytes)
 
     def test_degrade_resolution_returns_bytes(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "resolution", 1.0)
         assert isinstance(result, bytes)
 
     def test_degrade_binarization_returns_bytes(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "binarization", 0)
         assert isinstance(result, bytes)
 
     def test_degrade_noise_level_5(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "noise", 5)
         assert isinstance(result, bytes)
 
     def test_degrade_blur_level_2(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "blur", 2)
         assert isinstance(result, bytes)
 
     def test_degrade_resolution_half(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "resolution", 0.5)
         assert isinstance(result, bytes)
 
     def test_degrade_rotation_10_degrees(self):
-        from picarones.core.robustness import degrade_image_bytes
+        from picarones.measurements.robustness import degrade_image_bytes
         png = self._make_png()
         result = degrade_image_bytes(png, "rotation", 10)
         assert isinstance(result, bytes)
@@ -421,11 +421,11 @@ class TestDegradationFunctions:
 class TestDegradationCurve:
 
     def test_import(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         assert DegradationCurve is not None
 
     def test_as_dict_keys(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         curve = DegradationCurve(
             engine_name="tesseract",
             degradation_type="noise",
@@ -440,7 +440,7 @@ class TestDegradationCurve:
         assert "cer_values" in d
 
     def test_critical_threshold(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         curve = DegradationCurve(
             engine_name="tesseract",
             degradation_type="noise",
@@ -453,7 +453,7 @@ class TestDegradationCurve:
         assert curve.critical_threshold_level == 15
 
     def test_none_cer_allowed(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         curve = DegradationCurve(
             engine_name="e",
             degradation_type="blur",
@@ -464,17 +464,17 @@ class TestDegradationCurve:
         assert curve.cer_values[0] is None
 
     def test_default_cer_threshold(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         curve = DegradationCurve("e", "noise", [0], ["o"], [0.1])
         assert curve.cer_threshold == 0.20
 
     def test_engine_name_preserved(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         curve = DegradationCurve("pero_ocr", "blur", [0, 1], ["o", "r=1"], [0.05, 0.08])
         assert curve.engine_name == "pero_ocr"
 
     def test_as_dict_roundtrip(self):
-        from picarones.core.robustness import DegradationCurve
+        from picarones.measurements.robustness import DegradationCurve
         curve = DegradationCurve(
             engine_name="tesseract",
             degradation_type="rotation",
@@ -495,11 +495,11 @@ class TestDegradationCurve:
 class TestRobustnessReport:
 
     def test_import(self):
-        from picarones.core.robustness import RobustnessReport
+        from picarones.measurements.robustness import RobustnessReport
         assert RobustnessReport is not None
 
     def test_get_curves_for_engine(self):
-        from picarones.core.robustness import RobustnessReport, DegradationCurve
+        from picarones.measurements.robustness import RobustnessReport, DegradationCurve
         c1 = DegradationCurve("tesseract", "noise", [0, 5], ["o", "σ=5"], [0.10, 0.15])
         c2 = DegradationCurve("pero_ocr", "noise", [0, 5], ["o", "σ=5"], [0.07, 0.10])
         report = RobustnessReport(["tesseract", "pero_ocr"], "C", ["noise"], [c1, c2])
@@ -508,7 +508,7 @@ class TestRobustnessReport:
         assert tess_curves[0].engine_name == "tesseract"
 
     def test_get_curves_for_type(self):
-        from picarones.core.robustness import RobustnessReport, DegradationCurve
+        from picarones.measurements.robustness import RobustnessReport, DegradationCurve
         c1 = DegradationCurve("tesseract", "noise", [0, 5], ["o", "σ=5"], [0.10, 0.15])
         c2 = DegradationCurve("tesseract", "blur", [0, 2], ["o", "r=2"], [0.10, 0.14])
         report = RobustnessReport(["tesseract"], "C", ["noise", "blur"], [c1, c2])
@@ -517,7 +517,7 @@ class TestRobustnessReport:
         assert noise_curves[0].degradation_type == "noise"
 
     def test_as_dict_keys(self):
-        from picarones.core.robustness import RobustnessReport
+        from picarones.measurements.robustness import RobustnessReport
         report = RobustnessReport(["tesseract"], "C", ["noise"], [])
         d = report.as_dict()
         assert "engine_names" in d
@@ -525,7 +525,7 @@ class TestRobustnessReport:
         assert "summary" in d
 
     def test_as_dict_json_serializable(self):
-        from picarones.core.robustness import RobustnessReport, DegradationCurve
+        from picarones.measurements.robustness import RobustnessReport, DegradationCurve
         c = DegradationCurve("e", "noise", [0, 5], ["o", "n5"], [0.1, 0.2])
         report = RobustnessReport(["e"], "C", ["noise"], [c])
         d = report.as_dict()
@@ -534,18 +534,18 @@ class TestRobustnessReport:
         assert len(json_str) > 0
 
     def test_summary_populated(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report(engine_names=["tesseract"], seed=1)
         assert isinstance(report.summary, dict)
         assert len(report.summary) > 0
 
     def test_corpus_name_preserved(self):
-        from picarones.core.robustness import RobustnessReport
+        from picarones.measurements.robustness import RobustnessReport
         report = RobustnessReport(["e"], "Mon Corpus", ["noise"], [])
         assert report.corpus_name == "Mon Corpus"
 
     def test_engine_names_list(self):
-        from picarones.core.robustness import RobustnessReport
+        from picarones.measurements.robustness import RobustnessReport
         report = RobustnessReport(["tesseract", "pero_ocr"], "C", [], [])
         assert "tesseract" in report.engine_names
         assert "pero_ocr" in report.engine_names
@@ -558,17 +558,17 @@ class TestRobustnessReport:
 class TestRobustnessAnalyzer:
 
     def test_import(self):
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         assert RobustnessAnalyzer is not None
 
     def test_init_single_engine(self):
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         mock_engine = type("E", (), {"name": "tesseract"})()
         analyzer = RobustnessAnalyzer(mock_engine)
         assert len(analyzer.engines) == 1
 
     def test_init_list_engines(self):
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         engines = [
             type("E", (), {"name": "tesseract"})(),
             type("E", (), {"name": "pero_ocr"})(),
@@ -577,33 +577,33 @@ class TestRobustnessAnalyzer:
         assert len(analyzer.engines) == 2
 
     def test_default_degradation_types(self):
-        from picarones.core.robustness import RobustnessAnalyzer, ALL_DEGRADATION_TYPES
+        from picarones.measurements.robustness import RobustnessAnalyzer, ALL_DEGRADATION_TYPES
         e = type("E", (), {"name": "e"})()
         analyzer = RobustnessAnalyzer(e)
         assert set(analyzer.degradation_types) == set(ALL_DEGRADATION_TYPES)
 
     def test_custom_degradation_types(self):
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         e = type("E", (), {"name": "e"})()
         analyzer = RobustnessAnalyzer(e, degradation_types=["noise", "blur"])
         assert analyzer.degradation_types == ["noise", "blur"]
 
     def test_find_critical_level_found(self):
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         levels = [0, 5, 15, 30]
         cer_values = [0.10, 0.15, 0.22, 0.35]
         critical = RobustnessAnalyzer._find_critical_level(levels, cer_values, 0.20)
         assert critical == 15
 
     def test_find_critical_level_none(self):
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         levels = [0, 5, 15]
         cer_values = [0.05, 0.10, 0.15]
         critical = RobustnessAnalyzer._find_critical_level(levels, cer_values, 0.20)
         assert critical is None
 
     def test_build_summary(self):
-        from picarones.core.robustness import RobustnessAnalyzer, DegradationCurve
+        from picarones.measurements.robustness import RobustnessAnalyzer, DegradationCurve
         curves = [
             DegradationCurve("tesseract", "noise", [0, 5], ["o", "n5"], [0.10, 0.20]),
             DegradationCurve("pero_ocr", "noise", [0, 5], ["o", "n5"], [0.07, 0.12]),
@@ -620,33 +620,33 @@ class TestRobustnessAnalyzer:
 class TestGenerateDemoRobustness:
 
     def test_import(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         assert callable(generate_demo_robustness_report)
 
     def test_returns_report(self):
-        from picarones.core.robustness import generate_demo_robustness_report, RobustnessReport
+        from picarones.measurements.robustness import generate_demo_robustness_report, RobustnessReport
         report = generate_demo_robustness_report()
         assert isinstance(report, RobustnessReport)
 
     def test_default_engines(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report()
         assert "tesseract" in report.engine_names
         assert "pero_ocr" in report.engine_names
 
     def test_custom_engines(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report(engine_names=["moteur_custom"])
         assert "moteur_custom" in report.engine_names
 
     def test_all_degradation_types_present(self):
-        from picarones.core.robustness import generate_demo_robustness_report, ALL_DEGRADATION_TYPES
+        from picarones.measurements.robustness import generate_demo_robustness_report, ALL_DEGRADATION_TYPES
         report = generate_demo_robustness_report()
         types_in_report = {c.degradation_type for c in report.curves}
         assert types_in_report == set(ALL_DEGRADATION_TYPES)
 
     def test_cer_values_in_range(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report(seed=99)
         for curve in report.curves:
             for cer in curve.cer_values:
@@ -655,7 +655,7 @@ class TestGenerateDemoRobustness:
 
     def test_cer_increases_with_degradation(self):
         """Pour la plupart des types, le CER doit augmenter avec le niveau de dégradation."""
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report(seed=42)
         for curve in report.curves:
             valid = [c for c in curve.cer_values if c is not None]
@@ -667,18 +667,18 @@ class TestGenerateDemoRobustness:
                 )
 
     def test_reproducible_with_seed(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         r1 = generate_demo_robustness_report(seed=7)
         r2 = generate_demo_robustness_report(seed=7)
         assert r1.curves[0].cer_values == r2.curves[0].cer_values
 
     def test_summary_contains_most_robust(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report()
         assert any("most_robust" in k for k in report.summary)
 
     def test_json_serializable(self):
-        from picarones.core.robustness import generate_demo_robustness_report
+        from picarones.measurements.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report()
         d = report.as_dict()
         json_str = json.dumps(d, ensure_ascii=False)

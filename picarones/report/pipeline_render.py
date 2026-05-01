@@ -48,8 +48,8 @@ from html import escape as _e
 from typing import Optional
 
 from picarones.core.modules import ArtifactType
-from picarones.core.pipeline_benchmark import PipelineBenchmarkResult
-from picarones.core.pipeline_comparison import PipelineComparisonResult
+from picarones.measurements.pipeline_benchmark import PipelineBenchmarkResult
+from picarones.measurements.pipeline_comparison import PipelineComparisonResult
 
 
 # ──────────────────────────────────────────────────────────────────────────

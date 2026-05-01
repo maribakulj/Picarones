@@ -21,8 +21,8 @@ Ce reconstructeur est volontairement **primitif** :
 Cette baseline n'a pas vocation à être un bon reconstructeur — elle a
 vocation à être un **point de comparaison stable**.  Un VLM produisant un
 ALTO doit faire mieux qu'elle ; c'est mesurable via Layout F1
-(:mod:`picarones.core.layout`) et via les métriques
-``alto_text_cer``/``alto_text_wer`` (:mod:`picarones.core.alto_metrics`).
+(:mod:`picarones.measurements.layout`) et via les métriques
+``alto_text_cer``/``alto_text_wer`` (:mod:`picarones.measurements.alto_metrics`).
 
 Conformité ALTO 4.2
 -------------------

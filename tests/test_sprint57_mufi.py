@@ -33,7 +33,7 @@ import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
 from picarones.core.modules import ArtifactType
-from picarones.core.mufi import (
+from picarones.measurements.mufi import (
     compute_mufi_coverage,
     is_mufi_char,
     mufi_coverage,
@@ -203,7 +203,7 @@ class TestShortcut:
 class TestRegistryIntegration:
     def test_metric_registered_for_text_text(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.core.mufi  # noqa: F401
+        import picarones.measurements.mufi  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

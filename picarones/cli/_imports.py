@@ -76,7 +76,7 @@ def import_iiif_cmd(
     """
     _setup_logging(verbose)
 
-    from picarones.importers.iiif import IIIFImporter
+    from picarones.extras.importers.iiif import IIIFImporter
 
     click.echo(f"Manifeste IIIF : {manifest_url}")
 

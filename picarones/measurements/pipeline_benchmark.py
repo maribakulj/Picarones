@@ -47,7 +47,7 @@ from typing import Any, Callable, Optional
 
 from picarones.core.corpus import Corpus, Document
 from picarones.core.modules import ArtifactType
-from picarones.core.pipeline_runner import (
+from picarones.core.pipeline import (
     PipelineResult,
     PipelineRunner,
     PipelineSpec,

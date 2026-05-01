@@ -20,7 +20,7 @@ Cette vue est un **module pur** — l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.core.throughput import (
+    from picarones.measurements.throughput import (
         aggregate_effective_throughput,
     )
     from picarones.report.throughput_render import (

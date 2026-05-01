@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.layout import (
+from picarones.measurements.layout import (
     Region,
     _iou_bbox,
     compute_layout_metrics,

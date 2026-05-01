@@ -1,6 +1,6 @@
 """Tests Sprint 38 — métriques NER (couche de calcul pure).
 
-Le module ``picarones.core.ner`` expose :
+Le module ``picarones.measurements.ner`` expose :
 
 - la dataclass ``Entity`` ;
 - ``compute_ner_metrics(ref, hyp, iou_threshold=0.5)`` qui aligne deux
@@ -33,7 +33,7 @@ import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
 from picarones.core.modules import ArtifactType
-from picarones.core.ner import Entity, compute_ner_metrics, ner_f1
+from picarones.measurements.ner import Entity, compute_ner_metrics, ner_f1
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ class TestEntityValidation:
 class TestRegistryIntegration:
     def test_ner_f1_registered_for_entities_pair(self) -> None:
         # Force l'enregistrement
-        import picarones.core.ner  # noqa: F401
+        import picarones.measurements.ner  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.ENTITIES, ArtifactType.ENTITIES),
@@ -264,7 +264,7 @@ class TestRegistryIntegration:
         assert "ner_f1" in names
 
     def test_compute_at_junction_uses_ner_f1(self) -> None:
-        import picarones.core.ner  # noqa: F401
+        import picarones.measurements.ner  # noqa: F401
 
         ref = [{"label": "PER", "start": 0, "end": 5, "text": "Marie"}]
         hyp = [{"label": "PER", "start": 0, "end": 5, "text": "Marie"}]

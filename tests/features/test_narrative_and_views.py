@@ -8,7 +8,7 @@ Tests couvrant cette feature
 - :mod:`tests.test_chantier5` (classe ``TestDetectorsPackage``) —
   package thématique des détecteurs (chantier 5).
 - :mod:`tests.test_views` (chantier 3) — vue diagnostics qui consomme
-  les leviers calculés depuis ``picarones.core.levers``.
+  les leviers calculés depuis ``picarones.measurements.levers``.
 
 Sprints d'origine du moteur narratif
 ------------------------------------

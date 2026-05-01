@@ -1,6 +1,6 @@
 """Tests Sprint 39 — métriques de calibration (ECE, MCE, reliability).
 
-Le module ``picarones.core.calibration`` expose :
+Le module ``picarones.measurements.calibration`` expose :
 
 - ``CalibrationBin`` : un bin du reliability diagram
 - ``reliability_diagram(confidences, is_correct, n_bins=10)``
@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.calibration import (
+from picarones.measurements.calibration import (
     CalibrationBin,
     compute_calibration_metrics,
     expected_calibration_error,

@@ -5,7 +5,7 @@ Couvre :
 - :class:`picarones.modules.TextToAltoMonoRegion` : produit un ALTO 4.2
   conforme, déterministe, qui tolère absence d'image / image
   introuvable / dimensions invalides.
-- :func:`picarones.core.alto_metrics.extract_text_from_alto` : parsing
+- :func:`picarones.measurements.alto_metrics.extract_text_from_alto` : parsing
   tolérant (avec/sans namespace, ALTO partiel, GT ``AltoGT`` ou ``str``).
 - Métriques ``alto_text_cer`` / ``alto_text_wer`` enregistrées sur
   ``(ALTO, ALTO)`` et découvrables via ``compute_at_junction``.
@@ -22,14 +22,14 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from picarones.core.alto_metrics import (
+from picarones.measurements.alto_metrics import (
     alto_text_cer,
     extract_text_from_alto,
 )
 from picarones.core.corpus import AltoGT, Document, GTLevel, TextGT
 from picarones.core.metric_registry import compute_at_junction, select_metrics
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline_runner import (
+from picarones.core.pipeline import (
     PipelineRunner,
     PipelineSpec,
     PipelineStep,
@@ -237,7 +237,7 @@ class TestExtractTextFromAlto:
 class TestAltoMetricsRegistration:
     def test_alto_metrics_are_registered(self):
         # L'import du module doit avoir peuplé le registre.
-        import picarones.core.alto_metrics  # noqa: F401
+        import picarones.measurements.alto_metrics  # noqa: F401
 
         applicable = select_metrics(
             (ArtifactType.ALTO, ArtifactType.ALTO),
@@ -249,7 +249,7 @@ class TestAltoMetricsRegistration:
         assert "alto_text_wil" in names
 
     def test_compute_at_junction_runs_alto_metrics(self):
-        import picarones.core.alto_metrics  # noqa: F401
+        import picarones.measurements.alto_metrics  # noqa: F401
         ref = '<alto><TextLine><String CONTENT="hello"/></TextLine></alto>'
         hyp = '<alto><TextLine><String CONTENT="hello"/></TextLine></alto>'
         results = compute_at_junction(

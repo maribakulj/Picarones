@@ -16,14 +16,14 @@ import json
 from pathlib import Path
 
 from picarones.core.corpus import Corpus, Document
-from picarones.core.narrative import (
+from picarones.measurements.narrative import (
     DetectorRegistry,
     Fact,
     FactImportance,
     FactType,
     detect_all,
 )
-from picarones.core.runner import (
+from picarones.measurements.runner import (
     _aggregate_hallucination,
     _aggregate_line_metrics,
     _compute_document_result,

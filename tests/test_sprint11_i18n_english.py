@@ -26,7 +26,7 @@ class TestEarlyModernEnglish:
 
     @pytest.fixture
     def profile(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         return get_builtin_profile("early_modern_english")
 
     def test_profile_exists(self, profile):
@@ -89,7 +89,7 @@ class TestMedievalEnglish:
 
     @pytest.fixture
     def profile(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         return get_builtin_profile("medieval_english")
 
     def test_profile_exists(self, profile):
@@ -129,7 +129,7 @@ class TestSecretaryHand:
 
     @pytest.fixture
     def profile(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         return get_builtin_profile("secretary_hand")
 
     def test_profile_exists(self, profile):
@@ -160,18 +160,18 @@ class TestBuiltinProfilesListing:
     """Vérifie que les 3 nouveaux profils sont bien accessibles."""
 
     def test_all_english_profiles_accessible(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         for name in ("early_modern_english", "medieval_english", "secretary_hand"):
             p = get_builtin_profile(name)
             assert p.name == name
 
     def test_unknown_profile_raises_key_error(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         with pytest.raises(KeyError):
             get_builtin_profile("unknown_lang_profile_xyz")
 
     def test_existing_profiles_still_work(self):
-        from picarones.core.normalization import get_builtin_profile
+        from picarones.measurements.normalization import get_builtin_profile
         for name in ("medieval_french", "early_modern_french", "medieval_latin", "nfc", "caseless", "minimal"):
             p = get_builtin_profile(name)
             assert p.name == name

@@ -18,11 +18,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.numerical_sequences_runner import (
+from picarones.measurements.numerical_sequences_runner import (
     aggregate_numerical_sequence_metrics,
     compute_numerical_sequence_metrics_adaptive,
 )
-from picarones.core.metrics import MetricsResult
+from picarones.measurements.metrics import MetricsResult
 from picarones.core.results import DocumentResult, EngineReport
 
 
@@ -32,7 +32,7 @@ def _stub_metrics() -> MetricsResult:
         wer=0.0, wer_normalized=0.0, mer=0.0, wil=0.0,
         reference_length=0, hypothesis_length=0,
     )
-from picarones.core.searchability_runner import (
+from picarones.measurements.searchability_runner import (
     aggregate_searchability_metrics,
     compute_searchability_metrics,
 )

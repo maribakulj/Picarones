@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.runner import (
+from picarones.measurements.runner import (
     _aggregate_calibration,
     _calibration_from_engine_result,
 )
@@ -59,7 +59,7 @@ class TestEngineResultExtension:
 
 
 def _make_dr(calibration_metrics: dict | None = None) -> DocumentResult:
-    from picarones.core.metrics import MetricsResult
+    from picarones.measurements.metrics import MetricsResult
 
     return DocumentResult(
         doc_id="d1", image_path="/tmp/x.png",
@@ -243,7 +243,7 @@ class TestBackwardCompat:
     def test_engine_result_default_no_calibration(self) -> None:
         # Un EngineResult sans token_confidences → calibration_metrics
         # ne doit pas être calculée.
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         ocr = EngineResult(
             engine_name="e",
             image_path="/tmp/x.png",
@@ -260,7 +260,7 @@ class TestBackwardCompat:
         assert dr.calibration_metrics is None
 
     def test_engine_result_with_confs_triggers_calibration(self) -> None:
-        from picarones.core.runner import _compute_document_result
+        from picarones.measurements.runner import _compute_document_result
         ocr = EngineResult(
             engine_name="e",
             image_path="/tmp/x.png",

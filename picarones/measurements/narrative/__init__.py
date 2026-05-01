@@ -14,7 +14,7 @@ API publique
 - ``build_synthesis(data, lang="fr")``        : pipeline complet (Sprint 4)
 """
 
-from picarones.measurements.narrative.facts import (
+from picarones.core.facts import (
     Fact,
     FactType,
     FactImportance,

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.early_modern_typography import (
+from picarones.measurements.early_modern_typography import (
     AMPERSAND,
     DOTLESS_I,
     LIGATURES,
@@ -271,7 +271,7 @@ class TestShortcut:
 class TestRegistryIntegration:
     def test_metric_registered(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.core.early_modern_typography  # noqa: F401
+        import picarones.measurements.early_modern_typography  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

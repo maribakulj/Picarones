@@ -22,10 +22,10 @@ import re
 
 import pytest
 
-from picarones.core.inter_engine import compute_inter_engine_analysis
-from picarones.core.narrative.detectors import detect_ensemble_opportunity
-from picarones.core.narrative.facts import FactImportance, FactType
-from picarones.core.narrative.renderer import extract_numbers, render_fact
+from picarones.measurements.inter_engine import compute_inter_engine_analysis
+from picarones.measurements.narrative.detectors import detect_ensemble_opportunity
+from picarones.core.facts import FactImportance, FactType
+from picarones.measurements.narrative.renderer import extract_numbers, render_fact
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -233,7 +233,7 @@ class TestEnsembleOpportunityDetector:
 
 class TestSynthesisIntegration:
     def test_detector_registered_by_default(self) -> None:
-        from picarones.core.narrative.registry import iter_detectors
+        from picarones.measurements.narrative.registry import iter_detectors
 
         types = {entry.fact_type for entry in iter_detectors()}
         assert FactType.ENSEMBLE_OPPORTUNITY in types
@@ -241,7 +241,7 @@ class TestSynthesisIntegration:
     def test_synthesis_includes_ensemble_phrase(self) -> None:
         """Le détecteur s'active dans le pipeline complet et la phrase
         rendue contient bien les chiffres clés."""
-        from picarones.core.narrative import build_synthesis
+        from picarones.measurements.narrative import build_synthesis
 
         # benchmark_data minimal qui n'active QUE notre détecteur (pas
         # de ranking, pas de stats — pour isoler).
@@ -251,7 +251,7 @@ class TestSynthesisIntegration:
         assert any("voting" in s.lower() or "tess" in s for s in sentences)
 
     def test_synthesis_en_locale(self) -> None:
-        from picarones.core.narrative import build_synthesis
+        from picarones.measurements.narrative import build_synthesis
 
         data = _build_data(relative_gap=0.83)
         out = build_synthesis(data, lang="en", max_facts=5)
@@ -301,7 +301,7 @@ class TestTraceability:
 
     def test_no_extraneous_numbers_in_template(self) -> None:
         """Le template lui-même ne contient pas de nombres en dur."""
-        from picarones.core.narrative.renderer import _load_templates
+        from picarones.measurements.narrative.renderer import _load_templates
 
         tpl = _load_templates("fr").get("ensemble_opportunity", "")
         assert tpl

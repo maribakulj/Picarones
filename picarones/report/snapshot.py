@@ -56,11 +56,11 @@ def pricing_snapshot(pricing_path: Optional[Path] = None) -> dict[str, Any]:
     """Retourne le YAML brut + dict parsé de la table de prix utilisée.
 
     Si ``pricing_path`` n'est pas fourni, utilise le chemin par défaut
-    de ``picarones.core.pricing._DEFAULT_PRICING_PATH``.
+    de ``picarones.measurements.pricing._DEFAULT_PRICING_PATH``.
     """
     if pricing_path is None:
         try:
-            from picarones.core.pricing import _DEFAULT_PRICING_PATH
+            from picarones.measurements.pricing import _DEFAULT_PRICING_PATH
             pricing_path = _DEFAULT_PRICING_PATH
         except ImportError:
             return {"available": False, "reason": "module pricing introuvable"}

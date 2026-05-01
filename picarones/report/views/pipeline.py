@@ -168,7 +168,7 @@ def build_pipeline_view_html(
     # Sous-section 4 : comparaison incrémentale (effet d'un slot)
     if incremental_runs and incremental_varying_slot:
         try:
-            from picarones.core.incremental_comparison import (
+            from picarones.measurements.incremental_comparison import (
                 compare_isolated_effect,
             )
             from picarones.report.incremental_comparison_render import (

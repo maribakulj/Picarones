@@ -25,11 +25,11 @@ Sources de données automatiques
 Sources de données opt-in (via ``opts``)
 ----------------------------------------
 - ``opts["cooccurrence"]``      : sortie de
-  :func:`picarones.core.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
+  :func:`picarones.measurements.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
 - ``opts["intra_doc"]``         : sortie de
-  :func:`picarones.core.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
+  :func:`picarones.measurements.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
 - ``opts["lexical_modernization"]``  : sortie de
-  :func:`picarones.core.lexical_modernization.compute_lexical_modernization`
+  :func:`picarones.measurements.lexical_modernization.compute_lexical_modernization`
   agrégée corpus-wide.
 
 Ces calculs ne sont pas faits automatiquement par le runner standard
@@ -110,15 +110,15 @@ def build_advanced_taxonomy_view_html(
         Dict i18n complet.
     cooccurrence:
         Sortie pré-calculée de
-        :func:`picarones.core.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
+        :func:`picarones.measurements.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
         Optionnel — la sous-section est masquée si non fourni.
     intra_doc:
         Sortie pré-calculée de
-        :func:`picarones.core.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
+        :func:`picarones.measurements.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
         Optionnel.
     lexical_modernization:
         Sortie pré-calculée de
-        :func:`picarones.core.lexical_modernization.aggregate_lexical_modernization`.
+        :func:`picarones.measurements.lexical_modernization.aggregate_lexical_modernization`.
         Optionnel.
 
     Returns
@@ -135,7 +135,7 @@ def build_advanced_taxonomy_view_html(
         engines_summary = report_data.get("engines") or []
         pair = _select_two_engines_for_comparison(engines_summary)
         if pair is not None:
-            from picarones.core.taxonomy_comparison import compare_taxonomies
+            from picarones.measurements.taxonomy_comparison import compare_taxonomies
             from picarones.report.taxonomy_comparison_render import (
                 build_taxonomy_comparison_html,
             )

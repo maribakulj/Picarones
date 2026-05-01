@@ -7,15 +7,15 @@ side, pas de JS, anti-injection systématique.
 
 Note d'intégration
 ------------------
-La robustesse synthétique (``picarones.core.robustness``) est
+La robustesse synthétique (``picarones.measurements.robustness``) est
 exécutée par la CLI ``picarones robustness`` indépendamment du
 benchmark principal.  Pour produire la vue de projection,
 l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.core.robustness import analyze_robustness
-    from picarones.core.robustness_projection import (
+    from picarones.measurements.robustness import analyze_robustness
+    from picarones.measurements.robustness_projection import (
         project_robustness_on_corpus,
         aggregate_projection_per_engine,
     )
@@ -219,7 +219,7 @@ def build_robustness_projection_html(
     if not projection:
         return ""
     if aggregated is None:
-        from picarones.core.robustness_projection import (
+        from picarones.measurements.robustness_projection import (
             aggregate_projection_per_engine,
         )
         aggregated = aggregate_projection_per_engine(projection)

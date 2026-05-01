@@ -15,7 +15,7 @@ Fonctionnement
 
 Usage
 -----
->>> from picarones.core.robustness import RobustnessAnalyzer
+>>> from picarones.measurements.robustness import RobustnessAnalyzer
 >>> analyzer = RobustnessAnalyzer(engine, degradation_types=["noise", "blur"])
 >>> report = analyzer.analyze(corpus)
 >>> print(report.critical_thresholds)
@@ -420,7 +420,7 @@ class RobustnessAnalyzer:
     Examples
     --------
     >>> from picarones.engines.tesseract import TesseractEngine
-    >>> from picarones.core.robustness import RobustnessAnalyzer
+    >>> from picarones.measurements.robustness import RobustnessAnalyzer
     >>> engine = TesseractEngine(config={"lang": "fra"})
     >>> analyzer = RobustnessAnalyzer([engine], degradation_types=["noise", "blur"])
     >>> report = analyzer.analyze(corpus)
@@ -463,7 +463,7 @@ class RobustnessAnalyzer:
         -------
         RobustnessReport
         """
-        from picarones.core.metrics import compute_metrics
+        from picarones.measurements.metrics import compute_metrics
 
         docs = corpus.documents[:max_docs]
         curves: list[DegradationCurve] = []

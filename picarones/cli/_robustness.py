@@ -99,7 +99,7 @@ def robustness_cmd(
 
     deg_types = [d.strip() for d in degradations.split(",") if d.strip()]
 
-    from picarones.core.robustness import (
+    from picarones.measurements.robustness import (
         RobustnessAnalyzer, ALL_DEGRADATION_TYPES, generate_demo_robustness_report
     )
 
@@ -139,7 +139,7 @@ def robustness_cmd(
             click.echo(f"Erreur moteur : {exc}", err=True)
             sys.exit(1)
 
-        from picarones.core.robustness import RobustnessAnalyzer
+        from picarones.measurements.robustness import RobustnessAnalyzer
         analyzer = RobustnessAnalyzer(
             engines=[ocr_engine],
             degradation_types=deg_types,
