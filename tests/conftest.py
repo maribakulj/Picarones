@@ -6,7 +6,7 @@ partagés :
     concurrents,
   - un rate limiter par IP (``RATE_LIMITER``),
   - une liste cachée de browse roots dérivée à l'import dans
-    ``picarones.web.app._BROWSE_ROOTS``.
+    ``picarones.web.routers.corpus._BROWSE_ROOTS``.
 
 Ces états peuvent polluer des tests indépendants. Ce conftest :
 
@@ -63,13 +63,14 @@ def _isolate_web_app_state():
         from picarones.web import app as web_app
         from picarones.web import security as web_sec
         from picarones.web import state as web_state
+        from picarones.web.routers import corpus as web_corpus_router
     except ImportError:
         # Tests non-web : aucun état à restaurer.
         yield
         return
 
     # Sauvegarde
-    original_browse_roots = list(web_app._BROWSE_ROOTS)
+    original_browse_roots = list(web_corpus_router._BROWSE_ROOTS)
 
     # Sémaphore frais à chaque test (capacité large, voir conftest top-level).
     # Le module ``state`` détient le singleton ; ``app`` en a juste une
@@ -83,5 +84,5 @@ def _isolate_web_app_state():
     yield
 
     # Restauration
-    web_app._BROWSE_ROOTS[:] = original_browse_roots
+    web_corpus_router._BROWSE_ROOTS[:] = original_browse_roots
     web_state.RATE_LIMITER.reset()

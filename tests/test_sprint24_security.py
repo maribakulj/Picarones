@@ -315,12 +315,12 @@ class TestPathAllowed:
     def test_path_outside_roots_is_blocked(self, monkeypatch, tmp_path):
         # On force le calcul des roots à uploads_dir uniquement
         monkeypatch.setenv("PICARONES_BROWSE_ROOTS", str(tmp_path))
-        from picarones.web import app as web_app
-        web_app._BROWSE_ROOTS = sec.compute_browse_roots(tmp_path)
+        from picarones.web.routers import corpus as web_corpus
+        web_corpus._BROWSE_ROOTS = sec.compute_browse_roots(tmp_path)
 
         outside = Path("/etc").resolve()
-        assert web_app._is_path_allowed(outside) is False
+        assert web_corpus._is_path_allowed(outside) is False
 
         inside = tmp_path / "sub"
         inside.mkdir()
-        assert web_app._is_path_allowed(inside.resolve()) is True
+        assert web_corpus._is_path_allowed(inside.resolve()) is True

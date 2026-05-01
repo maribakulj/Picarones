@@ -263,11 +263,12 @@ class TestSynthesisPreviewEndpoint:
         from picarones import fixtures
         from picarones.web.jobs import get_default_store, reset_default_store
         from picarones.web import app as web_app
+        from picarones.web import state as web_state
         # Isolate store
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()
-        web_app._JOB_STORE = get_default_store()
-        web_app._JOBS.clear()
+        web_state.JOB_STORE = get_default_store()
+        web_state.JOBS.clear()
         # Génère un benchmark + écrit son JSON
         b = fixtures.generate_sample_benchmark(n_docs=4)
         out_dir = tmp_path / "rep"
@@ -276,9 +277,9 @@ class TestSynthesisPreviewEndpoint:
         json_path = html_path.with_suffix(".json")
         json_path.write_text(json.dumps(b.as_dict(), ensure_ascii=False))
         # Crée le job en base
-        jid = web_app._JOB_STORE.create_job(job_id="job-prev-1")
-        web_app._JOB_STORE.set_status(jid, "complete")
-        web_app._JOB_STORE.update_progress(jid, output_path=str(html_path))
+        jid = web_state.JOB_STORE.create_job(job_id="job-prev-1")
+        web_state.JOB_STORE.set_status(jid, "complete")
+        web_state.JOB_STORE.update_progress(jid, output_path=str(html_path))
         return TestClient(web_app.app), jid
 
     def test_returns_synthesis_for_complete_job(self, job_with_results):
@@ -297,12 +298,13 @@ class TestSynthesisPreviewEndpoint:
     def test_409_when_job_not_complete(self, monkeypatch, tmp_path):
         from picarones.web.jobs import get_default_store, reset_default_store
         from picarones.web import app as web_app
+        from picarones.web import state as web_state
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()
-        web_app._JOB_STORE = get_default_store()
-        web_app._JOBS.clear()
-        web_app._JOB_STORE.create_job(job_id="running-1")
-        web_app._JOB_STORE.set_status("running-1", "running")
+        web_state.JOB_STORE = get_default_store()
+        web_state.JOBS.clear()
+        web_state.JOB_STORE.create_job(job_id="running-1")
+        web_state.JOB_STORE.set_status("running-1", "running")
         client = TestClient(web_app.app)
         r = client.get("/api/benchmark/running-1/synthesis_preview")
         assert r.status_code == 409

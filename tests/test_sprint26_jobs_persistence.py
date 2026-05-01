@@ -254,24 +254,25 @@ class TestDefaultStore:
 
 @pytest.fixture
 def client_with_isolated_store(monkeypatch, tmp_path):
-    """Réinitialise le ``_JOB_STORE`` global de l'app vers un fichier vierge."""
+    """Réinitialise le ``JOB_STORE`` global de l'app vers un fichier vierge."""
     db = tmp_path / "jobs.db"
     monkeypatch.setenv("PICARONES_JOBS_DB", str(db))
     reset_default_store()
     from picarones.web import app as web_app
-    web_app._JOB_STORE = get_default_store()
+    from picarones.web import state as web_state
+    web_state.JOB_STORE = get_default_store()
     # Vide aussi le cache RAM des jobs
-    web_app._JOBS.clear()
-    return TestClient(web_app.app), web_app
+    web_state.JOBS.clear()
+    return TestClient(web_app.app), web_state
 
 
 class TestStatusFallbackToDB:
     def test_status_falls_back_to_db_after_ram_eviction(self, client_with_isolated_store):
-        client, web_app = client_with_isolated_store
+        client, web_state = client_with_isolated_store
         # Crée un job directement en base (simule un job d'un précédent worker)
-        jid = web_app._JOB_STORE.create_job(job_id="ghost-1")
-        web_app._JOB_STORE.set_status(jid, "complete")
-        web_app._JOB_STORE.update_progress(jid, progress=1.0, total_docs=10, processed_docs=10)
+        jid = web_state.JOB_STORE.create_job(job_id="ghost-1")
+        web_state.JOB_STORE.set_status(jid, "complete")
+        web_state.JOB_STORE.update_progress(jid, progress=1.0, total_docs=10, processed_docs=10)
 
         r = client.get(f"/api/benchmark/{jid}/status")
         assert r.status_code == 200, r.text
@@ -289,12 +290,12 @@ class TestStatusFallbackToDB:
 
 class TestSSEReplay:
     def test_sse_replays_backlog_for_finished_job(self, client_with_isolated_store):
-        client, web_app = client_with_isolated_store
-        jid = web_app._JOB_STORE.create_job(job_id="replay-1")
-        web_app._JOB_STORE.append_event(jid, "log", {"msg": "hello"})
-        web_app._JOB_STORE.append_event(jid, "log", {"msg": "world"})
-        web_app._JOB_STORE.set_status(jid, "complete")
-        web_app._JOB_STORE.append_event(jid, "complete", {"output_html": "/tmp/x.html"})
+        client, web_state = client_with_isolated_store
+        jid = web_state.JOB_STORE.create_job(job_id="replay-1")
+        web_state.JOB_STORE.append_event(jid, "log", {"msg": "hello"})
+        web_state.JOB_STORE.append_event(jid, "log", {"msg": "world"})
+        web_state.JOB_STORE.set_status(jid, "complete")
+        web_state.JOB_STORE.append_event(jid, "complete", {"output_html": "/tmp/x.html"})
 
         with client.stream("GET", f"/api/benchmark/{jid}/stream") as r:
             assert r.status_code == 200
@@ -309,11 +310,11 @@ class TestSSEReplay:
         assert "event: done" in text or "event: complete" in text
 
     def test_sse_resumes_from_last_event_id(self, client_with_isolated_store):
-        client, web_app = client_with_isolated_store
-        jid = web_app._JOB_STORE.create_job(job_id="resume-1")
+        client, web_state = client_with_isolated_store
+        jid = web_state.JOB_STORE.create_job(job_id="resume-1")
         for i in range(5):
-            web_app._JOB_STORE.append_event(jid, "log", {"i": i})
-        web_app._JOB_STORE.set_status(jid, "complete")
+            web_state.JOB_STORE.append_event(jid, "log", {"i": i})
+        web_state.JOB_STORE.set_status(jid, "complete")
 
         # Reprise depuis seq=3 — on doit recevoir uniquement 4 et 5.
         with client.stream(
@@ -330,10 +331,10 @@ class TestSSEReplay:
         assert "id: 2" not in text
 
     def test_sse_invalid_last_event_id_falls_back_to_zero(self, client_with_isolated_store):
-        client, web_app = client_with_isolated_store
-        jid = web_app._JOB_STORE.create_job(job_id="bad-header")
-        web_app._JOB_STORE.append_event(jid, "log", {"i": 1})
-        web_app._JOB_STORE.set_status(jid, "complete")
+        client, web_state = client_with_isolated_store
+        jid = web_state.JOB_STORE.create_job(job_id="bad-header")
+        web_state.JOB_STORE.append_event(jid, "log", {"i": 1})
+        web_state.JOB_STORE.set_status(jid, "complete")
 
         with client.stream(
             "GET",
@@ -358,9 +359,10 @@ class TestStartupOrphansHook:
         reset_default_store()
         # Forcer le startup hook via TestClient context manager
         from picarones.web import app as web_app
-        web_app._JOB_STORE = get_default_store()
+        from picarones.web import state as web_state
+        web_state.JOB_STORE = get_default_store()
         with TestClient(web_app.app):
             pass  # __enter__ déclenche startup, __exit__ shutdown
 
-        job = web_app._JOB_STORE.get_job(jid)
+        job = web_state.JOB_STORE.get_job(jid)
         assert job["status"] == "interrupted"
