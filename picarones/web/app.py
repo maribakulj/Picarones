@@ -33,7 +33,6 @@ import os
 import shutil
 import threading
 import uuid
-import xml.etree.ElementTree as ET
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +44,19 @@ from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Respon
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
 from picarones import __version__
+from picarones.web.corpus_utils import (
+    analyze_corpus_dir as _analyze_corpus_dir,
+    flatten_zip_to_dir as _flatten_zip_to_dir,
+)
+from picarones.web.engine_utils import (
+    check_engine as _check_engine,
+    fetch_ollama_info as _fetch_ollama_info,
+    get_tesseract_langs as _get_tesseract_langs,
+    infer_mistral_capabilities as _infer_mistral_capabilities,
+    infer_ollama_capabilities as _infer_ollama_capabilities,
+    infer_openai_capabilities as _infer_openai_capabilities,
+    model_entry as _model_entry,
+)
 from picarones.web.models import (
     BenchmarkRequest,
     BenchmarkRunRequest,
@@ -273,129 +285,9 @@ async def api_engines() -> dict:
     return {"engines": engines, "llms": llms}
 
 
-def _check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
-    label = label or engine_id.replace("_", " ").title()
-    try:
-        __import__(module_name)
-        installed = True
-    except ImportError:
-        installed = False
-
-    version = ""
-    if installed and engine_id == "tesseract":
-        try:
-            import pytesseract
-            version = pytesseract.get_tesseract_version()
-            version = str(version)
-        except Exception:
-            version = "installé"
-    elif installed:
-        try:
-            mod = __import__(module_name)
-            version = getattr(mod, "__version__", "installé")
-        except Exception:
-            version = "installé"
-
-    return {
-        "id": engine_id,
-        "label": label,
-        "type": "ocr",
-        "available": installed,
-        "version": version,
-        "status": "available" if installed else "not_installed",
-    }
-
-
-def _fetch_ollama_info() -> tuple[bool, list[str]]:
-    """Vérifie la disponibilité d'Ollama et liste ses modèles en un seul appel HTTP."""
-    import urllib.error
-    import urllib.request
-    try:
-        with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2) as r:
-            if r.status != 200:
-                return False, []
-            data = json.loads(r.read().decode())
-        models = [m.get("name", "") for m in data.get("models", [])]
-        return True, models
-    except Exception:
-        return False, []
-
-
-def _check_ollama() -> bool:
-    available, _ = _fetch_ollama_info()
-    return available
-
-
-def _list_ollama_models() -> list[str]:
-    _, models = _fetch_ollama_info()
-    return models
-
-
-def _get_tesseract_langs() -> list[str]:
-    try:
-        import pytesseract
-        langs = pytesseract.get_languages(config="")
-        return sorted(lg for lg in langs if lg != "osd")
-    except Exception:
-        return ["fra", "lat", "eng", "deu", "ita", "spa"]
-
-
 # ---------------------------------------------------------------------------
 # API — models (dynamic per provider, with capability metadata)
 # ---------------------------------------------------------------------------
-
-# Modèles Mistral text-only (pas de support vision)
-_MISTRAL_TEXT_ONLY = frozenset({
-    "ministral-3b-latest", "ministral-8b-latest", "mistral-tiny",
-    "mistral-tiny-latest", "open-mistral-7b", "open-mixtral-8x7b",
-    "mistral-small-latest", "mistral-small-2409",
-})
-
-# Préfixes de modèles Mistral qui sont text-only (pas de support vision)
-_MISTRAL_TEXT_ONLY_PREFIXES = (
-    "ministral", "open-mistral", "open-mixtral", "codestral",
-    "mistral-embed", "mistral-tiny",
-)
-
-# Familles Ollama multimodales connues
-_OLLAMA_VISION_FAMILIES = frozenset({
-    "llava", "bakllava", "moondream", "minicpm-v", "llama3.2-vision",
-    "llava-llama3", "llava-phi3", "nanollava",
-})
-
-
-def _model_entry(model_id: str, capabilities: list[str]) -> dict:
-    """Crée une entrée modèle avec son ID et ses capacités."""
-    return {"id": model_id, "capabilities": capabilities}
-
-
-def _infer_mistral_capabilities(model_id: str) -> list[str]:
-    mid = model_id.lower()
-    # Modèles explicitement vision (Pixtral)
-    if "pixtral" in mid:
-        return ["text", "vision"]
-    # Modèles explicitement text-only
-    if mid in _MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in _MISTRAL_TEXT_ONLY_PREFIXES):
-        return ["text"]
-    # Mistral Large et modèles récents non-identifiés → vision par défaut
-    if "mistral-large" in mid or "mistral-medium" in mid:
-        return ["text", "vision"]
-    # Par défaut, marquer comme text-only (plus sûr que de supposer vision)
-    return ["text"]
-
-
-def _infer_openai_capabilities(model_id: str) -> list[str]:
-    mid = model_id.lower()
-    if "gpt-4o" in mid or "gpt-4-turbo" in mid or "gpt-4.1" in mid or "o1" in mid or "o3" in mid:
-        return ["text", "vision"]
-    return ["text"]
-
-
-def _infer_ollama_capabilities(model_name: str) -> list[str]:
-    base = model_name.split(":")[0].lower()
-    if any(base.startswith(family) for family in _OLLAMA_VISION_FAMILIES):
-        return ["text", "vision"]
-    return ["text"]
 
 
 @app.get("/api/models/{provider}")
@@ -613,177 +505,6 @@ async def api_corpus_browse(path: str = Query(default=".", description="Chemin �
 # ---------------------------------------------------------------------------
 # API — corpus upload
 # ---------------------------------------------------------------------------
-
-def _safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
-    """Parse du XML en désactivant les entités externes (protection XXE)."""
-    try:
-        import defusedxml.ElementTree as SafeET
-        return SafeET.fromstring(xml_bytes)
-    except ImportError:
-        pass
-    # Fallback : parser standard avec entités externes désactivées
-    parser = ET.XMLParser()
-    try:
-        return ET.fromstring(xml_bytes, parser=parser)
-    except ET.ParseError:
-        return None
-
-
-def _detect_xml_gt(xml_bytes: bytes) -> tuple[str, str] | None:
-    """Détecte si xml_bytes est un fichier ALTO ou PAGE XML et extrait le texte GT.
-
-    Retourne (format_label, texte_gt) ou None si le format n'est pas reconnu.
-    """
-    root = _safe_parse_xml(xml_bytes)
-    if root is None:
-        return None
-
-    tag = root.tag  # peut être "{namespace}alto" ou "alto" ou "{ns}PcGts"
-
-    # --- ALTO XML ---
-    # Namespace contient loc.gov/standards/alto ou balise racine "alto"
-    ns_alto = "http://www.loc.gov/standards/alto"
-    is_alto = (
-        ns_alto in tag
-        or tag.lower() == "alto"
-        or (tag.startswith("{") and tag.split("}")[1].lower() in ("alto",))
-    )
-    if is_alto:
-        text = _extract_alto_text(root)
-        return ("ALTO XML", text)
-
-    # --- PAGE XML ---
-    # Balise racine PcGts (avec ou sans namespace)
-    local = tag.split("}")[-1] if "}" in tag else tag
-    if local == "PcGts":
-        text = _extract_page_text(root)
-        return ("PAGE XML", text)
-
-    return None
-
-
-def _extract_alto_text(root: ET.Element) -> str:
-    """Extrait le texte plein d'un arbre ALTO XML.
-
-    Concatène les attributs CONTENT des balises <String> dans l'ordre de lecture
-    (bloc → ligne → mot), avec un espace entre mots et une newline entre lignes.
-    """
-    # Chercher les éléments TextLine (avec ou sans namespace)
-    lines: list[str] = []
-    for elem in root.iter():
-        local = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
-        if local == "TextLine":
-            words: list[str] = []
-            for child in elem.iter():
-                child_local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
-                if child_local == "String":
-                    content = child.get("CONTENT", "")
-                    if content:
-                        words.append(content)
-            if words:
-                lines.append(" ".join(words))
-    return "\n".join(lines)
-
-
-def _extract_page_text(root: ET.Element) -> str:
-    """Extrait le texte plein d'un arbre PAGE XML.
-
-    Concatène le contenu des balises <Unicode> dans l'ordre de lecture.
-    """
-    texts: list[str] = []
-    for elem in root.iter():
-        local = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
-        if local == "Unicode" and elem.text:
-            texts.append(elem.text.strip())
-    return "\n".join(t for t in texts if t)
-
-
-def _analyze_corpus_dir(path: Path) -> dict:
-    """Analyse un dossier et retourne un résumé des paires image/GT détectées."""
-    # Exclure les fichiers cachés macOS (._* AppleDouble) et tout fichier débutant par .
-    images = sorted(
-        f.name for f in path.iterdir()
-        if f.suffix.lower() in _IMAGE_EXTS and not f.name.startswith(".")
-    )
-    pairs: list[dict] = []
-    missing_gt: list[str] = []
-    for img in images:
-        stem = Path(img).stem
-        gt_txt = path / (stem + ".gt.txt")
-        gt_xml = path / (stem + ".xml")
-        if gt_txt.exists():
-            pairs.append({"image": img, "gt": stem + ".gt.txt", "gt_format": "texte brut"})
-        elif gt_xml.exists():
-            result = _detect_xml_gt(gt_xml.read_bytes())
-            if result is not None:
-                fmt, text = result
-                # Matérialiser le GT en .gt.txt pour le chargeur de corpus
-                gt_txt.write_text(text, encoding="utf-8")
-                pairs.append({"image": img, "gt": stem + ".gt.txt", "gt_format": fmt})
-            else:
-                missing_gt.append(img)
-        else:
-            missing_gt.append(img)
-
-    # Détecter le format dominant pour le résumé global
-    formats = {p["gt_format"] for p in pairs}
-    if len(formats) == 1:
-        dominant_format: str = formats.pop()
-    elif formats:
-        dominant_format = "mixte"
-    else:
-        dominant_format = "texte brut"
-
-    # Détecter les fichiers OCR bruité (.ocr.txt) pour les corpus triplets
-    ocr_text_count = sum(
-        1 for p in pairs
-        if (path / (Path(p["image"]).stem + ".ocr.txt")).exists()
-    )
-
-    return {
-        "doc_count": len(pairs),
-        "pairs": pairs[:20],
-        "total_pairs": len(pairs),
-        "missing_gt": missing_gt[:10],
-        "has_missing_gt": len(missing_gt) > 0,
-        "warnings": [f"GT manquant : {img}" for img in missing_gt[:5]],
-        "usable": len(pairs) > 0,
-        "gt_format": dominant_format,
-        "has_ocr_text": ocr_text_count > 0,
-        "ocr_text_count": ocr_text_count,
-    }
-
-
-_MAX_ZIP_TOTAL_SIZE = 500 * 1024 * 1024  # 500 Mo décompressé max
-_MAX_ZIP_FILES = 2000  # nombre max de fichiers extraits
-
-
-def _flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
-    """Extrait un ZIP en aplatissant les paires image/.gt.txt/.xml dans dest."""
-    dest.mkdir(parents=True, exist_ok=True)
-    total_size = 0
-    file_count = 0
-    for member in zf.infolist():
-        if member.is_dir():
-            continue
-        p = Path(member.filename)
-        name = p.name
-        # Ignorer les fichiers cachés macOS (._* créés par AppleDouble dans les ZIPs)
-        if name.startswith("."):
-            continue
-        # Accepter images, .gt.txt, .ocr.txt et .xml (ALTO/PAGE)
-        if p.suffix.lower() in _IMAGE_EXTS or name.endswith(".gt.txt") or name.endswith(".ocr.txt") or p.suffix.lower() == ".xml":
-            # Protection ZIP bomb : vérifier la taille décompressée
-            total_size += member.file_size
-            if total_size > _MAX_ZIP_TOTAL_SIZE:
-                raise ValueError(
-                    f"ZIP trop volumineux : taille décompressée > {_MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
-                )
-            file_count += 1
-            if file_count > _MAX_ZIP_FILES:
-                raise ValueError(f"ZIP contient trop de fichiers (> {_MAX_ZIP_FILES})")
-            data = zf.read(member.filename)
-            (dest / name).write_bytes(data)
 
 
 @app.post("/api/corpus/upload")
