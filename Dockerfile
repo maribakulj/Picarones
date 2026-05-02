@@ -16,28 +16,33 @@
 # Étape 1 : builder — installe les dépendances Python dans un venv
 # ──────────────────────────────────────────────────────────────────
 # ──────────────────────────────────────────────────────────────────
-# Sprint A8 (M-2) — image de base épinglée à un patch stable.
+# Sprint A8 (M-2) + Sprint A16 (build déterministe) — image de base
+# épinglée à la fois par tag (lisibilité humaine) et par digest sha256
+# (reproductibilité bit-à-bit).
 #
-# Pourquoi : ``python:3.11-slim`` (sans patch) suit le stream et peut
-# changer entre deux ``docker build`` consécutifs. Pour la
-# reproductibilité institutionnelle BnF, on épingle au patch précis.
+# Pourquoi le digest : ``python:3.11.13-slim`` peut être re-publié au
+# fil des patches Debian avec un même tag mais un contenu différent.
+# Pour la reproductibilité institutionnelle BnF, ``@sha256:...`` fige
+# l'image binaire — deux ``docker build`` séparés produisent une
+# couche de base identique octet par octet.
 #
-# Rotation trimestrielle : avant chaque release majeure, exécuter :
+# Rotation trimestrielle (avant chaque release majeure) :
 #
-#     docker pull python:3.11.13-slim
-#     docker inspect python:3.11.13-slim --format='{{index .RepoDigests 0}}'
-#     # → mettre à jour DIGEST ci-dessous
+#     TOKEN=$(curl -s "https://auth.docker.io/token?\
+#       service=registry.docker.io&scope=repository:library/python:pull" \
+#       | jq -r .token)
+#     curl -sI -H "Authorization: Bearer $TOKEN" \
+#       -H "Accept: application/vnd.oci.image.index.v1+json" \
+#       https://registry-1.docker.io/v2/library/python/manifests/3.11.13-slim \
+#       | grep -i docker-content-digest
+#     # → mettre à jour le digest ci-dessous + bumper PYTHON_BASE_IMAGE
 #
-# Le digest sha256 est volontairement laissé en commentaire plutôt
-# qu'en directive ``@sha256:...`` pour éviter un build cassé sur
-# les machines de développement qui n'ont pas accès à un registry
-# proxy. Un futur sprint dédié au build determinist (post-release v1.2)
-# basculera sur la forme ``@sha256:...`` une fois le pipeline release
-# stabilisé.
+# La forme ``image:tag@sha256:...`` est documentée par Docker comme
+# valide ; les machines de développement sans registry proxy peuvent
+# pull aussi bien que par tag — le digest étant immuable, le pull
+# est strictement équivalent à un pull par tag actuel.
 # ──────────────────────────────────────────────────────────────────
-ARG PYTHON_BASE_IMAGE=python:3.11.13-slim
-# Last verified digest (rotate quarterly):
-#   python:3.11.13-slim @ sha256:<obtain via ``docker inspect``>
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim@sha256:9bffe4353b925a1656688797ebc68f9c525e79b1d377a764d232182a519eeec4
 
 FROM ${PYTHON_BASE_IMAGE} AS builder
 
@@ -54,9 +59,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copier les fichiers de configuration du package
+# Copier les fichiers de configuration du package + lock file Docker.
+# ``requirements-docker.lock`` (Sprint A16) gèle l'arbre de dépendances
+# transitif résolu par ``uv pip compile pyproject.toml --extra web --extra llm``.
 COPY pyproject.toml .
 COPY README.md .
+COPY requirements-docker.lock .
 COPY picarones/ picarones/
 
 # Crée le venv isolé /opt/venv et l'active pour les ``RUN`` suivants.
@@ -65,15 +73,18 @@ COPY picarones/ picarones/
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Installe Picarones avec les extras web/llm dans le venv.
-# Sprint A14 (correctif Trivy) : upgrade explicite de setuptools et wheel
-# (CVE-2022-40897, CVE-2024-6345, CVE-2025-47273, CVE-2026-24049) avant
-# l'install du package, sinon les versions héritées de la base image
-# Python (65.5.1 / 0.45.1) restent vulnérables ; Trivy scanne
-# ``/opt/venv/lib/python3.11/site-packages`` après le COPY runtime.
+# Sprint A16 : installation déterministe via lock file.
+#
+# 1. Patch pip/setuptools/wheel (Trivy scanne /opt/venv/lib/python3.11/
+#    site-packages — sans patch les CVE setuptools/wheel ressortent).
+# 2. ``--no-deps`` sur le lock empêche pip de re-résoudre — l'arbre
+#    pinné par ``uv pip compile`` est complet, transitives incluses.
+# 3. ``--no-deps`` sur picarones lui-même : le lock contient déjà
+#    toutes ses dépendances ; cette ligne installe juste le code.
 RUN pip install --upgrade --no-cache-dir \
         "pip>=24.2" "setuptools>=78.1.1" "wheel>=0.46.2" && \
-    pip install --no-cache-dir -e ".[web,llm]" && \
+    pip install --no-cache-dir --no-deps -r requirements-docker.lock && \
+    pip install --no-cache-dir --no-deps -e . && \
     pip cache purge
 
 # Patch également la copie système de pip/setuptools/wheel (hors venv)
@@ -87,8 +98,9 @@ RUN /usr/local/bin/pip install --upgrade --no-cache-dir \
 # ──────────────────────────────────────────────────────────────────
 # ARG redéclaré ici car les variables ARG hors ``FROM`` sont scopées
 # par étape ; sans cette redéclaration le ``FROM`` du runtime perd
-# l'épinglage du builder.
-ARG PYTHON_BASE_IMAGE=python:3.11.13-slim
+# l'épinglage du builder. La valeur DOIT correspondre à celle de
+# l'étape builder (digest inclus) — sinon les couches OS divergent.
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim@sha256:9bffe4353b925a1656688797ebc68f9c525e79b1d377a764d232182a519eeec4
 FROM ${PYTHON_BASE_IMAGE} AS runtime
 
 LABEL description="Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
