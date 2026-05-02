@@ -36,6 +36,12 @@ from picarones.report.report_data.documents import (
     build_documents,
 )
 from picarones.report.report_data.engines import build_engines_summary
+from picarones.report.report_data.extra_metrics import (
+    compute_marginal_cost_section,
+    compute_rare_token_recall_per_engine,
+    compute_taxonomy_cooccurrence_section,
+    compute_taxonomy_intra_doc_section,
+)
 from picarones.report.report_data.pareto import (
     attach_engine_costs,
     build_pareto_section,
@@ -110,6 +116,16 @@ def build_report_data(
         "available_strata": benchmark.available_strata(),
         "stratified_ranking": benchmark.stratified_ranking() or None,
         "corpus_homogeneity": benchmark.corpus_homogeneity(),
+        # Sprint « câblage des modules test-only » (mai 2026) — métriques
+        # corpus-wide qui jusque-là n'étaient pas remontées dans le rapport.
+        # Sprint 71 (A.I.1) : recall sur tokens rares (hapax + dis legomena).
+        "rare_token_recall": compute_rare_token_recall_per_engine(benchmark),
+        # Sprint 75 (A.I.4) : co-occurrence taxonomique inter-classes.
+        "taxonomy_cooccurrence": compute_taxonomy_cooccurrence_section(benchmark),
+        # Sprint 76 (A.I.4) : heatmap class × position (intra-document).
+        "taxonomy_intra_doc": compute_taxonomy_intra_doc_section(benchmark),
+        # Sprint 91 (A.II.6) : matrice de coût marginal entre paires de moteurs.
+        "marginal_cost": compute_marginal_cost_section(engines_summary),
     }
 
 

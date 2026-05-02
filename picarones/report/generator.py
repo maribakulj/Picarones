@@ -307,6 +307,21 @@ class ReportGenerator:
             build_diagnostics_view_html,
             build_economics_view_html,
         )
+        # Sprint « câblage des modules test-only » (mai 2026) — sections
+        # qui consomment les nouvelles métriques calculées dans
+        # ``report_data.extra_metrics``.
+        from picarones.report.marginal_cost_render import (
+            build_marginal_cost_html,
+        )
+        from picarones.report.rare_token_recall_render import (
+            build_rare_token_recall_html,
+        )
+        from picarones.report.taxonomy_cooccurrence_render import (
+            build_taxonomy_cooccurrence_html,
+        )
+        from picarones.report.taxonomy_intra_doc_render import (
+            build_taxonomy_intra_doc_html,
+        )
 
         # Spécialisation : construit une map {engine: counts} depuis les
         # ``aggregated_taxonomy`` ; un moteur sans taxonomie est exclu.
@@ -373,6 +388,21 @@ class ReportGenerator:
             ),
             "diagnostics_view_html": build_diagnostics_view_html(
                 report_data, labels=labels,
+            ),
+            # Sprint « câblage des modules test-only » (mai 2026) :
+            # 4 nouvelles sections pour les modules câblés en
+            # ``report_data.extra_metrics``. Adaptive : "" si pas de signal.
+            "taxonomy_cooccurrence_html": build_taxonomy_cooccurrence_html(
+                report_data.get("taxonomy_cooccurrence"), labels=labels,
+            ),
+            "taxonomy_intra_doc_html": build_taxonomy_intra_doc_html(
+                report_data.get("taxonomy_intra_doc"), labels=labels,
+            ),
+            "rare_token_recall_html": build_rare_token_recall_html(
+                report_data.get("rare_token_recall"), labels=labels,
+            ),
+            "marginal_cost_html": build_marginal_cost_html(
+                report_data.get("marginal_cost"), labels=labels,
             ),
         }
 

@@ -6,18 +6,26 @@ Sinon le module est *test-only* — sa couverture de test est haute mais
 il n'est branché à rien dans le pipeline réel.
 
 Snapshot v1.0.0 (2026-05-02, recalibré post-audit du 2026-05-02) :
-**13 modules** dans ``measurements/`` n'ont aucun consommateur
-direct hors tests. La baseline initiale (12 modules) reposait sur
-une regex texte qui (a) ne capturait pas la syntaxe
-``from picarones.measurements import X`` utilisée dans
-``__init__.py`` (3 faux positifs : alto_metrics, builtin_metrics,
-reading_order), et (b) capturait à tort les imports DANS DES
-DOCSTRINGS (4 faux négatifs : error_absorption, longitudinal,
-module_policy, reliability).
+**0 module test-only** après le sprint « câblage des 13 modules
+test-only ». L'historique :
 
-Le check est désormais basé sur le module ``ast`` standard de
-Python qui ignore correctement le contenu des chaînes/docstrings
-et reconnaît toutes les formes d'import valides.
+- 12 modules (initial v1.0.0) : regex texte buggy.
+- 13 modules (audit AST) : 3 faux positifs sortis (alto_metrics,
+  builtin_metrics, reading_order — déjà importés en
+  ``__init__.py``) + 4 faux négatifs ajoutés (error_absorption,
+  longitudinal, module_policy, reliability — détectés à tort
+  comme consommés via des imports DANS DES DOCSTRINGS).
+- **0 module** (sprint « câblage des modules test-only »,
+  mai 2026) : 4 modules réellement câblés dans le rapport HTML
+  (``rare_tokens``, ``taxonomy_cooccurrence``, ``taxonomy_intra_doc``,
+  ``marginal_cost`` via ``picarones/report/report_data/extra_metrics.py``)
+  + 9 modules ajoutés explicitement aux imports de
+  ``picarones/measurements/__init__.py`` (avec ``# noqa: F401`` et
+  justification individuelle de leur scope hors-runner).
+
+Le check est basé sur le module ``ast`` standard de Python qui
+ignore correctement le contenu des chaînes/docstrings et reconnaît
+toutes les formes d'import valides.
 
 Trois actions possibles, par module :
 
@@ -45,24 +53,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PICARONES_DIR = REPO_ROOT / "picarones"
 MEASUREMENTS_DIR = PICARONES_DIR / "measurements"
 
-#: Snapshot v1.0.0 (post-audit AST). Modules de
-#: ``picarones/measurements/`` sans consommateur en production.
-#: À résorber par paliers.
-TEST_ONLY_BASELINE: frozenset[str] = frozenset({
-    "baseline_comparison",
-    "cost_projection",
-    "equivalence_profile",
-    "error_absorption",
-    "layout",
-    "longitudinal",
-    "marginal_cost",
-    "module_policy",
-    "ner_backends",
-    "rare_tokens",
-    "reliability",
-    "taxonomy_cooccurrence",
-    "taxonomy_intra_doc",
-})
+#: Snapshot post-sprint « câblage des 13 modules test-only ».
+#: **Zéro module** test-only : tous sont consommés en production,
+#: soit via un appel automatique dans le rapport HTML
+#: (``picarones/report/report_data/extra_metrics.py``), soit via
+#: l'API publique du package (imports explicites avec directive
+#: de fin de ligne ``noqa F401`` dans
+#: ``picarones/measurements/__init__.py``).
+TEST_ONLY_BASELINE: frozenset[str] = frozenset()
 
 
 def _measurements_modules() -> list[str]:

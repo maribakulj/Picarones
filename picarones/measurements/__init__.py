@@ -151,3 +151,28 @@ from picarones.measurements import reading_order  # noqa: F401
 # Chantier 1 (post-Sprint 97) : métriques (ALTO, ALTO) pour évaluer
 # les reconstructeurs ALTO contre une GT ALTO du document.
 from picarones.measurements import alto_metrics  # noqa: F401
+
+# ──────────────────────────────────────────────────────────────────────────
+# Sprint « zéro dette actionnable » (mai 2026) — modules sans appel
+# automatique par le runner OCR principal mais qui font partie de l'API
+# publique de ``picarones.measurements``. L'import ici les rend
+# accessibles en ``from picarones.measurements import X`` et garantit
+# qu'aucun ne devient « test-only » silencieusement (cf.
+# ``tests/architecture/test_module_coverage.py``).
+#
+# Distinction de scope :
+# - Modules de calcul utilisés via les renderers HTML composables
+#   (l'utilisateur les compose lui-même selon son use case) :
+from picarones.measurements import baseline_comparison  # noqa: F401  # historique SQLite
+from picarones.measurements import cost_projection  # noqa: F401  # volume cible utilisateur
+from picarones.measurements import equivalence_profile  # noqa: F401  # curseur HTML
+from picarones.measurements import error_absorption  # noqa: F401  # jonction pipeline composée
+from picarones.measurements import layout  # noqa: F401  # GT ALTO requise (axe B)
+from picarones.measurements import longitudinal  # noqa: F401  # historique SQLite
+from picarones.measurements import marginal_cost  # noqa: F401  # paires de moteurs
+from picarones.measurements import module_policy  # noqa: F401  # outil d'audit
+from picarones.measurements import ner_backends  # noqa: F401  # factory backends NER
+from picarones.measurements import rare_tokens  # noqa: F401  # corpus-wide
+from picarones.measurements import reliability  # noqa: F401  # multi-runs
+from picarones.measurements import taxonomy_cooccurrence  # noqa: F401  # depuis taxonomy
+from picarones.measurements import taxonomy_intra_doc  # noqa: F401  # depuis taxonomy
