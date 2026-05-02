@@ -66,21 +66,41 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
 
 
 def _measurements_modules() -> list[str]:
-    return sorted(
+    """Modules et sous-packages exposés par ``picarones/measurements/``.
+
+    Inclut :
+
+    - Les fichiers ``*.py`` au top-level (hors ``__init__.py``).
+    - Les sous-packages, c'est-à-dire les sous-dossiers contenant un
+      ``__init__.py`` (ex: ``narrative/``, ``statistics/`` après le
+      sprint de découpage de ``statistics.py``).
+
+    L'ancienne version ne listait que les ``*.py`` ; les sous-packages
+    devenaient invisibles au test → couverture perdue dès qu'un module
+    était éclaté en sous-package.
+    """
+    modules: set[str] = {
         p.stem
         for p in MEASUREMENTS_DIR.glob("*.py")
         if p.stem != "__init__"
-    )
+    }
+    for sub in MEASUREMENTS_DIR.iterdir():
+        if sub.is_dir() and (sub / "__init__.py").exists():
+            modules.add(sub.name)
+    return sorted(modules)
 
 
 def _imports_target_module(node: ast.AST, module_name: str) -> bool:
     """True si ce nœud AST importe ``picarones.measurements.<module_name>``.
 
-    Couvre les 5 syntaxes valides Python :
+    Couvre les 6 syntaxes valides Python (essentielles quand X peut
+    être un module ``X.py`` OU un sous-package ``X/``) :
 
     - ``import picarones.measurements.X``
     - ``import picarones.measurements.X.sub`` (sous-module)
     - ``from picarones.measurements.X import Y``
+    - ``from picarones.measurements.X.sub import Y`` (sous-sous-module
+      d'un sous-package — ex: ``from .statistics.wilcoxon import …``)
     - ``from picarones.measurements import X``
     - ``from picarones.measurements import (X, Y)`` (forme parenthésée)
     """
@@ -93,8 +113,12 @@ def _imports_target_module(node: ast.AST, module_name: str) -> bool:
                 return True
         return False
     if isinstance(node, ast.ImportFrom):
-        # ``from picarones.measurements.X import …``
-        if node.module == target_dotted:
+        # ``from picarones.measurements.X import …`` ou
+        # ``from picarones.measurements.X.sub import …`` (sous-package).
+        if node.module == target_dotted or (
+            node.module is not None
+            and node.module.startswith(target_dotted + ".")
+        ):
             return True
         # ``from picarones.measurements import X``
         if node.module == "picarones.measurements":

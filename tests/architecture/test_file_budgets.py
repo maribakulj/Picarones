@@ -35,7 +35,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FILE_BUDGETS: dict[str, int] = {
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
-    "picarones/measurements/statistics.py": 1300,         # actuel 1128
+    # statistics.py (1128 lignes) a été éclaté en sous-package
+    # ``picarones/measurements/statistics/`` lors du sprint
+    # « découpage de statistics.py » (2026-05-02). Plus aucun fichier
+    # de la famille ne dépasse 350 lignes, donc aucune entrée requise.
     "picarones/measurements/runner.py": 1200,             # actuel 1019
     # --- Refactor (sprint « découpage de generator.py ») : passé de
     # 1063 à 431 lignes via extraction vers picarones/report/assets.py
