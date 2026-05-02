@@ -158,13 +158,13 @@ def _build_recoverability_summary_html(
         '<table style="border-collapse:collapse;font-size:.85rem;'
         'margin-top:.5rem">',
         '<thead><tr>',
-        '<th style="padding:.2rem .5rem;text-align:left;'
+        '<th scope=\"col\" style="padding:.2rem .5rem;text-align:left;'
         'border-bottom:1px solid #ccc">'
         f'{_e(labels.get("taxocomp_level_label", "Catégorie"))}</th>',
-        '<th style="padding:.2rem .5rem;text-align:right;'
+        '<th scope=\"col\" style="padding:.2rem .5rem;text-align:right;'
         'border-bottom:1px solid #ccc">'
         f'{_e(_e(data["engine_a"]))}</th>',
-        '<th style="padding:.2rem .5rem;text-align:right;'
+        '<th scope=\"col\" style="padding:.2rem .5rem;text-align:right;'
         'border-bottom:1px solid #ccc">'
         f'{_e(_e(data["engine_b"]))}</th>',
         '</tr></thead><tbody>',

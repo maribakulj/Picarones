@@ -103,16 +103,16 @@ def build_numerical_sequences_html(
         '<table style="border-collapse:collapse;width:100%;'
         'font-size:.9rem">',
         '<thead><tr>',
-        f'<th style="padding:.4rem .6rem;text-align:left;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
         f'border-bottom:1px solid #ccc;font-weight:600">'
         f'{_e(col_engine)}</th>',
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">'
         f'{_e(col_global)}</th>',
     ]
     for cat in visible_cats:
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:right;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(cat_label.get(cat, cat))}</th>'
         )

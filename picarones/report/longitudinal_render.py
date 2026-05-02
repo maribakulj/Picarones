@@ -112,7 +112,7 @@ def build_longitudinal_html(
     for col in (h_engine, h_n_runs, h_first, h_last, h_delta,
                 h_slope, h_r2, h_change):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

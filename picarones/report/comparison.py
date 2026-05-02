@@ -335,12 +335,12 @@ _COMPARISON_TEMPLATE = """<!DOCTYPE html>
 <table>
   <thead>
     <tr>
-      <th>Moteur</th>
-      <th class="num">CER A</th>
-      <th class="num">CER B</th>
-      <th class="num">Δ CER</th>
-      <th class="num">Docs A → B</th>
-      <th>État</th>
+      <th scope=\"col\">Moteur</th>
+      <th scope=\"col\" class="num">CER A</th>
+      <th scope=\"col\" class="num">CER B</th>
+      <th scope=\"col\" class="num">Δ CER</th>
+      <th scope=\"col\" class="num">Docs A → B</th>
+      <th scope=\"col\">État</th>
     </tr>
   </thead>
   <tbody>

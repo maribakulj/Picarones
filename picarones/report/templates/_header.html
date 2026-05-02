@@ -1,4 +1,10 @@
 
+<!-- ── Skip-to-content (Sprint A6, B-10) ───────────────────────────────
+     Lien WCAG 2.4.1 (Bypass Blocks) — premier enfant tabbable du body,
+     visible uniquement au focus, saute la nav et le bandeau pour
+     l'utilisateur clavier ou lecteur d'écran. -->
+<a class="skip-link" href="#main" data-i18n="skip_to_content">Aller au contenu</a>
+
 <!-- ── Navigation ─────────────────────────────────────────────────── -->
 <nav>
   <div class="brand">
@@ -22,9 +28,10 @@
 <!-- ── Bandeau exclusion globale ───────────────────────────────────── -->
 <div id="global-exclusion-banner" style="display:none;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:.5rem 1.5rem;font-size:.85rem;font-weight:600;color:#92400e;text-align:center">
   <span id="global-exclusion-text"></span>
-  <button onclick="resetAllExclusions()" style="margin-left:1rem;font-size:.75rem;padding:.15rem .5rem;border:1px solid #d97706;background:#fff;border-radius:.25rem;cursor:pointer">Réinitialiser</button>
+  <button onclick="resetAllExclusions()" data-i18n="reset_all" style="margin-left:1rem;font-size:.75rem;padding:.15rem .5rem;border:1px solid #d97706;background:#fff;border-radius:.25rem;cursor:pointer">Réinitialiser</button>
 </div>
 
-<!-- ── Main ───────────────────────────────────────────────────────── -->
-<main>
+<!-- ── Main (Sprint A6, B-10 : id=main pour le skip-link) ──────────── -->
+<main id="main" role="main">
+
 

@@ -408,5 +408,11 @@
   "audit_license": "Licence",
   "audit_io": "Input → output",
   "audit_citation": "Citation",
-  "audit_homepage": "Project page"
+  "audit_homepage": "Project page",
+  "skip_to_content": "Skip to content",
+  "reset_all": "Reset",
+  "view_data": "View data",
+  "hide_data": "Hide data",
+  "chart_no_data": "No data available",
+  "chart_data_caption": "Chart data"
 }

@@ -113,7 +113,7 @@ def build_module_audit_html(
     for col in (h_module, h_status, h_version, h_author,
                 h_license, h_io, h_citation, h_homepage):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

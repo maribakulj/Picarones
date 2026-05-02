@@ -87,7 +87,7 @@ def build_lexical_modernization_html(
     ]
     for col in (gt_label, hyp_label, n_label, rate_label):
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )
