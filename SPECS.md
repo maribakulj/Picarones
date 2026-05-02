@@ -809,7 +809,7 @@ L'**état du plan institutionnel** au 2 mai 2026 :
 ## 12. Migration v1 → v2 — annexe historique
 
 Pour les lecteurs qui avaient pris connaissance de SPECS v1.0
-(mars 2025) ou de l'addendum Sprints 16-30, voici la table de
+(mars 2025) ou de l'Addendum Sprints 16-30, voici la table de
 migration des promesses changées :
 
 | SPECS v1 disait | SPECS v2 documente | Raison |

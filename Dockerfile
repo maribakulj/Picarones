@@ -43,23 +43,35 @@ FROM ${PYTHON_BASE_IMAGE} AS builder
 
 WORKDIR /app
 
-# Dépendances système pour la compilation
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+# Sprint A14 (correctif suite scan Trivy CI) — applique en priorité les
+# patches Debian disponibles AVANT d'installer build-essential/git, pour
+# éviter d'embarquer les CVE de la base image (libssl3t64, libc6, etc.).
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copier les fichiers de configuration du package
 COPY pyproject.toml .
 COPY README.md .
 COPY picarones/ picarones/
 
-# Créer un venv isolé et installer Picarones avec les extras web
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade pip && \
+# Créer un venv isolé et installer Picarones avec les extras web.
+# Sprint A14 (correctif Trivy) : upgrade explicite de setuptools et wheel
+# (CVE-2022-40897, CVE-2024-6345, CVE-2025-47273, CVE-2026-24049) avant
+# l'install du package, sinon les versions héritées de la base image
+# Python (65.5.1 / 0.45.1) restent vulnérables.
+RUN pip install --upgrade pip setuptools wheel && \
     pip install -e ".[web,llm]" && \
     pip cache purge
+
+# Patch également la copie système de pip/setuptools/wheel (en dehors du
+# venv) que Trivy détecte via /usr/local/lib/python3.11/site-packages.
+RUN /usr/local/bin/pip install --upgrade --no-cache-dir \
+    "pip>=24.2" "setuptools>=78.1.1" "wheel>=0.46.2"
 
 # ──────────────────────────────────────────────────────────────────
 # Étape 2 : runtime — image finale légère avec Tesseract
@@ -78,23 +90,34 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 WORKDIR /app
 
 # ── Dépendances système ─────────────────────────────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Tesseract OCR 5 et modèles de langues
-    tesseract-ocr \
-    tesseract-ocr-fra \
-    tesseract-ocr-lat \
-    tesseract-ocr-eng \
-    tesseract-ocr-deu \
-    tesseract-ocr-ita \
-    tesseract-ocr-spa \
-    # Bibliothèques image pour Pillow
-    libpng16-16 \
-    libjpeg62-turbo \
-    libtiff6 \
-    libwebp7 \
-    # Utilitaires
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Sprint A14 (correctif Trivy) : ``apt-get upgrade -y`` avant install
+# pour récupérer les patches de sécurité Debian (libssl3t64, libc6,
+# openssl, etc.) — la base image Python ne les inclut pas par défaut.
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        # Tesseract OCR 5 et modèles de langues
+        tesseract-ocr \
+        tesseract-ocr-fra \
+        tesseract-ocr-lat \
+        tesseract-ocr-eng \
+        tesseract-ocr-deu \
+        tesseract-ocr-ita \
+        tesseract-ocr-spa \
+        # Bibliothèques image pour Pillow
+        libpng16-16 \
+        libjpeg62-turbo \
+        libtiff6 \
+        libwebp7 \
+        # Utilitaires
+        curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Patch pip/setuptools/wheel système du runtime (en dehors du venv).
+# Trivy scanne /usr/local/lib/python3.11/site-packages indépendamment.
+RUN /usr/local/bin/pip install --upgrade --no-cache-dir \
+    "pip>=24.2" "setuptools>=78.1.1" "wheel>=0.46.2"
 
 # ── Venv Python depuis le builder ──────────────────────────────
 COPY --from=builder /opt/venv /opt/venv
