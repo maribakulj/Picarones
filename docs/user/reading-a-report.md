@@ -136,3 +136,32 @@ LibreOffice.
 - [docs/developer/narrative-engine.md] — comment ajouter un détecteur
 - [docs/developer/extending-glossary.md] — comment enrichir le glossaire
 - [SPECS.md] — spécifications complètes du projet
+
+## Mode `--lazy-images` pour les corpus volumineux
+
+Sprint A5 (item M-16 de l'audit institutionnel).
+
+Par défaut, le rapport HTML est un **fichier unique** transportable :
+toutes les images sont embarquées en base64 dans le HTML lui-même.
+C'est pratique pour partager un rapport par e-mail ou pour archivage,
+mais le fichier devient lourd dès quelques dizaines de documents :
+
+| Taille du corpus | HTML inline | HTML lazy |
+|---|---|---|
+|   10 docs |  ~5 MB | ~3 MB + dossier d'assets ~2 MB |
+|   50 docs | ~50 MB | ~3 MB + ~10 MB d'assets |
+|  500 docs | ~250 MB ramant à charger | ~3 MB + ~100 MB d'assets, chargés à la demande |
+| 1000 docs | inutilisable en pratique | reste fluide (lazy loading natif HTML) |
+
+Pour les bibliothèques numériques qui benchmarkent des milliers de
+documents, activez le mode lazy :
+
+```bash
+picarones report --results results.json --output report.html --lazy-images
+```
+
+Le rapport produit reste **auto-portant** : il suffit de copier
+``report.html`` ET le dossier ``report-assets/`` créé à côté pour
+partager. Les images sont référencées par chemin relatif et chargées
+par le navigateur uniquement quand elles entrent dans le viewport
+(``loading="lazy"`` du HTML5).

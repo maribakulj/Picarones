@@ -327,8 +327,17 @@ def test_listed_endpoints_exist() -> None:
 
 def _collected_test_count() -> int:
     """Retourne le nombre exact de tests collectés par pytest."""
+    # Sprint A5 : ``-p no:cacheprovider`` + ``--no-cov`` évitent les
+    # deadlocks de récursion quand le test parent tourne lui-même sous
+    # ``pytest --cov`` (lock du fichier .coverage).
     result = subprocess.run(
-        ["python", "-m", "pytest", "--collect-only", "-q", "tests/"],
+        [
+            "python", "-m", "pytest",
+            "--collect-only", "-q",
+            "-p", "no:cacheprovider",
+            "--no-cov",
+            "tests/",
+        ],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,

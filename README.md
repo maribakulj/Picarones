@@ -582,7 +582,7 @@ docs/                           # User + developer documentation (Sprint 22)
     ├── extending-glossary.md
     └── extending-i18n.md
 
-tests/                          # 3419 tests (1 skipped: scipy optional)
+tests/                          # 3630 tests (1 skipped: scipy optional)
 .github/workflows/
 ├── ci.yml                      # CI: Python 3.11/3.12, Linux/macOS/Windows, ruff lint
 └── sync_to_huggingface.yml     # Auto-sync to HuggingFace Space on push to main
@@ -620,7 +620,7 @@ For deployment on HuggingFace Spaces, set these in **Settings > Variables and se
   `main`/`develop`, manual dispatch
 - **Matrix:** Python 3.11 + 3.12 on Linux, macOS, and Windows
 - **Jobs:**
-  1. **Tests** -- full pytest suite (3419 passing, 1 skipped when scipy is absent) with
+  1. **Tests** -- full pytest suite (3630 passing, 1 skipped when scipy is absent) with
      coverage uploaded to Codecov
   2. **Demo** -- end-to-end demo report generation with history and robustness
   3. **Build** -- wheel and sdist with twine validation
@@ -657,7 +657,7 @@ picarones serve --port 8080
 git pull && pip install -e ".[dev,web]" && picarones demo --output demo.html
 ```
 
-**Test suite:** `pytest tests/` -> **3419 passed, 1 skipped** (the skip is intentional
+**Test suite:** `pytest tests/` -> **3630 passed, 1 skipped** (the skip is intentional
 when the optional `scipy` extra is not installed).
 
 **Key development conventions:**
@@ -703,7 +703,7 @@ when the optional `scipy` extra is not installed).
 ## Known Issues & Improvement Opportunities
 
 This section captures the findings of the Sprint 22 audit. None of them block the current
-release (all 3419 tests pass, lint clean), but each represents a sensible next step.
+release (all 3630 tests pass, lint clean), but each represents a sensible next step.
 
 ### Architecture / refactor
 

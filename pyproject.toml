@@ -139,16 +139,26 @@ picarones = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+# Exclusion par défaut : marker network non sélectionné. Override via
+# ``pytest -m network`` (CI réseau-friendly) ou ``pytest -m ""``.
+addopts = "-v --tb=short -m 'not network'"
 # Sprint A1 (M-15) : aucun test individuel ne doit dépasser 5 minutes.
 # Mode "thread" car certains tests utilisent ProcessPoolExecutor qui est
 # incompatible avec le timeout en mode "signal" sur certaines plateformes.
 timeout = 300
 timeout_method = "thread"
-# Marqueurs personnalisés. ``slow`` peut être désélectionné via
-# ``pytest -m "not slow"`` pour les boucles de dev.
+# Marqueurs personnalisés.
+# - ``slow`` : tests longs (corpus de référence) ; désélectionnables
+#   via ``pytest -m "not slow"`` pour les boucles de dev.
+# - ``network`` : tests qui font des requêtes HTTP réelles vers
+#   l'extérieur (HTR-United GitHub, HuggingFace Hub, Gallica…).
+#   Exclus du run local par défaut (sandbox sans accès réseau →
+#   timeout urllib 30s × N tests = suite bloquée).  La CI les exécute
+#   explicitement via ``pytest -m network`` ou en levant l'exclusion
+#   par défaut.
 markers = [
     "slow: tests longs (corpus de référence, intégration cloud) ; non bloquants en dev local",
+    "network: tests qui hit le réseau réel ; exclus par défaut",
 ]
 
 # ──────────────────────────────────────────────────────────────────
