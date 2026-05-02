@@ -9,9 +9,9 @@ pinned: false
 
 # Picarones
 
-> **Heritage OCR / HTR / VLM and post-correction benchmarking 
+> **Heritage OCR / HTR / VLM and post-correction benchmarking
 
-> **Banc d'essai d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux 
+> **Banc d'essai d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux
 
 [![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)

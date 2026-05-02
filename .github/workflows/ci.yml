@@ -287,8 +287,12 @@ jobs:
       # pip-audit : --skip-editable car picarones n'est pas sur PyPI.
       # En CI, l'env est frais (pip à jour grâce au step précédent) donc
       # les CVEs trouvées sont des vraies vulnérabilités déclarées.
+      # NB : ``--strict`` + ``--skip-editable`` combinés transforment le
+      # skip en erreur (incompatibilité documentée du tool). On utilise
+      # uniquement ``--skip-editable`` ; pip-audit retourne déjà exit 1
+      # sur CVE détectée — le job échouera donc en cas de vraie vulnérabilité.
       - name: Run pip-audit
-        run: python -m pip_audit --skip-editable --strict
+        run: python -m pip_audit --skip-editable
 
       # trivy : scan du Dockerfile + image résultante. Build local pour
       # auditer ce qui sera réellement déployé sur HuggingFace Space.

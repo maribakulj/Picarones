@@ -884,9 +884,9 @@ documente le travail jusqu'au **Sprint 97**. Concrètement :
 #### B-13 (BLOCKER) — Markdown des taglines cassé (lignes 12-14)
 
 ```markdown
-> **Heritage OCR / HTR / VLM and post-correction benchmarking 
+> **Heritage OCR / HTR / VLM and post-correction benchmarking
 
-> **Banc d'essai d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux 
+> **Banc d'essai d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux
 ```
 
 Les deux blockquotes ouvrent un `**` (gras) **jamais fermé**, et la

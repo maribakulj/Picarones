@@ -416,7 +416,6 @@
   "chart_no_data": "No data available",
   "chart_data_caption": "Chart data",
   "no_anchor_data": "Anchor data unavailable.",
-  "no_gini": "Gini data unavailable.",
   "locale": "en-GB",
   "palette_toggle": "Colorblind-friendly palette",
   "palette_toggle_help": "Switch the report palette to Okabe-Ito (WCAG AA recommended for color-vision deficiency)."
