@@ -366,7 +366,7 @@ dédié + PR automatique.
 
 ---
 
-### M-2 — Image Docker de base non épinglée
+### M-2 — Image Docker de base non épinglée — ✅ Résolu (Sprint A8 + Sprint A16)
 
 **Fichier** : `Dockerfile:18, 43`
 
@@ -375,10 +375,56 @@ FROM python:3.11-slim AS builder
 FROM python:3.11-slim AS runtime
 ```
 
-**Correctif** : épingler au digest SHA256 :
-`FROM python:3.11.10-slim@sha256:abc123…`. Régénérer trimestriellement.
+**Correctif appliqué** :
+- Sprint A8 : épinglage au patch `python:3.11.13-slim` (au lieu de
+  `python:3.11-slim` qui suit le stream).
+- Sprint A16 : ajout du digest sha256 (`@sha256:9bffe43…eec4`) sur les
+  deux `ARG PYTHON_BASE_IMAGE` (builder + runtime). Build reproductible
+  bit-à-bit. Test anti-régression : `tests/release/test_docker_reproducibility.py`.
 
-**Effort** : 0,25 PJ.
+**Procédure de rotation** documentée dans le commentaire en tête du
+`Dockerfile` (curl + auth.docker.io + registry-1.docker.io API).
+
+---
+
+### M-29 — Paquets `apt-get` non figés par version (reproductibilité partielle) — ⏳ Différé
+
+**Fichier** : `Dockerfile` (étapes builder + runtime).
+
+```dockerfile
+RUN apt-get install -y --no-install-recommends \
+    tesseract-ocr tesseract-ocr-fra ... libpng16-16 ...
+```
+
+**Pourquoi c'est une dette résiduelle** : après Sprint A16, l'image de
+base est figée par sha256 et l'arbre Python est figé par
+`requirements-docker.lock`. **Mais** chaque `apt-get install` résout
+contre les repos Debian au moment du build : deux builds à 6 mois
+d'écart peuvent installer des versions différentes de Tesseract,
+libpng, libtiff, etc. La reproductibilité institutionnelle BnF
+(« même `git checkout`, même image binaire, même empreinte ») n'est
+donc pas atteinte aux 100 %.
+
+**Options** (toutes complexes, à arbitrer en sprint dédié) :
+
+1. **`snapshot.debian.org`** : rediriger les sources `apt` vers un
+   snapshot Debian daté. Reproductible, mais casse la fenêtre des
+   patches de sécurité Debian (fige les CVE non patchées au
+   snapshot).
+
+2. **Pinning explicite** : `apt-get install pkg=version` pour chaque
+   paquet. Maintenance lourde (≈ 13 paquets) ; fragile (toute MAJ
+   Debian invalide le pin).
+
+3. **Migration vers une image distroless** type `chainguard/python` :
+   image durcie avec paquets pré-pinnés et CVE patchées en continu
+   par Chainguard. Change l'OS, blast radius large, à valider.
+
+**Décision** : différé à un sprint dédié post-v1.2, après stabilisation
+des extras `[ner]` et `[ocr-cloud]`. Documenté dans `Dockerfile`
+ligne 25 (rotation trimestrielle manuelle reste l'approche actuelle).
+
+**Effort estimé** : 2 PJ option 1 ; 3 PJ option 2 ; 5 PJ option 3.
 
 ---
 

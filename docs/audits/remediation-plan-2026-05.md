@@ -67,7 +67,14 @@ durée du plan, pas seulement à un sprint isolé.
 | 7 | A13 | Refonte README | 4 | 10–11 | B-13, M-19 à M-28, m-18, §9.3 |
 | 7 | A14 | Refonte SPECS.md | 3 | 11 | B-12 |
 | 8 | A15 | Audits externes (RGAA + sécurité) | 1 *(+ cycle externe)* | 11–12 | validation finale |
-| **TOTAL** | | | **~58 PJ** | **~12 sem. (1 ETP)** | **59 items** |
+| 4* | A16 | Build Docker reproductible (digest + lock file) | 1 | *(post-A14)* | M-2 (clôture) |
+| **TOTAL** | | | **~59 PJ** | **~12 sem. (1 ETP)** | **60 items** |
+
+> Note : Sprint A16 a été ajouté après l'exécution d'A14 pour clôturer
+> M-2 bout-en-bout (digest sha256 sur les deux ARG + lock file
+> ``requirements-docker.lock`` consommé par le Dockerfile). La dette
+> résiduelle ``apt-get`` non figé est tracée comme nouvel item M-29
+> dans `institutional-readiness-2026-05.md` (différé post-v1.2).
 
 ### Diagramme de Gantt synthétique
 
