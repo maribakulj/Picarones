@@ -407,6 +407,11 @@ class TestCercle1IsLean:
         "corpus.py", "facts.py", "metric_hooks.py", "metric_registry.py",
         "metrics.py", "modules.py", "pipeline.py", "results.py",
         "xml_utils.py",
+        # Sprint A3 (B-1) — déplacé depuis report/diff_utils.py pour
+        # respecter la règle Cercle 2 → Cercle 1. Pure logique de
+        # comparaison de séquences (difflib), zéro I/O, sans dépendance
+        # vers Cercles 2/3 — qualifié pour Cercle 1.
+        "diff_utils.py",
     }
 
     def test_cercle1_files_lean(self):
