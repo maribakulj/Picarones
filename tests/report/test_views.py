@@ -332,36 +332,48 @@ class TestDetailsShell:
 
 class TestGeneratorWiring:
     def test_generator_imports_three_views(self):
-        """generator.py doit importer les 3 vues automatiques (economics,
-        advanced_taxonomy, diagnostics) pour les passer au template.
+        """Test runtime du câblage des 3 vues automatiques (economics,
+        advanced_taxonomy, diagnostics).
 
-        Tolère les deux conventions de câblage : argument nommé
-        ``economics_view_html=...`` ou clé de dict ``"economics_view_html"``
-        splatée via ``**section_html`` (cf. ``_build_section_html``).
+        Vérifie que la méthode ``ReportGenerator._build_section_html``
+        retourne un dict contenant les 3 clés attendues, ce qui
+        garantit qu'elles seront splatées vers le template Jinja.
+
+        Cette version remplace l'ancien test qui scannait textuellement
+        ``generator.py`` à la recherche de ``var=`` ou ``"var"`` —
+        approche fragile (passait sur n'importe quelle occurrence dans
+        une docstring) et trop liée à la forme du code.
         """
-        from pathlib import Path
+        from picarones.fixtures import generate_sample_benchmark
+        from picarones.report.generator import ReportGenerator
 
-        gen_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "report" / "generator.py"
-        ).read_text(encoding="utf-8")
-        # Les 3 imports doivent être présents
-        assert "build_economics_view_html" in gen_src
-        assert "build_advanced_taxonomy_view_html" in gen_src
-        assert "build_diagnostics_view_html" in gen_src
-        # Et les 3 variables doivent être câblées vers le template, soit
-        # par argument explicite (``var=...``), soit par clé de dict
-        # splatée (``"var": ...``).
+        bench = generate_sample_benchmark()
+        gen = ReportGenerator(bench, lang="fr")
+        from picarones.i18n import get_labels
+
+        report_data = {
+            "engines": [],
+            "inter_engine_analysis": None,
+            "stratified_ranking": None,
+            "available_strata": [],
+            "corpus_homogeneity": None,
+        }
+        section_html = gen._build_section_html(report_data, get_labels("fr"))
         for name in (
             "economics_view_html",
             "advanced_taxonomy_view_html",
             "diagnostics_view_html",
         ):
-            assert (
-                f"{name}=" in gen_src
-                or f'"{name}"' in gen_src
-            ), (
-                f"variable {name!r} ni argument nommé ni clé de dict "
-                "dans generator.py"
+            assert name in section_html, (
+                f"clé {name!r} absente du dict retourné par "
+                "ReportGenerator._build_section_html — la vue ne sera "
+                "pas câblée vers le template."
+            )
+            # Adaptive : avec un report_data vide, chaque vue retourne ""
+            # (rapport adaptatif). On vérifie le type, pas le contenu.
+            assert isinstance(section_html[name], str), (
+                f"section {name!r} doit être une chaîne, "
+                f"pas {type(section_html[name]).__name__}"
             )
 
     def test_template_uses_three_views(self):

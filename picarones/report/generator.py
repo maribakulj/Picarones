@@ -23,11 +23,20 @@ découpées en sous-modules :
   passé au template (engines, documents, statistiques, Pareto, etc.).
 - :mod:`picarones.report.render_helpers` — couleurs / SVG mutualisés.
 
-Les noms ``_build_report_data``, ``_cer_color``, ``_cer_bg``,
-``_externalize_images_to_dir``, ``_encode_image_b64``,
-``_encode_images_b64_from_result``, ``_load_vendor_js``, ``_pct``,
-``_safe`` sont conservés en alias rétrocompat — plusieurs tests les
-importent directement.
+Rétrocompat
+-----------
+Deux noms historiques sont **encore importés par des tests** sous
+leur préfixe ``_`` et doivent être préservés :
+
+- ``_build_report_data`` (importé par 14 fichiers de tests).
+- ``_cer_color`` (importé par ``tests/report/test_report.py``).
+
+Les autres noms ``_pct``, ``_safe``, ``_cer_bg``, ``_encode_image_b64``,
+``_encode_images_b64_from_result``, ``_externalize_images_to_dir``,
+``_load_vendor_js`` sont soit utilisés en interne (les 3 derniers,
+voir :meth:`ReportGenerator.generate`), soit accessibles via leur
+nom canonique dans :mod:`picarones.report.assets` ou
+:mod:`picarones.report.render_helpers`.
 """
 
 from __future__ import annotations
@@ -40,20 +49,16 @@ from typing import Any, Optional
 from picarones.core.results import BenchmarkResult
 from picarones.measurements.statistics import build_critical_difference_svg
 from picarones.report.assets import (
-    encode_image_b64 as _encode_image_b64,
     encode_images_b64_from_result as _encode_images_b64_from_result,
     externalize_images_to_dir as _externalize_images_to_dir,
     load_vendor_js as _load_vendor_js,
 )
-from picarones.report.render_helpers import (
-    cer_step_bg as _cer_bg,
-    cer_step_color as _cer_color,
-)
-from picarones.report.report_data import build_report_data as _build_report_data
-from picarones.report.report_data._helpers import (
-    percent_string as _pct,
-    safe_round as _safe,
-)
+
+# Ré-exports rétrocompat consommés par les tests externes (cf. docstring
+# de module). La directive de fin de ligne documente l'intention de
+# ré-export et empêche ruff de marquer l'import comme inutilisé.
+from picarones.report.render_helpers import cer_step_color as _cer_color  # noqa: F401
+from picarones.report.report_data import build_report_data as _build_report_data  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
