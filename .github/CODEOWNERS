@@ -1,0 +1,76 @@
+# Sprint A10 (M-11) — désignation des mainteneurs de revue par sous-package.
+#
+# Format : ``<chemin>  @utilisateur1 @utilisateur2 @org/team-name``
+# GitHub assigne automatiquement les utilisateurs nommés ici comme
+# reviewers requis sur toute PR qui touche les chemins correspondants.
+#
+# Politique :
+# - Tout fichier de l'arbre a au moins un mainteneur désigné (catch-all
+#   en première ligne).
+# - Les sous-packages ``core/`` et ``measurements/`` ont une revue
+#   renforcée car ils définissent les contrats de l'API publique.
+# - Les guides développeur et la doc institutionnelle ont une revue
+#   ciblée sur la cohérence éditoriale (cf. GOVERNANCE.md).
+#
+# À mettre à jour quand un nouveau mainteneur rejoint l'équipe ou
+# qu'un domain expert (paléographe, archiviste, dev a11y) prend en
+# charge un sous-domaine spécifique.
+
+# ──────────────────────────────────────────────────────────────────
+# Catch-all : revue par défaut sur toute PR.
+# ──────────────────────────────────────────────────────────────────
+*                                       @maribakulj
+
+# ──────────────────────────────────────────────────────────────────
+# Cercle 1 — abstractions pures (API publique stable).
+# Toute modification ici peut casser des consommateurs externes :
+# revue prioritaire, tests anti-régression renforcés.
+# ──────────────────────────────────────────────────────────────────
+/picarones/core/                        @maribakulj
+/docs/api-stable.md                     @maribakulj
+
+# ──────────────────────────────────────────────────────────────────
+# Cercle 2 — métriques et orchestration.
+# ──────────────────────────────────────────────────────────────────
+/picarones/measurements/                @maribakulj
+/picarones/engines/                     @maribakulj
+/picarones/llm/                         @maribakulj
+/picarones/pipelines/                   @maribakulj
+/picarones/modules/                     @maribakulj
+
+# ──────────────────────────────────────────────────────────────────
+# Cercle 3 — rapport, web, CLI, extras.
+# ──────────────────────────────────────────────────────────────────
+/picarones/report/                      @maribakulj
+/picarones/web/                         @maribakulj
+/picarones/cli/                         @maribakulj
+/picarones/extras/                      @maribakulj
+
+# ──────────────────────────────────────────────────────────────────
+# Documentation, gouvernance, sécurité, accessibilité.
+# Idéalement co-revue par un domain expert quand l'équipe s'étoffe.
+# ──────────────────────────────────────────────────────────────────
+/docs/                                  @maribakulj
+/docs/case-studies/                     @maribakulj  # à co-revoir avec un archiviste/paléographe quand recruté
+/docs/operations/                       @maribakulj
+/SECURITY.md                            @maribakulj
+/ACCESSIBILITY.md                       @maribakulj  # à co-revoir avec référent a11y
+/GOVERNANCE.md                          @maribakulj
+/CONTRIBUTING.md                        @maribakulj
+/CODE_OF_CONDUCT.md                     @maribakulj
+/CITATION.cff                           @maribakulj  # ajouté Sprint A12
+/paper.md                               @maribakulj  # ajouté Sprint A12 (JOSS)
+
+# ──────────────────────────────────────────────────────────────────
+# Fichiers de configuration projet — revue renforcée car affectent
+# tout le pipeline.
+# ──────────────────────────────────────────────────────────────────
+/pyproject.toml                         @maribakulj
+/Dockerfile                             @maribakulj
+/.github/                               @maribakulj
+/.github/workflows/                     @maribakulj
+/.github/CODEOWNERS                     @maribakulj
+/Makefile                               @maribakulj
+/requirements*.txt                      @maribakulj
+/requirements*.lock                     @maribakulj
+/picarones.spec                         @maribakulj
