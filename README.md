@@ -312,7 +312,10 @@ same Docker image.
 | `llm` | `pip install -e ".[llm]"` | OpenAI, Anthropic, Mistral SDKs |
 | `hf` | `pip install -e ".[hf]"` | HuggingFace Datasets |
 | `pero` | `pip install -e ".[pero]"` | Pero OCR engine |
-| `kraken` | `pip install -e ".[kraken]"` | Kraken engine |
+<!-- Sprint A2 — Kraken/AWS Textract retirés en attendant l'implémentation
+     effective. L'extra `[kraken]` reste exposé dans pyproject.toml comme
+     emplacement réservé pour le futur adapter. -->
+
 | `ocr-cloud` | `pip install -e ".[ocr-cloud]"` | Google Vision, AWS (boto3), Azure Doc Intelligence |
 | `all` | `pip install -e ".[all]"` | `web` + `hf` + `llm` + `dev` (no `ocr-cloud`) |
 
@@ -406,7 +409,6 @@ GPT-4o and Claude support all three modes.
 |--------|------|---------------|-------------|
 | **Tesseract 5** | Local CLI | CPU (ProcessPool) | `pip install pytesseract` + system binary |
 | **Pero OCR** | Local Python | CPU (ProcessPool) | `pip install pero-ocr` |
-| **Kraken** | Local Python | CPU (ProcessPool) | `pip install kraken` |
 | **Mistral OCR** | Cloud API | IO (ThreadPool) | `MISTRAL_API_KEY` env var |
 | **Google Vision** | Cloud API | IO (ThreadPool) | `GOOGLE_APPLICATION_CREDENTIALS` env var |
 | **Azure Doc Intelligence** | Cloud API | IO (ThreadPool) | `AZURE_DOC_INTEL_ENDPOINT` + `AZURE_DOC_INTEL_KEY` |
@@ -580,7 +582,7 @@ docs/                           # User + developer documentation (Sprint 22)
     ├── extending-glossary.md
     └── extending-i18n.md
 
-tests/                          # 1242 tests (1 skipped: scipy optional)
+tests/                          # 3419 tests (1 skipped: scipy optional)
 .github/workflows/
 ├── ci.yml                      # CI: Python 3.11/3.12, Linux/macOS/Windows, ruff lint
 └── sync_to_huggingface.yml     # Auto-sync to HuggingFace Space on push to main
@@ -601,11 +603,9 @@ export MISTRAL_API_KEY="..."
 
 # Cloud OCR APIs (optional)
 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-export AWS_DEFAULT_REGION="eu-west-1"
 export AZURE_DOC_INTEL_ENDPOINT="https://..."
 export AZURE_DOC_INTEL_KEY="..."
+# AWS_* removed in Sprint A2 — no Textract adapter ships in this version.
 ```
 
 For deployment on HuggingFace Spaces, set these in **Settings > Variables and secrets**.
@@ -620,7 +620,7 @@ For deployment on HuggingFace Spaces, set these in **Settings > Variables and se
   `main`/`develop`, manual dispatch
 - **Matrix:** Python 3.11 + 3.12 on Linux, macOS, and Windows
 - **Jobs:**
-  1. **Tests** -- full pytest suite (1242 passing, 1 skipped when scipy is absent) with
+  1. **Tests** -- full pytest suite (3419 passing, 1 skipped when scipy is absent) with
      coverage uploaded to Codecov
   2. **Demo** -- end-to-end demo report generation with history and robustness
   3. **Build** -- wheel and sdist with twine validation
@@ -657,7 +657,7 @@ picarones serve --port 8080
 git pull && pip install -e ".[dev,web]" && picarones demo --output demo.html
 ```
 
-**Test suite:** `pytest tests/` -> **1242 passed, 1 skipped** (the skip is intentional
+**Test suite:** `pytest tests/` -> **3419 passed, 1 skipped** (the skip is intentional
 when the optional `scipy` extra is not installed).
 
 **Key development conventions:**
@@ -703,7 +703,7 @@ when the optional `scipy` extra is not installed).
 ## Known Issues & Improvement Opportunities
 
 This section captures the findings of the Sprint 22 audit. None of them block the current
-release (all 1242 tests pass, lint clean), but each represents a sensible next step.
+release (all 3419 tests pass, lint clean), but each represents a sensible next step.
 
 ### Architecture / refactor
 

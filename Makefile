@@ -97,6 +97,18 @@ lint:  ## Vérifie le style du code (configuration lue depuis pyproject.toml)
 	  exit 1; \
 	fi
 
+doc-check:  ## Audit de cohérence README/SPECS/CHANGELOG (Sprint A2)
+	@# Vérifie que la documentation reflète le code réel : moteurs annoncés
+	@# ont un adapter, commandes CLI listées existent, endpoints API
+	@# documentés sont exposés, compteur de tests à jour, sprints
+	@# référencés dans CHANGELOG résolvent. Voir docs/developer/doc-consistency.md.
+	@# Fallback Python système si .venv/ absent (pattern aligné avec ``lint``).
+	@if [ -x $(VENV_BIN)/python ]; then \
+	  $(VENV_BIN)/python -m pytest tests/docs/ -q --tb=short --no-header; \
+	else \
+	  $(PYTHON) -m pytest tests/docs/ -q --tb=short --no-header; \
+	fi
+
 typecheck:  ## Vérification de types avec mypy (si installé)
 	@$(VENV_BIN)/python -m mypy $(PACKAGE)/ --ignore-missing-imports --no-strict-optional 2>/dev/null \
 	  || echo "mypy non installé : pip install mypy"

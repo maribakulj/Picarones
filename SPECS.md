@@ -658,6 +658,44 @@ ajoutées entre les Sprints 16 et 30. Le cœur du document ci-dessus reste
 fidèle au cahier des charges originel ; cet addendum documente les briques
 qui ont enrichi la plateforme depuis.
 
+### Promesses non livrées — reportées à la refonte SPECS v2 (Sprint A14)
+
+> Le présent document (SPECS v1.0 + addendum Sprints 16-30) prédate la
+> refonte structurelle Sprints 32+ et plusieurs choix éditoriaux ont
+> évolué. Une refonte intégrale est planifiée en **Sprint A14** du plan
+> de remédiation institutionnelle (cf.
+> [`docs/audits/remediation-plan-2026-05.md`](docs/audits/remediation-plan-2026-05.md)).
+>
+> En attendant, les promesses suivantes mentionnées dans le présent
+> document **ne sont pas livrées** et seront soit implémentées
+> ultérieurement, soit explicitement abandonnées dans SPECS v2 :
+
+<!-- specs-check: known-abandoned-start -->
+
+- **AWS Textract** (§4.2 priorité v1.1) : adapter non implémenté ;
+  reporté à un sprint ultérieur de l'axe B (modules contribués).
+- **Calamari** (§4.2 priorité v1.1) : adapter non implémenté ; reporté
+  ou abandonné selon la demande utilisateur.
+- **OCRopus** / OCRopus4 (§4.2 priorité v1.2) : adapter non
+  implémenté ; reporté.
+- **Recommandation automatique** « quel concurrent pour quel usage »
+  (§7.1) : **abandonné** au profit du moteur narratif factuel
+  (Sprint 19) — pivot philosophique vers la stricte neutralité
+  éditoriale (« Picarones mesure et classe, il ne tranche pas »).
+- **Export PDF** du rapport (§7.3) : non implémenté ; CSV + JSON
+  couvrent les usages observés. Reporté à un sprint dédié si demande
+  utilisateur.
+- **Clustering automatique k-means des patterns d'erreurs** (§6.4) :
+  non implémenté ; remplacé partiellement par la taxonomie discrète
+  (Sprint 5) et la co-occurrence Jaccard (Sprint 75).
+- **Annotations inline du paléographe exportées en JSON** (§7.2) :
+  non implémentées ; reportées.
+- **Badge SVG de qualité OCR pour CI** (§8.3, mention historique
+  « Badge de qualité générable ») : non implémenté ; reporté à un
+  sprint dédié si demande utilisateur.
+
+<!-- specs-check: known-abandoned-end -->
+
 ### Synthèse narrative factuelle (Sprint 19)
 
 Le rapport HTML embarque en tête une **synthèse en langage naturel**
