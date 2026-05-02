@@ -36,13 +36,18 @@ FILE_BUDGETS: dict[str, int] = {
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     "picarones/measurements/statistics.py": 1300,         # actuel 1128
-    "picarones/report/generator.py": 1250,                # actuel 1063
     "picarones/measurements/runner.py": 1200,             # actuel 1019
+    # --- Refactor (sprint « découpage de generator.py ») : passé de
+    # 1063 à 431 lignes via extraction vers picarones/report/assets.py
+    # et le sous-package picarones/report/report_data/. Budget serré
+    # à 500 pour verrouiller le gain ; toute croissance > 500 sera
+    # un signal pour redécouper.
+    "picarones/report/generator.py": 500,                 # actuel 431
     # --- Fichiers métier larges.
     "picarones/measurements/robustness.py": 850,          # actuel 731
-    "picarones/report/pipeline_render.py": 825,           # actuel 717
+    "picarones/report/pipeline_render.py": 815,           # actuel 707 (rétréci)
     "picarones/core/results.py": 750,                     # actuel 636
-    "picarones/report/philological_render.py": 725,       # actuel 615
+    "picarones/report/philological_render.py": 700,       # actuel 595 (rétréci)
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590

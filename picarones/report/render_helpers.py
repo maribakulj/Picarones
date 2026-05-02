@@ -188,6 +188,60 @@ def text_color_for_bg(intensity: float, *, threshold: float = 0.55) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────
+# API publique : barème CER par paliers (badges du rapport)
+# ──────────────────────────────────────────────────────────────────
+#
+# Les badges de qualité du rapport (galerie, tableau de classement)
+# n'utilisent pas un dégradé continu mais un barème discret à 4
+# paliers calibrés sur les seuils éditoriaux usuels :
+#
+#   < 5 %  : vert    (qualité publication directe)
+#   < 15 % : jaune   (relecture humaine légère)
+#   < 30 % : orange  (relecture humaine systématique)
+#   ≥ 30 % : rouge   (catastrophique, à reprendre)
+#
+# Les couleurs sont importées de :mod:`picarones.report.colors`
+# (palette Okabe-Ito daltonien-friendly active par défaut).
+
+
+def cer_step_color(cer: float) -> str:
+    """Couleur de texte CSS pour un score CER, par paliers.
+
+    Voir le barème dans le bloc de documentation ci-dessus.
+    """
+    from picarones.report.colors import (
+        COLOR_GREEN,
+        COLOR_ORANGE,
+        COLOR_RED,
+        COLOR_YELLOW,
+    )
+    if cer < 0.05:
+        return COLOR_GREEN
+    if cer < 0.15:
+        return COLOR_YELLOW
+    if cer < 0.30:
+        return COLOR_ORANGE
+    return COLOR_RED
+
+
+def cer_step_bg(cer: float) -> str:
+    """Couleur de fond CSS associée à :func:`cer_step_color`."""
+    from picarones.report.colors import (
+        BG_GREEN,
+        BG_ORANGE,
+        BG_RED,
+        BG_YELLOW,
+    )
+    if cer < 0.05:
+        return BG_GREEN
+    if cer < 0.15:
+        return BG_YELLOW
+    if cer < 0.30:
+        return BG_ORANGE
+    return BG_RED
+
+
+# ──────────────────────────────────────────────────────────────────
 # API publique : grille SVG
 # ──────────────────────────────────────────────────────────────────
 def build_grid_svg(
@@ -328,6 +382,8 @@ __all__ = [
     "DIVERGING_NEGATIVE_RGB",
     "DIVERGING_NEUTRAL_RGB",
     "DIVERGING_POSITIVE_RGB",
+    "cer_step_color",
+    "cer_step_bg",
     "color_traffic_light",
     "color_single_gradient",
     "color_diverging",

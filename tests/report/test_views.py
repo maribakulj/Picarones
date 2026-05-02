@@ -333,7 +333,12 @@ class TestDetailsShell:
 class TestGeneratorWiring:
     def test_generator_imports_three_views(self):
         """generator.py doit importer les 3 vues automatiques (economics,
-        advanced_taxonomy, diagnostics) pour les passer au template."""
+        advanced_taxonomy, diagnostics) pour les passer au template.
+
+        Tolère les deux conventions de câblage : argument nommé
+        ``economics_view_html=...`` ou clé de dict ``"economics_view_html"``
+        splatée via ``**section_html`` (cf. ``_build_section_html``).
+        """
         from pathlib import Path
 
         gen_src = (
@@ -343,10 +348,21 @@ class TestGeneratorWiring:
         assert "build_economics_view_html" in gen_src
         assert "build_advanced_taxonomy_view_html" in gen_src
         assert "build_diagnostics_view_html" in gen_src
-        # Et les 3 variables doivent être passées au template
-        assert "economics_view_html=" in gen_src
-        assert "advanced_taxonomy_view_html=" in gen_src
-        assert "diagnostics_view_html=" in gen_src
+        # Et les 3 variables doivent être câblées vers le template, soit
+        # par argument explicite (``var=...``), soit par clé de dict
+        # splatée (``"var": ...``).
+        for name in (
+            "economics_view_html",
+            "advanced_taxonomy_view_html",
+            "diagnostics_view_html",
+        ):
+            assert (
+                f"{name}=" in gen_src
+                or f'"{name}"' in gen_src
+            ), (
+                f"variable {name!r} ni argument nommé ni clé de dict "
+                "dans generator.py"
+            )
 
     def test_template_uses_three_views(self):
         from pathlib import Path
