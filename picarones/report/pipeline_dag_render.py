@@ -90,10 +90,17 @@ def _classify_metric(
     return "red"
 
 
+# Sprint A7 (m-5) — palette Okabe-Ito daltonien-friendly importée
+# depuis le module canonique ``picarones.report.colors``. Avant
+# A7, les hex étaient hardcodés (rouge/vert classiques, problème
+# pour la deutéranopie) ; maintenant cohérent avec _cer_color et
+# difficulty_color.
+from picarones.report.colors import COLOR_GREEN, COLOR_RED, COLOR_YELLOW
+
 _QUALITY_COLORS = {
-    "green":  "#16a34a",
-    "yellow": "#d97706",
-    "red":    "#dc2626",
+    "green":  COLOR_GREEN,    # Okabe-Ito blue (substitut sémantique « bon »)
+    "yellow": COLOR_YELLOW,   # Okabe-Ito yellow
+    "red":    COLOR_RED,      # Okabe-Ito vermillion (substitut sémantique « mauvais »)
     "none":   "#6b7280",
 }
 

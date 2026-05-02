@@ -33,7 +33,55 @@ function showView(name) {
   }
 }
 
+// ─── Sprint A7 (m-5) — toggle de la palette daltonien-friendly ───────
+//
+// L'utilisateur peut basculer la palette du rapport via la case du
+// panneau Avancé OU via ``?palette=classic`` dans l'URL. Le choix est
+// persisté dans l'URL (state-stable, partageable) et appliqué au body
+// au démarrage.
+function togglePalette(useClassic) {
+  if (useClassic) {
+    document.body.classList.add('palette-classic');
+  } else {
+    document.body.classList.remove('palette-classic');
+  }
+  // Persiste le choix dans l'URL.
+  try {
+    const url = new URL(window.location.href);
+    if (useClassic) url.searchParams.set('palette', 'classic');
+    else url.searchParams.delete('palette');
+    window.history.replaceState({}, '', url);
+  } catch (e) { /* URL API absente — silencieux */ }
+}
+
+function _initPaletteFromURL() {
+  try {
+    const url = new URL(window.location.href);
+    const palette = url.searchParams.get('palette');
+    if (palette === 'classic') {
+      document.body.classList.add('palette-classic');
+      const cb = document.getElementById('palette-toggle-cb');
+      if (cb) cb.checked = true;
+    }
+  } catch (e) { /* silencieux */ }
+}
+
 // ── Formatage ───────────────────────────────────────────────────
+//
+// Sprint A7 (m-6) — formatage localisé des nombres.  ``I18N.locale``
+// est ``"fr-FR"`` ou ``"en-GB"`` (ou un autre locale BCP-47 si une
+// nouvelle langue est ajoutée).  Le séparateur de milliers et le
+// séparateur décimal suivent la convention locale (1 234,56 en FR
+// vs 1,234.56 en EN).  Un ``locale`` absent retombe sur la locale
+// navigateur (``undefined`` passé à ``toLocaleString``).
+function fmtNum(v, opts) {
+  if (v === null || v === undefined || v === '' || Number.isNaN(v)) return '—';
+  const locale = (typeof I18N !== 'undefined' && I18N.locale) || undefined;
+  return Number(v).toLocaleString(locale, opts || {});
+}
+function fmtInt(v) {
+  return fmtNum(v, { maximumFractionDigits: 0 });
+}
 function pct(v, d=2) {
   if (v === null || v === undefined) return '—';
   return (v * 100).toFixed(d) + ' %';
@@ -1051,7 +1099,7 @@ function buildGiniCerScatter() {
   if (!canvas) return;
   const pts = DATA.gini_vs_cer || [];
   if (!pts.length) {
-    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_gini||'Données Gini non disponibles.'}</p>`;
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_gini||'Gini data unavailable.'}</p>`;
     return;
   }
   const datasets = pts.map((p, i) => ({
@@ -1089,7 +1137,7 @@ function buildRatioAnchorScatter() {
   if (!canvas) return;
   const pts = DATA.ratio_vs_anchor || [];
   if (!pts.length) {
-    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">Données d'ancrage non disponibles.</p>`;
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_anchor_data||'Anchor data unavailable.'}</p>`;
     return;
   }
 
@@ -2713,6 +2761,7 @@ function _populateChartDataTable(wrapper, canvasId) {
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
+  _initPaletteFromURL();
   // Délai pour laisser les charts s'instancier au switch de vue.
   // Les boutons sont posés sur les canvas déjà visibles ; pour les
   // canvas qui se créent au premier showView('analyses'), on rappelle

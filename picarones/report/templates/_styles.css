@@ -987,3 +987,37 @@ body.present-mode .synth-cases-link { display: none; }
   outline: 2px solid #1d4ed8;
   outline-offset: 2px;
 }
+
+/* ── Sprint A7 (m-5) — toggle palette daltonien-friendly ─────────────
+   Le rapport utilise par défaut la palette Okabe-Ito (cf.
+   picarones/report/colors.py). Quand le body porte la classe
+   ``.palette-classic`` (activée via la case du panneau Avancé ou
+   ``?palette=classic`` dans l'URL), on revient à l'ancienne palette
+   rouge/vert/jaune via override CSS.
+
+   Cette classe ne touche que les éléments dont la couleur est posée
+   *en CSS variable* (au lieu de hex inline depuis Python) — c'est-à-dire
+   peu de choses dans le rapport actuel. La majorité des couleurs vient
+   de la palette Okabe-Ito appliquée à la source par les modules de
+   rendu Python. Le toggle reste utile pour les futures additions de
+   styling et signale clairement que la palette est paramétrable. */
+body.palette-classic {
+  --palette-good: #16a34a;       /* legacy green */
+  --palette-warning: #ca8a04;    /* legacy yellow */
+  --palette-bad: #dc2626;        /* legacy red */
+}
+body:not(.palette-classic) {
+  --palette-good: #0072B2;       /* Okabe-Ito blue */
+  --palette-warning: #F0E442;    /* Okabe-Ito yellow */
+  --palette-bad: #D55E00;        /* Okabe-Ito vermillion */
+}
+
+.palette-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .85rem;
+}
+.palette-toggle-row input[type="checkbox"] {
+  cursor: pointer;
+}

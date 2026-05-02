@@ -229,18 +229,27 @@ class TestReportGenerator:
 # ---------------------------------------------------------------------------
 
 class TestCerColor:
+    """Sprint A7 (m-5) : la palette par défaut est passée à Okabe-Ito
+    (daltonien-friendly).  Les hex historiques ``#16a34a`` etc.
+    restent disponibles via ``CLASSIC_*`` dans ``picarones.report.colors``
+    et activables côté frontend via ``?palette=classic``."""
+
     def test_green_below_5pct(self):
-        assert _cer_color(0.04) == "#16a34a"
+        # Okabe-Ito blue (substitut sémantique « bon »)
+        assert _cer_color(0.04) == "#0072B2"
 
     def test_yellow_5_to_15pct(self):
-        assert _cer_color(0.10) == "#ca8a04"
+        # Okabe-Ito yellow
+        assert _cer_color(0.10) == "#F0E442"
 
     def test_orange_15_to_30pct(self):
-        assert _cer_color(0.20) == "#ea580c"
+        # Okabe-Ito orange
+        assert _cer_color(0.20) == "#E69F00"
 
     def test_red_above_30pct(self):
-        assert _cer_color(0.50) == "#dc2626"
+        # Okabe-Ito vermillion (substitut sémantique « mauvais »)
+        assert _cer_color(0.50) == "#D55E00"
 
     def test_boundary_exactly_5pct(self):
         # 0.05 est dans la zone jaune (>= 0.05)
-        assert _cer_color(0.05) == "#ca8a04"
+        assert _cer_color(0.05) == "#F0E442"

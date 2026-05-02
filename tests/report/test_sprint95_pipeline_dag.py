@@ -91,32 +91,44 @@ class TestRender:
         assert html.count("marker-end") == 2
 
     def test_colour_green_for_low_cer(self) -> None:
+        # Sprint A7 (m-5) : palette Okabe-Ito (daltonien-friendly).
+        # Le test valide la sémantique « ≤ 0.05 → bon » sans coder en
+        # dur le hex (qui peut évoluer avec la palette).  Comparaison
+        # via ``COLOR_GREEN`` du module canonique.
+        from picarones.report.colors import COLOR_GREEN
+
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b",
-                  "metric_value": 0.02}]  # ≤ 0.05 → vert
+                  "metric_value": 0.02}]  # ≤ 0.05 → bon
         html = build_pipeline_dag_html(nodes, edges=edges)
-        assert "#16a34a" in html  # green
+        assert COLOR_GREEN in html
 
     def test_colour_yellow(self) -> None:
+        from picarones.report.colors import COLOR_YELLOW
+
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b", "metric_value": 0.10}]
         html = build_pipeline_dag_html(nodes, edges=edges)
-        assert "#d97706" in html  # yellow
+        assert COLOR_YELLOW in html
 
     def test_colour_red_for_high_cer(self) -> None:
+        from picarones.report.colors import COLOR_RED
+
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b", "metric_value": 0.30}]
         html = build_pipeline_dag_html(nodes, edges=edges)
-        assert "#dc2626" in html  # red
+        assert COLOR_RED in html
 
     def test_higher_is_better_inverts(self) -> None:
         # F1 = 0.95 = bonne qualité (haut)
+        from picarones.report.colors import COLOR_GREEN
+
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b", "metric_value": 0.96}]
         html = build_pipeline_dag_html(
             nodes, edges=edges, higher_is_better=True,
         )
-        assert "#16a34a" in html
+        assert COLOR_GREEN in html
 
     def test_unknown_node_in_edge_skipped(self) -> None:
         nodes = [{"name": "a"}, {"name": "b"}]
