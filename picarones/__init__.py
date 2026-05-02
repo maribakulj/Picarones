@@ -21,12 +21,21 @@ Voir ``docs/architecture.md`` pour la cartographie complète des
 
 from __future__ import annotations
 
-# Version (lecture dynamique depuis le package metadata après ``pip install -e .``)
+# Version (Sprint A9 / M-5) — résolue dans cet ordre :
+#   1. ``picarones._version`` injecté au build par setuptools_scm
+#      (présent dans le wheel installé) ;
+#   2. fallback ``importlib.metadata.version("picarones")`` pour les
+#      installations editable où ``_version.py`` peut être stale ;
+#   3. fallback final ``"1.0.0"`` si aucune source n'est disponible
+#      (ex : tarball sans .git ni metadata).
 try:
-    from importlib.metadata import version as _get_version
-    __version__ = _get_version("picarones")
-except Exception:  # noqa: BLE001
-    __version__ = "1.0.0"
+    from picarones._version import __version__  # type: ignore[import-not-found]
+except ImportError:
+    try:
+        from importlib.metadata import version as _get_version
+        __version__ = _get_version("picarones")
+    except Exception:  # noqa: BLE001
+        __version__ = "1.0.0"
 
 __author__ = "Picarones contributors"
 

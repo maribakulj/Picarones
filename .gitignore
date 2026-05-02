@@ -30,3 +30,4 @@ jobs.db-wal
 # Exceptions : fichiers HTML sources du package (templates Jinja2, pas rapports)
 !picarones/report/templates/*.html
 !picarones/web/templates/*.html
+_version.py

@@ -17,6 +17,11 @@
 import sys
 from pathlib import Path
 
+# Sprint A9 (m-15) — utilitaire PyInstaller pour auto-détecter les
+# imports d'un package entier. Remplace la liste hiddenimports manuelle
+# qui dérivait silencieusement à chaque refactor.
+from PyInstaller.utils.hooks import collect_submodules  # noqa: F401
+
 # Chemin racine du projet
 ROOT = Path(spec_file).parent  # noqa: F821 (spec_file est défini par PyInstaller)
 
@@ -41,61 +46,43 @@ a = Analysis(
         # (str(ROOT / "prompts"), "prompts"),
     ],
 
-    # Imports cachés (non détectés automatiquement par PyInstaller)
-    hiddenimports=[
-        # CLI
-        "picarones.cli",
-        "picarones.core.corpus",
-        "picarones.core.metrics",
-        "picarones.core.results",
-        "picarones.core.runner",
-        "picarones.core.normalization",
-        "picarones.core.statistics",
-        "picarones.core.confusion",
-        "picarones.core.char_scores",
-        "picarones.core.taxonomy",
-        "picarones.core.structure",
-        "picarones.core.image_quality",
-        "picarones.core.difficulty",
-        "picarones.core.history",
-        "picarones.core.robustness",
-        "picarones.engines.base",
-        "picarones.engines.tesseract",
-        "picarones.engines.pero_ocr",
-        "picarones.engines.mistral_ocr",
-        "picarones.engines.google_vision",
-        "picarones.engines.azure_doc_intel",
-        "picarones.llm.base",
-        "picarones.llm.openai_adapter",
-        "picarones.llm.anthropic_adapter",
-        "picarones.llm.mistral_adapter",
-        "picarones.llm.ollama_adapter",
-        "picarones.importers.iiif",
-        "picarones.importers.gallica",
-        "picarones.importers.escriptorium",
-        "picarones.importers.huggingface",
-        "picarones.importers.htr_united",
-        "picarones.pipelines.base",
-        "picarones.pipelines.over_normalization",
-        "picarones.report.generator",
-        "picarones.report.diff_utils",
-        "picarones.fixtures",
-        # Dépendances tiers
-        "click",
-        "jiwer",
-        "PIL",
-        "PIL.Image",
-        "PIL.ImageFilter",
-        "PIL.ImageOps",
-        "yaml",
-        "tqdm",
-        "numpy",
-        "pytesseract",
-        # SQLite (stdlib, mais parfois manquant)
-        "sqlite3",
-        # Encodage
-        "unicodedata",
-    ],
+    # Sprint A9 (m-15) — auto-détection des hiddenimports.
+    #
+    # Avant Sprint A9, la liste était maintenue manuellement et
+    # dérivait : elle référençait des modules qui ont migré dans
+    # ``measurements/`` ou ``extras/`` au moment du refactor des
+    # Cercles 1/2/3 (Sprint 33).  Bug latent : la PyInstaller build
+    # produisait un exécutable qui ratait silencieusement à
+    # l'``import`` de ces modules.
+    #
+    # ``collect_submodules`` parcourt tout le sous-arbre du package
+    # à la construction et inclut tout ce qui s'importe.  Plus rien
+    # à maintenir à la main quand on ajoute un sous-module.
+    #
+    # Liste explicite des dépendances tierces conservée car certaines
+    # (PIL.ImageFilter, jiwer) ne sont pas trouvées par ``collect_submodules``
+    # de leur propre fait (importées paresseusement).
+    hiddenimports=(
+        collect_submodules("picarones")  # noqa: F821 — défini par PyInstaller
+        + [
+            "click",
+            "jiwer",
+            "PIL",
+            "PIL.Image",
+            "PIL.ImageFilter",
+            "PIL.ImageOps",
+            "yaml",
+            "tqdm",
+            "numpy",
+            "pytesseract",
+            "defusedxml",
+            "defusedxml.ElementTree",
+            "sqlite3",
+            "unicodedata",
+            # Sprint A1 — type-checking et tests embarqués au build dev
+            # uniquement.  En build release pur, retirer.
+        ]
+    ),
 
     # Fichiers à exclure pour réduire la taille
     excludes=[

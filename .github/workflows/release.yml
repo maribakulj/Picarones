@@ -1,0 +1,273 @@
+# Sprint A9 (M-5 + M-6) — pipeline de release.
+#
+# Déclenché sur push d'un tag ``v*.*.*`` (ex : ``v1.1.0``,
+# ``v1.2.0-rc1``).  Comportement :
+#
+#   1. Build sdist + wheel via ``python -m build`` (setuptools_scm
+#      dérive automatiquement la version du tag).
+#   2. Validation ``twine check`` (taille, README rendu, métadonnées).
+#   3. Smoke test : install dans un container vierge + ``picarones demo``.
+#   4. Publication TestPyPI (validation finale avant prod).
+#   5. Smoke test depuis TestPyPI (``pip install --index-url testpypi``).
+#   6. Publication PyPI via Trusted Publisher (OIDC, sans token).
+#   7. Build image Docker multi-arch (linux/amd64 + linux/arm64).
+#   8. Push ghcr.io/maribakulj/picarones:<version> + :latest.
+#   9. Création GitHub Release avec corps généré depuis CHANGELOG.
+#
+# Prérequis (à configurer une fois côté GitHub) :
+#   - PyPI Trusted Publisher : ajouter ce workflow dans
+#     https://pypi.org/manage/account/publishing/
+#   - GHCR_TOKEN n'est pas requis : ``GITHUB_TOKEN`` natif suffit
+#     avec ``packages: write`` (cf. permissions du job docker).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag à releaser (ex: v1.1.0). Manuel uniquement."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 1 — Build & validate distribution Python
+  # ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build & validate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout (full history for setuptools_scm)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags + history requis par setuptools_scm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build tools
+        run: python -m pip install --upgrade build twine setuptools_scm
+
+      - name: Detect version from tag
+        id: version
+        run: |
+          VERSION=$(python -m setuptools_scm)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version détectée : ${VERSION}"
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Twine validate
+        run: twine check dist/*
+
+      - name: Smoke test wheel install
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install dist/*.whl
+          /tmp/smoke/bin/picarones --version
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ steps.version.outputs.version }}
+          path: dist/
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 2 — Publication TestPyPI (validation finale)
+  # ──────────────────────────────────────────────────────────────────
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/picarones
+    permissions:
+      id-token: write  # OIDC trust pour TestPyPI
+
+    steps:
+      - name: Download artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.build.outputs.version }}
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 3 — Smoke test depuis TestPyPI (avant publication finale)
+  # ──────────────────────────────────────────────────────────────────
+  testpypi-smoke:
+    name: Smoke test TestPyPI install
+    needs: [build, publish-testpypi]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Tesseract (pour le demo)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-fra
+
+      - name: Install from TestPyPI
+        run: |
+          # Retry pour le délai d'indexation TestPyPI (~30s typique)
+          for i in 1 2 3 4 5; do
+            pip install \
+              --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ \
+              picarones==${{ needs.build.outputs.version }} && break
+            echo "Tentative $i échouée, retry dans 30s..."
+            sleep 30
+          done
+
+      - name: Run demo
+        run: |
+          picarones --version
+          picarones demo --output /tmp/demo.html
+          test -s /tmp/demo.html
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 4 — Publication PyPI (production)
+  # ──────────────────────────────────────────────────────────────────
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build, testpypi-smoke]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/picarones
+    permissions:
+      id-token: write  # OIDC trust — pas de token long-lived
+
+    steps:
+      - name: Download artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.build.outputs.version }}
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 5 — Image Docker multi-arch publiée sur ghcr.io
+  # ──────────────────────────────────────────────────────────────────
+  docker:
+    name: Build & push Docker image
+    needs: [build, publish-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # push ghcr.io
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push (multi-arch)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/picarones:${{ needs.build.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/picarones:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true       # SLSA attestation
+          sbom: true             # Software Bill of Materials
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 6 — GitHub Release avec corps depuis CHANGELOG
+  # ──────────────────────────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [build, publish-pypi, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # créer la release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.build.outputs.version }}
+          path: dist/
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          # Lit la section ``## [X.Y.Z]`` correspondant à la version.
+          # Si pas trouvée, fallback sur un message générique.
+          VERSION="${{ needs.build.outputs.version }}"
+          NOTES_FILE=/tmp/release_notes.md
+          python <<PYEOF > "$NOTES_FILE"
+          import re, sys
+          changelog = open("CHANGELOG.md", encoding="utf-8").read()
+          version = "$VERSION"
+          # On cherche soit ``## [1.2.3]``, ``## [v1.2.3]``, ou ``## [1.2.3]``
+          pat = re.compile(rf"^## \[v?{re.escape(version)}\][^\n]*\n(.+?)(?=^## \[|^---|\Z)", re.MULTILINE | re.DOTALL)
+          m = pat.search(changelog)
+          if m:
+              print(m.group(1).strip())
+          else:
+              print(f"Release {version} — voir CHANGELOG.md pour les détails.")
+          PYEOF
+          echo "Notes extraites depuis CHANGELOG :"
+          cat "$NOTES_FILE"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Picarones ${{ needs.build.outputs.version }}
+          body_path: /tmp/release_notes.md
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          draft: false
+          prerelease: ${{ contains(needs.build.outputs.version, 'rc') || contains(needs.build.outputs.version, 'a') || contains(needs.build.outputs.version, 'b') }}
