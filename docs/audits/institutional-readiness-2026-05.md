@@ -30,9 +30,9 @@
 
 | Sévérité | Compte | Domaines |
 |---|---|---|
-| **BLOCKER** | 11 | Architecture (2), violation règle propre (3), publication scientifique (3), accessibilité (2), sécurité web (1) |
-| **MAJOR** | 18 | CI/CD (6), documentation (5), tests (3), reproductibilité (2), web/UX (2) |
-| **MINOR** | 17 | Polissage (DX, packaging, i18n résiduel, cache Docker, formats locales…) |
+| **BLOCKER** | 13 | Architecture (2), violation règle propre (3), publication scientifique (3), accessibilité (2), sécurité web (1), **documentation produit (2 — SPECS+README, voir §9)** |
+| **MAJOR** | 28 | CI/CD (6), documentation (5), tests (3), reproductibilité (2), web/UX (2), **README désynchronisé (10 items, voir §9)** |
+| **MINOR** | 18 | Polissage (DX, packaging, i18n résiduel, cache Docker, formats locales…) + petits items README |
 | **Faux positifs** | 1 | « SQL injection » dans `jobs.py:235` — détaillé en §6 |
 
 Tous les findings sont accompagnés de la citation `fichier:ligne` exacte
@@ -805,6 +805,374 @@ Effort : 0,01 PJ (un edit).
 En parallèle (n'occupe pas le ETP) : **rédaction du papier JOSS** par
 le ou les auteurs académiques (8 à 12 semaines, dont 4 à 6 de revue
 par les pairs). Recommandation : démarrer dès la semaine 1.
+
+---
+
+## 9. État de SPECS.md et README.md
+
+> Section ajoutée après relecture ciblée des deux documents.
+> **À elle seule, cette section identifie un BLOCKER supplémentaire
+> (B-12) et plusieurs MAJORS / MINORS spécifiques à la documentation
+> de premier contact.**
+
+### 9.1 SPECS.md — promesses non tenues, sans deprecation
+
+`SPECS.md` est daté « Version 1.0 — Mars 2025 » et n'a reçu qu'un
+*addendum Sprints 16-30* (lignes 654-757). Les promesses initiales
+suivantes **ne sont pas implémentées** et ne sont mentionnées nulle
+part comme abandonnées ni reportées :
+
+| Promesse SPECS | Section | Statut réel | Cohérence |
+|---|---|---|---|
+| Adapter Kraken (priorité v1.0) | §4.2 | Aucun fichier `picarones/engines/kraken.py`. L'extra `[kraken]` existe dans `pyproject.toml` mais ne pointe vers aucun adapter. | Promesse rompue, alors mentionnée v1.0 |
+| Adapter AWS Textract (priorité v1.1) | §4.2 | Aucun fichier `picarones/engines/aws_textract.py`. `boto3` listé dans l'extra `[ocr-cloud]` et variables `AWS_*` documentées dans le README → **fausse piste pour l'utilisateur**. | Promesse rompue + README induit en erreur |
+| Adapter Calamari (priorité v1.1) | §4.2 | Pas d'adapter, pas d'extra. | Promesse rompue |
+| Adapter OCRopus4 (priorité v1.2) | §4.2 | Pas d'adapter, pas d'extra. | Promesse rompue |
+| Moteur custom déclaré en YAML (`type: cli` / `type: api`) | §4.3 | Aucun loader `engine.yaml` dans `picarones/engines/`. Le YAML *pipeline* (Sprint 70) existe mais ne couvre pas la déclaration *d'engine* — c'est un autre périmètre. | Promesse rompue |
+| Export PDF du rapport | §7.3 | Le rapport HTML n'a qu'un export CSV (cf. `_app.js:exportCSV`). Pas de génération PDF. | Promesse rompue |
+| Export ALTO XML / PAGE XML / images annotées | §7.3 | Idem — non implémenté côté rapport HTML. | Promesse rompue (×3) |
+| Commande `picarones estimate` (preview coût avant lancement) | §8.2 | N'existe pas. Le coût est calculé *post hoc* via la vue Pareto (Sprint 20). | Promesse rompue |
+| Recommandation automatique « quel concurrent pour quel usage » | §7.1 | **Pivot philosophique opposé** : `CLAUDE.md` érige en règle « Picarones mesure et classe — il ne tranche pas ». Le moteur narratif (Sprint 19) interdit explicitement toute prescription. | **Contradiction directe** entre SPECS et règle propre du projet |
+| Score de consensus / vote majoritaire / ensemble | §6.4 | Sprint 35 calcule `oracle_token_recall` et `complementarity_gap` — ce sont des bornes supérieures, pas un mécanisme de vote actif. Pas d'`EnsembleEngine`. | Promesse partielle, livrée comme observation factuelle |
+| Clustering automatique des erreurs (k-means) | §6.4 | Pas de k-means dans le code. Sprint 75 (taxonomy_cooccurrence) couvre une partie via Jaccard. | Promesse partielle |
+| Annotations inline du paléographe exportées en JSON | §7.2 | Pas trouvé. | Promesse rompue |
+| Bibliothèque de prompts intégrée pour latin et documents mixtes | §5.4 | Le repo a 8 prompts FR + EN (médiéval, imprimé ancien) mais **pas de prompt latin** ni « documents mixtes ». | Promesse partielle |
+| Badge SVG de qualité OCR pour CI | §8.3 | Pas trouvé. | Promesse rompue |
+| Dataset de référence fourni avec Picarones (100 documents) | §3.3 | `picarones/fixtures.py` génère du synthétique ; pas de corpus réel embarqué. README admet : *« Picarones does not yet ship a curated library of standard datasets »*. | Promesse rompue (admise dans README) |
+
+**À l'inverse**, ce qui a été *ajouté* depuis SPECS et n'y figure pas
+(et donc n'est pas vendu à un primo-lecteur de SPECS) :
+NER (Sprint 38-41), reading order F1 (Sprint 53), layout F1 (Sprint 54),
+9 modules philologiques transversaux (Sprints 55-60), recherchabilité
+fuzzy (Sprint 84), séquences numériques par catégorie (Sprint 85),
+moteur narratif factuel anti-hallucination (Sprint 19), Friedman+Nemenyi+CDD
+(Sprint 18), Pareto coût/vitesse/CO₂ (Sprint 20), glossaire contextuel
+(Sprint 21), métriques inter-moteurs (Sprint 35-37, 89), absorption
+d'erreur par jonction (Sprint 94), pipelines composables avec DAG
+branchant (Sprints 63-66), CLI YAML pipeline (Sprint 70), interface
+`BaseModule` générique (Sprint 33), registre typé de métriques
+(Sprint 34), GT multi-niveaux (Sprint 32), audit de modules (Sprint 97),
+comparaison de runs (Sprint 28), stratification (Sprint 45-46),
+calibration ECE/MCE (Sprint 39-43), longitudinal régression+change-point
+(Sprint 92), throughput effectif (Sprint 91), workflows pré-câblés
+`diagnose` / `economics` / `edition` — pour ne citer que les plus
+importants.
+
+**SPECS ne reflète donc plus ni ce que le projet fait *moins* (les
+9 promesses rompues), ni ce qu'il fait *bien plus*** (au moins 25
+modules majeurs ajoutés sans entrer dans SPECS).
+
+#### B-12 (BLOCKER) — SPECS.md à refondre intégralement
+
+Pour une publication institutionnelle, SPECS.md est typiquement le
+document que la direction d'une bibliothèque lit en premier. Le décalage
+décrit ci-dessus disqualifie le document : il ment soit par excès
+(promesses non tenues), soit par défaut (le quart de la valeur du projet
+est invisible). **Effort** : 3 PJ. Réécrire SPECS.md comme un document
+miroir du code réel, marquer explicitement « Reporté » ou « Abandonné
+au profit de … » pour chaque item rompu.
+
+---
+
+### 9.2 README.md — désynchronisé d'environ 75 sprints
+
+Le README est arrêté éditorialement à **Sprint 22** (vu le tableau
+Roadmap qui s'arrête à Sprint 22 « Done » et le bloc « Known Issues &
+Improvement Opportunities » daté « Sprint 22 audit »). Or `CLAUDE.md`
+documente le travail jusqu'au **Sprint 97**. Concrètement :
+
+#### B-13 (BLOCKER) — Markdown des taglines cassé (lignes 12-14)
+
+```markdown
+> **Heritage OCR / HTR / VLM and post-correction benchmarking 
+
+> **Banc d'essai d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux 
+```
+
+Les deux blockquotes ouvrent un `**` (gras) **jamais fermé**, et la
+phrase est tronquée à mi-ligne (espace traînant, pas de point). Sur
+GitHub, HuggingFace Space et tout viewer Markdown standard, la première
+chose qu'un lecteur voit est *« un titre cassé »*. Pour la page de
+visite-de-marque d'un projet visant la BnF, c'est rédhibitoire.
+
+**Effort** : 0,1 PJ. Restaurer la phrase complète et fermer le `**`.
+
+#### M-19 (MAJEUR) — Compteur de tests faux à 3 endroits
+
+| Ligne | Affirmation | Réalité 2 mai 2026 |
+|---|---|---|
+| 583 | « 1242 tests (1 skipped: scipy optional) » | 3 359 collectés, 3 356 passed, 3 skipped |
+| 623 | « 1242 passing, 1 skipped » | id. |
+| 660 | « pytest tests/ -> 1242 passed, 1 skipped » | id. |
+
+Un primo-lecteur conclut soit que le projet est plus petit qu'il ne
+l'est, soit que le README ment. Les deux abîment la confiance.
+
+#### M-20 (MAJEUR) — Roadmap arrêtée 75 sprints en arrière
+
+Le tableau lignes 676-700 s'arrête à **Sprint 22 (« Case studies,
+user/dev guides »)**. Tous les sprints suivants — moteur Friedman+Nemenyi
+(18), Pareto (20), narrative (19), persistance jobs (26), snapshots
+reproductibilité (27), neutralité éditoriale renforcée (29), refonte
+Cercle 1/2/3 (32-34), métriques inter-moteurs (35-37), NER (38-41),
+calibration (39-43), stratification (44-46), équivalences (47), coût
+projeté (48), modernisation lexicale (49), robustesse projetée (50),
+leviers (51), réadabilité (52), reading order F1 (53), layout F1 (54),
+9 sprints philologiques (55-62), pipelines composables (63-66),
+documentation user/dev sur l'axe B (67-69), CLI YAML pipeline (70),
+rare-token (71), worst lines (72), historique baseline (73-74),
+3 chantiers taxonomie (75-77), équivalences fines (78), projection coût
+(79), modernisation lexicale (80), projection robustesse (81), leviers
+(82), reliability+stabilité (83-84-85-86-87-88-89-90-91-92-93-94-95-96),
+politique modules (97), et les chantiers post-Sprint 97 documentés dans
+CHANGELOG — sont absents.
+
+Un investisseur, un comité éditorial, un lecteur d'arXiv, ou même un
+contributeur potentiel ne peut pas évaluer la valeur réelle du projet
+depuis le README.
+
+**Effort** : 1 PJ pour résumer en un tableau condensé. Idéalement, ne
+pas dupliquer CHANGELOG : pointer vers lui pour le détail.
+
+#### M-21 (MAJEUR) — Bloc « Known Issues » obsolète, plusieurs items déjà résolus
+
+Lignes 703-772 décrivent l'audit Sprint 22 ; entre-temps :
+
+| Issue listée | État réel |
+|---|---|
+| « `web/app.py` is 3072 lines » | **131 lignes** (refactoré Sprint 25 en 11 routers + utilities) |
+| « `cli.py` is 971 lines » | **N'existe plus** : remplacé par le package `picarones/cli/` (374 lignes pour `__init__.py` + 6 sous-modules) |
+| « `core/runner.py` is 847 lines » | **Le fichier n'existe plus à ce chemin** : déplacé en `picarones/measurements/runner.py` (1 019 lignes maintenant) |
+| « `core/narrative/detectors.py` 680 lignes » | **Refactoré Sprint 19 en 6 fichiers de famille** (`measurements/narrative/detectors/{ranking,pareto,stratum,quality,history,ensemble}.py`) |
+| « `picarones/i18n.py` shim 66 lignes » | À vérifier — pourrait être nettoyé |
+| « `CHANGELOG.md` stops at Sprint 9 » | **Faux** : CHANGELOG va jusqu'à Sprint 97 + post-Sprint 97 (195 KB). |
+| « pas de tests pour char_scores.py » | À vérifier — couverture probable |
+| « pas de tests pour mistral_ocr.py / google_vision.py / azure_doc_intel.py » | **Faux** : Sprints 49, 50, 51 ajoutent des tests dédiés (`test_sprint49_mistral_confidences.py` etc.) |
+
+Un audit interne qui pointe vers un état antérieur de 2 mois mine la
+crédibilité. **Effort** : 0,5 PJ. Soit tout supprimer (le présent audit
+le remplace), soit tout réécrire.
+
+#### M-22 (MAJEUR) — Project Structure obsolète et trompeuse
+
+Section « Project Structure » (lignes 471-588) décrit un repo
+**d'avant Sprint 32-34** (la grande refonte Cercles 1/2/3) :
+
+- Annonce 17 modules dans `picarones/core/` (corpus, metrics,
+  normalization, statistics, runner, results, confusion, char_scores,
+  taxonomy, structure, image_quality, difficulty, hallucination,
+  line_metrics, history, robustness, pricing, narrative/) — **réalité**
+  selon `CLAUDE.md` : `core/` ne contient plus que **7 fichiers**
+  (modules.py, corpus.py, results.py, metric_registry.py,
+  metric_hooks.py, pipeline.py, facts.py). Tout le reste a migré dans
+  `measurements/` après le refactor.
+- Annonce `picarones/importers/` — **réalité** : `picarones/extras/importers/`
+- Annonce `picarones/web/app.py` (sans mention des 11 routers) — réalité :
+  `picarones/web/routers/` (11 fichiers) + 6 utilities (security, jobs,
+  state, models, etc.)
+- Annonce `picarones/cli.py` — réalité : `picarones/cli/` (package).
+- N'évoque ni `picarones/modules/` (BaseModule officiels — Sprint 33),
+  ni `picarones/core/narrative/` qui a migré en `measurements/narrative/`.
+
+Un développeur qui suit la structure README pour ajouter un module
+ne trouvera **aucun** des fichiers qu'on lui annonce — ou pire,
+créera son code au mauvais endroit.
+
+**Effort** : 1 PJ. Régénérer la structure depuis le repo réel.
+
+#### M-23 (MAJEUR) — Liste des moteurs OCR mensongère
+
+| Moteur listé README | Statut réel |
+|---|---|
+| Tesseract 5 | ✓ implémenté |
+| Pero OCR | ✓ implémenté |
+| **Kraken** | ❌ **non implémenté** (pas d'adapter) |
+| Mistral OCR | ✓ |
+| Google Vision | ✓ |
+| Azure Doc Intelligence | ✓ |
+| **GPT-4o (VLM)** listed as "engine" | ✗ **n'est pas un OCR engine — c'est un LLM/VLM** utilisé via les pipelines |
+| **Claude Sonnet (VLM)** listed as "engine" | id. |
+| **Mistral Large (LLM)** listed as "engine" | id. |
+| **Ollama** listed as "engine" | id. |
+| Custom engine "YAML declaration, no code required" | ❌ **non implémenté** — le YAML pipeline existe mais ne couvre pas la déclaration *d'engine* CLI/REST |
+
+Conséquence : un primo-utilisateur croit pouvoir installer Kraken
+(`pip install -e ".[kraken]"` succède puisque l'extra existe…) puis
+passer `--engines kraken` en ligne de commande — **et ça échoue**. La
+documentation cause le bug.
+
+**Effort** : 0,5 PJ. Soit implémenter Kraken (effort plus important),
+soit retirer la ligne et documenter le statut « v1.x » dans la roadmap.
+
+#### M-24 (MAJEUR) — Variables `AWS_*` documentées sans adapter
+
+Lignes 604-606 du README :
+
+```bash
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_DEFAULT_REGION="eu-west-1"
+```
+
+Aucun adapter AWS Textract n'existe. Si un usager les configure, il
+ne se passe rien — mais il croit avoir armé une fonctionnalité.
+
+**Effort** : 0,1 PJ. Supprimer ces 3 lignes (et l'`aws` dans l'extra
+`ocr-cloud` ou y ajouter une note `# slot reserved for future Textract
+adapter`).
+
+#### M-25 (MAJEUR) — CLI sous-documentée
+
+README lignes 327-339 liste **9 commandes** + `import iiif`. Réalité
+(vérifié par `picarones --help`) : **15 commandes** :
+
+| Manquantes du README | Apport |
+|---|---|
+| `picarones compare` | Compare deux runs JSON et signale les régressions (Sprint 28). Critique pour la CI/CD institutionnelle. |
+| `picarones diagnose` | Workflow diagnostic complet (bench + leviers + recommandations factuelles) — Sprint post-97 |
+| `picarones economics` | Workflow économique (bench + throughput effectif + cost projection) — Sprint 91/79 |
+| `picarones edition` | Workflow édition critique (bench + métriques philologiques) — Sprint 55-60 |
+| `picarones pipeline run` / `pipeline compare` | Banc d'essai de pipelines composées YAML (Sprint 70) |
+
+Les trois workflows pré-câblés (`diagnose`, `economics`, `edition`)
+sont précisément ce qu'un archiviste BnF non-Pythoniste cherche en
+priorité — *« j'ai un objectif éditorial donné, donne-moi le workflow
+correspondant »*. Les cacher dans une CLI non documentée est un gaspillage
+de la pédagogie déjà en place dans le code.
+
+**Effort** : 0,5 PJ.
+
+#### M-26 (MAJEUR) — Endpoints API web sous-documentés
+
+Lignes 374-386 listent **10 endpoints**. Réalité (audit web §A) :
+**27+ endpoints**, dont au moins 13 absents du README :
+`/api/benchmark/run` (le nouveau, pour pipelines composées),
+`/api/benchmark/{job_id}/synthesis_preview`, `/api/config/{save,load}`,
+`/api/history/regressions`, `/api/lang/{code}` (sélecteur langue),
+`/api/corpus/{upload,uploads,image,uploads/{id}}`, `/api/htr-united/import`,
+`/api/huggingface/import`, `/api/normalization/profiles`, `/api/reports`,
+`/api/models/{provider}`.
+
+Pour un intégrateur tiers, c'est inexploitable. La solution simple :
+auto-générer la liste via FastAPI OpenAPI et l'embarquer en annexe
+README ou la pointer (`/docs` Swagger UI).
+
+**Effort** : 0,5 PJ.
+
+#### M-27 (MAJEUR) — Métriques manquantes du README (vente sous-évaluée)
+
+La section *Heritage-Specific Metrics* (lignes 158-175) liste **8
+familles**. Le code en livre **au moins 28** depuis Sprint 22 :
+
+NER (Sprint 38-41), reading order F1 (Sprint 53), layout F1 (Sprint 54),
+delta Flesch (Sprint 52), recherchabilité fuzzy (Sprint 84),
+séquences numériques par catégorie (Sprint 85), précision par bloc
+Unicode (Sprint 55), abréviations médiévales (Sprint 56), couverture
+MUFI (Sprint 57), typographie de l'imprimé ancien (Sprint 58),
+marqueurs des archives modernes (Sprint 59), numéraux romains (Sprint 60),
+stabilité multi-runs (Sprint 83), accord inter-annotateurs Cohen κ /
+Krippendorff α (Sprint 83), divergence inter-moteurs (Sprint 35),
+matrice de spécialisation (Sprint 89), absorption d'erreur (Sprint 94),
+projection robustesse sur corpus réel (Sprint 81), prédictivité image
+(Sprint 93), tendances longitudinales (Sprint 92), throughput effectif
+(Sprint 91), coût marginal (Sprint 91), comparaison taxonomique
+côte-à-côte (Sprint 77), co-occurrence taxonomique (Sprint 75),
+heatmap intra-doc taxonomie (Sprint 76), modernisation lexicale (Sprint 80),
+projection coût en volume cible (Sprint 79), équivalences diplomatiques
+fines (Sprint 78).
+
+Le projet vaut **3 à 4 fois ce que le README affiche**. C'est un
+problème de communication, pas de code.
+
+**Effort** : 1 PJ pour réorganiser la section en 3 sous-sections
+(« Métriques classiques OCR/HTR », « Métriques philologiques », « Métriques
+de comparaison et décision ») et renvoyer vers `docs/views.md` pour le
+détail.
+
+#### M-28 (MAJEUR) — Section « Interactive HTML Report » sous-vend de moitié
+
+Lignes 198-219 listent ~15 features. Le code en livre **au moins
+25 sections** dans le rapport HTML :
+
+Tableau classement, narrative synthesis, CDD, Pareto, glossaire,
+panneau avancé, galerie, vue document, vue caractères — déjà listés.
+**Manquants** : tableau NER (Sprint 41), reliability diagrams calibration
+(Sprint 43), section stratifiée par strate (Sprint 46), matrice
+divergence inter-moteurs (Sprint 37), encart oracle complementarity
+(Sprint 37), section leviers d'amélioration (Sprint 51-82), tableau
+spécialisation (Sprint 89), tableau throughput (Sprint 91), tableau
+longitudinal (Sprint 92), heatmap taxonomie intra-doc (Sprint 76),
+tableau worst lines (Sprint 72), tableau modernisation lexicale (Sprint 80),
+tableau séquences numériques (Sprint 86), tableau recherchabilité
+(Sprint 86), tableau profil philologique (Sprint 62), boxplot
+difficulté corpus (Sprint 74), DAG pipeline SVG (Sprint 95), tableau
+absorption erreur (Sprint 94), comparaison incrémentale ANOVA-like
+(Sprint 96), tableau audit modules (Sprint 97).
+
+**Effort** : 1 PJ.
+
+#### m-18 (MINEUR) — Liens et références menus
+
+- Ligne 753 : « SPECS.md predates the narrative engine, Pareto view
+  and glossary — worth a pass » — vrai mais auto-référentiel et
+  insuffisant : SPECS prédate **75 sprints**, pas seulement 3.
+- Ligne 786 : copyright « 2024 Picarones contributors » — le projet
+  s'étend jusqu'en 2026 ; mettre `2024-2026`.
+- Ligne 535 : prompts listés (8) — vérifier qu'aucun n'a été ajouté
+  depuis ; en particulier, pas de prompt latin alors que SPECS le
+  promettait (§5.4).
+
+---
+
+### 9.3 Cohérence transverse — quels chiffres faire foi
+
+Trois documents donnent **trois chiffres différents** pour la suite de
+tests :
+
+| Document | Affirmation | Date implicite |
+|---|---|---|
+| README L583, L623, L660 | « 1 242 passed, 1 skipped » | Sprint 22 (~mars 2025) |
+| CLAUDE.md « État actuel (Sprint 16) » | « 1 072 passed, 2 skipped » | Sprint 16 |
+| CLAUDE.md « Contexte développement » | « ~3 354 passed, 2 skipped » | Sprint 97 |
+| **Mesure réelle 2 mai 2026** | **3 356 passed, 3 skipped** | (vérifié) |
+
+**Effort** : 0,1 PJ pour aligner les trois sources sur le chiffre vérifié
+et automatiser la mise à jour (un test qui lit le baseline et le
+compare à la doc).
+
+---
+
+### 9.4 Synthèse SPECS+README
+
+| Item | Sévérité | Effort |
+|---|---|---|
+| B-12 SPECS à refondre intégralement | BLOCKER | 3 PJ |
+| B-13 Markdown taglines README cassé | BLOCKER | 0,1 PJ |
+| M-19 Compteur tests faux × 3 | MAJEUR | 0,1 PJ |
+| M-20 Roadmap arrêtée Sprint 22 | MAJEUR | 1 PJ |
+| M-21 Known Issues obsolète | MAJEUR | 0,5 PJ |
+| M-22 Project Structure trompeuse | MAJEUR | 1 PJ |
+| M-23 Kraken/customYAML annoncés sans implémentation | MAJEUR | 0,5 PJ |
+| M-24 AWS env vars sans adapter | MAJEUR | 0,1 PJ |
+| M-25 CLI sous-documentée (6/15) | MAJEUR | 0,5 PJ |
+| M-26 API web sous-documentée (10/27) | MAJEUR | 0,5 PJ |
+| M-27 Métriques sous-vendues (8/28) | MAJEUR | 1 PJ |
+| M-28 Sections rapport sous-vendues (15/25) | MAJEUR | 1 PJ |
+| m-18 Petits items (copyright, lien…) | MINEUR | 0,3 PJ |
+| 9.3 Aligner les compteurs de tests entre 3 docs | MINEUR | 0,1 PJ |
+
+**Total : ~9,8 PJ pour SPECS+README seuls**, soit ~2 semaines. À
+prioriser **avant le travail de fond** sur les autres axes : le README
+est la première impression, et la divergence actuelle disqualifie
+toute communication scientifique ou institutionnelle qui s'appuierait
+dessus.
+
+**Recommandation procédurale** : ajouter dans la CI un job qui
+*vérifie* qu'aucune assertion vérifiable du README ne diverge du repo
+(compteur de tests, liste des moteurs présents dans `picarones/engines/`,
+liste des commandes CLI exposées). Concrètement,
+`tests/docs/test_readme_consistency.py` qui parse les tableaux et
+échoue si un moteur listé n'a pas d'adapter.
 
 ---
 
