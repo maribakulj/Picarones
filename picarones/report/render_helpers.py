@@ -37,12 +37,19 @@ maladresse) :
   (deltas signés) sont symétriques autour de 0 — la borne est la
   même des deux côtés.
 
-Le choix des couleurs reflète la sémantique métier : traffic-light
-utilise rouge/jaune/vert (échelle universelle de qualité), diverging
-utilise bleu/vert/orange par défaut (vert au centre = neutre,
-extrémités opposées sémantiquement, et ces 3 teintes restent
-distinguables en daltonisme deutéranope contrairement au
-rouge/vert).
+Le choix des couleurs reflète la sémantique métier :
+
+- **Traffic-light** rouge/jaune/vert : convention historique
+  largement comprise pour vision trichromate normale. **Compromis
+  d'accessibilité accepté** : la confusion rouge/vert affecte ~8 %
+  des hommes (deutéranopie/protanopie). Une migration vers la
+  palette Okabe-Ito de :mod:`picarones.report.colors` est tracée
+  comme dette dans un sprint dédié.
+- **Diverging** bleu/vert/orange par défaut : vert au centre =
+  neutre, extrémités opposées sémantiquement, et ces 3 teintes
+  restent distinguables en daltonisme deutéranope. Choix retenu
+  parce que les cellules diverging sont moins nombreuses et
+  qu'on a pu repartir de zéro en les écrivant.
 
 Palette
 -------

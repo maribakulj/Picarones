@@ -75,14 +75,17 @@ class TestColorTrafficLight:
         assert len(c) == 7
         assert c == c.lower()
 
-    def test_nan_falls_back_to_red(self) -> None:
-        # max(0, min(1, NaN)) = NaN → mais ensuite f <= 0.5 est False, donc
-        # branche "yellow → green" avec t = (NaN - 0.5) / 0.5 = NaN.
-        # Le résultat est techniquement indéfini ; on vérifie au moins que
-        # la fonction ne crash pas et retourne un hex valide.
-        c = color_traffic_light(float("nan"))
-        assert c.startswith("#")
-        assert len(c) == 7
+    def test_nan_propagates_to_green(self) -> None:
+        # Vérification IEEE 754 : ``min(1.0, NaN)`` retourne ``1.0`` en
+        # Python (la comparaison avec NaN est False, donc Python retient
+        # le second argument).  ``max(0.0, 1.0) = 1.0``.  Donc f=1.0,
+        # branche ``f > 0.5`` → vert max.  Comportement déterministe et
+        # testable (pas un test placebo "ne crash pas").
+        assert _hex_to_rgb(color_traffic_light(float("nan"))) == GRADIENT_GREEN_RGB
+        # Avec low_is_good=True, l'inversion donne f=0 → rouge.
+        assert _hex_to_rgb(
+            color_traffic_light(float("nan"), low_is_good=True)
+        ) == GRADIENT_RED_RGB
 
     def test_inf_clamped_to_max(self) -> None:
         # +inf > scale_max → clamp à scale_max → vert (high_is_good)
@@ -90,12 +93,15 @@ class TestColorTrafficLight:
         # -inf < 0 → clamp à 0 → rouge
         assert _hex_to_rgb(color_traffic_light(float("-inf"))) == GRADIENT_RED_RGB
 
-    def test_inverted_scale_returns_yellow(self) -> None:
-        # scale_min > scale_max → span négatif → géré comme zero span.
-        # La fonction ne doit pas crash et retourne une couleur valide.
-        c = color_traffic_light(5.0, scale_min=10, scale_max=5)
-        assert c.startswith("#")
-        assert len(c) == 7
+    def test_inverted_scale_returns_yellow_neutral(self) -> None:
+        # scale_min > scale_max → span <= 0 → branche "zero span" → f=0.5
+        # → frontière exacte rouge/jaune/vert → jaune neutre.
+        assert _hex_to_rgb(
+            color_traffic_light(5.0, scale_min=10, scale_max=5)
+        ) == GRADIENT_YELLOW_RGB
+        # Idem pour scale_min == scale_max (déjà couvert par
+        # test_zero_span_returns_yellow plus haut, mais la cohérence
+        # de comportement est explicite ici).
 
 
 # ──────────────────────────────────────────────────────────────────

@@ -38,6 +38,7 @@ Test ratchet :
 from __future__ import annotations
 
 import ast
+import functools
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -107,24 +108,38 @@ def _imports_target_relative(
     node: ast.AST, module_name: str, source_dir: Path,
 ) -> bool:
     """True si ce nœud AST importe ``module_name`` via un import relatif
-    valide depuis le package ``measurements``.
+    qui pointe vers ``picarones/measurements/<module_name>``.
 
-    Couvre :
+    Couvre les imports relatifs depuis n'importe quel sous-dossier du
+    package ``measurements`` (y compris ``measurements/narrative/`` et
+    ``measurements/narrative/detectors/``) :
 
-    - ``from . import X`` (depuis ``measurements/__init__.py`` ou
-      tout autre module dans le package).
-    - ``from .X import Y``.
+    - ``from . import X`` (level=1) depuis ``measurements/foo.py``.
+    - ``from .X import Y`` (level=1, module=X) depuis le même.
+    - ``from .. import X`` (level=2) depuis ``measurements/sub/foo.py``.
+    - ``from ..X import Y`` (level=2, module=X) depuis le même.
+    - Idem pour level=3 et au-delà depuis sous-sous-packages.
+
+    L'ancien check ``source_dir == MEASUREMENTS_DIR`` ratait tous les
+    imports relatifs depuis les sous-packages — bombe à retardement
+    qui devient critique dès qu'un sous-package importe un voisin.
     """
     if not isinstance(node, ast.ImportFrom):
         return False
     if node.level < 1:
         return False
-    if source_dir != MEASUREMENTS_DIR:
+    # Remonter ``node.level - 1`` niveaux pour résoudre le package cible.
+    # Pour ``from . import X`` (level=1) on reste dans ``source_dir`` ;
+    # pour ``from ..X import Y`` (level=2) on remonte d'un niveau ; etc.
+    target_dir = source_dir
+    for _ in range(node.level - 1):
+        target_dir = target_dir.parent
+    if target_dir != MEASUREMENTS_DIR:
         return False
-    # ``from .X import …``
+    # ``from .X import …`` ou ``from ..X import …``
     if node.module == module_name:
         return True
-    # ``from . import X``
+    # ``from . import X`` ou ``from .. import X``
     if node.module is None:
         for alias in node.names:
             if alias.name == module_name:
@@ -163,7 +178,15 @@ def _has_production_consumer(module_name: str) -> bool:
     return False
 
 
+@functools.cache
 def _test_only_modules() -> frozenset[str]:
+    """Retourne les modules de ``measurements/`` sans consommateur prod.
+
+    Mémoïsée par ``functools.cache`` : les deux tests de ce fichier
+    appellent cette fonction (≈ 12 s par appel sur ~200 fichiers
+    Python), donc sans cache on parsait l'AST de tout le projet
+    deux fois pour rien.
+    """
     return frozenset(
         m for m in _measurements_modules()
         if not _has_production_consumer(m)

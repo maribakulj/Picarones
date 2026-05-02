@@ -49,13 +49,25 @@ def encode_image_b64(image_path: str, max_width: int = 1200) -> str:
     échoue (Pillow indisponible, format non géré, fichier corrompu).
     Logue un avertissement dans ce dernier cas — le rapport reste
     fonctionnel mais l'image manquera dans la galerie.
+
+    Distingue ``ImportError`` (Pillow non installée — problème
+    d'environnement) du reste (problème par image) pour aider au
+    diagnostic en logs de production.
     """
     p = Path(image_path)
     if not p.exists():
         return ""
     try:
         from PIL import Image
-
+    except ImportError as exc:
+        logger.warning(
+            "[report] Pillow indisponible : %s — toutes les images "
+            "du rapport seront omises. Installer ``pip install Pillow`` "
+            "ou ``pip install picarones[report]``.",
+            exc,
+        )
+        return ""
+    try:
         with Image.open(p) as img:
             if img.width > max_width:
                 ratio = max_width / img.width
