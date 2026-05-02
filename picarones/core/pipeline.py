@@ -57,25 +57,13 @@ from picarones.core.corpus import Document, GTLevel
 from picarones.core.metric_registry import compute_at_junction
 from picarones.core.modules import ArtifactType, BaseModule
 
-# Eager-load des modules qui enregistrent des métriques dans le
-# registre typé (Sprint 34) — sans ces imports, ``compute_at_junction``
-# trouverait un registre vide et ne calculerait rien aux jonctions.
-# Sprint 34 : cer / wer / mer / wil + stub TEXT→ALTO
-import picarones.measurements.builtin_metrics  # noqa: F401
-# Sprints 55-60 : métriques philologiques.
-import picarones.measurements.unicode_blocks  # noqa: F401
-import picarones.measurements.abbreviations  # noqa: F401
-import picarones.measurements.mufi  # noqa: F401
-import picarones.measurements.early_modern_typography  # noqa: F401
-import picarones.measurements.modern_archives  # noqa: F401
-import picarones.measurements.roman_numerals  # noqa: F401
-# Sprint 53 : reading order F1.  Sprints 38, 52 : NER, readability.
-import picarones.measurements.reading_order  # noqa: F401
-import picarones.measurements.readability  # noqa: F401
-import picarones.measurements.ner  # noqa: F401
-# Chantier 1 (post-Sprint 97) : métriques (ALTO, ALTO) pour évaluer
-# les reconstructeurs ALTO contre une GT ALTO du document.
-import picarones.measurements.alto_metrics  # noqa: F401
+# Sprint A3 (renforce la règle Cercle 1 → Cercle 1 uniquement) — la
+# cérémonie d'eager-load des métriques typées (Sprint 34) qui vivait
+# ici a été déplacée dans ``picarones/measurements/__init__.py``. Tout
+# consommateur de ``compute_at_junction`` (typiquement la classe
+# ``PipelineRunner`` ci-dessous) doit avoir importé
+# ``picarones.measurements`` au moins une fois — c'est le cas dans
+# l'API publique via ``picarones.__init__`` qui déclenche le trigger.
 
 logger = logging.getLogger(__name__)
 

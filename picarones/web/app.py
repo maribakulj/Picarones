@@ -47,7 +47,7 @@ from picarones.web.routers import (
     synthesis as _synthesis_router,
     system as _system_router,
 )
-from picarones.web.security import csp_middleware
+from picarones.web.security import csp_middleware, csrf_middleware
 
 _logger = logging.getLogger(__name__)
 
@@ -100,6 +100,13 @@ app = FastAPI(
 
 # Middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
 app.middleware("http")(csp_middleware)
+
+# Sprint A4 (B-11) — protection CSRF, gated par PICARONES_CSRF_REQUIRED.
+# En mode public (HuggingFace Space) : bypass complet, pas de cookie.
+# En mode institutionnel : double-submit cookie + signature HMAC-SHA256.
+# Le middleware s'enregistre toujours mais devient no-op si la variable
+# d'env n'est pas activée — coût ~0 en mode public.
+app.middleware("http")(csrf_middleware)
 
 
 # ──────────────────────────────────────────────────────────────────────────

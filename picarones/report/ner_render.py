@@ -96,7 +96,7 @@ def build_ner_summary_html(
     for hdr in (engine_label, f1_label, p_label, r_label,
                 docs_label, halluc_label, missed_label):
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid var(--border);font-weight:600">'
             f'{_e(hdr)}</th>'
         )
@@ -194,12 +194,12 @@ def build_ner_per_category_html(
     )
     parts.append("<thead><tr>")
     parts.append(
-        f'<th style="padding:.3rem .5rem;text-align:left;'
+        f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
         f'border-bottom:1px solid var(--border)">{_e(engine_label)}</th>'
     )
     for cat in categories:
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:center;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:center;'
             f'border-bottom:1px solid var(--border)">{_e(cat)}</th>'
         )
     parts.append("</tr></thead><tbody>")
@@ -207,7 +207,7 @@ def build_ner_per_category_html(
         per_cat = (engine["aggregated_ner"] or {}).get("per_category") or {}
         parts.append("<tr>")
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:right;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:right;'
             f'border-right:1px solid var(--border);font-weight:600">'
             f'{_e(engine.get("name", ""))}</th>'
         )

@@ -240,7 +240,14 @@ class TestHTRUnitedSearch:
 # TestHTRUnitedImport
 # ===========================================================================
 
+@pytest.mark.network
 class TestHTRUnitedImport:
+    """Tests qui hit GitHub via ``urllib.request.urlopen(timeout=30)``.
+
+    Marqués ``network`` (Sprint A5) pour être exclus du run local par
+    défaut (sandbox sans accès réseau → 4 timeouts de 30s = bloque la
+    suite). La CI réseau-friendly les exécute via ``pytest -m network``.
+    """
 
     def test_import_creates_meta_file(self, tmp_path, htr_catalogue):
         from picarones.extras.importers.htr_united import import_htr_united_corpus

@@ -99,13 +99,13 @@ def _table_header(
     """Construit l'entête d'un tableau moteur × colonnes."""
     parts = [
         '<thead><tr>',
-        f'<th style="padding:.3rem .5rem;text-align:left;'
+        f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
         f'border-bottom:1px solid var(--border);font-weight:600">'
         f'{_e(engine_label)}</th>',
     ]
     for col in columns:
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:center;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:center;'
             f'border-bottom:1px solid var(--border);font-weight:600">'
             f'{_e(col)}</th>'
         )
@@ -424,30 +424,30 @@ def build_modern_archives_section(
     )
     parts.append("<thead><tr>")
     parts.append(
-        f'<th rowspan="2" style="padding:.3rem .5rem;text-align:left;'
+        f'<th scope=\"col\" rowspan="2" style="padding:.3rem .5rem;text-align:left;'
         f'border-bottom:1px solid var(--border);font-weight:600">'
         f'{_e(engine_label)}</th>'
     )
     parts.append(
-        f'<th colspan="2" style="padding:.3rem .5rem;text-align:center;'
+        f'<th scope=\"col\" colspan="2" style="padding:.3rem .5rem;text-align:center;'
         f'border-bottom:1px solid var(--border);font-weight:600">'
         f'{_e(global_label)}</th>'
     )
     for cat in cats:
         parts.append(
-            f'<th colspan="2" style="padding:.3rem .5rem;text-align:center;'
+            f'<th scope=\"col\" colspan="2" style="padding:.3rem .5rem;text-align:center;'
             f'border-bottom:1px solid var(--border);font-weight:600">'
             f'{_e(cat)}</th>'
         )
     parts.append("</tr><tr>")
     for _ in range(1 + len(cats)):
         parts.append(
-            f'<th style="padding:.2rem .4rem;text-align:center;'
+            f'<th scope=\"col\" style="padding:.2rem .4rem;text-align:center;'
             f'font-size:.75rem;font-weight:500;opacity:.7">'
             f'{_e(strict_label)}</th>'
         )
         parts.append(
-            f'<th style="padding:.2rem .4rem;text-align:center;'
+            f'<th scope=\"col\" style="padding:.2rem .4rem;text-align:center;'
             f'font-size:.75rem;font-weight:500;opacity:.7">'
             f'{_e(expansion_label)}</th>'
         )

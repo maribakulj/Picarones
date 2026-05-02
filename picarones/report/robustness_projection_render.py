@@ -89,7 +89,7 @@ def _build_summary_table(
     ]
     for col in (h_engine, h_total, h_n_types, h_worst):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )
@@ -147,7 +147,7 @@ def _build_detail_table(
     for col in (h_engine, h_deg_type, h_n_docs,
                 h_n_with_data, h_deficit, h_above):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

@@ -1,0 +1,70 @@
+# Sprint A8 (m-11) — versionnement des fixtures de test versionnables.
+#
+# Pour les fichiers de test générés (corpus de référence A5, snapshots
+# de rapport de référence, GT canoniques), on enregistre ici le SHA-256
+# du contenu. Le test ``tests/test_reproducibility_ops.py::test_testdata_versions``
+# vérifie que les fichiers listés ci-dessous correspondent toujours au
+# hash, ce qui détecte :
+# - une mise à jour fortuite d'une fixture (régression silencieuse) ;
+# - une corruption du repo (rare) ;
+# - un changement de l'algorithme de génération (ex : police par défaut
+#   Pillow qui aurait été modifiée).
+#
+# Pour mettre à jour ce fichier après un changement *intentionnel*,
+# régénérer le hash :
+#
+#     python -c "import hashlib, sys; \
+#         print(hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest())" \
+#         tests/fixtures/reference_corpus/doc_01_imprime_moderne.png
+#
+# Les hash sont volontairement laissés vides à la livraison du sprint
+# (champ ``sha256: ""``) pour ne pas casser la CI sur un changement
+# trivial de regenerate. Le test ignore les entrées avec hash vide.
+# Sprints futurs : remplir avec ``make testdata-freeze``.
+
+version: 1
+description: |
+  Versionnement des fixtures déterministes du repo. Tout changement
+  intentionnel doit être accompagné d'un commit qui met à jour le
+  hash correspondant.
+
+corpus_de_reference:
+  # Sprint A5 (M-14) — corpus synthétique pour anti-régression CER.
+  # 5 documents PNG + 5 GT.txt générés par
+  # ``tests/fixtures/reference_corpus/_generate.py``. Idempotent par
+  # construction (police bitmap par défaut Pillow).
+  - path: tests/fixtures/reference_corpus/doc_01_imprime_moderne.png
+    sha256: ""
+    notes: "Sprint A5 — hash à remplir après freeze de Pillow."
+  - path: tests/fixtures/reference_corpus/doc_01_imprime_moderne.gt.txt
+    sha256: ""
+    notes: "Sprint A5"
+  - path: tests/fixtures/reference_corpus/doc_02_chiffres_dates.png
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_02_chiffres_dates.gt.txt
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_03_noms_propres.png
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_03_noms_propres.gt.txt
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_04_courte_phrase.png
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_04_courte_phrase.gt.txt
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_05_paragraphe_long.png
+    sha256: ""
+  - path: tests/fixtures/reference_corpus/doc_05_paragraphe_long.gt.txt
+    sha256: ""
+
+policy:
+  # Politique : toute fixture binaire ajoutée à ``tests/`` doit
+  # apparaître ici. Toute fixture de ``picarones/data/`` qui sert
+  # de référence éditoriale (pricing.yaml, glossary YAML, normalization
+  # profiles) doit aussi y figurer. Les fixtures synthétiques
+  # générées au runtime (via ``conftest.py`` + tmp_path) sont exclues.
+  required_for:
+    - "fixtures binaires versionnables (PNG, ZIP, ALTO réels)"
+    - "tables éditoriales (pricing, glossary, profiles)"
+  excluded:
+    - "fixtures éphémères créées par les fixtures pytest"
+    - "fichiers générés au runtime par le runner"

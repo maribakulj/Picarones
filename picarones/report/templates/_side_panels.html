@@ -52,6 +52,21 @@
       </div>
     </section>
 
+    <!-- Sprint A7 (m-5) — toggle palette daltonien-friendly. -->
+    <section class="custom-section">
+      <h4 data-i18n="palette_toggle">Mode daltonien-friendly</h4>
+      <p class="custom-warning" data-i18n="palette_toggle_help">
+        Bascule la palette du rapport vers Okabe-Ito (palette WCAG AA
+        recommandée pour la déficience de la vision des couleurs).
+      </p>
+      <label class="palette-toggle-row">
+        <input type="checkbox" id="palette-toggle-cb"
+               onchange="togglePalette(this.checked)"
+               aria-describedby="palette-toggle-desc">
+        <span id="palette-toggle-desc" data-i18n="palette_toggle">Mode daltonien-friendly</span>
+      </label>
+    </section>
+
     <section class="custom-section">
       <button type="button" class="custom-reset" onclick="resetCustomization()"
               data-i18n="customize_reset">Réinitialiser la vue</button>

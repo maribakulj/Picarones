@@ -18,8 +18,11 @@ from __future__ import annotations
 import base64
 import io
 import json
+import logging
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Ressources vendor (embarquées dans le rapport HTML)
@@ -36,7 +39,7 @@ def _load_vendor_js(name: str) -> str:
     return f"/* vendor/{name} non trouvé */"
 
 from picarones.core.results import BenchmarkResult
-from picarones.report.diff_utils import compute_char_diff, compute_word_diff
+from picarones.core.diff_utils import compute_char_diff, compute_word_diff
 from picarones.measurements.statistics import (
     compute_pairwise_stats,
     compute_reliability_curve,
@@ -80,6 +83,87 @@ def _encode_image_b64(image_path: str, max_width: int = 1200) -> str:
             return f"data:{mime};base64,{b64}"
     except Exception:
         return ""
+
+
+def _externalize_images_to_dir(
+    benchmark: "BenchmarkResult",
+    output_dir: Path,
+    max_width: int = 1200,
+    asset_subdir: str = "report-assets",
+) -> dict[str, str]:
+    """Sprint A5 (item M-16) — écrit les images sur disque dans un
+    sous-dossier à côté du HTML, et retourne ``{doc_id: url_relative}``.
+
+    Mode « lazy loading » : au lieu d'embarquer chaque image en
+    base64 dans le HTML (50 MB+ pour un corpus de 100 documents,
+    ~200 MB+ pour 1 000 documents), on les externalise en fichiers
+    PNG/JPEG locaux. Le HTML les référence via ``<img src="report-assets/…">``
+    avec ``loading="lazy"`` côté navigateur.
+
+    Le rapport reste auto-portant si l'utilisateur copie le dossier
+    ``report-assets/`` à côté du HTML (cf. CLI ``--lazy-images``).
+
+    Parameters
+    ----------
+    benchmark:
+        Résultat de benchmark (lit ``image_path`` de chaque DocumentResult).
+    output_dir:
+        Dossier où le HTML sera écrit ; le sous-dossier d'assets sera
+        créé à côté.
+    max_width:
+        Largeur max du redimensionnement (cohérent avec
+        ``_encode_image_b64``).
+    asset_subdir:
+        Nom du sous-dossier d'assets (défaut ``"report-assets"``).
+
+    Returns
+    -------
+    dict[str, str]
+        ``{doc_id: "report-assets/<doc_id>.png"}`` (URL relative
+        consommable directement dans un attribut HTML ``src``).
+    """
+    from PIL import Image
+
+    assets_dir = output_dir / asset_subdir
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+
+    seen_ids: set[str] = set()
+    for engine_report in benchmark.engine_reports:
+        for dr in engine_report.document_results:
+            doc_id = dr.doc_id
+            if doc_id in seen_ids:
+                continue
+            seen_ids.add(doc_id)
+            try:
+                src = Path(dr.image_path)
+                if not src.exists():
+                    continue
+                # Nom de fichier dérivé du doc_id, normalisé sans
+                # caractères dangereux pour le filesystem.
+                safe_id = "".join(
+                    c if c.isalnum() or c in "._-" else "_" for c in doc_id
+                )
+                dest = assets_dir / f"{safe_id}{src.suffix.lower() or '.png'}"
+                with Image.open(src) as img:
+                    if img.width > max_width:
+                        ratio = max_width / img.width
+                        new_h = max(1, int(img.height * ratio))
+                        img = img.resize((max_width, new_h), Image.LANCZOS)
+                    if img.mode not in ("RGB", "L"):
+                        img = img.convert("RGB")
+                    fmt = "JPEG" if dest.suffix in (".jpg", ".jpeg") else "PNG"
+                    img.save(dest, format=fmt, optimize=True, quality=85)
+                # URL relative (POSIX style même sur Windows pour HTML).
+                out[doc_id] = f"{asset_subdir}/{dest.name}"
+            except Exception as exc:  # noqa: BLE001 — fallback silencieux + warning
+                logger.warning(
+                    "[report] échec d'externalisation de l'image %s : %s — "
+                    "le rapport ignorera cette image",
+                    dr.image_path,
+                    exc,
+                )
+    return out
 
 
 def _encode_images_b64_from_result(benchmark: "BenchmarkResult", max_width: int = 1200) -> dict[str, str]:
@@ -642,6 +726,7 @@ class ReportGenerator:
         images_b64: Optional[dict[str, str]] = None,
         lang: str = "fr",
         normalization_profile: Any = None,
+        lazy_images: bool = False,
     ) -> None:
         """
         Parameters
@@ -649,8 +734,10 @@ class ReportGenerator:
         benchmark:
             Résultat de benchmark à visualiser.
         images_b64:
-            Dictionnaire {doc_id: data-URI base64} des images.
+            Dictionnaire {doc_id: data-URI base64 OU url relative} des images.
             Si None, le générateur cherche dans ``benchmark.metadata["_images_b64"]``.
+            Si ``lazy_images=True``, la valeur attendue est une URL relative
+            comme ``"report-assets/<doc>.png"``.
         lang:
             Code langue du rapport : ``"fr"`` (défaut) ou ``"en"``.
         normalization_profile:
@@ -658,11 +745,21 @@ class ReportGenerator:
             le snapshot de reproductibilité). ``None`` retombe sur le
             profil mentionné dans ``benchmark.metadata["normalization_profile"]``
             s'il est présent, sinon snapshot indisponible.
+        lazy_images:
+            Sprint A5 (M-16) — si ``True``, les images sont écrites en
+            fichiers PNG/JPEG dans ``<output_dir>/report-assets/`` à côté
+            du HTML, et référencées via ``<img loading="lazy">``.
+            Le rapport reste auto-portant si on copie aussi le dossier
+            d'assets. Utile pour les corpus > 50 documents (un rapport
+            base64 monolithique de 1 000 docs dépasse 200 MB et fait
+            ramer le navigateur). En mode mono-doc ou démo : laisser
+            ``False`` pour un fichier HTML unique transportable.
         """
         self.benchmark = benchmark
         self.images_b64: dict[str, str] = images_b64 or {}
         self.lang = lang
         self.normalization_profile = normalization_profile
+        self.lazy_images = lazy_images
 
         # Récupérer les images embarquées dans les metadata (fixtures)
         if not self.images_b64:
@@ -690,10 +787,21 @@ class ReportGenerator:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Auto-encoder les images si aucune n'est fournie
-        images_b64 = self.images_b64
-        if not images_b64:
-            images_b64 = _encode_images_b64_from_result(self.benchmark)
+        # Sprint A5 (M-16) — externalisation des images si lazy_images=True
+        # ou auto-encodage base64 sinon. Les deux modes alimentent la même
+        # variable ``images_b64`` (le nom est conservé pour rétrocompat ;
+        # en mode lazy la valeur est une URL relative au lieu d'un data-URI).
+        # En mode lazy, on **force** l'externalisation même si self.images_b64
+        # est pré-rempli (par les fixtures, par metadata, etc.) — sinon le
+        # rapport contiendrait quand même des data-URI géants.
+        if self.lazy_images:
+            images_b64 = _externalize_images_to_dir(
+                self.benchmark, output_path.parent,
+            )
+        else:
+            images_b64 = self.images_b64
+            if not images_b64:
+                images_b64 = _encode_images_b64_from_result(self.benchmark)
 
         labels = get_labels(self.lang)
         report_data = _build_report_data(self.benchmark, images_b64)

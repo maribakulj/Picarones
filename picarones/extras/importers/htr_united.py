@@ -428,7 +428,17 @@ def _try_download_corpus(
                     dest = output_path / Path(fname).name
                     dest.write_bytes(zf.read(fname))
                 return len(gt_files)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — large surface (réseau, ZIP, FS)
+        # Sprint A3 (B-3) : on documente l'incident plutôt que de le
+        # masquer ; le caller reçoit toujours 0 pour préserver le
+        # contrat numérique de retour.
+        from picarones.extras.importers._fallback_log import record_fallback
+        record_fallback(
+            importer="htr_united",
+            operation="download_zip_samples",
+            error=exc,
+            extra={"output_path": str(output_path)},
+        )
         return 0
 
 
@@ -445,8 +455,16 @@ def _parse_yml_catalogue(raw: str) -> list[HTRUnitedEntry]:
         data = yaml.safe_load(raw)
         if isinstance(data, list):
             return [HTRUnitedEntry.from_dict(d) for d in data if isinstance(d, dict)]
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — yaml + parsing user-supplied
+        # Sprint A3 (B-3) : un YAML mal formé bascule en mode démo
+        # sans que l'utilisateur en soit averti — on logge et on émet
+        # un Fact pour que la synthèse du rapport mentionne l'incident.
+        from picarones.extras.importers._fallback_log import record_fallback
+        record_fallback(
+            importer="htr_united",
+            operation="yaml_catalogue_parse",
+            error=exc,
+        )
     return [HTRUnitedEntry.from_dict(d) for d in _DEMO_CATALOGUE]
 
 

@@ -1250,4 +1250,3 @@ négociation :
    de l'interface module pour les sprints 1 à 17.
 
 Tout le reste découle.
-

@@ -8,22 +8,22 @@
       <table id="ranking-table">
         <thead>
           <tr>
-            <th data-col="rank" class="sortable sorted" data-dir="asc" data-i18n="col_rank">#<i class="sort-icon">↑</i></th>
-            <th data-col="name" class="sortable" data-i18n="col_engine">Concurrent<i class="sort-icon">↕</i></th>
-            <th data-col="cer"  class="sortable" data-glossary-key="cer" data-i18n="col_cer">CER exact<i class="sort-icon">↕</i></th>
-            <th data-col="cer_diplomatic" class="sortable" id="th-cer-diplo" data-glossary-key="cer_diplomatic" data-i18n="col_cer_diplo">CER diplo.<i class="sort-icon">↕</i></th>
-            <th data-col="wer"  class="sortable" data-glossary-key="wer" data-i18n="col_wer">WER<i class="sort-icon">↕</i></th>
-            <th data-col="mer"  class="sortable" data-glossary-key="mer" data-i18n="col_mer">MER<i class="sort-icon">↕</i></th>
-            <th data-col="wil"  class="sortable" data-glossary-key="wil" data-i18n="col_wil">WIL<i class="sort-icon">↕</i></th>
-            <th data-col="ligature_score" class="sortable" id="th-ligatures" data-glossary-key="ligature_score" data-i18n="col_ligatures">Ligatures<i class="sort-icon">↕</i></th>
-            <th data-col="diacritic_score" class="sortable" id="th-diacritics" data-glossary-key="diacritic_score" data-i18n="col_diacritics">Diacritiques<i class="sort-icon">↕</i></th>
-            <th data-col="gini" class="sortable" id="th-gini" data-glossary-key="gini" data-i18n="col_gini">Gini<i class="sort-icon">↕</i></th>
-            <th data-col="anchor_score" class="sortable" id="th-anchor" data-glossary-key="anchor_score" data-i18n="col_anchor">Ancrage<i class="sort-icon">↕</i></th>
-            <th data-i18n="col_cer_median">CER médian</th>
-            <th data-i18n="col_cer_min">CER min</th>
-            <th data-i18n="col_cer_max">CER max</th>
-            <th id="th-overnorm" data-i18n="col_overnorm">Sur-norm.</th>
-            <th data-i18n="col_docs">Docs</th>
+            <th scope="col" data-col="rank" class="sortable sorted" data-dir="asc" data-i18n="col_rank">#<i class="sort-icon">↑</i></th>
+            <th scope="col" data-col="name" class="sortable" data-i18n="col_engine">Concurrent<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="cer"  class="sortable" data-glossary-key="cer" data-i18n="col_cer">CER exact<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="cer_diplomatic" class="sortable" id="th-cer-diplo" data-glossary-key="cer_diplomatic" data-i18n="col_cer_diplo">CER diplo.<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="wer"  class="sortable" data-glossary-key="wer" data-i18n="col_wer">WER<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="mer"  class="sortable" data-glossary-key="mer" data-i18n="col_mer">MER<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="wil"  class="sortable" data-glossary-key="wil" data-i18n="col_wil">WIL<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="ligature_score" class="sortable" id="th-ligatures" data-glossary-key="ligature_score" data-i18n="col_ligatures">Ligatures<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="diacritic_score" class="sortable" id="th-diacritics" data-glossary-key="diacritic_score" data-i18n="col_diacritics">Diacritiques<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="gini" class="sortable" id="th-gini" data-glossary-key="gini" data-i18n="col_gini">Gini<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="anchor_score" class="sortable" id="th-anchor" data-glossary-key="anchor_score" data-i18n="col_anchor">Ancrage<i class="sort-icon">↕</i></th>
+            <th scope="col" data-i18n="col_cer_median">CER médian</th>
+            <th scope="col" data-i18n="col_cer_min">CER min</th>
+            <th scope="col" data-i18n="col_cer_max">CER max</th>
+            <th scope="col" id="th-overnorm" data-i18n="col_overnorm">Sur-norm.</th>
+            <th scope="col" data-i18n="col_docs">Docs</th>
           </tr>
         </thead>
         <tbody id="ranking-tbody"></tbody>
@@ -89,4 +89,3 @@
     <div id="robust-excluded-docs" style="margin-top:.75rem;font-size:.82rem"></div>
   </div>
 </div>
-

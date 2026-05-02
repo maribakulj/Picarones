@@ -1,0 +1,3 @@
+Picarones est une plateforme de banc d'essai
+pour des moteurs OCR sur documents
+patrimoniaux. Cette image est synthetique.

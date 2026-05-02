@@ -19,7 +19,7 @@ from html import escape as _e
 from typing import Optional
 
 from picarones.measurements.worst_lines import WorstLineEntry
-from picarones.report.diff_utils import compute_char_diff
+from picarones.core.diff_utils import compute_char_diff
 
 
 def _color_for_cer(cer: float) -> str:
@@ -115,7 +115,7 @@ def build_worst_lines_table_html(
     cols.append(diff_label)
     for col in cols:
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

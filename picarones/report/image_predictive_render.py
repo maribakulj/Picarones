@@ -86,17 +86,17 @@ def _render_complexity_block(
         '<table style="border-collapse:collapse;width:100%;'
         'font-size:.9rem;margin-bottom:.8rem">'
         f'<thead><tr>'
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">{_e(h_mean)}</th>'
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">{_e(h_median)}</th>'
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">{_e(h_min)}</th>'
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">{_e(h_max)}</th>'
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">{_e(h_stdev)}</th>'
-        f'<th style="padding:.4rem .6rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">{_e(h_docs)}</th>'
         f'</tr></thead>'
         f'<tbody><tr>'
@@ -143,7 +143,7 @@ def _render_homogeneity_block(
     ]
     for col in (h_feat, h_mean, h_stdev, h_norm):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

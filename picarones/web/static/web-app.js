@@ -1,3 +1,55 @@
+// ─── CSRF — Sprint A4 (B-11) ─────────────────────────────────────────────
+//
+// Pattern « double-submit cookie » + signature HMAC-SHA256 (cf.
+// picarones/web/security.py).  En mode public (PICARONES_CSRF_REQUIRED
+// désactivé), le serveur retourne enabled=false et on ne pose aucun
+// header — rétrocompat HuggingFace Space.
+//
+// On wrappe ``fetch`` globalement pour injecter automatiquement
+// ``X-CSRF-Token`` sur toutes les méthodes mutantes vers la même origine.
+const CSRF_COOKIE = "picarones_csrf";
+const CSRF_HEADER = "X-CSRF-Token";
+const CSRF_PROTECTED = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function _readCookie(name) {
+  const m = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]+)"));
+  return m ? decodeURIComponent(m[2]) : null;
+}
+
+async function _ensureCsrfToken() {
+  if (_readCookie(CSRF_COOKIE)) return _readCookie(CSRF_COOKIE);
+  // Mode public : ce GET retourne enabled=false sans poser de cookie.
+  // Mode institutionnel : le serveur pose le cookie en réponse.
+  try {
+    const r = await fetch("/api/csrf/token", {credentials: "same-origin"});
+    if (!r.ok) return null;
+    const body = await r.json();
+    return body.token || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+const _origFetch = window.fetch.bind(window);
+window.fetch = async function(input, init) {
+  init = init || {};
+  const method = (init.method || "GET").toUpperCase();
+  const url = typeof input === "string" ? input : (input.url || "");
+  // Same-origin only (URL relative ou matchant location.origin).
+  const isSameOrigin =
+    !url.startsWith("http://") && !url.startsWith("https://")
+    || url.startsWith(window.location.origin);
+  if (CSRF_PROTECTED.has(method) && isSameOrigin) {
+    const token = await _ensureCsrfToken();
+    if (token) {
+      const headers = new Headers(init.headers || {});
+      if (!headers.has(CSRF_HEADER)) headers.set(CSRF_HEADER, token);
+      init.headers = headers;
+    }
+  }
+  return _origFetch(input, init);
+};
+
 // ─── i18n ────────────────────────────────────────────────────────────────────
 const T = {
   fr: {

@@ -102,10 +102,10 @@ def build_divergence_matrix_html(
     )
     parts.append('<table class="divergence-matrix" style="border-collapse:collapse;font-size:.8rem">')
     # En-tête
-    parts.append("<thead><tr><th></th>")
+    parts.append("<thead><tr><th scope=\"col\"></th>")
     for b in engines:
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:center;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:center;'
             f'border-bottom:1px solid var(--border)">{_e(b)}</th>'
         )
     parts.append("</tr></thead>")
@@ -114,7 +114,7 @@ def build_divergence_matrix_html(
     for a in engines:
         parts.append("<tr>")
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:right;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:right;'
             f'border-right:1px solid var(--border);font-weight:600">{_e(a)}</th>'
         )
         for b in engines:

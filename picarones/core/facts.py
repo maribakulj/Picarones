@@ -100,6 +100,23 @@ class FactType(str, Enum):
     (régression progressive), soit change-point avec delta >
     seuil (rupture brutale)."""
 
+    IMPORTER_FALLBACK_TRIGGERED = "importer_fallback_triggered"
+    """Un import distant (HuggingFace, HTR-United, Gallica, eScriptorium…)
+    a échoué ou a basculé en mode dégradé pendant la constitution du
+    corpus (Sprint A3, item B-3).  Le moteur narratif lit
+    ``picarones.extras.importers.consume_fallback_log()`` qui retourne
+    et **vide** la liste des incidents accumulés depuis le dernier
+    benchmark.  Un Fact par incident, importance MEDIUM (HIGH si
+    plusieurs incidents sur le même importer)."""
+
+    PRICING_STALENESS_WARNING = "pricing_staleness_warning"
+    """La table de pricing (``picarones/data/pricing.yaml``) a dépassé
+    sa date ``valid_until`` (Sprint A8, item m-14).  Les chiffres
+    coût/€ et CO₂ du rapport ne reflètent plus les tarifs courants
+    des fournisseurs cloud.  Le détecteur lit ``meta.valid_until`` et
+    compare à la date du jour ; si dépassée, émet un Fact d'importance
+    MEDIUM avec le délai dépassé en jours."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

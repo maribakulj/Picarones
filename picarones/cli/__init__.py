@@ -200,12 +200,26 @@ def info_cmd() -> None:
     type=click.Path(resolve_path=True),
     help="Fichier HTML de sortie",
 )
+@click.option(
+    "--lazy-images/--inline-images",
+    default=False,
+    show_default=True,
+    help=(
+        "Sprint A5 (M-16) : si activé, externalise les images dans un dossier "
+        "report-assets/ à côté du HTML (au lieu de les embarquer en base64). "
+        "Recommandé pour un corpus > 50 documents (rapport monolithique > 100 MB "
+        "sinon). Le rapport reste auto-portant si vous copiez aussi report-assets/."
+    ),
+)
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Mode verbeux")
-def report_cmd(results: str, output: str, verbose: bool) -> None:
+def report_cmd(results: str, output: str, lazy_images: bool, verbose: bool) -> None:
     """Génère le rapport HTML interactif depuis un fichier JSON de résultats.
 
     Le rapport est un fichier HTML auto-contenu, lisible hors-ligne,
     avec tableau de classement, galerie, vue document et graphiques.
+
+    En mode --lazy-images, les images sont externalisées en
+    ``report-assets/`` à côté du HTML pour les corpus volumineux.
     """
     _setup_logging(verbose)
 
@@ -213,7 +227,7 @@ def report_cmd(results: str, output: str, verbose: bool) -> None:
 
     click.echo(f"Chargement des résultats : {results}")
     try:
-        gen = ReportGenerator.from_json(results)
+        gen = ReportGenerator.from_json(results, lazy_images=lazy_images)
     except Exception as exc:
         click.echo(f"Erreur lors du chargement : {exc}", err=True)
         sys.exit(1)

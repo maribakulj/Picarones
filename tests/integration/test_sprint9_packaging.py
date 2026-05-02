@@ -30,32 +30,57 @@ ROOT = Path(__file__).parent.parent.parent
 # ===========================================================================
 
 class TestVersion:
+    """Tests post-Sprint A9 (M-5) : version dynamique via setuptools_scm.
+
+    Avant A9, la version était codée en dur dans pyproject.toml et
+    importlib.metadata. Depuis A9, elle est dérivée du tag git via
+    setuptools_scm — donc ces tests valident le **format PEP 440**
+    plutôt qu'une valeur fixe."""
+
+    PEP440_RE = re.compile(
+        r"^\d+\.\d+(\.\d+)?([a-z]+\d*)?(\.dev\d+)?(\+g[0-9a-f]+)?$"
+    )
 
     def test_version_in_init(self):
         from picarones import __version__
-        assert __version__ == "1.0.0"
+        # Format PEP 440 valide (peut être "1.2.0", "1.2.0.dev5", "1.2.0rc1", etc.)
+        assert self.PEP440_RE.match(__version__), (
+            f"Version mal formée : {__version__!r}"
+        )
 
     def test_version_in_pyproject(self):
+        """``pyproject.toml`` doit déclarer ``dynamic = ["version"]``
+        depuis Sprint A9 (résolution par setuptools_scm)."""
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        assert 'version = "1.0.0"' in pyproject
+        # Bloc [project] doit avoir dynamic = ["version"]
+        project_block = re.search(
+            r"\[project\](.*?)(?=\n\[)", pyproject, re.DOTALL,
+        )
+        assert project_block is not None
+        assert 'dynamic = ["version"]' in project_block.group(1)
+        # Et [tool.setuptools_scm] doit être configuré
+        assert "[tool.setuptools_scm]" in pyproject
 
     def test_version_cli(self):
         from click.testing import CliRunner
+        from picarones import __version__
         from picarones.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
-        assert "1.0.0" in result.output
+        # Le CLI doit reporter la même version que __version__
+        assert __version__ in result.output
 
     def test_version_consistent(self):
-        """La version dans __init__.py et pyproject.toml doit être identique."""
+        """La version exposée par le CLI doit correspondre à
+        ``picarones.__version__``."""
+        from click.testing import CliRunner
         from picarones import __version__
-        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        m = re.search(r'version\s*=\s*"([^"]+)"', pyproject)
-        assert m is not None
-        pyproject_version = m.group(1)
-        assert __version__ == pyproject_version, (
-            f"Version incohérente : __init__.py={__version__} vs pyproject.toml={pyproject_version}"
+        from picarones.cli import cli
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--version"])
+        assert __version__ in result.output, (
+            f"CLI report {result.output!r} mais __version__={__version__!r}"
         )
 
 
@@ -223,7 +248,13 @@ class TestPyInstallerSpec:
         assert "Analysis(" in spec
 
     def test_spec_has_picarones_cli(self, spec):
-        assert "picarones.cli" in spec
+        # Sprint A9 (m-15) : la liste manuelle des hiddenimports a été
+        # remplacée par ``collect_submodules("picarones")`` qui
+        # auto-détecte tout le package — incluant ``picarones.cli``.
+        assert 'collect_submodules("picarones")' in spec, (
+            "Le spec doit utiliser collect_submodules pour résoudre "
+            "automatiquement picarones.cli (et tous les autres modules)."
+        )
 
     def test_spec_has_exe(self, spec):
         assert "EXE(" in spec

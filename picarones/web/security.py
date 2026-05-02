@@ -349,3 +349,184 @@ async def csp_middleware(request, call_next):
         response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return response
+
+
+# ---------------------------------------------------------------------------
+# CSRF — Sprint A4 (item B-11)
+#
+# Pattern « double-submit cookie » : à chaque GET, le serveur pose un
+# cookie ``picarones_csrf`` (httponly=False car le JS doit le lire) qui
+# contient un token signé. Sur POST/PUT/DELETE/PATCH, le client doit
+# renvoyer ce token dans le header ``X-CSRF-Token``. Le serveur compare
+# les deux (constant-time) et refuse 403 sinon.
+#
+# Activation : ``PICARONES_CSRF_REQUIRED=1`` (défaut désactivé pour
+# rétrocompat HuggingFace Space sans session). En mode institutionnel
+# derrière SSO, à activer d'office.
+#
+# Secret : ``PICARONES_CSRF_SECRET`` env var. Si absent, généré au
+# démarrage (warning explicite — perte du secret entre redémarrages,
+# acceptable pour des sessions courtes).
+# ---------------------------------------------------------------------------
+
+import hashlib
+import hmac
+import secrets
+
+#: Nom du cookie CSRF (httponly=False — lu par le JS du frontend).
+CSRF_COOKIE = "picarones_csrf"
+
+#: Header HTTP que le client doit renvoyer sur POST/PUT/DELETE/PATCH.
+CSRF_HEADER = "X-CSRF-Token"
+
+#: Méthodes HTTP qui exigent un token valide.
+CSRF_PROTECTED_METHODS: frozenset[str] = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+#: Préfixes de chemin exemptés. Les endpoints purement informatifs ou
+#: appelés depuis des outils CLI tiers (curl, wget) restent accessibles
+#: sans token. Tout endpoint qui modifie l'état applicatif doit rester
+#: protégé — ne pas étendre cette liste sans revue sécurité.
+CSRF_EXEMPT_PATH_PREFIXES: tuple[str, ...] = (
+    "/health",
+    "/api/csrf/token",  # le endpoint qui *donne* le token
+)
+
+_csrf_secret_runtime: bytes | None = None
+
+
+def is_csrf_required() -> bool:
+    """Vrai si la protection CSRF doit être active (mode institutionnel)."""
+    return os.environ.get("PICARONES_CSRF_REQUIRED", "").strip() in ("1", "true", "yes")
+
+
+def _get_csrf_secret() -> bytes:
+    """Retourne le secret HMAC.  Priorité ``PICARONES_CSRF_SECRET``,
+    sinon génère un secret runtime persistant durant la vie du process.
+    """
+    global _csrf_secret_runtime
+    env = os.environ.get("PICARONES_CSRF_SECRET")
+    if env:
+        return env.encode("utf-8")
+    if _csrf_secret_runtime is None:
+        _csrf_secret_runtime = secrets.token_bytes(32)
+        logger.warning(
+            "[security] PICARONES_CSRF_SECRET non défini — secret généré au "
+            "démarrage. Les tokens CSRF seront invalidés au prochain "
+            "redémarrage. En production, exporter un secret stable."
+        )
+    return _csrf_secret_runtime
+
+
+def generate_csrf_token() -> str:
+    """Produit un token signé HMAC-SHA256.
+
+    Format : ``<nonce_hex>.<signature_hex>`` où la signature est
+    ``HMAC-SHA256(secret, nonce)``. Le nonce est rotué à chaque
+    génération — pas de réutilisation.
+    """
+    nonce = secrets.token_bytes(16)
+    sig = hmac.new(_get_csrf_secret(), nonce, hashlib.sha256).digest()
+    return f"{nonce.hex()}.{sig.hex()}"
+
+
+def verify_csrf_token(token: str | None) -> bool:
+    """Valide la signature d'un token. Compare en temps constant.
+
+    Retourne ``False`` sur token absent, mal formé, ou signature
+    incorrecte. Pas de fuite d'information sur la cause.
+    """
+    if not token or "." not in token:
+        return False
+    try:
+        nonce_hex, sig_hex = token.split(".", 1)
+        nonce = bytes.fromhex(nonce_hex)
+        sig_provided = bytes.fromhex(sig_hex)
+    except (ValueError, AttributeError):
+        return False
+    sig_expected = hmac.new(_get_csrf_secret(), nonce, hashlib.sha256).digest()
+    return hmac.compare_digest(sig_provided, sig_expected)
+
+
+async def csrf_middleware(request, call_next):
+    """Middleware FastAPI — protège les méthodes mutantes en mode CSRF.
+
+    Comportement :
+
+    1. Si ``PICARONES_CSRF_REQUIRED`` n'est pas activé → bypass complet
+       (rétrocompat HuggingFace Space public).
+    2. Sinon, si la méthode est dans ``CSRF_PROTECTED_METHODS`` et que
+       le chemin n'est pas exempté → exiger un token valide. Renvoie
+       403 si manquant ou invalide.
+    3. Pose un cookie ``picarones_csrf`` à chaque réponse pour les
+       chemins non exempts (rotation à chaque GET).
+
+    Le pattern « double-submit cookie » + signature HMAC garantit que
+    seul un client qui a *à la fois* le cookie et a pu lire sa valeur
+    via JS (donc qui n'est pas un site tiers) peut soumettre le header
+    correspondant.
+    """
+    from fastapi.responses import JSONResponse
+
+    if not is_csrf_required():
+        return await call_next(request)
+
+    path = request.url.path
+    is_exempt = any(path.startswith(p) for p in CSRF_EXEMPT_PATH_PREFIXES)
+    method = request.method.upper()
+
+    # Vérification : méthode mutante non exemptée → token obligatoire
+    if method in CSRF_PROTECTED_METHODS and not is_exempt:
+        cookie_token = request.cookies.get(CSRF_COOKIE)
+        header_token = request.headers.get(CSRF_HEADER)
+        if not cookie_token or not header_token:
+            logger.warning(
+                "[security/csrf] %s %s refusé : token cookie=%r header=%r",
+                method,
+                path,
+                bool(cookie_token),
+                bool(header_token),
+            )
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": (
+                        "CSRF token requis sur cette méthode. Récupérer un "
+                        f"token via GET /api/csrf/token et le passer dans "
+                        f"l'en-tête {CSRF_HEADER}."
+                    ),
+                },
+            )
+        if not hmac.compare_digest(cookie_token, header_token):
+            logger.warning(
+                "[security/csrf] %s %s refusé : cookie/header divergent",
+                method, path,
+            )
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token cookie/header divergent."},
+            )
+        if not verify_csrf_token(cookie_token):
+            logger.warning(
+                "[security/csrf] %s %s refusé : signature invalide",
+                method, path,
+            )
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token invalide ou expiré."},
+            )
+
+    response = await call_next(request)
+
+    # Rotation : on pose un cookie frais sur tout GET non-exempt qui n'a
+    # pas déjà un cookie, ou si la réponse est un endpoint qui force la
+    # rotation. Pour les autres méthodes, on conserve le cookie courant.
+    if method == "GET" and not is_exempt:
+        if CSRF_COOKIE not in request.cookies:
+            response.set_cookie(
+                key=CSRF_COOKIE,
+                value=generate_csrf_token(),
+                httponly=False,  # le JS doit pouvoir le lire
+                samesite="strict",
+                secure=False,  # mis à True derrière TLS via reverse proxy
+            )
+    return response

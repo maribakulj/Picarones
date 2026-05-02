@@ -94,7 +94,7 @@ def build_readability_summary_html(
     for col in (col_engine, col_mean, col_median, col_over,
                 col_under, col_docs):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

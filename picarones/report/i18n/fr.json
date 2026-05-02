@@ -408,5 +408,15 @@
   "audit_license": "Licence",
   "audit_io": "Entrée → sortie",
   "audit_citation": "Citation",
-  "audit_homepage": "Page projet"
+  "audit_homepage": "Page projet",
+  "skip_to_content": "Aller au contenu",
+  "reset_all": "Réinitialiser",
+  "view_data": "Voir les données",
+  "hide_data": "Masquer les données",
+  "chart_no_data": "Aucune donnée disponible",
+  "chart_data_caption": "Données du graphique",
+  "no_anchor_data": "Données d'ancrage non disponibles.",
+  "locale": "fr-FR",
+  "palette_toggle": "Mode daltonien-friendly",
+  "palette_toggle_help": "Bascule la palette du rapport vers Okabe-Ito (palette WCAG AA recommandée pour la déficience de la vision des couleurs)."
 }

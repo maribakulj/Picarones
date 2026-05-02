@@ -129,3 +129,54 @@ def detect_cost_outlier(benchmark_data: dict) -> list[Fact]:
             engines_involved=(p["engine"],),
         ))
     return facts
+
+
+# ---------------------------------------------------------------------------
+# Sprint A8 (item m-14) — détecteur PRICING_STALENESS_WARNING
+# ---------------------------------------------------------------------------
+
+
+@register_detector(
+    FactType.PRICING_STALENESS_WARNING,
+    # Priorité 200 — en queue (informationnel, pas bloquant pour le ranking).
+    priority=200,
+    importance=FactImportance.MEDIUM,
+)
+def detect_pricing_staleness(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact si la table de pricing a dépassé sa date
+    ``valid_until``.
+
+    Lit ``benchmark_data["snapshots"]["pricing"]["meta"]["valid_until"]``
+    (rempli par ``snapshot_all`` Sprint 27) et compare à la date du
+    jour. Si la clé est absente ou la date mal formée, le détecteur
+    reste silencieux — il ne casse pas un benchmark qui n'utilise pas
+    le snapshot Pareto."""
+    snapshots = benchmark_data.get("snapshots") or {}
+    pricing = snapshots.get("pricing") or {}
+    meta = pricing.get("meta") or {}
+    valid_until_str = meta.get("valid_until")
+    if not valid_until_str:
+        return []
+
+    from datetime import date, datetime
+
+    try:
+        valid_until = datetime.strptime(valid_until_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return []
+
+    today = date.today()
+    if today <= valid_until:
+        return []  # pricing encore valide
+
+    days_overdue = (today - valid_until).days
+    return [Fact(
+        type=FactType.PRICING_STALENESS_WARNING,
+        importance=FactImportance.MEDIUM,
+        payload={
+            "valid_until": valid_until_str,
+            "days_overdue": days_overdue,
+            "today": today.isoformat(),
+        },
+        engines_involved=(),
+    )]

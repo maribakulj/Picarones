@@ -143,7 +143,7 @@ def build_incremental_comparison_html(
     ]
     for col in (h_value, h_mean, h_stdev, h_rank, h_n_obs):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

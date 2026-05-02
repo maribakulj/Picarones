@@ -122,10 +122,10 @@ def _build_top_pairs_table(
         '<table style="border-collapse:collapse;font-size:.85rem;'
         'margin-top:.5rem">',
         '<thead><tr>',
-        f'<th style="padding:.3rem .5rem;text-align:left;'
+        f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
         f'border-bottom:1px solid #ccc;font-weight:600">'
         f'{_e(pair_label)}</th>',
-        f'<th style="padding:.3rem .5rem;text-align:right;'
+        f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:right;'
         f'border-bottom:1px solid #ccc;font-weight:600">'
         f'{_e(jaccard_label)}</th>',
         '</tr></thead><tbody>',

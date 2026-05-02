@@ -157,7 +157,7 @@ def build_stratified_ranking_html(
         parts.append("<thead><tr>")
         for hdr in (engine_label, median_label, mean_label, docs_label):
             parts.append(
-                f'<th style="padding:.3rem .5rem;text-align:left;'
+                f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
                 f'border-bottom:1px solid var(--border);font-weight:600">'
                 f'{_e(hdr)}</th>'
             )

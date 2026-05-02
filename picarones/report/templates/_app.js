@@ -26,9 +26,62 @@ function _switchView(name) {
 function showView(name) {
   _switchView(name);
   updateURL(name);
+  // Sprint A6 — re-attache les boutons d'a11y aux nouveaux charts
+  // qui ont été instanciés paresseusement au switch de vue.
+  if (typeof attachChartA11y === 'function') {
+    setTimeout(attachChartA11y, 50);
+  }
+}
+
+// ─── Sprint A7 (m-5) — toggle de la palette daltonien-friendly ───────
+//
+// L'utilisateur peut basculer la palette du rapport via la case du
+// panneau Avancé OU via ``?palette=classic`` dans l'URL. Le choix est
+// persisté dans l'URL (state-stable, partageable) et appliqué au body
+// au démarrage.
+function togglePalette(useClassic) {
+  if (useClassic) {
+    document.body.classList.add('palette-classic');
+  } else {
+    document.body.classList.remove('palette-classic');
+  }
+  // Persiste le choix dans l'URL.
+  try {
+    const url = new URL(window.location.href);
+    if (useClassic) url.searchParams.set('palette', 'classic');
+    else url.searchParams.delete('palette');
+    window.history.replaceState({}, '', url);
+  } catch (e) { /* URL API absente — silencieux */ }
+}
+
+function _initPaletteFromURL() {
+  try {
+    const url = new URL(window.location.href);
+    const palette = url.searchParams.get('palette');
+    if (palette === 'classic') {
+      document.body.classList.add('palette-classic');
+      const cb = document.getElementById('palette-toggle-cb');
+      if (cb) cb.checked = true;
+    }
+  } catch (e) { /* silencieux */ }
 }
 
 // ── Formatage ───────────────────────────────────────────────────
+//
+// Sprint A7 (m-6) — formatage localisé des nombres.  ``I18N.locale``
+// est ``"fr-FR"`` ou ``"en-GB"`` (ou un autre locale BCP-47 si une
+// nouvelle langue est ajoutée).  Le séparateur de milliers et le
+// séparateur décimal suivent la convention locale (1 234,56 en FR
+// vs 1,234.56 en EN).  Un ``locale`` absent retombe sur la locale
+// navigateur (``undefined`` passé à ``toLocaleString``).
+function fmtNum(v, opts) {
+  if (v === null || v === undefined || v === '' || Number.isNaN(v)) return '—';
+  const locale = (typeof I18N !== 'undefined' && I18N.locale) || undefined;
+  return Number(v).toLocaleString(locale, opts || {});
+}
+function fmtInt(v) {
+  return fmtNum(v, { maximumFractionDigits: 0 });
+}
 function pct(v, d=2) {
   if (v === null || v === undefined) return '—';
   return (v * 100).toFixed(d) + ' %';
@@ -1046,7 +1099,7 @@ function buildGiniCerScatter() {
   if (!canvas) return;
   const pts = DATA.gini_vs_cer || [];
   if (!pts.length) {
-    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_gini||'Données Gini non disponibles.'}</p>`;
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_gini||'Gini data unavailable.'}</p>`;
     return;
   }
   const datasets = pts.map((p, i) => ({
@@ -1084,7 +1137,7 @@ function buildRatioAnchorScatter() {
   if (!canvas) return;
   const pts = DATA.ratio_vs_anchor || [];
   if (!pts.length) {
-    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">Données d'ancrage non disponibles.</p>`;
+    canvas.parentElement.innerHTML = `<p style="color:var(--text-muted);padding:1rem">${I18N.no_anchor_data||'Anchor data unavailable.'}</p>`;
     return;
   }
 
@@ -2600,4 +2653,118 @@ function init() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// ─── Sprint A6 (B-9) — accessibilité des graphiques Chart.js ──────────
+//
+// Les <canvas> Chart.js ne sont **pas** accessibles aux lecteurs d'écran
+// par défaut (le rendu est purement pixel). Pour respecter WCAG 1.1.1
+// (Non-text Content) niveau A, on ajoute :
+//
+// 1. ``role="img"`` + ``aria-label`` (déjà posés statiquement dans le
+//    HTML via le helper Python ``_enrich_canvas_with_aria``) ;
+// 2. une table de données jumelle générée à la demande à partir de
+//    l'instance Chart.js, avec un bouton "Voir les données" qui la
+//    révèle pour TOUS (utile aussi pour la copie / vérification).
+//
+// Cette fonction est idempotente : on peut l'appeler plusieurs fois
+// sans dupliquer les boutons (test ``data-a11y-attached``).
+function attachChartA11y() {
+  const canvases = document.querySelectorAll('canvas[data-a11y-label]');
+  canvases.forEach(canvas => {
+    if (canvas.dataset.a11yAttached === '1') return;
+    canvas.dataset.a11yAttached = '1';
+
+    const id = canvas.id;
+    if (!id) return;
+
+    // Bouton "Voir les données" en dessous du canvas.
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-toggle-data';
+    btn.setAttribute('data-i18n', 'view_data');
+    btn.textContent = (typeof I18N !== 'undefined' && I18N.view_data)
+      ? I18N.view_data : 'Voir les données';
+    btn.setAttribute('aria-controls', id + '-data');
+    btn.setAttribute('aria-expanded', 'false');
+
+    // Conteneur de table (caché visuellement mais lu par les AT via
+    // aria-describedby ; révélé visuellement au clic via .is-revealed).
+    const wrapper = document.createElement('div');
+    wrapper.id = id + '-data';
+    wrapper.className = 'chart-data-table visually-hidden';
+    wrapper.setAttribute('role', 'region');
+    wrapper.setAttribute('aria-label',
+      ((typeof I18N !== 'undefined' && I18N.chart_data_caption)
+        ? I18N.chart_data_caption
+        : 'Données du graphique')
+      + ' : ' + (canvas.dataset.a11yLabel || id));
+
+    // Lien aria-describedby pour que le lecteur d'écran annonce
+    // l'existence de la table dès qu'il atteint le canvas.
+    canvas.setAttribute('aria-describedby', wrapper.id);
+
+    btn.addEventListener('click', () => {
+      const expanded = wrapper.classList.toggle('is-revealed');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      btn.textContent = expanded
+        ? ((typeof I18N !== 'undefined' && I18N.hide_data) ? I18N.hide_data : 'Masquer les données')
+        : ((typeof I18N !== 'undefined' && I18N.view_data) ? I18N.view_data : 'Voir les données');
+      // Génération paresseuse du tableau au premier clic.
+      if (expanded && !wrapper.dataset.populated) {
+        _populateChartDataTable(wrapper, id);
+        wrapper.dataset.populated = '1';
+      }
+    });
+
+    canvas.parentElement.appendChild(btn);
+    canvas.parentElement.appendChild(wrapper);
+  });
+}
+
+function _populateChartDataTable(wrapper, canvasId) {
+  const chart = (typeof chartInstances !== 'undefined') ? chartInstances[canvasId] : null;
+  if (!chart || !chart.data) {
+    wrapper.innerHTML = '<p>' +
+      ((typeof I18N !== 'undefined' && I18N.chart_no_data)
+        ? I18N.chart_no_data : 'Aucune donnée disponible')
+      + '</p>';
+    return;
+  }
+  const labels = chart.data.labels || [];
+  const datasets = chart.data.datasets || [];
+
+  // En-tête : colonne libellé puis une colonne par dataset.
+  let html = '<table class="chart-data-table is-revealed">';
+  html += '<thead><tr><th scope="col">—</th>';
+  datasets.forEach(ds => {
+    html += '<th scope="col">' + esc(ds.label || '') + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  // Une ligne par label.
+  for (let i = 0; i < labels.length; i++) {
+    html += '<tr><th scope="row">' + esc(String(labels[i])) + '</th>';
+    datasets.forEach(ds => {
+      const v = ds.data ? ds.data[i] : '';
+      html += '<td>' + esc(String(v == null ? '' : v)) + '</td>';
+    });
+    html += '</tr>';
+  }
+  // Cas particulier : pas de labels (scatter, radar) — on dump les datasets.
+  if (labels.length === 0 && datasets.length > 0) {
+    datasets.forEach(ds => {
+      html += '<tr><th scope="row">' + esc(ds.label || '') + '</th><td>' +
+              esc(JSON.stringify(ds.data).slice(0, 200)) + '</td></tr>';
+    });
+  }
+  html += '</tbody></table>';
+  wrapper.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  _initPaletteFromURL();
+  // Délai pour laisser les charts s'instancier au switch de vue.
+  // Les boutons sont posés sur les canvas déjà visibles ; pour les
+  // canvas qui se créent au premier showView('analyses'), on rappelle
+  // attachChartA11y depuis showView aussi.
+  setTimeout(attachChartA11y, 200);
+});

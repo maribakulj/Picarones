@@ -85,7 +85,7 @@ def build_calibration_summary_html(
     for hdr in (engine_label, ece_label, mce_label,
                 acc_label, conf_label, n_label, docs_label):
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid var(--border);font-weight:600">'
             f'{_e(hdr)}</th>'
         )

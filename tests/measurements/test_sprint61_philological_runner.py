@@ -300,4 +300,3 @@ class TestRunnerIntegration:
             char_exclude=None,
         )
         assert dr.philological_metrics is None
-

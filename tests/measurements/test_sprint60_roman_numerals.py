@@ -408,4 +408,3 @@ class TestRegistryIntegration:
         )
         assert out["roman_numeral_strict_score"] == pytest.approx(0.0)
         assert out["roman_numeral_value_score"] == pytest.approx(1.0)
-

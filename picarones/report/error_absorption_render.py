@@ -170,7 +170,7 @@ def build_error_absorption_html(
                 h_corrected, h_introduced, h_corr_rate,
                 h_intro_rate, h_net, h_sample):
         parts.append(
-            f'<th style="padding:.4rem .6rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.4rem .6rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

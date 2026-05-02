@@ -1,6 +1,6 @@
-"""Tests pour picarones.report.diff_utils."""
+"""Tests pour picarones.core.diff_utils (déplacé depuis report/ en Sprint A3, B-1)."""
 
-from picarones.report.diff_utils import compute_word_diff, compute_char_diff, diff_stats
+from picarones.core.diff_utils import compute_word_diff, compute_char_diff, diff_stats
 
 
 class TestComputeWordDiff:

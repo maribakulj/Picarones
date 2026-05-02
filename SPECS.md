@@ -1,761 +1,850 @@
-# Picarones — Spécifications Fonctionnelles et Techniques
+# Picarones — Spécifications fonctionnelles et techniques
 
-> **Plateforme de comparaison et d'évaluation de moteurs OCR/HTR et de pipelines OCR+LLM pour documents patrimoniaux**
+> **Plateforme de banc d'essai d'OCR / HTR / VLM et de pipelines de
+> post-correction pour documents patrimoniaux.**
 >
-> Version 1.0 — Mars 2025
+> Version **2.0** — Mai 2026. Refonte intégrale (Sprint A14 du plan
+> de remédiation institutionnelle, item **B-12**).
+
+> **Note de lecture** : ce document décrit ce que Picarones **fait
+> aujourd'hui**, dans la version 1.x. Pour les **non-fonctionnalités
+> assumées** (ce que Picarones *ne fait pas et ne fera pas* dans
+> la v1.x — par exemple la recommandation prescriptive, l'export PDF,
+> les adapters Kraken/AWS Textract), voir la section §10.
+>
+> Pour la cartographie technique du code et les règles de
+> contribution interne, voir [`CLAUDE.md`](CLAUDE.md). SPECS.md
+> reste tourné « public » (vocabulaire bibliothécaire, exemples
+> patrimoniaux). Les deux documents sont complémentaires, pas
+> redondants.
 
 ---
 
 ## Table des matières
 
-1. [Vision générale et positionnement](#1-vision-générale-et-positionnement)
-2. [Architecture générale](#2-architecture-générale)
-3. [Module 1 — Gestion des corpus et imports](#3-module-1--gestion-des-corpus-et-imports)
-4. [Module 2 — Adaptateurs moteurs OCR](#4-module-2--adaptateurs-moteurs-ocr)
-5. [Module 3 — Pipelines OCR+LLM](#5-module-3--pipelines-ocrllm)
-6. [Module 4 — Métriques et analyse](#6-module-4--métriques-et-analyse)
-7. [Module 5 — Rapport interactif HTML](#7-module-5--rapport-interactif-html)
-8. [Module 6 — Interface de lancement et CLI](#8-module-6--interface-de-lancement-et-cli)
-9. [Fonctionnalités avancées](#9-fonctionnalités-avancées)
-10. [Plan de développement](#10-plan-de-développement)
-11. [Exigences non fonctionnelles](#11-exigences-non-fonctionnelles)
+1. [Vision et positionnement](#1-vision-et-positionnement)
+2. [Architecture en 3 cercles](#2-architecture-en-3-cercles)
+3. [Module 1 — Corpus et imports](#3-module-1--corpus-et-imports)
+4. [Module 2 — Adaptateurs OCR / HTR](#4-module-2--adaptateurs-ocr--htr)
+5. [Module 3 — Pipelines OCR+LLM et pipelines composables](#5-module-3--pipelines-ocrllm-et-pipelines-composables)
+6. [Module 4 — Métriques et analyses](#6-module-4--métriques-et-analyses)
+7. [Module 5 — Rapport HTML interactif](#7-module-5--rapport-html-interactif)
+8. [Module 6 — Interface web et CLI](#8-module-6--interface-web-et-cli)
+9. [Reproductibilité et sécurité](#9-reproductibilité-et-sécurité)
+10. [Limites assumées et non-fonctionnalités](#10-limites-assumées-et-non-fonctionnalités)
+11. [Roadmap d'évolution](#11-roadmap-dévolution)
+12. [Migration v1 → v2 — annexe historique](#12-migration-v1--v2--annexe-historique)
 
 ---
 
-## 1. Vision générale et positionnement
+## 1. Vision et positionnement
 
 ### 1.1 Problématique
 
-Les équipes OCR/HTR travaillant sur des fonds patrimoniaux (manuscrits, imprimés anciens, archives) disposent d'un paysage de moteurs hétérogène — moteurs locaux (Tesseract, Pero OCR, Kraken), solutions cloud (Mistral OCR, Google Vision, AWS Textract), modèles fine-tunés maison — sans outil unifié pour les comparer rigoureusement sur leurs propres corpus.
+Les équipes OCR/HTR travaillant sur des fonds patrimoniaux
+(manuscrits, imprimés anciens, archives) disposent d'un paysage
+hétérogène — moteurs locaux (Tesseract, Pero OCR), services cloud
+(Mistral OCR, Google Vision, Azure Document Intelligence), modèles
+fine-tunés maison, VLMs (GPT-4o, Claude, Mistral Large) — sans
+outil unifié pour les comparer rigoureusement sur leurs propres
+corpus.
 
-Les outils existants (ocrevalUAtion, dinglehopper) sont soit obsolètes, soit limités au CER/WER, soit non adaptés aux spécificités des documents historiques : glyphes anciens, ligatures, abréviations, graphies variables, pathologies d'image.
+Les outils existants (ocrevalUAtion, dinglehopper) sont soit
+obsolètes, soit limités au CER/WER, soit non adaptés aux
+spécificités des documents historiques : glyphes anciens,
+ligatures, abréviations, graphies variables, pathologies d'image,
+ordre de lecture multi-colonnes, structure ALTO/PAGE.
 
-À cela s'ajoute une question de recherche émergente : **est-ce qu'une couche de correction par LLM améliore réellement la sortie OCR, de combien, sur quels types d'erreurs ?** Aucun outil existant ne permet de tester et mesurer cela rigoureusement.
+À cela s'ajoute une question de recherche émergente : **est-ce
+qu'une couche de correction par LLM améliore réellement la sortie
+OCR, de combien, sur quels types d'erreurs, et sans introduire
+d'over-normalisation moderne ?** Aucun outil existant ne permet
+de tester et mesurer cela rigoureusement.
 
-**Picarones** comble ce vide en proposant une plateforme complète, open-source, pensée pour le milieu patrimonial, capable de comparer des moteurs OCR seuls **et** des pipelines OCR+LLM.
+### 1.2 Philosophie : un banc d'essai, pas un atelier
 
-### 1.2 Objectifs stratégiques
+Picarones est conçu comme un **banc d'essai** :
 
-- Permettre une évaluation rigoureuse, reproductible et multi-dimensionnelle des moteurs OCR/HTR sur des corpus patrimoniaux réels
-- Évaluer l'apport réel des LLMs en post-correction OCR, en termes de qualité
-- Produire des rapports interactifs exploitables par des profils variés : ingénieurs, chercheurs, responsables de projets de numérisation
-- S'intégrer dans les workflows patrimoniaux existants (IIIF, eScriptorium, HTR-United, Gallica)
-- Offrir une base extensible pour le suivi longitudinal de la qualité OCR dans le temps
+- L'utilisateur amène son **golden dataset** annoté (paires image +
+  vérité terrain). Sans VT, pas de benchmark.
+- Picarones exécute les IA candidates et **mesure** l'écart à la VT.
+- Picarones **classe** les résultats avec rigueur statistique.
+- Picarones **n'arbitre pas le débat éditorial**. Il ne dit pas si
+  un moteur diplomatique vaut mieux qu'un moteur modernisant —
+  il rapporte les chiffres et laisse le chercheur, l'archiviste
+  ou le paléographe trancher selon ses critères propres.
 
-### 1.3 Utilisateurs cibles
+Cette philosophie est tenue jusque dans le moteur narratif
+factuel : chaque phrase de la synthèse en tête du rapport est
+traçable à un payload de `Fact` qui provient du JSON d'entrée
+(garde-fou anti-hallucination prouvé par tests).
 
-| Profil | Besoins principaux |
+### 1.3 Contributions scientifiques
+
+Au-delà de la simple agrégation de moteurs, Picarones apporte
+plusieurs briques nouvelles dans l'écosystème OCR/HTR open-source :
+
+- **Registre typé de métriques** (Sprint 34) : chaque métrique
+  est enregistrée pour une jonction de types `ArtifactType`
+  (TEXT/ALTO/PAGE/ENTITIES/READING_ORDER) ; un pipeline composé
+  peut alors calculer automatiquement la métrique adéquate à
+  chaque jonction de son DAG.
+- **Interface BaseModule générique** (Sprint 33) : OCR, mappeur
+  VLM→ALTO, rewriter ALTO→ALTO, classifieur d'entités texte→entités
+  partagent la même API ; le runner les enchaîne sans privilégier
+  un type particulier.
+- **GT multi-niveaux** (Sprint 32) : un document peut porter
+  simultanément une vérité terrain texte, ALTO, PAGE, entités,
+  et reading order — chacune calibrée à son niveau d'évaluation.
+- **Moteur narratif factuel anti-hallucination** (Sprint 19+) :
+  20+ détecteurs déterministes produisent une synthèse en
+  langage naturel dont chaque chiffre est traçable au payload
+  d'un `Fact`. Aucune intervention LLM, garde-fou prouvé par
+  test (`test_sprint23_anti_hallucination`).
+- **Test multi-moteurs Friedman + Nemenyi + Critical Difference
+  Diagram** (Sprint 18, Demšar 2006) : référence canonique pour
+  la comparaison statistique de classifieurs, transposée à l'OCR.
+- **Pareto coût / vitesse / CO₂** (Sprint 20) : positionnement
+  tri-objectifs avec front explicite, table de pricing
+  surchargeable.
+- **Métriques philologiques transversales** (Sprints 55–60) :
+  six modules couvrant l'imprimé ancien, le médiéval, les
+  archives modernes (XIXᵉ–XXᵉ), avec scores éditoriaux séparés
+  (préservation stricte vs équivalence diplomatique).
+
+### 1.4 Utilisateurs cibles
+
+| Profil | Cas d'usage typique |
 |---|---|
-| Ingénieur OCR/ML | Pipeline programmatique, métriques fines, export JSON/CSV, CI/CD |
-| Chargé de numérisation | Rapport visuel, comparaison simple A vs B, recommandation de moteur |
-| Responsable de projet | Vue agrégée, graphiques, export PDF, analyse coût/bénéfice des APIs |
-| Chercheur en humanités numériques | Métriques diplomatiques, corpus HTR-United, analyse des erreurs par catégorie |
-| Paléographe | Diff visuel sur l'image, annotation inline des cas difficiles |
-
-### 1.4 Proposition de valeur unique
-
-Picarones est le seul outil combinant :
-1. **Métriques adaptées aux documents historiques** (glyphes, ligatures, diacritiques, abréviations, normalisation diplomatique)
-2. **Évaluation des pipelines OCR+LLM** avec mesure du delta de qualité
-3. **Intégration native des standards bibliothéconomiques** (IIIF, ALTO, PAGE XML, HTR-United, eScriptorium, Gallica)
-4. **Rapport interactif auto-contenu** exploitable sans compétences techniques
+| **Ingénieur OCR/ML** | Pipeline programmatique, métriques fines, export JSON, intégration CI/CD via `picarones run --fail-if-cer-above` |
+| **Chargé de numérisation** | Rapport HTML autonome, comparaison A vs B, lecture du Pareto coût/qualité |
+| **Responsable de projet** | Vue agrégée multi-corpus, analyse coût/bénéfice des APIs cloud, suivi longitudinal SQLite |
+| **Chercheur en humanités numériques** | Métriques philologiques, corpus HTR-United, taxonomie d'erreurs en 10 classes, glossaire contextuel |
+| **Paléographe / éditeur critique** | Diff visuel par document, bascule diplomatique / normalisé, profil philologique séparant strict et expansion |
+| **DSI institutionnel** | Déploiement intranet derrière SSO, RGPD, observabilité (cf. `docs/operations/`) |
 
 ---
 
-## 2. Architecture générale
-
-### 2.1 Vue d'ensemble
+## 2. Architecture en 3 cercles
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                              PICARONES                                   │
-│                                                                          │
-│  ┌─────────────────┐   ┌──────────────────────┐   ┌─────────────────┐   │
-│  │  Import /        │   │  Pipeline            │   │  Rapport        │   │
-│  │  Corpus Mgmt    │──▶│  Orchestrator        │──▶│  Interactif     │   │
-│  └─────────────────┘   └──────────────────────┘   └─────────────────┘   │
-│         ▲                        │                        │              │
-│   IIIF / Gallica          ┌──────▼──────┐           HTML self-contained  │
-│   HTR-United              │  Moteurs    │           Export PDF/CSV/ALTO  │
-│   HuggingFace             │  OCR        │                                │
-│   eScriptorium            └──────┬──────┘                                │
-│   Dossier local                  │                                       │
-│                           ┌──────▼──────┐                                │
-│                           │  Couche     │                                │
-│                           │  LLM        │  ◀── optionnelle               │
-│                           │  (optionel) │                                │
-│                           └─────────────┘                                │
-└──────────────────────────────────────────────────────────────────────────┘
+   Cercle 3 (extras, report, cli, web)
+   │
+   ▼
+   Cercle 2 (measurements, engines, llm, pipelines, modules)
+   │
+   ▼
+   Cercle 1 (core)
 ```
 
-### 2.2 Stack technique
+**Règle de dépendance** : les imports vont uniquement de
+l'extérieur vers l'intérieur. Aucun shim — un module a un seul
+emplacement. La règle est appliquée par
+`tests/core/test_circle_dependencies.py` (Sprint A3) qui parse
+l'AST de chaque fichier et bloque toute violation au merge.
 
-| Couche | Technologie | Justification |
-|---|---|---|
-| Backend / Pipeline | Python 3.11+ | Écosystème OCR mature, jiwer, Pillow, NumPy |
-| API serveur | FastAPI | Async, auto-documentation OpenAPI, léger |
-| Rapport interactif | HTML + Vanilla JS + Chart.js + diff2html | Zéro dépendance runtime, fichier unique transportable |
-| Configuration | YAML | Déclaration simple des moteurs et paramètres |
-| Stockage résultats | JSON + SQLite optionnel | Léger, portable, requêtable |
-| CLI | Click (Python) | Usage sans interface, intégration CI/CD |
+### 2.1 Cercle 1 — abstractions pures
 
-### 2.3 Principes d'architecture
+7 modules dans `picarones/core/` :
 
-- **Moteur-agnostique** : chaque moteur OCR ou LLM est un adaptateur interchangeable, déclaré en YAML
-- **Pipeline composable** : un "concurrent" peut être un moteur seul (`tesseract`), un pipeline (`tesseract → gpt-4o`), ou un LLM seul en mode zero-shot (`gpt-4o`)
-- **Pipeline idempotent** : les sorties sont cachées par hash d'image, relance partielle possible
-- **Rapport auto-contenu** : le fichier HTML final embarque toutes les données, lisible hors-ligne
-- **Traçabilité complète** : versions des moteurs, paramètres, prompts LLM utilisés, dates d'exécution — tout est loggé dans les métadonnées du rapport
+- `corpus.py` — `Document`, `Corpus`, `GTLevel.{TEXT,ALTO,PAGE,ENTITIES,READING_ORDER}`,
+  payloads typés, loader auto-détectant les fichiers `.gt.alto.xml`,
+  `.gt.page.xml`, `.gt.entities.json`, `.gt.reading_order.json`.
+- `modules.py` — `BaseModule`, `ArtifactType`. Interface commune
+  à OCR, mappeurs, rewriters, classifieurs.
+- `metric_registry.py` — `MetricSpec`, `@register_metric`,
+  `select_metrics`, `compute_at_junction`. Sélection par signature
+  de types exacte (pas de coercion).
+- `metric_hooks.py` — registre legacy compatible (Sprint 16-).
+- `metrics.py` — `MetricsResult`, `aggregate_metrics`.
+- `results.py` — `DocumentResult`, `EngineReport`, `BenchmarkResult`,
+  sérialisation JSON.
+- `facts.py` — `Fact`, `FactType` (20 entrées), `FactImportance`,
+  `DetectorRegistry`. Modèle de données du moteur narratif.
+- `diff_utils.py` — `compute_word_diff`, `compute_char_diff`,
+  `diff_stats` (déplacé Cercle 3 → Cercle 1 en A3).
+- `pipeline.py` — `PipelineRunner`, `PipelineSpec`, `PipelineStep`.
+- `xml_utils.py` — `safe_parse_xml` (defusedxml).
+
+### 2.2 Cercle 2 — logique métier
+
+5 sous-packages :
+
+- `measurements/` — ~70 modules de calcul de métriques + le
+  moteur narratif (`narrative/` avec arbiter, registry, renderer,
+  20 détecteurs en 6 familles).
+- `engines/` — adaptateurs OCR : Tesseract, Pero OCR, Mistral OCR,
+  Google Vision, Azure Document Intelligence (5 adapters).
+- `llm/` — adaptateurs LLM : OpenAI, Anthropic, Mistral, Ollama
+  (4 adapters).
+- `pipelines/` — orchestration OCR+LLM (3 modes historiques).
+- `modules/` — modules `BaseModule` officiels (ALTO text→region
+  mappers).
+
+### 2.3 Cercle 3 — entrées et rendu
+
+- `report/` — générateur HTML, ~25 modules de rendu, vendor
+  Chart.js, templates Jinja2 (10 partials), i18n FR/EN, glossaire
+  contextuel (25 entrées bilingues).
+- `cli/` — Click CLI (15 commandes) en package `picarones/cli/`.
+- `web/` — FastAPI (app + 11 routers + sécurité + jobs SQLite +
+  maintenance auto-purge).
+- `extras/` — plugins : importers (IIIF, Gallica, HTR-United, HF
+  Datasets, eScriptorium), modules historiques.
 
 ---
 
-## 3. Module 1 — Gestion des corpus et imports
+## 3. Module 1 — Corpus et imports
 
 ### 3.1 Formats de vérité terrain acceptés
 
-| Format | Extension | Usage typique |
-|---|---|---|
-| Texte brut parallèle | `image.jpg` + `image.gt.txt` | Convention Tesseract, HTR-United |
-| ALTO XML | `.alto.xml` | Standard bibliothèques nationales, eScriptorium export |
-| PAGE XML | `.page.xml` | Transkribus, OCRopus |
-| JSON HuggingFace | `dataset.json` | HuggingFace Datasets |
-| eScriptorium export | `.zip` (PAGE+images) | Export natif eScriptorium |
-| CSV simple | `image,texte_gt` | Exports maison, tableaux Callico |
+| Format | Extension | Niveau GT | Usage typique |
+|---|---|---|---|
+| Texte brut | `image.gt.txt` | TEXT | Convention Tesseract, HTR-United |
+| ALTO XML v4 | `.gt.alto.xml` | ALTO | Standard bibliothèques nationales, eScriptorium export |
+| PAGE XML 2019 | `.gt.page.xml` | PAGE | Transkribus, OCRopus |
+| Entités nommées | `.gt.entities.json` | ENTITIES | Format HIPE simplifié |
+| Reading order | `.gt.reading_order.json` | READING_ORDER | Liste ordonnée de region IDs |
+
+Le loader (`load_corpus_from_directory`) détecte automatiquement
+chacun de ces niveaux à côté de l'image. Un même document peut
+porter plusieurs niveaux simultanément (Sprint 32).
 
 ### 3.2 Sources d'import
 
-#### 3.2.1 Dossier local
-Import d'un dossier contenant des paires image/GT. Détection automatique du format. Prévisualisation du corpus avant lancement (nombre de documents, longueur moyenne de GT, aperçu des images).
+#### Local
+Import d'un dossier de paires image / GT. Détection automatique
+du format. Filtrage des fichiers macOS `._*`.
 
-#### 3.2.2 Import IIIF — fonctionnalité clé
+#### IIIF
+Import par URL de manifeste IIIF v2 et v3. Compatible Gallica
+(BnF), Bodleian, BL, Vatican, e-codices, Europeana, et tout
+entrepôt IIIF-compliant. Sélection par range de canvas.
 
-L'intégration IIIF est la fonctionnalité d'import la plus stratégique pour le contexte patrimonial. Elle permet d'accéder directement aux fonds numérisés de toutes les grandes bibliothèques sans téléchargement manuel.
+#### HuggingFace Datasets
+Recherche par filtre langue/script/époque/institution. Datasets
+patrimoniaux pré-référencés (IAM, RIMES, READ-BAD, Esposalles,
+HTR-United datasets). Statut : module
+`extras/importers/huggingface.py` marqué expérimental
+(`UserWarning` à l'import).
 
-- Import par URL de manifeste IIIF v2 et v3
-- Sélection des canvas (pages) via interface de sélection visuelle
-- Récupération des annotations de transcription si le manifeste les contient
-- Compatibilité : Gallica (BnF), Bodleian, BL, BSB, e-codices, Europeana et tout entrepôt IIIF-compliant
-- Résolution configurable des images
+#### HTR-United
+Listing du catalogue distant + import direct. Lecture des
+métadonnées (langue, script, institution, époque). En cas
+d'échec réseau ou parsing, fallback sur catalogue de démo +
+émission d'un `Fact` `IMPORTER_FALLBACK_TRIGGERED` (Sprint A3).
 
-> **Exemple :** coller l'URL du manifeste Gallica d'un incunable, sélectionner 50 pages, lancer le benchmark. La GT est fournie séparément ou issue d'un export eScriptorium.
+#### Gallica (API BnF)
+Recherche par cote, titre, auteur, date. Récupération des
+images via API IIIF Gallica.
 
-#### 3.2.3 Import HuggingFace Datasets
-- Recherche et prévisualisation de datasets OCR/HTR
-- Filtrage par langue, type de script, époque, institution
-- Datasets patrimoniaux pré-référencés : IAM, RIMES, READ-BAD, Esposalles, Bozen-Baptism, datasets HTR-United
-- Import partiel : sous-ensemble aléatoire ou filtré
-- Cache local avec gestion des versions
+#### eScriptorium
+Connexion à une instance distante via API. Statut
+expérimental.
 
-#### 3.2.4 Import HTR-United
-- Listing et recherche dans le catalogue HTR-United
-- Import direct des corpus publiés (Bréviaires, chartes médiévales, registres paroissiaux, presse ancienne...)
-- Lecture des métadonnées : langue, script, institution, époque, nombre de lignes
-
-#### 3.2.5 Import Gallica (API BnF)
-- Recherche dans Gallica par cote, titre, auteur, date
-- Récupération des images via API IIIF Gallica
-- Récupération de l'OCR Gallica existant comme moteur de référence ou GT partielle
-
-#### 3.2.6 Import eScriptorium
-- Connexion à une instance eScriptorium locale ou distante via API
-- Import de projets, documents et transcriptions
-- Export des résultats de benchmark vers eScriptorium
+#### Upload ZIP via navigateur
+Endpoint `POST /api/corpus/upload`. Validation Pillow
+(décompression bombs), zip-slip prévenu, taille plafonnée
+(`PICARONES_MAX_UPLOAD_MB`).
 
 ### 3.3 Gestion des corpus
 
-- Corpus nommés et versionnés avec métadonnées descriptives
-- Tags : type de script (gothique, humanistique, caroline, textura, cursive, imprimé ancien...), langue, siècle, institution, état de conservation
-- Statistiques : distribution des longueurs de GT, histogramme des scores de qualité image, aperçu des caractères unicode présents
-- Partage de corpus (format JSON exportable/importable)
-- Corpus de référence fournis avec Picarones : 100 documents représentatifs multi-scripts pour benchmarks rapides
+- Corpus nommés et versionnés avec métadonnées descriptives.
+- Tags : type de script, langue, siècle, institution, état de
+  conservation.
+- Stratification par `script_type` (Sprint 45-46) — vue stratifiée
+  dans le rapport, détecteur narratif `STRATIFICATION_RECOMMENDED`
+  qui invite l'utilisateur quand le corpus est hétérogène.
 
 ---
 
-## 4. Module 2 — Adaptateurs moteurs OCR
+## 4. Module 2 — Adaptateurs OCR / HTR
 
 ### 4.1 Architecture des adaptateurs
 
-Chaque moteur OCR est un adaptateur Python standardisé exposant une interface commune. Ajouter un nouveau moteur = créer un fichier YAML de configuration et, si nécessaire, une classe Python de ~30 lignes.
+Chaque moteur OCR est une classe Python qui hérite de
+`BaseOCREngine` (`picarones/engines/base.py`), elle-même héritière
+de `BaseModule` (Sprint 33). Une instance déclare son
+`execution_mode` (`"io"` ou `"cpu"`) que le runner utilise pour
+choisir entre `ThreadPoolExecutor` (cloud APIs) et
+`ProcessPoolExecutor` (Tesseract, Pero).
 
-### 4.2 Moteurs OCR supportés nativement
+Ajouter un nouveau moteur = créer une classe Python de ~50 lignes
+qui implémente `_run_ocr(image_path) -> str` et déclare son
+`execution_mode`.
 
-| Moteur | Type | Priorité | Notes |
+### 4.2 Moteurs OCR livrés
+
+| Moteur | Type | Mode d'exécution | Confidence native exposée ? |
 |---|---|---|---|
-| Tesseract 5 | Local CLI | v1.0 | `pytesseract`, multi-langues, LSTM |
-| Pero OCR | Local Python | v1.0 | Excellent sur documents historiques |
-| Kraken | Local Python | v1.0 | Référence HTR manuscrits, compatible eScriptorium |
-| Mistral OCR | API REST | v1.0 | Mistral OCR 3, multimodal |
-| Google Vision | API REST | v1.1 | Document AI, bonne couverture unicode |
-| AWS Textract | API REST | v1.1 | Détection layout avancée |
-| Azure Document Intelligence | API REST | v1.1 | Anciennement Form Recognizer |
-| Calamari | Local Python | v1.1 | Basé TF, modèles pré-entraînés HTR |
-| OCRopus4 | Local Python | v1.2 | Historique, utile pour comparaison |
-| Moteur custom | CLI/API YAML | v1.0 | Déclaration YAML, aucun code requis |
+| **Tesseract 5** | Local CLI | CPU (ProcessPool) | ✅ Sprint 47 (`image_to_data`) |
+| **Pero OCR** | Local Python | CPU (ProcessPool) | ✅ Sprint 48 (`transcription_confidence` ligne) |
+| **Mistral OCR** | Cloud API | IO (ThreadPool) | ✅ Sprint 49 (quand disponible côté API) |
+| **Google Vision** | Cloud API | IO (ThreadPool) | ✅ Sprint 50 (`Word.confidence` en mode `DOCUMENT_TEXT_DETECTION`) |
+| **Azure Doc Intelligence** | Cloud API | IO (ThreadPool) | ✅ Sprint 51 (`Word.confidence`) |
 
-### 4.3 Configuration d'un moteur (YAML)
+Quand un moteur expose ses confidences natives, le runner calcule
+automatiquement les métriques de calibration (ECE, MCE, reliability
+diagram — Sprint 39-43).
 
-```yaml
-# Moteur custom via CLI
-name: mon_ocr_interne
-type: cli
-command: "mon_ocr {input_image} --output {output_file} --lang fra"
-output_format: txt
-version_command: "mon_ocr --version"
+### 4.3 Robustesse runtime
 
-# Moteur via API REST
-name: api_ocr_bnf
-type: api
-endpoint: http://localhost:8080/ocr
-method: POST
-image_field: file
-response_path: $.result.text
-```
-
-### 4.4 Gestion de l'exécution
-
-- Parallélisation configurable : N moteurs tournent en parallèle
-- Cache des sorties par hash SHA-256 de l'image — relance partielle possible
-- Timeout configurable par moteur, avec rapport d'erreur si dépassé
-- Retry automatique sur erreur transitoire (rate limit, timeout réseau) avec backoff exponentiel
-- Rapport d'avancement en temps réel : barre de progression par moteur, ETA
-- Mode dry-run : validation de la configuration sans lancer les moteurs
+- **Erreurs HTTP cloud** (4xx/5xx, timeout, body mal formé) :
+  remontées dans `EngineResult.error` avec le code HTTP, jamais
+  avalées silencieusement (Sprint A5 / m-10, 19 cas testés).
+- **Crash isolé d'un document** : le runner continue avec les
+  autres documents. Le doc en échec a `engine_error` rempli.
+- **Cancel mid-run** : `cancel_event.set()` interrompt proprement.
+- **Timeout par document** : configurable via paramètre
+  `timeout_seconds`.
 
 ---
 
-## 5. Module 3 — Pipelines OCR+LLM
+## 5. Module 3 — Pipelines OCR+LLM et pipelines composables
 
-> Ce module est la fonctionnalité la plus originale de Picarones. Il permet de tester l'apport réel d'une couche de correction LLM sur une sortie OCR, et de comparer des pipelines complets entre eux.
+### 5.1 Pipelines OCR+LLM historiques (Sprint 3+)
 
-### 5.1 Concept de "concurrent"
+L'unité de comparaison est le **concurrent** — pas forcément un
+moteur seul, mais une chaîne produisant du texte à partir d'une
+image.
 
-Dans Picarones, l'unité de comparaison est le **concurrent** — pas forcément un moteur OCR seul, mais n'importe quelle combinaison produisant du texte à partir d'une image :
-
-| Type de concurrent | Description | Exemple |
+| Mode | Description | Usage typique |
 |---|---|---|
-| OCR seul | Un moteur OCR classique | `tesseract` |
-| LLM zero-shot | Le LLM reçoit uniquement l'image | `gpt-4o` en mode vision |
-| OCR → LLM (texte) | Le LLM reçoit la sortie OCR brute et corrige | `tesseract → mistral-large` |
-| OCR → LLM (image + texte) | Le LLM reçoit image ET sortie OCR | `pero_ocr → gpt-4o` |
-| OCR → LLM → LLM | Chaîne de correction en deux passes | `tesseract → llm1 → llm2` |
+| `zero_shot` | Le LLM/VLM reçoit l'image directement et transcrit | Test si GPT-4o ou Claude peut remplacer un OCR sur des documents anciens |
+| `post_correction_texte` | OCR → texte brut → LLM corrige le texte | LLM non multimodal (Llama local), grand volume |
+| `post_correction_image_texte` | OCR → LLM reçoit image ET texte brut | Meilleure qualité ; le LLM voit le contexte visuel |
 
-Ce modèle composable permet de tester toutes les configurations imaginables et de mesurer l'apport exact de chaque couche.
+Les prompts sont **versionnés** dans `picarones/prompts/` (8 fichiers
+FR + EN), embarqués dans le snapshot du rapport pour
+reproductibilité.
 
-### 5.2 LLMs supportés
+### 5.2 Pipelines composables (Sprint 63+)
 
-| LLM | Type | Modes supportés | Priorité |
-|---|---|---|---|
-| GPT-4o / GPT-4o mini | API OpenAI | texte seul, image+texte, zero-shot | v1.0 |
-| Claude Sonnet / Haiku | API Anthropic | texte seul, image+texte, zero-shot | v1.0 |
-| Mistral Large / Pixtral | API Mistral | texte seul, image+texte, zero-shot | v1.0 |
-| Llama 3 (via Ollama) | Local | texte seul | v1.1 |
-| Gemma / Phi (via Ollama) | Local | texte seul | v1.1 |
-| LLM custom | API REST YAML | configurable | v1.0 |
-
-### 5.3 Modes de correction LLM
-
-#### Mode 1 — Post-correction texte brut
-Le LLM reçoit uniquement la sortie OCR textuelle et un prompt de correction. Le plus rapide.
-
-```
-[Sortie OCR brute] ──▶ [LLM + prompt] ──▶ [Texte corrigé]
-```
-
-**Usage typique :** correction rapide sur grand volume, LLM non multimodal (Llama local), test de la valeur ajoutée d'un LLM de correction pur.
-
-#### Mode 2 — Post-correction avec image
-Le LLM reçoit l'image originale ET la sortie OCR. Permet au LLM de vérifier visuellement les passages ambigus.
-
-```
-[Image] ──────────────┐
-                       ▼
-[Sortie OCR brute] ──▶ [LLM multimodal + prompt] ──▶ [Texte corrigé]
-```
-
-**Usage typique :** meilleure qualité, test de la valeur ajoutée du contexte visuel pour la correction.
-
-#### Mode 3 — Zero-shot LLM
-Le LLM reçoit uniquement l'image, sans sortie OCR préalable. Teste la capacité de transcription native du LLM.
-
-```
-[Image] ──▶ [LLM multimodal + prompt] ──▶ [Transcription]
-```
-
-**Usage typique :** évaluer si GPT-4o ou Claude peut remplacer un moteur OCR sur des documents patrimoniaux.
-
-### 5.4 Système de prompts
-
-Les prompts LLM sont configurables, versionnés et font partie intégrante des métadonnées du rapport.
+Au-delà des 3 modes historiques, Picarones livre une infrastructure
+générique : un pipeline est une **liste d'étapes `BaseModule`**
+qui produit un artefact à chaque étape (TEXT, ALTO, PAGE,
+ENTITIES…) ; à chaque jonction, le runner calcule
+**automatiquement** la métrique adéquate via `compute_at_junction`
+(registre typé Sprint 34).
 
 ```yaml
-# Configuration d'un concurrent OCR+LLM
-name: tesseract_gpt4o_correction
-type: pipeline
+# Spec YAML chargée par picarones pipeline run
+name: ocr_then_corrector
 steps:
-  - engine: tesseract
-    config:
-      lang: fra
-      psm: 6
-  - llm: gpt-4o
-    mode: text_and_image   # text_only | text_and_image | zero_shot
-    prompt: prompts/correction_medieval_french.txt
-    temperature: 0.0
-    max_tokens: 4096
+  - name: ocr
+    module: picarones.engines.tesseract.TesseractEngine
+    args: { lang: "fra", psm: 6 }
+  - name: post_correction
+    module: my_module.MyLLMCorrector
+    args: { model: "gpt-4o" }
 ```
 
-```
-# prompts/correction_medieval_french.txt
-Tu es un expert en paléographie et en transcription de documents en français médiéval.
-On te fournit la sortie brute d'un moteur OCR et l'image originale du document.
-Ta tâche est de corriger les erreurs de transcription en te basant sur :
-- Le contexte linguistique (français médiéval, XVe siècle)
-- Les confusions visuelles typiques de l'OCR (rn/m, l/1, u/n, ſ/f...)
-- Les abréviations et ligatures médiévales visibles sur l'image
+`picarones pipeline compare specs.yaml --corpus ./scans --output rapport.html`
+exécute N pipelines sur le même corpus et produit un rapport
+comparatif. Conçu pour qu'un mainteneur tiers puisse contribuer
+ses propres modules sans toucher au cœur de Picarones (cf.
+`docs/developer/module-policy.md`, Sprint 97).
 
-Retourne UNIQUEMENT le texte corrigé, sans commentaire ni explication.
-Conserve fidèlement la graphie originale (ne modernise pas l'orthographe).
+### 5.3 Détection d'over-normalisation LLM
 
-OCR BRUT :
-{ocr_output}
-```
+Risque spécifique aux pipelines OCR+LLM : le LLM modernise à tort
+des graphies historiques légitimes. Picarones mesure :
 
-- Bibliothèque de prompts intégrée : prompts optimisés pour manuscrits médiévaux, imprimés anciens, cursives administratives, latin, documents mixtes
-- Versionning des prompts : le prompt exact utilisé est stocké dans le JSON de résultats
-- Comparaison de prompts : tester différents prompts sur le même concurrent OCR+LLM
-
-### 5.5 Questions de recherche adressées par ce module
-
-Picarones permet de répondre empiriquement, sur vos propres corpus, à des questions qui font débat :
-
-1. **Un LLM améliore-t-il systématiquement la sortie OCR ?** (Pas toujours — il peut halluciner)
-2. **Le mode image+texte est-il meilleur que texte seul ?** (Coût plus élevé, apport variable)
-3. **Un LLM zero-shot peut-il remplacer un moteur OCR sur des documents anciens ?**
-4. **Sur quels types d'erreurs le LLM apporte-t-il le plus ?** (Diacritiques ? Abréviations ? Hapax ?)
-5. **Y a-t-il un risque de sur-normalisation ?** Le LLM modernise-t-il à tort la graphie médiévale ?
-6. **Quel est le seuil de CER OCR en dessous duquel un LLM n'apporte plus rien ?**
-7. **Quel est le seuil de CER OCR en dessous duquel un LLM n'apporte plus rien ?**
+- **Modernisation lexicale** (Sprint 80) : top-N tokens GT
+  systématiquement remplacés (`maistre → maître` dans 100 % des
+  cas → signal exploitable).
+- **Score d'absorption d'erreur** (Sprint 94) : à chaque jonction
+  OCR→LLM, calcule le **taux de correction** (parmi les erreurs
+  avant, combien corrigées) **et** le **taux d'introduction**
+  (parmi les erreurs après, combien nouvelles). Distingue un
+  module qui *corrige* d'un module qui *écrase*.
+- **Delta Flesch** (Sprint 52) : sur les langues prises en
+  charge, signale les LLM qui rendent le texte « trop moderne »
+  par rapport à la GT.
+- **Score d'ancrage** (Sprint 10) : proportion des trigrammes
+  produits par le LLM qui s'ancrent dans la GT — score bas =
+  hallucination probable.
 
 ---
 
-## 6. Module 4 — Métriques et analyse
+## 6. Module 4 — Métriques et analyses
 
-> L'objectif est de fournir la vision la plus complète possible, adaptée aux spécificités des documents patrimoniaux — bien au-delà du CER/WER brut.
+### 6.1 Catalogue exhaustif des métriques
 
-### 6.1 Métriques de base
+Picarones livre **plus de 30 métriques** organisées en familles.
+Pour chaque métrique : son nom, sa jonction de types, sa source,
+ses limites — voir le **glossaire contextuel** intégré au rapport
+HTML (25 entrées bilingues, ouvre via le `?` à côté du nom de
+colonne) et `picarones/report/glossary/{fr,en}.yaml`.
 
-#### CER — Character Error Rate
-- CER brut (distance d'édition caractère / longueur GT)
-- CER avec normalisation Unicode NFC
-- CER sans distinction de casse
-- CER diplomatique : avec table de correspondances historiques (ſ=s, u=v, i=j...)
-- CER par ligne : distribution, médiane, percentiles P90/P95
-- Intervalles de confiance à 95% par bootstrap (1000 itérations)
+#### Classique OCR/HTR
 
-#### WER — Word Error Rate
-- WER brut et normalisé
-- WER avec tokenisation historique (traits d'union, abréviations)
-- Match Error Rate (MER) et Word Information Lost (WIL)
+| Métrique | Jonction | Source primaire |
+|---|---|---|
+| CER (raw, NFC, caseless, diplomatique) | `(TEXT, TEXT)` | Levenshtein character / [jiwer](https://github.com/jitsi/jiwer) |
+| WER, MER, WIL | `(TEXT, TEXT)` | jiwer |
+| Bootstrap CI 95 % | dérivé | Efron (1979) |
+| Distribution CER par ligne, Gini | dérivé | Sprint 10 |
+| Détection hallucinations VLM (anchor score, length ratio) | dérivé | Sprint 10 |
 
-#### Métriques de précision/rappel
-- Précision et rappel au niveau caractère, mot, ligne
-- F1-score global et par classe de caractère
+#### Philologique (Sprints 52-60, 80, 84-85, 92-94)
 
-### 6.2 Métriques spécifiques aux documents patrimoniaux
+| Métrique | Jonction | Cible patrimoniale |
+|---|---|---|
+| Couverture MUFI | `(TEXT, TEXT)` | Manuscrits médiévaux |
+| Score d'expansion d'abréviations Capelli | `(TEXT, TEXT)` | Médiéval |
+| Précision par bloc Unicode | `(TEXT, TEXT)` | Imprimés anciens / médiéval |
+| Préservation des marqueurs typographiques de l'imprimé ancien (long-s, ligatures, tildes nasaux) | `(TEXT, TEXT)` | XVIᵉ-XVIIIᵉ |
+| Marqueurs des archives modernes (titres, ordinaux, monnaies, état civil…) | `(TEXT, TEXT)` | XIXᵉ-XXᵉ |
+| Préservation des numéraux romains (5 statuts) | `(TEXT, TEXT)` | Toutes périodes |
+| Recherchabilité fuzzy (Levenshtein distance ≤ 2) | `(TEXT, TEXT)` | Indexation Elastic / full-text |
+| Précision sur séquences numériques (dates, foliotation, monnaies) | `(TEXT, TEXT)` | Archives, économie historique |
+| Modernisation lexicale (top-N tokens GT modernisés) | `(TEXT, TEXT)` | Pipelines OCR+LLM |
+| Delta Flesch (FR + EN) | `(TEXT, TEXT)` | Repère VLM hallucinant du français moderne |
+| Score d'absorption d'erreur par jonction | `(TEXT, TEXT)` | Pipelines composées |
+| Précision sur entités nommées (HIPE) | `(ENTITIES, ENTITIES)` | Indexation prosopographique |
+| Reading order F1 (ICDAR 2015) | `(READING_ORDER, READING_ORDER)` | Manuscrits glosés, journaux multi-colonnes |
+| Layout F1 par type de région (IoU 0.5) | `(ALTO, ALTO)` | Texte/glose/marginalia |
 
-#### Glyphes et caractères spéciaux
-- **Matrice de confusion unicode** : quels caractères GT sont transcrits par quels caractères OCR — fingerprint de chaque moteur
-- **CER par bloc Unicode** : Latin de Base / Latin Étendu A & B / Diacritiques combinants / Formes de présentation latines
-- **Score ligatures** : fi, fl, ff, ffi, ffl, st, ct, œ, æ, ꝑ, ꝓ...
-- **Score abréviations** : taux de restitution correcte des formes abrégées
-- **Précision diacritiques** : taux de conservation des accents, cédilles, trémas
-- **Précision chiffres romains et arabes** séparément
+#### Comparaison & décision (Sprints 18, 20, 35-37, 81, 89-92, 96)
 
-#### Analyse structurelle
-- **Score d'ordre de lecture** : les blocs sont-ils dans l'ordre logique ? Critique pour documents multi-colonnes, marginalia, réclames
-- **Taux de segmentation des lignes** : fusion abusive / fragmentation — indépendant du contenu
-- **Conservation des sauts de paragraphe et de section**
-- **Détection des transpositions de blocs**
-- **Score de mise en page** (si bounding boxes disponibles) : IoU entre zones détectées et zones GT
-
-#### Taxonomie des erreurs
-Catégorisation automatique de chaque erreur :
-
-| Classe | Description |
+| Métrique | Source primaire |
 |---|---|
-| 1 — Confusion visuelle | Caractères morphologiquement proches (rn/m, l/1, O/0, u/n...) |
-| 2 — Erreur diacritique | Accent manquant, mauvais accent, cédille manquante |
-| 3 — Erreur de casse | Majuscule/minuscule |
-| 4 — Ligature | Non résolue ou mal résolue |
-| 5 — Abréviation | Non développée ou mal développée |
-| 6 — Hapax | Mot absent de tout dictionnaire moderne |
-| 7 — Segmentation | Fusion ou fragmentation de tokens |
-| 8 — Hors-vocabulaire | Caractère absent du modèle du moteur |
-| 9 — Lacune | Zone non transcrite |
-| 10 — Sur-normalisation LLM | Le LLM a modernisé à tort la graphie (spécifique pipelines LLM) |
+| Test multi-moteurs Friedman + post-hoc Nemenyi + CDD | Demšar (2006) |
+| Test pairé Wilcoxon | Wilcoxon (1945) |
+| Pareto coût / vitesse / CO₂ (multi-objectifs N dim) | Pareto (1896) |
+| Divergence taxonomique inter-moteurs (Jensen-Shannon) | Lin (1991) |
+| Oracle complementarity (recall borné supérieur) | Sprint 35 |
+| Score de spécialisation inter-moteurs | Sprint 89 |
+| Stabilité multi-runs (CV CER, accord identique) | Sprint 83 |
+| Accord inter-annotateurs (Cohen κ, Krippendorff α) | Cohen (1960), Krippendorff (1970) |
+| Tendance longitudinale + change-point Pettitt | Sprint 92 |
+| Throughput effectif (pages/h après correction humaine 5s/erreur) | Sprint 91, HTR-United |
+| Coût marginal par erreur évitée | Sprint 91 |
+| Comparaison incrémentale ANOVA-like par slot | Sprint 96 |
 
-#### Métriques sur entités et contenus critiques
-- Précision sur les entités nommées (NER via spaCy multilingue) : personnes, lieux, dates
-- Précision sur les séquences numériques (foliotation, pagination, montants)
-- Taux de conservation de la ponctuation
+**Note de traçabilité** : les références primaires (Demšar 2006,
+Wilcoxon 1945, Efron 1979, etc.) sont citées dans les docstrings
+de chaque fonction de `picarones/measurements/statistics.py`.
+Le glossaire contextuel relie chaque métrique à sa publication
+canonique (champ `reference`).
 
-### 6.3 Analyse qualité image et corrélations
+### 6.2 Profils de normalisation
 
-#### Métriques de qualité image automatiques
-- Score de netteté (variance du Laplacien)
-- Niveau de bruit (écart-type sur région homogène)
-- Détection du biais/rotation résiduel (transformée de Hough)
-- Score de contraste (ratio Michelson encre/fond)
-- Détection du show-through (transparence verso)
-- Score de déformation géométrique (courbure de page)
-- Détection des dégradations chimiques (taches, foxing)
+11 profils livrés (`picarones/measurements/normalization.py`,
+exposés via `/api/normalization/profiles`) : `nfc`, `caseless`,
+`minimal`, `medieval_french`, `early_modern_french`,
+`medieval_latin`, `medieval_english`, `early_modern_english`,
+`secretary_hand`, `sans_ponctuation`, `sans_apostrophes`.
 
-#### Corrélations image ↔ performance
-- Scatter plots interactifs : qualité image (X) vs CER (Y) par concurrent
-- Corrélation de Pearson et Spearman, avec test de significativité
-- Identification des concurrents robustes aux dégradations vs sensibles
-- Segmentation du corpus en terciles qualité (bonne/moyenne/mauvaise)
+Chaque profil applique un ensemble d'équivalences diplomatiques
+(ſ=s, u=v, i=j, ꝑ=per, þ=th, etc.). Un profil custom peut être
+chargé depuis YAML.
 
-### 6.4 Analyses statistiques et agrégées
+**Traçabilité aux standards éditoriaux** (MUFI v4.0, TEI P5
+Unicode chapter 3.4, DEAF) : prévue Sprint A12 (item B-6 du
+plan de remédiation institutionnelle).
 
-#### Score de difficulté intrinsèque
-Indicateur calculé indépendamment des moteurs, combinant :
-- Variance du CER entre tous les concurrents (si tous ratent → document difficile)
-- Métriques de qualité image
-- Densité de caractères spéciaux (ligatures, abréviations, diacritiques)
-- Longueur des lignes et densité du texte
+### 6.3 Taxonomie des erreurs en 10 classes
 
-**Valeur :** séparer deux questions distinctes — *est-ce que ce moteur est mauvais ?* vs *est-ce que ce document est objectivement difficile ?*
+Catégorisation automatique de chaque erreur (Sprint 5) :
 
-#### Tests statistiques
-- Test de Wilcoxon (non-paramétrique) pour comparer deux concurrents
-- Correction de Bonferroni pour comparaisons multiples (>2 concurrents)
-- Intervalles de confiance à 95% par bootstrap sur toutes les métriques
-- Test de Student apparié pour grands corpus
+1. Confusion visuelle (rn/m, l/1, O/0, u/n…)
+2. Erreur diacritique
+3. Erreur de casse
+4. Ligature non résolue
+5. Abréviation non développée
+6. Hapax (mot absent du lexique)
+7. Segmentation (fusion / fragmentation)
+8. Hors-vocabulaire
+9. Lacune (texte présent en GT, absent en OCR)
+10. Sur-normalisation LLM
 
-#### Analyse des séquences et clustering
-- Longueur moyenne des séquences correctes entre deux erreurs
-- Distribution des longueurs d'erreurs (erreurs isolées vs blocs)
-- Clustering automatique des patterns d'erreurs (k-means) avec exemples représentatifs
-- Export des clusters pour cibler le fine-tuning
+### 6.4 Score de difficulté intrinsèque
 
-#### Analyse inter-concurrents
-- Score de consensus : vote majoritaire, souvent meilleur que n'importe quel moteur seul
-- Carte d'accord : zones de consensus vs désaccord sur le corpus
-- Complémentarité : quels concurrents ont des erreurs différentes (bons candidats pour ensemble) ?
-- Analyse de dominance : pour quels types de documents le concurrent A bat-il systématiquement B ?
+Indicateur calculé **indépendamment des moteurs** (Sprint 7) :
+
+- variance du CER entre tous les concurrents (si tous ratent →
+  document objectivement difficile),
+- métriques de qualité image,
+- densité de caractères spéciaux (ligatures, abréviations,
+  diacritiques),
+- longueur et densité du texte.
+
+Sépare deux questions distinctes : *« est-ce que ce moteur est
+mauvais ? »* vs *« est-ce que ce document est objectivement
+difficile ? »*.
 
 ---
 
-## 7. Module 5 — Rapport interactif HTML
+## 7. Module 5 — Rapport HTML interactif
 
-Le rapport est un **fichier HTML unique auto-contenu**, lisible hors-ligne, embarquant toutes les données et visualisations. C'est la livrable principale de Picarones.
+Le rapport est un **fichier HTML auto-portant** (Jinja2 server-side,
+Chart.js vendoré inline), lisible hors-ligne, embarquant toutes
+les données et visualisations.
 
-### 7.1 Structure du rapport
+### 7.1 Cinq vues + sections globales
 
-#### Page d'accueil — Tableau de bord exécutif
-- Résumé de l'expérience : concurrents testés, corpus, date, paramètres de normalisation
-- **Tableau de classement** des concurrents : CER, WER, score ligatures, score diacritiques — trié par colonne au clic
-- **Graphique radar (spider chart)** : CER / WER / Précision diacritiques / Précision ligatures / Score mise en page — snapshot visuel des forces/faiblesses
-- Histogrammes de distribution CER côte-à-côte
-- Alertes : concurrents avec CER > seuil, tests statistiques non-significatifs
-- Recommandation automatique : quel concurrent pour quel usage (manuscrits anciens, imprimés, grand volume...)
+#### Sections globales (en tête)
 
-#### Vue Galerie — exploration du corpus
-- Toutes les images en grille de vignettes avec badge CER par concurrent (code couleur vert→rouge)
-- Filtres dynamiques : CER > X%, score qualité image, type de script, longueur GT, concurrent gagnant
-- Tri multi-critères : CER, difficulté intrinsèque, longueur, date
-- Vue **"Worst cases"** : top N documents les plus difficiles par concurrent, avec explication automatique
-- Vue **"Consensus"** : documents où tous les concurrents s'accordent — les plus fiables
-- Vue **"LLM gagne"** / **"LLM dégrade"** : documents où la couche LLM améliore vs détériore la sortie OCR
+- **Synthèse narrative factuelle** (Sprint 19+) : 3-5 phrases
+  produites par 20+ détecteurs déterministes. Chaque chiffre
+  rendu est traçable au payload du `Fact` correspondant
+  (anti-hallucination prouvé par test).
+- **Critical Difference Diagram** (Sprint 18) : SVG server-side,
+  Friedman + post-hoc Nemenyi.
+- **Section inter-moteurs** (Sprint 37) : matrice de divergence
+  taxonomique + encart oracle complementarity.
+- **Front Pareto** (Sprint 20) : coût / vitesse / CO₂ avec
+  toggles d'axes.
+- **Section leviers d'amélioration** (Sprint 51-82) : 5 leviers
+  factuels (taxonomie récupérable, concentration Pareto,
+  complémentarité, modernisation lexicale, déficit projeté de
+  robustesse).
 
-#### Vue Document — analyse détaillée
-- Image originale zoomable (panneau gauche) avec superposition des zones en erreur si bounding boxes disponibles
-- **Affichage N-way synchronisé** : GT + sortie de chaque concurrent en colonnes parallèles avec scroll synchronisé
-- **Diff token coloré** façon GitHub : insertions (vert), suppressions (rouge), substitutions (orange)
-- **Diff aligné sur l'image** : surlignage de la zone correspondante au survol d'une erreur (si bounding boxes)
-- Bascule **"Diplomatique / Normalisé"** : diff exact vs diff avec normalisation configurée
-- **Vue spécifique OCR+LLM** : trois colonnes — GT / Sortie OCR brute / Sortie après correction LLM — avec double diff pour voir exactement ce que le LLM a modifié
-- Détail des métriques pour ce document
+#### Vue Classement (Ranking)
 
-#### Vue Analyse — graphiques et statistiques
-- Distribution complète des CER (histogramme + courbe de densité)
-- Scatter plots interactifs : qualité image vs CER, colorés par type de script
-- Courbes de fiabilité : pour les X% documents les plus faciles, quel CER ?
-- **Heatmap de confusion de caractères** : cliquable — cliquer affiche tous les exemples
-- Diagramme de Venn des erreurs (communes et exclusives entre concurrents)
-- Visualisation des clusters d'erreurs avec exemples représentatifs
-- Matrices de corrélation entre toutes les métriques
-- Graphiques de significativité (p-values des tests de Wilcoxon)
-- Analyse temporelle si métadonnées de date disponibles
+Tableau triable : CER (médiane par défaut depuis Sprint 44),
+WER, MER, WIL, scores ligatures et diacritiques, Gini, score
+d'ancrage, sur-normalisation, etc. Vue stratifiée optionnelle
+par `script_type` (Sprint 45-46).
 
-#### Vue Caractères — analyse unicode
-- Matrice de confusion unicode interactive, colorée par fréquence
-- Tableau des caractères les plus souvent manqués par chaque concurrent
-- CER par bloc unicode en diagramme à barres groupées
-- Analyse des ligatures : taux de reconnaissance par ligature
-- Caractères absents du vocabulaire d'un moteur
+#### Vue Galerie (Gallery)
 
+Grille de vignettes avec badge CER coloré. Filtres dynamiques
+(CER > X, qualité image, type de script, longueur GT). Tri
+multi-critères. Vue **« Worst lines globale »** (Sprint 72)
+qui transcende les documents et liste les lignes individuelles
+les plus mal transcrites.
 
-### 7.2 Fonctionnalités transversales
+#### Vue Document
 
-- Thème sombre / clair, interface responsive
-- Recherche plein texte dans le corpus (GT et sorties de tous les concurrents)
-- **URL stateful** : chaque vue filtrée accessible via URL — partager un cas précis avec un collègue
-- **Mode présentation** : vue épurée pour contextes institutionnels
-- **Annotations inline** : notes du paléographe exportées en JSON
-- **Comparaison de rapports** : charger deux rapports (avant/après fine-tuning) et voir les deltas
+Image originale + diff token coloré façon GitHub par moteur,
+scroll synchronisé N-way. Vue spécifique OCR+LLM : triple diff
+GT / sortie OCR brute / sortie après LLM.
 
-### 7.3 Exports depuis le rapport
+#### Vue Analyses
 
-| Format | Contenu |
+Distribution CER (histogramme + densité), scatter plots
+qualité image vs CER, heatmap de confusion de caractères,
+diagrammes de fiabilité (calibration ECE/MCE — Sprint 43),
+graphiques de bootstrap CI 95 %, profil philologique par moteur
+(Sprint 62), throughput effectif (Sprint 91), tendances
+longitudinales (Sprint 92), DAG de pipeline composée (Sprint 95),
+etc.
+
+#### Vue Caractères
+
+Matrice de confusion Unicode interactive, tableau des
+caractères les plus souvent manqués par chaque moteur, CER par
+bloc Unicode (Sprint 55), analyse des ligatures.
+
+### 7.2 Panneaux latéraux
+
+- **Glossaire contextuel** (Sprint 21) : `?` à côté de chaque
+  en-tête de colonne ; clic ouvre un panneau avec définition,
+  ce qu'on mesure, usage, limites, référence primaire (25
+  entrées bilingues).
+- **Mode avancé** (Sprint 21) : choix de colonnes visibles,
+  filtres par strate, opt-in score composite personnel
+  (curseurs à 0 par défaut, formule visible, warning explicite
+  « il n'existe pas de pondération universellement valide »),
+  toggle palette daltonien-friendly (Sprint A7), URL stateful.
+
+### 7.3 Exports
+
+| Format | Statut |
 |---|---|
-| CSV / Excel | Toutes les métriques par document et par concurrent |
-| JSON | Données brutes complètes réutilisables |
-| PDF | Rapport synthétique avec graphiques, pour non-techniciens |
-| ALTO XML | Sorties OCR sélectionnées au format standard bibliothèques |
-| PAGE XML | Format Transkribus / eScriptorium |
-| Images annotées | Images originales avec zones d'erreur surlignées (PNG) |
-| Corpus d'erreurs | Pires cas pour cibler le fine-tuning (image + GT + sortie OCR) |
-| Prompts LLM | Export de tous les prompts utilisés avec leurs performances |
+| HTML autonome | ✅ Livré |
+| CSV (vue courante avec filtres) | ✅ Livré |
+| JSON (BenchmarkResult complet) | ✅ Livré |
+| Snapshot reproductibilité (versions, commit, lock) | ✅ Sprint 27 |
+| Lazy images (rapport HTML + dossier `report-assets/`) | ✅ Sprint A5 / M-16 |
+| PDF | ❌ Non livré (cf. §10) |
+| ALTO XML / PAGE XML / images annotées | ❌ Non livré (cf. §10) |
+
+### 7.4 Accessibilité
+
+Conformité WCAG 2.1 niveau AA (cf.
+[`ACCESSIBILITY.md`](ACCESSIBILITY.md)) :
+
+- Skip-to-content link (WCAG 2.4.1).
+- `role="img"` + `aria-label` + table de données jumelle
+  pour chaque graphique Chart.js (WCAG 1.1.1).
+- `scope="col"` sur tous les `<th>`.
+- Palette par défaut Okabe-Ito (daltonien-friendly), toggle vers
+  l'ancienne palette via panneau Avancé ou `?palette=classic`.
+- Bilinguisme intégral (skip-link, ARIA labels, captions des
+  tables jumelles).
+- Audit RGAA externe planifié Sprint A15.
 
 ---
 
-## 8. Module 6 — Interface de lancement et CLI
+## 8. Module 6 — Interface web et CLI
 
-### 8.1 Interface web légère (FastAPI)
+### 8.1 Interface web FastAPI
 
-- Configuration du benchmark : sélection corpus, concurrents, paramètres de normalisation
-- Visualisation de l'avancement en temps réel avec log streamé
-- Gestion des configurations enregistrées (profils)
-- Accès aux rapports générés précédemment
-- Configuration des adaptateurs moteurs et LLM via formulaire
+- Configuration de benchmark : sélection corpus, moteurs,
+  normalisation.
+- Streaming SSE de la progression en temps réel (`Last-Event-ID`
+  reconnexion supportée — Sprint 26).
+- Persistance des jobs en SQLite (mode WAL, thread-safe), reprise
+  des jobs orphelins au boot.
+- Upload ZIP depuis le navigateur.
+- Imports HTR-United / HuggingFace via formulaire.
+- Bilingue FR/EN.
+- Healthcheck minimal `/health` (Sprint A4 / M-3).
+- Token CSRF (`/api/csrf/token`) + middleware (Sprint A4 / B-11)
+  activable via `PICARONES_CSRF_REQUIRED=1` pour les déploiements
+  institutionnels derrière SSO.
 
-### 8.2 Interface en ligne de commande (CLI)
+### 8.2 Interface en ligne de commande (Click)
+
+15 commandes :
 
 ```bash
-# Lancer un benchmark
-picarones run --corpus ./mes_gt/ --engines tesseract,pero_ocr,mistral --output ./rapport/
-
-# Avec pipeline OCR+LLM
-picarones run --corpus ./gt/ --config pipelines/medieval_correction.yaml
-
-# Import IIIF puis benchmark
-picarones import iiif https://gallica.bnf.fr/ark:/12148/xxx/manifest.json --pages 1-50
-picarones run --corpus iiif:xxx --engines tesseract,pero_ocr --llm gpt-4o
-
-# Rapport seul depuis résultats existants
-picarones report --results ./results.json --output ./rapport.html
-
-# Mode CI/CD : exit code non-zero si CER > seuil
-picarones run --corpus ./gt/ --engines mon_moteur --fail-if-cer-above 5.0
-
-picarones estimate --corpus ./gt/ --config pipelines/gpt4o_correction.yaml
+picarones run         # benchmark
+picarones report      # rapport HTML depuis JSON
+picarones demo        # rapport démo synthétique
+picarones compare     # compare deux runs JSON, exit-code 2 si régression
+picarones diagnose    # workflow bench + leviers + recommandations factuelles
+picarones economics   # workflow bench + throughput + coût projeté
+picarones edition     # workflow bench + métriques philologiques
+picarones pipeline    # run/compare pipelines composées YAML
+picarones import      # IIIF / HF / HTR-United
+picarones serve       # interface web locale
+picarones history     # historique longitudinal SQLite
+picarones robustness  # courbes CER vs dégradation
+picarones engines     # liste les moteurs disponibles
+picarones metrics     # CER/WER entre deux fichiers texte
+picarones info        # version + system info
 ```
+
+Toutes les commandes supportent `--help`. Workflows pré-câblés
+(`diagnose`, `economics`, `edition`) sont des combinaisons
+canoniques pour les profils utilisateurs typiques.
 
 ### 8.3 Intégration CI/CD
 
-- Mode headless complet, exit code paramétrable selon les métriques
-- Output JSON machine-readable pour intégration dans systèmes de monitoring
-- Badge de qualité générable (SVG) affichant le CER du modèle courant
-- Détection automatique des régressions (CER augmente par rapport au run précédent)
+- Mode headless (`--no-progress`).
+- Output JSON machine-readable.
+- Exit code 2 sur `picarones compare` si régression CER détectée.
+- Workflow GitHub Actions `perf_regression.yml` (Sprint A5 /
+  M-14) — cron hebdomadaire + sur PR touchant le runner.
 
 ---
 
-## 9. Fonctionnalités avancées
+## 9. Reproductibilité et sécurité
 
-### 9.1 Profils de normalisation pré-configurés
+### 9.1 Snapshots de reproductibilité (Sprint 27)
 
-| Profil | Règles principales |
-|---|---|
-| Français médiéval (XIIe-XVe) | u/v, i/j, ſ/s, abréviations courantes |
-| Français moderne (XVIe-XVIIIe) | ſ/s, ligatures fi/fl, esperluettes |
-| Latin médiéval | Abréviations, contractions, ligatures spécifiques |
-| Imprimés anciens (XVe-XVIIe) | Conventions typographiques, réclames |
-| Personnalisé | Configurable et exportable |
+Chaque rapport HTML embarque un dict `report_data["snapshots"]`
+qui contient :
 
-### 9.2 Analyse par type de script
+- **pricing** — YAML brut intégral de `picarones/data/pricing.yaml`
+  utilisé.
+- **glossary** — entrées du glossaire effectivement référencées.
+- **normalization** — profil sérialisé.
+- **environment** — version Picarones, Python, plateforme, commit
+  git, paquets installés (top 200).
 
-Si les documents sont tagués, calcul automatique des métriques par catégorie :
-- Gothique textura / rotunda / cursiva
-- Minuscule caroline
-- Humanistique / italique
-- Imprimé romain / italique ancien
-- Cursives administratives (XVIIe-XIXe)
+Procédure complète de re-jeu d'un benchmark à 5 ans d'écart :
+[`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md)
+(Sprint A8 / M-12).
 
-### 9.3 Suivi longitudinal
+### 9.2 Reproductibilité des builds
 
-- Base de données des benchmarks historiques (SQLite optionnel)
-- Courbes d'évolution : CER dans le temps pour un modèle en développement
-- Détection automatique des régressions entre deux versions
-- Comparaison avant/après fine-tuning
+- Lock files `requirements.lock` + `requirements-dev.lock`
+  générés via `uv pip compile` (Sprint A8).
+- Image Docker épinglée à un patch précis via `ARG PYTHON_BASE_IMAGE`
+  (rotation trimestrielle).
+- Release pipeline GitHub Actions (Sprint A9) : tag `v*.*.*` →
+  PyPI via OIDC trust + ghcr.io multi-arch + GitHub Release auto.
 
-### 9.4 Analyse de robustesse
+### 9.3 Sécurité institutionnelle
 
-- Génération automatique de versions dégradées des images (bruit, flou, rotation, réduction de résolution, binarisation)
-- Courbes de robustesse : CER en fonction du niveau de dégradation
-- Identification du seuil de dégradation critique pour chaque concurrent
+- **Mode public** (`PICARONES_PUBLIC_MODE=1`) : refuse les moteurs
+  cloud mutualisés et les pipelines LLM facturés à la clef serveur.
+- **CSRF** double-submit (`PICARONES_CSRF_REQUIRED=1`) — Sprint A4.
+- **XML défendu** par `defusedxml` partout (XXE / Billion Laughs).
+- **Zip-slip prévenu** par `Path(member.filename).name`.
+- **Validation Pillow** systématique (CVE bombes de
+  décompression).
+- **Rate limiting** par IP + sémaphore de jobs concurrents.
+- **CSP + en-têtes durcis** (X-Content-Type-Options,
+  Referrer-Policy).
 
-### 9.5 Évaluation par sous-région
+Voir [`SECURITY.md`](SECURITY.md) pour la procédure complète.
 
-Si bounding boxes disponibles dans la GT (ALTO/PAGE XML) :
-- CER par zone : corps du texte / titres courants / marginalia / initiales / notes de bas de page
-- Heatmap de densité d'erreur sur l'image
+### 9.4 RGPD et rétention
 
-### 9.6 Détection de la sur-normalisation LLM
-
-Risque spécifique aux pipelines OCR+LLM : le LLM "corrige" à tort des graphies médiévales légitimes en les modernisant. Picarones mesure :
-- Taux de modification introduites par le LLM sur des passages déjà corrects
-- Score de sur-normalisation : combien de transcriptions correctes le LLM a-t-il dégradées ?
-- Liste des interventions LLM non souhaitées pour affiner le prompt
+Politique documentée dans
+[`docs/operations/data-retention-rgpd.md`](docs/operations/data-retention-rgpd.md)
+(Sprint A11 / M-8). Purge automatique des uploads anciens
+configurable via `PICARONES_UPLOAD_RETENTION_DAYS=7` par défaut.
 
 ---
 
-## 10. Plan de développement
+## 10. Limites assumées et non-fonctionnalités
 
-| Sprint | Durée | Livrables |
+Cette section décrit explicitement **ce que Picarones ne fait pas
+et ne fera pas dans la v1.x**. Plusieurs items étaient promis dans
+la SPECS v1 (Mars 2025) — leur abandon est un choix éditorial
+documenté ci-dessous, pas un oubli.
+
+<!-- specs-check: known-abandoned-start -->
+
+> Toutes les fonctionnalités listées ci-dessous étaient promises ou
+> évoquées dans SPECS v1 et sont **explicitement abandonnées,
+> non implémentées ou reportées** dans la v2.0 de ce document.
+> Le test ``tests/docs/test_specs_consistency.py`` (Sprint A2)
+> détecte cette section comme la déclaration officielle des
+> non-fonctionnalités du projet.
+
+### 10.1 Adapters OCR non livrés
+
+- **Kraken** : prévu v1.0 dans SPECS v1, jamais implémenté. Choix :
+  ouverture en plugins externes via la politique de modules
+  contribués (Sprint 97), pas un adapter intégré au cœur. Un
+  utilisateur peut écrire son `KrakenEngine(BaseOCREngine)` et
+  l'exécuter via les pipelines composables.
+- **AWS Textract** : prévu v1.1, abandonné. Pas de DPA Amazon
+  signé, et le périmètre patrimonial est mieux servi par les
+  trois clouds déjà intégrés (Mistral OCR, Google Vision, Azure
+  DI).
+- **Calamari** : prévu v1.1, abandonné. Maintenance d'un adapter
+  par moteur ≈ 50 PJ/an ; mieux vaut concentrer sur les 5 adapters
+  livrés et ouvrir Calamari en plugin externe.
+- **OCRopus4** : prévu v1.2, abandonné — projet historique en
+  fin de vie.
+- **Moteur custom YAML** (`type: cli` / `type: api`) : prévu en
+  SPECS v1.0, abandonné. **Refondu en pipelines composables**
+  (Sprint 63-70) qui permettent de brancher n'importe quel module
+  via une spec YAML — plus puissant que la déclaration d'engine
+  custom imaginée à l'origine.
+
+### 10.2 Exports non livrés
+
+- **Export PDF** du rapport. CSV + JSON + HTML autonome couvrent
+  les usages observés. Reportable sur demande utilisateur si
+  besoin tracé.
+- **Export ALTO XML** des sorties OCR.
+- **Export PAGE XML** des sorties OCR.
+- **Export images annotées** (PNG avec zones d'erreur surlignées).
+
+### 10.3 Fonctionnalités explicitement abandonnées
+
+- **Recommandation automatique** « quel concurrent pour quel
+  usage ». Promise dans SPECS v1 §7.1, **abandonnée** au profit
+  du moteur narratif factuel (Sprint 19) et de la philosophie
+  « Picarones mesure et classe — il ne tranche pas ». Les leviers
+  d'amélioration (Sprint 51-82) restent factuels.
+- **Score de consensus / vote majoritaire / ensemble** : Picarones
+  livre l'**oracle borné supérieur** (Sprint 35) et le score de
+  spécialisation inter-moteurs (Sprint 89) — observations
+  factuelles. Pas de mécanisme de vote actif intégré ; au
+  chercheur de combiner les sorties s'il le décide.
+- **Clustering automatique k-means des erreurs**. Remplacé par
+  la taxonomie discrète (Sprint 5) + co-occurrence Jaccard
+  (Sprint 75) + heatmap intra-doc (Sprint 76).
+- **Annotations inline du paléographe exportées en JSON**. Non
+  implémentées.
+- **Badge SVG de qualité OCR pour CI**. `picarones compare` avec
+  exit code 2 sur régression couvre l'usage CI ; un badge SVG
+  reste nice-to-have, non priorisé.
+- **Dataset de référence embarqué de 100 documents
+  patrimoniaux**. Picarones est volontairement un **banc d'essai
+  sur votre golden dataset** — le 100-doc corpus de référence
+  imaginé en SPECS v1 §3.3 entrerait en concurrence avec les
+  corpus institutionnels existants (HTR-United, Esposalles,
+  IAM, RIMES, READ-BAD) et en fragmenterait l'écosystème. Les
+  5 documents synthétiques de Sprint A5 (`tests/fixtures/reference_corpus/`)
+  servent uniquement à l'anti-régression CER en CI, pas à la
+  valeur scientifique.
+
+### 10.4 Fonctionnalités scientifiques planifiées
+
+À livrer dans des sprints futurs :
+
+- **CITATION.cff + DOI Zenodo + papier JOSS** (Sprint A12 du
+  plan institutionnel) — débloque la citation académique propre.
+- **Traçabilité des profils de normalisation aux standards
+  éditoriaux** (MUFI v4.0, TEI P5, DEAF) — Sprint A12.
+- **Citations primaires des méthodes statistiques** dans les
+  docstrings (Demšar 2006, Wilcoxon 1945, Efron 1979) —
+  Sprint A12.
+
+<!-- specs-check: known-abandoned-end -->
+
+---
+
+## 11. Roadmap d'évolution
+
+Trois documents complémentaires pilotent l'évolution :
+
+- [`CHANGELOG.md`](CHANGELOG.md) — historique sprint par sprint,
+  format Keep a Changelog.
+- [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md) —
+  roadmap technique 2026+ (axes A et B : nouvelles métriques et
+  pipelines composables).
+- [`docs/audits/`](docs/audits/) — audits institutionnels et
+  plans de remédiation (sprints A1 à A15 du plan en cours).
+
+L'**état du plan institutionnel** au 2 mai 2026 :
+
+| Phase | Sprints | Statut |
 |---|---|---|
-| **Sprint 1** | 1-2 sem. | Structure du projet, adaptateurs Tesseract + Pero OCR, calcul CER/WER avec `jiwer`, export JSON, CLI de base |
-| **Sprint 2** | 1-2 sem. | Rapport HTML v1 : galerie, vue document avec diff coloré, tableau de classement, graphiques de base |
-| **Sprint 3** | 1-2 sem. | Pipelines OCR+LLM (modes text_only et text_and_image), adaptateurs GPT-4o et Claude |
-| **Sprint 4** | 1-2 sem. | Adaptateurs API OCR (Mistral OCR, Google Vision), import IIIF, normalisation unicode, CER diplomatique |
-| **Sprint 5** | 1-2 sem. | Métriques avancées : matrice confusion unicode, ligatures, structure, qualité image, taxonomie des erreurs |
-| **Sprint 6** | 1-2 sem. | Interface web FastAPI, import HTR-United / HuggingFace, profils de normalisation, Ollama (LLMs locaux) |
-| **Sprint 7** | 1-2 sem. | Rapport HTML v2 : vue Caractères, scatter plots, heatmaps, clustering |
-| **Sprint 8** | 2 sem. | Intégration eScriptorium et Gallica API, suivi longitudinal, analyse de robustesse, prompts bibliothèque |
-| **Sprint 9+** | Continu | Tests utilisateurs, documentation, packaging Docker, CI/CD, publication open-source |
+| Phase 0 — Garde-fous CI | A1, A2 | ✅ Terminée |
+| Phase 1 — Hygiène architecturale | A3 | ✅ Terminée |
+| Phase 2 — Robustesse runtime | A4, A5 | ✅ Terminée |
+| Phase 3 — Accessibilité | A6, A7 | ✅ Terminée |
+| Phase 4 — Reproductibilité ops | A8, A9 | ✅ Terminée |
+| Phase 5 — Gouvernance | A10, A11 | ✅ Terminée |
+| Phase 7 — Refonte doc produit | A13, **A14 (ce document)** | ✅ Terminée |
+| Phase 6 — Publication scientifique | A12 | ⏳ Planifiée |
+| Phase 8 — Validation externe | A15 | ⏳ Planifiée (calendrier externe) |
 
 ---
 
-## 11. Exigences non fonctionnelles
+## 12. Migration v1 → v2 — annexe historique
 
-### Performance
-- Pipeline capable de traiter 1000 documents en moins de 30 minutes (moteurs locaux)
-- Rapport HTML interactif fluide pour des corpus de 10 000 documents
-- Calcul des métriques en moins de 1 seconde par document
+Pour les lecteurs qui avaient pris connaissance de SPECS v1.0
+(mars 2025) ou de l'Addendum Sprints 16-30, voici la table de
+migration des promesses changées :
 
-### Interopérabilité
-- Compatibilité Linux, macOS, Windows
-- Docker fourni pour un déploiement reproductible
-- API REST documentée (OpenAPI) pour intégration tierce
-- Conformité IIIF, ALTO XML, PAGE XML, TEI
+| SPECS v1 disait | SPECS v2 documente | Raison |
+|---|---|---|
+| Adapter Kraken (priorité v1.0) | Ouvert en plugin externe | Politique modules contribués Sprint 97 ; concentration sur 5 adapters cœur. |
+| Adapter AWS Textract (v1.1) | Abandonné | Pas de DPA, périmètre couvert par 3 clouds existants. |
+| Adapter Calamari (v1.1) | Abandonné | Maintenance par adapter ≈ 50 PJ/an ; mieux servi en plugin externe. |
+| Adapter OCRopus4 (v1.2) | Abandonné | Projet historique en fin de vie. |
+| Moteur custom YAML | Refondu en pipelines composables | Sprint 63-70 livre une infrastructure plus puissante. |
+| Recommandation automatique | Remplacée par moteur narratif factuel | Pivot philosophique vers la neutralité éditoriale. |
+| Export PDF | Abandonné | CSV + JSON + HTML couvrent les usages. |
+| Export ALTO/PAGE/images annotées | Abandonné | Idem. |
+| `picarones estimate` (preview coût) | Remplacé par vue Pareto post hoc | Sprint 20 livre la même information dans le rapport. |
+| Score consensus / k-means | Remplacé par oracle borné + taxonomie discrète + Jaccard | Sprint 35, 5, 75 — équivalence fonctionnelle, formalisme différent. |
+| Annotations inline JSON | Abandonné | Pas de demande utilisateur observée. |
+| Badge SVG qualité OCR | Abandonné | `picarones compare` exit code 2 couvre la CI. |
+| Dataset 100 docs embarqué | Abandonné | Banc d'essai sur votre golden dataset, pas un dataset de référence. |
+| Prompt latin | Pas livré | Reportable sur demande. |
 
-### Qualité et maintenabilité
-- Tests unitaires pour toutes les métriques (vérification sur cas connus)
-- Tests d'intégration sur corpus de référence
-- Documentation de chaque métrique (définition, formule, interprétation)
-- Code open-source (licence Apache 2.0)
-
-### Sécurité et confidentialité
-- Aucune donnée envoyée vers l'extérieur sans consentement explicite
-- Mode entièrement hors-ligne possible (moteurs locaux + Ollama uniquement)
-- Clés API dans variables d'environnement uniquement
-
----
-
-## Addendum — Évolutions Sprints 16-30
-
-Cette section complète les spécifications initiales avec les fonctionnalités
-ajoutées entre les Sprints 16 et 30. Le cœur du document ci-dessus reste
-fidèle au cahier des charges originel ; cet addendum documente les briques
-qui ont enrichi la plateforme depuis.
-
-### Synthèse narrative factuelle (Sprint 19)
-
-Le rapport HTML embarque en tête une **synthèse en langage naturel**
-construite à partir de 12 détecteurs déterministes. Aucun LLM n'intervient :
-chaque nombre ou nom apparaissant dans la synthèse est traçable à un
-``payload`` de ``Fact`` qui provient lui-même du JSON d'entrée. Garantie
-testée en CI (``test_sprint19_narrative_engine.py``).
-
-Les 12 détecteurs couvrent : leader CER, ex-aequo statistique (Nemenyi),
-écart significatif (Wilcoxon), gagnant et effondrement par strate, profil
-d'erreurs atypique, hallucination LLM, fragilité robustesse, alternative
-Pareto, gagnant en vitesse, coût aberrant, avertissement sur la fiabilité.
-
-Politique éditoriale (ordre canonique) documentée dans
-``docs/developer/narrative-engine.md`` et surchargeable via
-``select_facts(..., type_order=...)``. Le registre Sprint 29 permet
-d'ajouter un détecteur en touchant 2 fichiers (au lieu de 4 avant).
-
-### Tests statistiques multi-moteurs (Sprint 18)
-
-Friedman + post-hoc Nemenyi + **Critical Difference Diagram** (Demšar 2006)
-rendu en SVG côté serveur, sans JavaScript. Table Nemenyi pour k = 2 à 50,
-α ∈ {0,01 ; 0,05}. Fallback pur Python (Wilson-Hilferty pour le χ²) avec
-support scipy optionnel via l'extra ``[stats]``.
-
-### Modèle de coût et front Pareto (Sprint 20)
-
-- ``picarones/core/pricing.py`` + ``picarones/data/pricing.yaml``.
-- ``compute_pareto_front(points, objectives)`` — multi-objectifs, N dim.
-- Vue Chart.js avec front Pareto en surbrillance et trois axes :
-  coût € / vitesse / empreinte carbone (étiqueté *expérimental*).
-
-### Glossaire contextuel + panneau avancé (Sprint 21)
-
-- 25 entrées bilingues dans ``picarones/report/glossary/{fr,en}.yaml``.
-- Panneau *« ⚙ Mode avancé »* : choix de colonnes, filtres par strate,
-  score composite opt-in. État persisté en URL.
-
-### Études de cas et documentation (Sprint 22)
-
-``docs/case-studies/`` (deux cas explicitement étiquetés *« Cas d'école »*),
-``docs/user/reading-a-report.md``, trois guides développeur dans
-``docs/developer/``.
-
-### Reproductibilité scientifique (Sprint 27)
-
-Le rapport HTML embarque ``report_data["snapshots"]`` :
-
-- **pricing**       — YAML brut intégral de la table de prix ;
-- **glossary**      — entrées effectivement référencées ;
-- **normalization** — profil sérialisé (``diplomatic_table``,
-                      ``exclude_chars``…) ;
-- **environment**   — version Picarones, Python, plateforme, commit git,
-                      paquets installés.
-
-Un lecteur peut rejouer la synthèse, le Pareto et le glossaire sans
-accès au code source du moment où le rapport a été généré.
-
-### Sécurité institutionnelle (Sprint 24)
-
-Cf. ``SECURITY.md`` à la racine :
-
-- Mode public (``PICARONES_PUBLIC_MODE=1``) refuse les moteurs cloud
-  mutualisés et les pipelines LLM facturés à la clef serveur.
-- Validation Pillow systématique sur les images (CVE-2023-50447 et autres).
-- Browse roots configurables via ``PICARONES_BROWSE_ROOTS``.
-- Rate limiting par IP + sémaphore de jobs concurrents.
-- CSP + en-têtes durcis.
-
-### Persistance des jobs et frontend Jinja2 (Sprints 25-26)
-
-- Sprint 25 : ``_HTML_TEMPLATE`` (3000 L) → 8 partials Jinja2 dans
-  ``picarones/web/templates/`` + ``static/web-app.js``.
-- Sprint 26 : ``picarones/core/jobs.py`` — ``JobStore`` SQLite (WAL,
-  thread-safe). Reprise SSE via ``Last-Event-ID``. Jobs orphelins
-  marqués ``interrupted`` au boot.
-
-### Comparaison de runs et UX (Sprint 28)
-
-- ``picarones compare A.json B.json -o diff.html`` (exit code 2 si
-  régression — branchable sur GitHub Actions).
-- ``/api/config/save`` + ``/api/config/load`` : sérialisation/import
-  d'une configuration de benchmark.
-- ``/api/benchmark/{id}/synthesis_preview`` : synthèse narrative sans
-  rouvrir le HTML.
-- ``/api/history/regressions`` : surface de l'infra Sprint 8.
-
-### Accessibilité (Sprint 30)
-
-Les badges CER du rapport HTML portent un attribut ``data-cer-tier``
-(``excellent`` / ``acceptable`` / ``mediocre`` / ``critical``) et un
-``aria-label``. Le CSS associe une icône unicode (``●``, ``◐``, ``◑``,
-``○``) et un pattern de bordure différenciant à chaque tier — la
-couleur n'est plus la seule information visuelle.
-
-Pre-commit hook installé (``ruff`` + check YAML/JSON/secrets) ; cf.
-``.pre-commit-config.yaml`` et ``CONTRIBUTING.md``.
+À l'inverse, **~25 modules majeurs ajoutés depuis Sprint 30** sont
+documentés dans la nouvelle SPECS aux §6 (NER, reading order F1,
+layout F1, recherchabilité fuzzy, séquences numériques, 6 modules
+philologiques transversaux, narrative engine, Friedman+Nemenyi+CDD,
+Pareto, glossaire, métriques inter-moteurs, absorption d'erreur,
+pipelines composables, registre typé, audit modules, comparaison
+de runs, stratification, calibration, longitudinal, throughput
+effectif, etc.) — invisibles dans SPECS v1.
 
 ---
 
-*Picarones est conçu pour devenir la référence open-source de l'évaluation OCR/HTR dans le champ patrimonial — métriques adaptées aux documents historiques, pipelines OCR+LLM, intégration native des standards bibliothéconomiques, rapport interactif exportable.*
+*Picarones est conçu pour devenir une référence open-source
+d'évaluation OCR/HTR dans le champ patrimonial — métriques
+adaptées aux documents historiques, pipelines composables,
+intégration des standards bibliothéconomiques (IIIF, ALTO XML,
+PAGE XML, HTR-United, eScriptorium, Gallica), rapport interactif
+exportable, snapshot de reproductibilité.*
+
+*Dernière mise à jour : 2 mai 2026 (Sprint A14, refonte v2.0).*

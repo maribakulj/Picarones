@@ -913,3 +913,111 @@ body.present-mode .btn-customize { display: none !important; }
   text-decoration: underline;
 }
 body.present-mode .synth-cases-link { display: none; }
+
+/* ── Sprint A6 — Accessibilité WCAG niveau A ─────────────────────────
+   Skip-to-content link (B-10) : caché hors :focus pour ne pas polluer
+   le visuel mais immédiatement disponible au clavier (Tab depuis la URL
+   bar atteint le contenu en 1 tabulation). Contraste AA ≥ 4.5:1 sur
+   fond bleu institutionnel. */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #1d4ed8;
+  color: #ffffff;
+  padding: .5rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  z-index: 9999;
+  border-radius: 0 0 .25rem 0;
+  transition: top 120ms ease-out;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Sprint A6 (B-9) — table jumelle des charts pour lecteurs d'écran.
+   ``visually-hidden`` cache le contenu visuellement tout en le
+   conservant accessible aux AT (NVDA, JAWS, VoiceOver). Le bouton
+   ``Voir les données`` peut révéler la table à tous via toggle de
+   classe. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.chart-data-table {
+  margin-top: .5rem;
+  font-size: .85rem;
+  border-collapse: collapse;
+}
+.chart-data-table th, .chart-data-table td {
+  border: 1px solid var(--border-light, #e2e8f0);
+  padding: .25rem .5rem;
+  text-align: left;
+}
+.chart-data-table.is-revealed {
+  position: static;
+  width: auto;
+  height: auto;
+  clip: auto;
+  white-space: normal;
+}
+.btn-toggle-data {
+  margin-top: .5rem;
+  font-size: .78rem;
+  padding: .15rem .5rem;
+  border: 1px solid var(--border-light, #cbd5e1);
+  background: #ffffff;
+  border-radius: .25rem;
+  cursor: pointer;
+}
+.btn-toggle-data:hover {
+  background: #f1f5f9;
+}
+.btn-toggle-data:focus {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+/* ── Sprint A7 (m-5) — toggle palette daltonien-friendly ─────────────
+   Le rapport utilise par défaut la palette Okabe-Ito (cf.
+   picarones/report/colors.py). Quand le body porte la classe
+   ``.palette-classic`` (activée via la case du panneau Avancé ou
+   ``?palette=classic`` dans l'URL), on revient à l'ancienne palette
+   rouge/vert/jaune via override CSS.
+
+   Cette classe ne touche que les éléments dont la couleur est posée
+   *en CSS variable* (au lieu de hex inline depuis Python) — c'est-à-dire
+   peu de choses dans le rapport actuel. La majorité des couleurs vient
+   de la palette Okabe-Ito appliquée à la source par les modules de
+   rendu Python. Le toggle reste utile pour les futures additions de
+   styling et signale clairement que la palette est paramétrable. */
+body.palette-classic {
+  --palette-good: #16a34a;       /* legacy green */
+  --palette-warning: #ca8a04;    /* legacy yellow */
+  --palette-bad: #dc2626;        /* legacy red */
+}
+body:not(.palette-classic) {
+  --palette-good: #0072B2;       /* Okabe-Ito blue */
+  --palette-warning: #F0E442;    /* Okabe-Ito yellow */
+  --palette-bad: #D55E00;        /* Okabe-Ito vermillion */
+}
+
+.palette-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .85rem;
+}
+.palette-toggle-row input[type="checkbox"] {
+  cursor: pointer;
+}

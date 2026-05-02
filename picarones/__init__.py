@@ -21,12 +21,21 @@ Voir ``docs/architecture.md`` pour la cartographie complète des
 
 from __future__ import annotations
 
-# Version (lecture dynamique depuis le package metadata après ``pip install -e .``)
+# Version (Sprint A9 / M-5) — résolue dans cet ordre :
+#   1. ``picarones._version`` injecté au build par setuptools_scm
+#      (présent dans le wheel installé) ;
+#   2. fallback ``importlib.metadata.version("picarones")`` pour les
+#      installations editable où ``_version.py`` peut être stale ;
+#   3. fallback final ``"1.0.0"`` si aucune source n'est disponible
+#      (ex : tarball sans .git ni metadata).
 try:
-    from importlib.metadata import version as _get_version
-    __version__ = _get_version("picarones")
-except Exception:  # noqa: BLE001
-    __version__ = "1.0.0"
+    from picarones._version import __version__  # type: ignore[import-not-found]
+except ImportError:
+    try:
+        from importlib.metadata import version as _get_version
+        __version__ = _get_version("picarones")
+    except Exception:  # noqa: BLE001
+        __version__ = "1.0.0"
 
 __author__ = "Picarones contributors"
 
@@ -72,6 +81,14 @@ from picarones.core.metric_registry import (
     register_metric,
     select_metrics,
 )
+
+# Sprint A3 — trigger d'enregistrement du registre typé (Sprint 34).
+# L'import de ``picarones.measurements`` provoque l'exécution des
+# décorateurs ``@register_metric`` sur ``cer``, ``wer``, ``mer``,
+# ``wil`` + ~15 métriques philologiques + reading order + NER + ALTO.
+# Ce trigger remplace l'ancien import croisé Cercle 1 → Cercle 2 dans
+# ``core/pipeline.py`` (violation B-1/B-2 du même esprit).
+import picarones.measurements as _trigger_metric_registration  # noqa: F401, E402
 
 __all__ = [
     "__version__",

@@ -187,7 +187,7 @@ def build_pipeline_steps_table_html(
         dmean_label, dmedian_label, metrics_label, errors_label,
     ):
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )
@@ -428,7 +428,7 @@ def build_pipeline_ranking_table_html(
     ]
     for col in (rank_label, name_label, value_label):
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )
@@ -504,7 +504,7 @@ def build_pipeline_gain_table_html(
     ]
     for col in (name_label, value_label, abs_label, rel_label):
         parts.append(
-            f'<th style="padding:.3rem .5rem;text-align:left;'
+            f'<th scope=\"col\" style="padding:.3rem .5rem;text-align:left;'
             f'border-bottom:1px solid #ccc;font-weight:600">'
             f'{_e(col)}</th>'
         )

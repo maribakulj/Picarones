@@ -1699,7 +1699,3 @@ reproductibilité, et conformité.
 [`institutional-readiness-2026-05.md`](institutional-readiness-2026-05.md)
 sur la branche `claude/audit-institutional-readiness-8Cw4w`.*
 *Période de mise en œuvre suggérée : mai–juillet 2026.*
-
-
-
-

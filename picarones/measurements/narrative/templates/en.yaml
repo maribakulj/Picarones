@@ -94,3 +94,18 @@ regression_in_history: >-
   moved from {first_cer_pct} % to {last_cer_pct} %
   (cumulative change {absolute_delta_pct} points). Investigate what
   changed in the pipeline or the models.
+
+# Sprint A3 (item B-3) — importer fallback incidents.
+# The payload contains `importer`, `operation` and `incidents_for_importer`.
+importer_fallback_triggered: >-
+  The "{importer}" importer fell back to degraded mode during the
+  "{operation}" operation ({incidents_for_importer} incident(s) this
+  run). Imported data may be incomplete or from a fallback — check
+  the logs for details.
+
+# Sprint A8 (m-14) — pricing table expired.
+# Payload: ``valid_until``, ``days_overdue``, ``today``.
+pricing_staleness_warning: >-
+  The pricing table used expired on {valid_until} ({days_overdue}
+  days ago). Cost/€ and CO₂ analyses reflect outdated rates — pass
+  ``pricing=`` to ``ReportGenerator`` for fresh figures.

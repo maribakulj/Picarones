@@ -30,6 +30,12 @@ from picarones.extras.importers.escriptorium import (
     EScriptoriumDocument,
     connect_escriptorium,
 )
+from picarones.extras.importers._fallback_log import (
+    consume_fallback_log,
+    peek_fallback_log,
+    record_fallback,
+    reset_fallback_log,
+)
 
 __all__ = [
     "IIIFImporter",
@@ -42,4 +48,9 @@ __all__ = [
     "EScriptoriumProject",
     "EScriptoriumDocument",
     "connect_escriptorium",
+    # Sprint A3 (B-3) — journal des fallbacks d'importer
+    "record_fallback",
+    "consume_fallback_log",
+    "peek_fallback_log",
+    "reset_fallback_log",
 ]
