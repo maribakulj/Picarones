@@ -10,6 +10,8 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 
+from picarones.core.diff_utils import compute_word_diff
+
 # Patterns d'erreurs fréquentes (OCR + HTR documents patrimoniaux)
 _ERROR_PATTERNS = [
     # (pattern_re, label)
@@ -27,9 +29,12 @@ _ERROR_PATTERNS = [
 
 
 def _extract_error_pairs(gt: str, hyp: str) -> list[tuple[str, str]]:
-    """Extrait les paires (gt_char_seq, hyp_char_seq) d'erreurs de substitution."""
-    # Sprint A3 (B-1) : import depuis Cercle 1, plus de violation Cercle 2→3.
-    from picarones.core.diff_utils import compute_word_diff
+    """Extrait les paires (gt_char_seq, hyp_char_seq) d'erreurs de substitution.
+
+    L'import de ``compute_word_diff`` est au top-level du module
+    (cercle 1 → cercle 2, sens autorisé). Il était paresseux historiquement
+    pour contourner une violation de cercle (Sprint A3) qui n'existe plus.
+    """
     ops = compute_word_diff(gt, hyp)
     pairs = []
     for op in ops:

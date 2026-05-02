@@ -425,7 +425,7 @@ colonne) et `picarones/report/glossary/{fr,en}.yaml`.
 
 **Note de traçabilité** : les références primaires (Demšar 2006,
 Wilcoxon 1945, Efron 1979, etc.) sont citées dans les docstrings
-de chaque fonction de `picarones/measurements/statistics.py`.
+de chaque fonction de `picarones/measurements/statistics/`.
 Le glossaire contextuel relie chaque métrique à sa publication
 canonique (champ `reference`).
 

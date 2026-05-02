@@ -41,7 +41,7 @@ Les implémentations distribuées par défaut dans le package `picarones`.
 
 | Catégorie | Modules |
 |---|---|
-| Coeur | `metrics.py`, `statistics.py`, `runner.py`, `builtin_hooks.py`, `builtin_metrics.py`, `normalization.py` |
+| Coeur | `metrics.py`, `statistics/` (sous-package), `runner.py`, `builtin_hooks.py`, `builtin_metrics.py`, `normalization.py` |
 | Erreurs | `confusion.py`, `taxonomy.py`, `taxonomy_comparison.py`, `taxonomy_cooccurrence.py`, `taxonomy_intra_doc.py` |
 | Lignes/structure | `line_metrics.py`, `structure.py`, `worst_lines.py`, `char_scores.py` |
 | Calibration/fiabilité | `calibration.py`, `reliability.py`, `hallucination.py` |
@@ -141,3 +141,39 @@ Organisés par cercle : `tests/core/`, `tests/measurements/`,
 
 Un test du cercle N **n'importe pas** les implémentations des
 cercles > N (sauf `tests/integration/`).
+
+## Convention de découpage des modules > 400 lignes
+
+Quand un module Python dépasse 400 lignes ET contient plusieurs
+responsabilités disjointes, le découper en **sous-package** plutôt
+qu'en plusieurs modules à plat. Modèle de référence :
+[`picarones/measurements/statistics/`](../picarones/measurements/statistics/)
+issu du sprint « découpage de statistics.py » (mai 2026).
+
+Convention :
+
+1. **Renommer** `X.py` en `X/__init__.py` via `git mv` (préserve
+   l'historique du fichier original).
+2. **Créer** dans `X/` un sous-module par famille fonctionnelle
+   (`bootstrap.py`, `wilcoxon.py`, `friedman_nemenyi.py`, etc.).
+   Chaque sous-module doit faire moins de ~400 lignes ; sinon
+   re-décomposer.
+3. **`X/__init__.py`** ne contient QUE des ré-exports rétrocompat —
+   tous les symboles publics de l'ancien `X.py` doivent rester
+   importables via `from picarones.X import …`. Les symboles privés
+   ré-exportés doivent être ceux **réellement** consommés par les
+   tests (vérifié par grep, pas par supposition).
+4. **`__all__`** explicite dans chaque sous-module et dans le
+   `__init__.py`.
+5. **Tests architecture** (`tests/architecture/test_*.py`) doivent
+   continuer à passer : si nécessaire, étendre `_measurements_modules()`
+   ou `_imports_target_*` pour reconnaître les sous-packages.
+6. **Préfixer les modules de rendu** par leur domaine
+   (`cdd_render.py` plutôt que `render_cdd.py`) pour cohérence avec
+   `picarones/report/*_render.py`.
+
+**Quand NE PAS découper** : si les responsabilités sont fortement
+couplées (ex: un orchestrateur qui appelle 12 sous-fonctions au
+même endroit), le maintien dans un seul fichier > 400 lignes est
+acceptable. Le budget par fichier (`tests/architecture/test_file_budgets.py`)
+documente ces dérogations conscientes.

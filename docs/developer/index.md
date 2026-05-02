@@ -10,10 +10,18 @@ modules. En résumé :
 
 ```
 picarones/
-├── core/                # cœur analytique pur Python
+├── core/                # cœur analytique pur Python (Cercle 1)
+│   ├── pipeline.py      # PipelineRunner pour pipelines composées
+│   ├── corpus.py        # Document, Corpus, GTLevel
+│   ├── results.py       # DocumentResult, EngineReport, BenchmarkResult
+│   ├── modules.py       # BaseModule, ArtifactType
+│   ├── facts.py         # Fact, FactType, registre narratif
+│   └── …
+├── measurements/        # métriques officielles (Cercle 2)
 │   ├── runner.py        # orchestration ThreadPool/ProcessPool
 │   ├── metrics.py       # CER/WER/MER/WIL via jiwer
-│   ├── statistics.py    # Wilcoxon, Friedman, Nemenyi, Pareto
+│   ├── statistics/      # Wilcoxon, Friedman, Nemenyi, Pareto
+│   │   (sous-package depuis le sprint « découpage statistics.py »)
 │   ├── narrative/       # moteur de synthèse factuelle
 │   ├── pricing.py       # modèle de coût pour la vue Pareto
 │   └── …

@@ -28,21 +28,25 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: Snapshot v1.0.0. Doit baisser, jamais monter.
+#: Snapshot. Doit baisser, jamais monter.
 #:
 #: Historique :
 #: - 119 (initial v1.0.0, dette pré-existante CLAUDE.md/CHANGELOG.md
 #:   qui décrivent des modules sous ``picarones/core/...`` alors qu'ils
 #:   vivent dans ``picarones/measurements/...``).
 #: - 122 (sprint « découpage de statistics.py », 2026-05-02) : 3 audits
-#:   historiques (``docs/audits/institutional-readiness-2026-05.md`` et
-#:   ``docs/audits/remediation-plan-2026-05.md``) référencent
-#:   ``picarones/measurements/statistics.py`` qui est maintenant un
-#:   sous-package. On préfère relever la baseline plutôt que modifier
-#:   ces documents : un audit historique décrit un état du code à un
-#:   moment T et ne doit pas être ré-écrit pour refléter les états
-#:   futurs.
-BROKEN_PATHS_BASELINE = 122
+#:   historiques référencent ``picarones/measurements/statistics.py``
+#:   qui est maintenant un sous-package. Baseline relevée.
+#: - 72 (sprint « zéro dette actionnable », 2026-05-02) : 50 chemins
+#:   massivement corrigés — 44 dans CLAUDE.md (``core/X.py`` →
+#:   ``measurements/X.py`` pour les modules réellement déplacés
+#:   historiquement) + 6 dans docs vivants (profiles, cli-workflows,
+#:   evolution-2026, user/writing-a-pipeline-module, SPECS).
+#:
+#: Les 72 restants sont **TOUS** dans :
+#: - ``CHANGELOG.md`` (67) : journal historique versionné, intouchable.
+#: - ``docs/audits/*.md`` (5) : audits historiques, intouchables.
+BROKEN_PATHS_BASELINE = 72
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (
