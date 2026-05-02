@@ -1,9 +1,12 @@
 # .github/workflows/ci.yml — Picarones CI/CD
 #
-# Pipeline GitHub Actions :
-#   - Tests sur Python 3.11 et 3.12
+# Pipeline GitHub Actions (mis à jour Sprint A1 — Hardening CI) :
+#   - Tests sur Python 3.11 / 3.12 / 3.13 (3.13 informationnel, 6 mois)
 #   - Linux, macOS, Windows
-#   - Rapport de couverture (Codecov)
+#   - Couverture exigée >= 85 % (--cov-fail-under, plancher 2 pts sous baseline 87 %)
+#   - Timeout pytest 5 min par test individuel (pytest-timeout, mode thread)
+#   - Type-check mypy (strict sur picarones/core/, lax ailleurs — durci en A11)
+#   - Scanners sécurité : bandit (statique) + pip-audit (CVE deps) + trivy (image)
 #   - Build de la distribution Python
 #   - Vérification de l'exécutable demo
 
@@ -31,7 +34,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
+        # 3.13 ajouté Sprint A1 (item m-8). Reste informationnel
+        # (continue-on-error sur Linux uniquement) pendant 6 mois pour
+        # tracker la compat sans bloquer.
+        python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - python-version: "3.13"
+            os: ubuntu-latest
+            experimental: true
 
     steps:
       - name: Checkout
@@ -65,17 +75,25 @@ jobs:
         shell: pwsh
 
       # ── Dépendances Python ──────────────────────────────────────
+      # Mise à jour pip/setuptools/wheel en début de job (Sprint A1) pour
+      # éviter les CVE qui dorment dans les images runner GitHub.
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[dev,web]"
 
       # ── Tests ───────────────────────────────────────────────────
+      # Sprint A1 : --cov-fail-under=85 (baseline mesuré 87 %, marge 2 pts).
+      # pytest-timeout est configuré dans pyproject.toml [tool.pytest.ini_options].
       - name: Run tests
+        # Sur Python 3.13, on continue malgré une erreur pour ne pas bloquer
+        # le merge pendant la fenêtre informationnelle de 6 mois (m-8).
+        continue-on-error: ${{ matrix.python-version == '3.13' }}
         shell: bash
         run: |
           pytest tests/ -q --tb=short --no-header \
-            --cov=picarones --cov-report=xml --cov-report=term-missing
+            --cov=picarones --cov-report=xml --cov-report=term-missing \
+            --cov-fail-under=85
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: "1"
@@ -201,7 +219,102 @@ jobs:
         run: ruff check picarones/ tests/
 
   # ──────────────────────────────────────────────────────────────────
-  # Job 5 : CI/CD — Détection de régression CER (optionnel)
+  # Job 5 : Type-checking — Sprint A1 (item M-4)
+  #
+  # mypy est configuré dans pyproject.toml [tool.mypy] :
+  # - strict sur picarones.core.* (10 modules)
+  # - lax ailleurs (follow_imports=silent)
+  # Deux checks pré-existants désactivés (disallow_any_generics et
+  # warn_return_any), à ré-activer en Sprint A11 après fix des
+  # ~100 erreurs baseline.
+  # ──────────────────────────────────────────────────────────────────
+  typecheck:
+    name: Type checking (mypy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev,web,stats]"
+
+      - name: Run mypy on picarones/core (strict)
+        run: python -m mypy picarones/core/
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 6 : Sécurité — Sprint A1 (item B-7)
+  #
+  # bandit : scan statique du code Python (HIGH/MEDIUM bloquants).
+  # pip-audit : CVEs des dépendances installées.
+  # trivy : scan du Dockerfile + image résultante (HIGH/CRITICAL bloquants).
+  #
+  # Configuration bandit dans pyproject.toml [tool.bandit] avec exclusions
+  # documentées (B310, B608, B615, B701 — chacune avec sprint cible).
+  # ──────────────────────────────────────────────────────────────────
+  security:
+    name: Security scanners
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install scanners
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev,web]"
+
+      # bandit : -ll = LOW + above. La config pyproject.toml exclut les
+      # informationnels acceptés ; tout HIGH/MEDIUM nouveau bloque.
+      - name: Run bandit
+        run: python -m bandit -r picarones/ -ll -c pyproject.toml
+
+      # pip-audit : --skip-editable car picarones n'est pas sur PyPI.
+      # En CI, l'env est frais (pip à jour grâce au step précédent) donc
+      # les CVEs trouvées sont des vraies vulnérabilités déclarées.
+      - name: Run pip-audit
+        run: python -m pip_audit --skip-editable --strict
+
+      # trivy : scan du Dockerfile + image résultante. Build local pour
+      # auditer ce qui sera réellement déployé sur HuggingFace Space.
+      - name: Build Docker image for scan
+        run: docker build -t picarones:ci-scan .
+
+      - name: Run Trivy vulnerability scanner (image)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'picarones:ci-scan'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          vuln-type: 'os,library'
+
+      - name: Run Trivy on Dockerfile (config scan)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'config'
+          scan-ref: 'Dockerfile'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 7 : CI/CD — Détection de régression CER (optionnel)
   # Commenté par défaut — activer si vous avez un corpus de référence
   # ──────────────────────────────────────────────────────────────────
   # regression-check:

@@ -15,6 +15,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -45,8 +46,24 @@ Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/maribakulj/Picarones/issues"
 
 [project.optional-dependencies]
-# Développement et tests
-dev = ["pytest>=7.4.0", "pytest-cov>=4.1.0", "httpx>=0.27.0", "fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "python-multipart>=0.0.9"]
+# Développement et tests.
+# pytest-timeout (Sprint A1) garantit qu'aucun test individuel ne hang la CI
+# au-delà de la limite définie dans [tool.pytest.ini_options].
+# mypy (Sprint A1, M-4) : type-check strict sur picarones/core/ + lax ailleurs.
+# bandit (Sprint A1, B-7) : scanner sécurité statique du code Python.
+# pip-audit (Sprint A1, B-7) : détection des CVE des dépendances installées.
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.3.0",
+    "httpx>=0.27.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "python-multipart>=0.0.9",
+    "mypy>=1.10.0",
+    "bandit>=1.7.0",
+    "pip-audit>=2.7.0",
+]
 # Interface web FastAPI
 web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0", "python-multipart>=0.0.9"]
 # Tests statistiques avancés (Wilcoxon exact, Friedman chi² exact, Nemenyi)
@@ -115,7 +132,7 @@ picarones = [
     "report/templates/*.css",
     "report/templates/*.js",
     "report/i18n/*.json",
-    "core/narrative/templates/*.yaml",
+    "measurements/narrative/templates/*.yaml",
     "data/*.yaml",
     "report/glossary/*.yaml",
 ]
@@ -123,6 +140,107 @@ picarones = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+# Sprint A1 (M-15) : aucun test individuel ne doit dépasser 5 minutes.
+# Mode "thread" car certains tests utilisent ProcessPoolExecutor qui est
+# incompatible avec le timeout en mode "signal" sur certaines plateformes.
+timeout = 300
+timeout_method = "thread"
+# Marqueurs personnalisés. ``slow`` peut être désélectionné via
+# ``pytest -m "not slow"`` pour les boucles de dev.
+markers = [
+    "slow: tests longs (corpus de référence, intégration cloud) ; non bloquants en dev local",
+]
+
+# ──────────────────────────────────────────────────────────────────
+# Sprint A1 (B-8) — seuil minimal de couverture appliqué en CI.
+# Le baseline est mesuré en début de sprint puis le plancher est posé
+# 2 points en dessous, pour laisser une marge de manœuvre aux PR
+# tout en interdisant une dégradation franche.
+# ──────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["picarones"]
+omit = [
+    "picarones/report/vendor/*",  # Chart.js minifié vendoré
+    "picarones/report/templates/*",  # templates Jinja2 + JS, pas du code Python
+    "*/tests/*",
+]
+parallel = true
+
+[tool.coverage.report]
+# Le seuil est appliqué via la flag CLI ``--cov-fail-under=N`` dans la CI
+# (cf. .github/workflows/ci.yml) plutôt qu'ici, pour permettre aux
+# développeurs de lancer ``pytest --cov`` localement sans échec sur les
+# fichiers qu'ils ne touchent pas.
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+# ──────────────────────────────────────────────────────────────────
+# Sprint A1 (M-4) — type-checking gradient.
+#
+# Stratégie : ``picarones.core`` est en mode ``strict`` car c'est la
+# couche la plus stable et l'API publique. Les autres cercles passent
+# en mode permissif (``ignore_missing_imports`` + pas de strict) — au
+# fur et à mesure des sprints suivants, on monte le niveau (Sprint A11
+# resserre `picarones.measurements`).
+# ──────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+# Les imports vers les autres cercles sont suivis silencieusement
+# pour éviter de propager les erreurs des cercles non encore typés.
+# Sprint A11 resserrera progressivement.
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = "picarones.core.*"
+strict = true
+# A1 baseline : ces deux checks pré-existants génèrent ~70 % des erreurs
+# (annotations ``dict``/``tuple`` sans paramètres génériques, retours typés
+# ``Any``). Plutôt que de les fixer en bloc dans A1 et risquer une
+# régression, on les laisse explicitement désactivés et on les ré-active
+# en Sprint A11 (durcissement progressif du type-checking).
+disallow_any_generics = false
+warn_return_any = false
+
+# ──────────────────────────────────────────────────────────────────
+# Sprint A1 (B-7) — configuration bandit (scan sécurité statique).
+#
+# Politique : on refuse tout finding HIGH/CRITICAL en CI. Les MEDIUM
+# documentés ci-dessous comme "accepté" font l'objet d'un suivi explicite
+# (sprint cible mentionné).
+#
+# Exclusions documentées :
+# - B101 (assert_used) : pytest utilise systématiquement ``assert`` ;
+# - B105/B106 (hardcoded_password) : nos fixtures utilisent des chaînes
+#   ``"password"`` dans des contextes purement de test ;
+# - B310 (urllib_urlopen) : tous nos appels ``urllib.urlopen`` ciblent
+#   des endpoints HTTPS connus (Mistral, Google Vision, Azure DI,
+#   Gallica, HF Hub, eScriptorium, Ollama). Un audit ligne par ligne
+#   est tracé dans docs/audits/security-urllib-audit.md ;
+# - B608 (hardcoded_sql_expressions) : deux occurrences en
+#   ``measurements/history.py:341`` et ``web/jobs.py:235`` ; la seconde
+#   est un faux positif vérifié (audit institutional-readiness §6 F-1),
+#   la première utilise une whitelist de colonnes documentée ;
+# - B615 (huggingface_unsafe_download) : à corriger en pinant la
+#   ``revision`` dans extras/importers/huggingface.py — Sprint A5 ;
+# - B701 (jinja2_autoescape_false) : décision de design pré-existante
+#   (cf. report/generator.py:606-611) ; les variables injectées sont
+#   pré-échappées par les modules de rendu via ``html.escape``.
+#   Refactor à effectuer dans le scope a11y (Sprint A6 ou A7) en
+#   passant à ``select_autoescape`` + marquage ``|safe`` explicite des
+#   blocs JSON/SVG.
+# ──────────────────────────────────────────────────────────────────
+[tool.bandit]
+exclude_dirs = ["tests", "picarones/report/vendor"]
+skips = ["B101", "B105", "B106", "B310", "B608", "B615", "B701"]
 
 [tool.ruff]
 # Configuration centralisée pour que `ruff check`, `make lint` et le job CI
