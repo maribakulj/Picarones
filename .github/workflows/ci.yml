@@ -300,7 +300,7 @@ jobs:
         run: docker build -t picarones:ci-scan .
 
       - name: Run Trivy vulnerability scanner (image)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: 'picarones:ci-scan'
           format: 'table'
@@ -310,7 +310,7 @@ jobs:
           vuln-type: 'os,library'
 
       - name: Run Trivy on Dockerfile (config scan)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           scan-type: 'config'
           scan-ref: 'Dockerfile'
