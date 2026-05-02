@@ -36,7 +36,7 @@ def _load_vendor_js(name: str) -> str:
     return f"/* vendor/{name} non trouvé */"
 
 from picarones.core.results import BenchmarkResult
-from picarones.report.diff_utils import compute_char_diff, compute_word_diff
+from picarones.core.diff_utils import compute_char_diff, compute_word_diff
 from picarones.measurements.statistics import (
     compute_pairwise_stats,
     compute_reliability_curve,

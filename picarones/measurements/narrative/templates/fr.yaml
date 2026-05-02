@@ -99,3 +99,11 @@ regression_in_history: >-
   est passé de {first_cer_pct} % à {last_cer_pct} %
   (variation cumulée {absolute_delta_pct} points). Vérifier ce qui
   a changé dans le pipeline ou les modèles.
+
+# Sprint A3 (item B-3) — incidents d'importer en mode dégradé.
+# Le payload contient `importer`, `operation` et `incidents_for_importer`.
+importer_fallback_triggered: >-
+  L'importer « {importer} » a basculé en mode dégradé pendant l'opération
+  « {operation} » ({incidents_for_importer} incident·s sur ce run). Les
+  données importées peuvent être incomplètes ou issues d'un fallback —
+  consulter les logs pour le détail.

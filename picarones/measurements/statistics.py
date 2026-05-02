@@ -858,7 +858,8 @@ _ERROR_PATTERNS = [
 
 def _extract_error_pairs(gt: str, hyp: str) -> list[tuple[str, str]]:
     """Extrait les paires (gt_char_seq, hyp_char_seq) d'erreurs de substitution."""
-    from picarones.report.diff_utils import compute_word_diff
+    # Sprint A3 (B-1) : import depuis Cercle 1, plus de violation Cercle 2→3.
+    from picarones.core.diff_utils import compute_word_diff
     ops = compute_word_diff(gt, hyp)
     pairs = []
     for op in ops:

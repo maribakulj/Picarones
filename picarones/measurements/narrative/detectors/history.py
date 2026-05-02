@@ -271,3 +271,67 @@ def detect_regression_in_history(benchmark_data: dict) -> list[Fact]:
             engines_involved=(engine,),
         ))
     return facts
+
+
+# ---------------------------------------------------------------------------
+# Sprint A3 (item B-3) — détecteur IMPORTER_FALLBACK_TRIGGERED
+# ---------------------------------------------------------------------------
+
+
+@register_detector(
+    FactType.IMPORTER_FALLBACK_TRIGGERED,
+    # Priorité 180 — en queue, après les détecteurs de tendance historique.
+    # L'incident d'importer est *informationnel sur l'acquisition*, pas
+    # sur le ranking ou la performance d'un moteur — il vient logiquement
+    # après tout le reste de la synthèse.
+    priority=180,
+    importance=FactImportance.MEDIUM,
+)
+def detect_importer_fallback(benchmark_data: dict) -> list[Fact]:
+    """Émet un Fact par incident d'importer en mode dégradé.
+
+    Lit ``benchmark_data["importer_fallbacks"]`` (liste de dicts
+    produite par ``picarones.extras.importers.consume_fallback_log()``).
+    Si la clé est absente ou vide, le détecteur reste silencieux —
+    typiquement le cas pour un benchmark qui n'utilise pas d'importer
+    distant (corpus local).
+
+    Importance HIGH si **plusieurs incidents** sur le même importer
+    (signal d'une indisponibilité prolongée plutôt qu'un échec
+    isolé) ; MEDIUM sinon.
+    """
+    fallbacks = benchmark_data.get("importer_fallbacks") or []
+    if not fallbacks:
+        return []
+
+    # Compte par importer pour détecter les incidents répétés.
+    counts: dict[str, int] = {}
+    for entry in fallbacks:
+        if isinstance(entry, dict):
+            counts[str(entry.get("importer", "unknown"))] = (
+                counts.get(str(entry.get("importer", "unknown")), 0) + 1
+            )
+
+    facts: list[Fact] = []
+    for entry in fallbacks:
+        if not isinstance(entry, dict):
+            continue
+        importer = str(entry.get("importer", "unknown"))
+        operation = str(entry.get("operation", "unknown"))
+        importance = (
+            FactImportance.HIGH if counts.get(importer, 0) >= 2 else FactImportance.MEDIUM
+        )
+        payload: dict = {
+            "importer": importer,
+            "operation": operation,
+            "incidents_for_importer": counts.get(importer, 1),
+        }
+        if entry.get("error"):
+            payload["error_repr"] = str(entry["error"])
+        facts.append(Fact(
+            type=FactType.IMPORTER_FALLBACK_TRIGGERED,
+            importance=importance,
+            payload=payload,
+            engines_involved=(),
+        ))
+    return facts

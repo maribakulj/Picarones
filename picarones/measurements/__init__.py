@@ -117,3 +117,37 @@ Moteur narratif :
 Voir :doc:`docs/architecture.md` pour la cartographie complète et
 la règle de dépendance des 3 cercles.
 """
+
+# ──────────────────────────────────────────────────────────────────────────
+# Sprint A3 (renforce le respect de la règle Cercle 2 → Cercle 1
+# uniquement) — la cérémonie d'enregistrement des métriques typées dans
+# le registre Sprint 34 a été déplacée ici depuis ``core/pipeline.py``
+# qui violait la règle.
+#
+# Tout consommateur qui veut utiliser ``compute_at_junction``
+# (``picarones.core.metric_registry``) doit avoir importé
+# ``picarones.measurements`` au moins une fois pour que les décorateurs
+# ``@register_metric`` aient été exécutés. C'est le cas par défaut dans
+# le pipeline standard ; les notebooks isolés peuvent ajouter
+# ``import picarones.measurements`` (suivi d'un commentaire d'exception
+# ruff sur la ligne d'import si leur linter signale un import inutilisé).
+#
+# Sans ces imports, ``compute_at_junction`` trouverait un registre vide
+# et ne calculerait rien aux jonctions.
+# ──────────────────────────────────────────────────────────────────────────
+# Sprint 34 : cer / wer / mer / wil + stub TEXT→ALTO
+from picarones.measurements import builtin_metrics  # noqa: F401
+# Sprints 55-60 : métriques philologiques.
+from picarones.measurements import abbreviations  # noqa: F401
+from picarones.measurements import early_modern_typography  # noqa: F401
+from picarones.measurements import modern_archives  # noqa: F401
+from picarones.measurements import mufi  # noqa: F401
+from picarones.measurements import roman_numerals  # noqa: F401
+from picarones.measurements import unicode_blocks  # noqa: F401
+# Sprint 53 : reading order F1.  Sprints 38, 52 : NER, readability.
+from picarones.measurements import ner  # noqa: F401
+from picarones.measurements import readability  # noqa: F401
+from picarones.measurements import reading_order  # noqa: F401
+# Chantier 1 (post-Sprint 97) : métriques (ALTO, ALTO) pour évaluer
+# les reconstructeurs ALTO contre une GT ALTO du document.
+from picarones.measurements import alto_metrics  # noqa: F401

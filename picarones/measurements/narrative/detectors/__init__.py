@@ -61,6 +61,7 @@ from picarones.measurements.narrative.detectors.quality import (
 from picarones.measurements.narrative.detectors.history import (
     detect_engine_off_baseline,
     detect_engine_unstable,
+    detect_importer_fallback,
     detect_regression_in_history,
 )
 from picarones.measurements.narrative.detectors.ensemble import (
@@ -120,6 +121,7 @@ __all__ = [
     # history
     "detect_engine_off_baseline",
     "detect_engine_unstable",
+    "detect_importer_fallback",
     "detect_regression_in_history",
     # ensemble
     "detect_ensemble_opportunity",

@@ -100,6 +100,15 @@ class FactType(str, Enum):
     (régression progressive), soit change-point avec delta >
     seuil (rupture brutale)."""
 
+    IMPORTER_FALLBACK_TRIGGERED = "importer_fallback_triggered"
+    """Un import distant (HuggingFace, HTR-United, Gallica, eScriptorium…)
+    a échoué ou a basculé en mode dégradé pendant la constitution du
+    corpus (Sprint A3, item B-3).  Le moteur narratif lit
+    ``picarones.extras.importers.consume_fallback_log()`` qui retourne
+    et **vide** la liste des incidents accumulés depuis le dernier
+    benchmark.  Un Fact par incident, importance MEDIUM (HIGH si
+    plusieurs incidents sur le même importer)."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""

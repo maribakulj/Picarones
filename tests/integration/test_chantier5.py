@@ -48,9 +48,11 @@ class TestDetectorsPackage:
         "detect_engine_unstable",
         "detect_regression_in_history",
         "detect_ensemble_opportunity",
+        # Sprint A3 — détecteur d'incidents d'importer en mode dégradé.
+        "detect_importer_fallback",
     ])
-    def test_all_18_detectors_importable_from_root(self, name):
-        """Rétrocompat : les 18 détecteurs s'importent depuis le package
+    def test_all_19_detectors_importable_from_root(self, name):
+        """Rétrocompat : les 19 détecteurs (18 historiques + Sprint A3) s'importent depuis le package
         comme avant le chantier 5 (tests Sprints 20, 23, 29, 36, 44, 46, 73)."""
         from picarones.measurements.narrative import detectors
         assert hasattr(detectors, name), f"{name} disparu après chantier 5"
@@ -59,8 +61,10 @@ class TestDetectorsPackage:
     def test_DETECTORS_BY_TYPE_still_exposed(self):
         from picarones.measurements.narrative.detectors import DETECTORS_BY_TYPE
         assert isinstance(DETECTORS_BY_TYPE, dict)
-        assert len(DETECTORS_BY_TYPE) == 18, (
-            f"DETECTORS_BY_TYPE doit contenir 18 entrées, en a {len(DETECTORS_BY_TYPE)}"
+        # Sprint A3 — passage de 18 à 19 détecteurs (ajout
+        # IMPORTER_FALLBACK_TRIGGERED).
+        assert len(DETECTORS_BY_TYPE) == 19, (
+            f"DETECTORS_BY_TYPE doit contenir 19 entrées, en a {len(DETECTORS_BY_TYPE)}"
         )
 
     def test_register_default_detectors_still_callable(self):
@@ -72,7 +76,8 @@ class TestDetectorsPackage:
         ("pareto", 2),
         ("stratum", 3),
         ("quality", 4),
-        ("history", 3),
+        # Sprint A3 — history passe de 3 à 4 (ajout detect_importer_fallback).
+        ("history", 4),
         ("ensemble", 1),
     ])
     def test_submodules_have_expected_detector_count(self, submodule, detector_count):

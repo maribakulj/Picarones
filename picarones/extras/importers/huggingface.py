@@ -263,8 +263,17 @@ class HuggingFaceImporter:
                 if ds.dataset_id not in existing_ids:
                     results.append(ds)
                     existing_ids.add(ds.dataset_id)
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — réseau/API tierce
+            # Sprint A3 (B-3) : la recherche API échoue silencieusement →
+            # l'utilisateur ne voit que les datasets de référence et croit
+            # que l'API est vide. On documente l'incident.
+            from picarones.extras.importers._fallback_log import record_fallback
+            record_fallback(
+                importer="huggingface",
+                operation="hub_search_api",
+                error=exc,
+                extra={"query": query, "language": language, "limit": limit},
+            )
 
         return results[:limit]
 
@@ -413,8 +422,18 @@ def _try_import_with_datasets_lib(
                 img_file = output_path / f"doc_{i:04d}.jpg"
                 try:
                     image.save(str(img_file))
-                except Exception:
-                    pass
+                except Exception as exc:  # noqa: BLE001 — PIL/PIL-IO
+                    # Sprint A3 (B-3) : un échec de sauvegarde d'image
+                    # produirait un GT orphelin (texte sans image). On
+                    # documente et on continue — le GT est tout de même
+                    # écrit pour préserver la cohérence numérique du compteur.
+                    from picarones.extras.importers._fallback_log import record_fallback
+                    record_fallback(
+                        importer="huggingface",
+                        operation="image_save",
+                        error=exc,
+                        extra={"img_file": str(img_file), "doc_index": i},
+                    )
 
             gt_file = output_path / f"doc_{i:04d}.gt.txt"
             gt_file.write_text(str(text), encoding="utf-8")

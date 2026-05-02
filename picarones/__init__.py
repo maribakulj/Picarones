@@ -73,6 +73,14 @@ from picarones.core.metric_registry import (
     select_metrics,
 )
 
+# Sprint A3 — trigger d'enregistrement du registre typé (Sprint 34).
+# L'import de ``picarones.measurements`` provoque l'exécution des
+# décorateurs ``@register_metric`` sur ``cer``, ``wer``, ``mer``,
+# ``wil`` + ~15 métriques philologiques + reading order + NER + ALTO.
+# Ce trigger remplace l'ancien import croisé Cercle 1 → Cercle 2 dans
+# ``core/pipeline.py`` (violation B-1/B-2 du même esprit).
+import picarones.measurements as _trigger_metric_registration  # noqa: F401, E402
+
 __all__ = [
     "__version__",
     "__author__",
