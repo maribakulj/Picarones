@@ -1,0 +1,125 @@
+"""Garde-fou contre la croissance silencieuse des fichiers.
+
+Chaque fichier listé dans :data:`FILE_BUDGETS` a un budget en lignes.
+Si un fichier dépasse son budget, le test échoue et la PR est forcée
+à choisir entre :
+
+1. **Refactor** pour rentrer dans le budget (extraire un sous-module,
+   factoriser, supprimer du code mort).
+2. **Relever le budget délibérément** : modifier la valeur dans ce
+   fichier en l'expliquant dans le message de commit. La hausse devient
+   un acte conscient, plus une dérive silencieuse.
+
+Calibration : snapshot v1.0.0 (2026-05-02), ``current + ~15 %`` de marge
+pour l'évolution naturelle. Les god-modules historiques (statistics,
+generator, runner) gardent un budget proche de leur taille actuelle ; le
+choix de les dégonfler est une décision dédiée à un sprint de refactor,
+pas un sous-produit de l'invariant.
+
+Re-calibrer à chaque release tag.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+# Format : chemin relatif → max_lines.
+# Seuls les fichiers ≥ 400 lignes sont surveillés (les petits fichiers
+# n'ont pas besoin de budget — leur croissance est gérée par les tests
+# de couverture, pas par un seuil dur).
+FILE_BUDGETS: dict[str, int] = {
+    # --- God-modules : budget actuel + 15 % de marge.
+    # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
+    "picarones/measurements/statistics.py": 1300,         # actuel 1128
+    "picarones/report/generator.py": 1250,                # actuel 1063
+    "picarones/measurements/runner.py": 1200,             # actuel 1019
+    # --- Fichiers métier larges.
+    "picarones/measurements/robustness.py": 850,          # actuel 731
+    "picarones/report/pipeline_render.py": 825,           # actuel 717
+    "picarones/core/results.py": 750,                     # actuel 636
+    "picarones/report/philological_render.py": 725,       # actuel 615
+    "picarones/measurements/history.py": 725,             # actuel 615
+    "picarones/measurements/modern_archives.py": 700,     # actuel 599
+    "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
+    "picarones/core/pipeline.py": 675,                    # actuel 571
+    "picarones/extras/importers/iiif.py": 675,            # actuel 567
+    "picarones/extras/importers/gallica.py": 675,         # actuel 563
+    "picarones/measurements/levers.py": 675,              # actuel 561
+    "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
+    "picarones/web/security.py": 625,                     # actuel 532
+    "picarones/core/corpus.py": 600,                      # actuel 511
+    "picarones/fixtures.py": 600,                         # actuel 510
+    "picarones/measurements/inter_engine.py": 575,        # actuel 484
+    "picarones/measurements/roman_numerals.py": 575,      # actuel 478
+    "picarones/extras/importers/htr_united.py": 575,      # actuel 473
+    "picarones/cli/_workflows.py": 550,                   # actuel 469
+    "picarones/extras/importers/huggingface.py": 550,     # actuel 464
+    "picarones/core/metric_hooks.py": 500,                # actuel 423
+    "picarones/measurements/numerical_sequences.py": 500, # actuel 422
+    "picarones/measurements/normalization.py": 500,       # actuel 420
+    "picarones/report/comparison.py": 500,                # actuel 409
+}
+
+
+def _line_count(path: Path) -> int:
+    """Compte les lignes physiques (y compris vides)."""
+    return len(path.read_text(encoding="utf-8").splitlines())
+
+
+@pytest.mark.parametrize(
+    ("rel_path", "budget"),
+    sorted(FILE_BUDGETS.items()),
+)
+def test_file_size_within_budget(rel_path: str, budget: int) -> None:
+    """Chaque fichier surveillé doit rester ≤ budget."""
+    path = REPO_ROOT / rel_path
+    assert path.exists(), (
+        f"Fichier disparu : {rel_path}. "
+        "Retire l'entrée de FILE_BUDGETS dans "
+        "tests/architecture/test_file_budgets.py."
+    )
+    actual = _line_count(path)
+    assert actual <= budget, (
+        f"\n{rel_path} a {actual} lignes (budget {budget}).\n\n"
+        "Soit refactor pour rentrer dans le budget, soit relève le budget "
+        "consciemment dans tests/architecture/test_file_budgets.py "
+        "avec une justification dans le message de commit."
+    )
+
+
+def test_no_orphaned_budget_entries() -> None:
+    """Toute entrée de FILE_BUDGETS doit pointer vers un fichier existant."""
+    missing = [p for p in FILE_BUDGETS if not (REPO_ROOT / p).exists()]
+    assert not missing, (
+        f"Entrées orphelines dans FILE_BUDGETS : {missing}. "
+        "Le fichier a été déplacé/supprimé — retire l'entrée."
+    )
+
+
+def test_budget_table_covers_all_large_files() -> None:
+    """Tout fichier ≥ 400 lignes doit avoir une entrée dans FILE_BUDGETS.
+
+    Empêche un fichier nouveau ou subitement gros d'échapper à la
+    surveillance. Si un fichier dépasse 400 lignes, ajoute-le à
+    FILE_BUDGETS avec son budget (current + 15 %).
+    """
+    threshold = 400
+    untracked: list[tuple[str, int]] = []
+    for path in (REPO_ROOT / "picarones").rglob("*.py"):
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        if rel in FILE_BUDGETS:
+            continue
+        count = _line_count(path)
+        if count >= threshold:
+            untracked.append((rel, count))
+    assert not untracked, (
+        f"\nFichiers ≥ {threshold} lignes non surveillés :\n"
+        + "\n".join(f"  {p} ({n} lignes)" for p, n in sorted(untracked))
+        + "\n\nAjoute-les à FILE_BUDGETS dans "
+        "tests/architecture/test_file_budgets.py avec budget = current + ~15 %."
+    )
