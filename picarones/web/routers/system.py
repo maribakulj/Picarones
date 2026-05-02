@@ -1,13 +1,67 @@
-"""Router système : statut applicatif et langue de l'interface."""
+"""Router système : statut applicatif, /health, langue, jeton CSRF."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Cookie, HTTPException, Response
 
 from picarones import __version__
+from picarones.web.security import (
+    CSRF_COOKIE,
+    generate_csrf_token,
+    is_csrf_required,
+)
 from picarones.web.state import LANG_COOKIE, SUPPORTED_LANGS, iso_now
 
 router = APIRouter()
+
+
+@router.get("/health")
+async def health() -> dict:
+    """Endpoint *liveness* minimal pour orchestrateurs (Docker, Kubernetes).
+
+    Sprint A4 (item M-3 de l'audit institutional-readiness-2026-05) :
+    le ``HEALTHCHECK`` du Dockerfile pointe vers ``/health`` ; sans
+    cet endpoint dédié, le check Docker échouait. Le contenu est
+    volontairement minimal pour répondre en < 50 ms même sous charge :
+
+    - **pas** d'accès à la base SQLite ``jobs.sqlite`` (qui peut être
+      verrouillée pendant un benchmark long) ;
+    - **pas** d'introspection des engines (qui peut tomber sur un
+      timeout réseau pour les adapters cloud) ;
+    - **pas** de calcul ni d'I/O.
+
+    Pour un état applicatif riche (versions des engines, charge
+    courante, mode public, etc.), utiliser ``/api/status``.
+    """
+    return {"status": "ok", "version": __version__}
+
+
+@router.get("/api/csrf/token")
+async def api_csrf_token(response: Response) -> dict:
+    """Force la rotation du jeton CSRF — Sprint A4 (item B-11).
+
+    Pose un cookie ``picarones_csrf`` frais sur la réponse, indépendant
+    du middleware de rotation paresseuse. Utile :
+
+    - au démarrage du frontend (single-page app), avant le premier POST ;
+    - après un logout / changement d'utilisateur ;
+    - depuis ``curl`` pour scripter un client en mode institutionnel.
+
+    En mode public (``PICARONES_CSRF_REQUIRED`` désactivé), retourne
+    ``enabled=false`` et ne pose pas de cookie — le frontend peut alors
+    décider de ne pas injecter le header sur ses POST.
+    """
+    if not is_csrf_required():
+        return {"enabled": False, "token": None}
+    token = generate_csrf_token()
+    response.set_cookie(
+        key=CSRF_COOKIE,
+        value=token,
+        httponly=False,
+        samesite="strict",
+        secure=False,
+    )
+    return {"enabled": True, "token": token}
 
 
 @router.get("/api/status")

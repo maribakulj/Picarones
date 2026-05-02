@@ -26,6 +26,49 @@ configuration recommandée pour chaque cas.
 | `PICARONES_MAX_CONCURRENT_JOBS` | `2` | Plafond global de benchmarks simultanés (sémaphore en mémoire). |
 | `PICARONES_RATE_LIMIT_PER_HOUR` | `5` (en mode public) | Jobs max par IP et par heure. `0` = désactivé. |
 | `PICARONES_CSP` | (politique durcie) | Surcharge la `Content-Security-Policy` envoyée par le middleware. |
+| `PICARONES_CSRF_REQUIRED` | non défini | Si `1`/`true`/`yes` : active la protection CSRF (double-submit cookie + signature HMAC) sur tout POST/PUT/PATCH/DELETE. Voir § « CSRF — déploiement institutionnel » ci-dessous. |
+| `PICARONES_CSRF_SECRET` | (auto) | Secret HMAC pour signer les tokens CSRF. Si non défini, généré au démarrage avec un warning ; les tokens sont alors invalidés à chaque redémarrage. **À définir en production**. |
+
+---
+
+## CSRF — déploiement institutionnel (Sprint A4)
+
+L'application embarque un middleware CSRF **désactivé par défaut**
+(rétrocompat HuggingFace Space où il n'y a pas de session
+authentifiée à protéger). Pour un déploiement BnF / Bibliothèque
+nationale derrière SSO :
+
+```bash
+export PICARONES_CSRF_REQUIRED=1
+export PICARONES_CSRF_SECRET="$(openssl rand -hex 32)"  # 64 chars hex
+```
+
+**Comment ça marche** : pattern « double-submit cookie ». Le serveur
+pose un cookie `picarones_csrf` (httponly=False, samesite=strict) qui
+contient un token `<nonce>.<HMAC-SHA256(secret, nonce)>`. Sur tout
+POST/PUT/PATCH/DELETE non exempt, le client doit renvoyer le même
+token dans l'en-tête `X-CSRF-Token`. Le serveur compare en temps
+constant et vérifie la signature. Une page tierce ne peut pas lire
+le cookie (samesite=strict + JS d'origine différente) ni produire
+une signature valide (HMAC), donc ne peut pas forger une requête.
+
+**Endpoints exemptés** : `/health`, `/api/csrf/token` (le endpoint
+qui *donne* le token).
+
+**Bootstrap d'un client tiers** (curl, scripts CI) :
+
+```bash
+# 1. Récupérer un token et persister le cookie dans un jar
+curl -c cookies.txt http://picarones.example/api/csrf/token | jq -r .token
+
+# 2. Réutiliser le token dans le header
+TOKEN=$(jq -r .token < <(curl -sb cookies.txt http://.../api/csrf/token))
+curl -b cookies.txt -H "X-CSRF-Token: $TOKEN" -X POST .../api/lang/fr
+```
+
+**Frontend** : le JS embarqué (`web-app.js`) wrappe `fetch()` pour
+injecter automatiquement le header sur toute requête mutante
+same-origin. Aucun changement requis dans le code applicatif.
 
 ---
 
