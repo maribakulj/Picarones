@@ -59,17 +59,26 @@ COPY pyproject.toml .
 COPY README.md .
 COPY picarones/ picarones/
 
-# Créer un venv isolé et installer Picarones avec les extras web.
+# Crée le venv isolé /opt/venv et l'active pour les ``RUN`` suivants.
+# Le runtime fera ``COPY --from=builder /opt/venv /opt/venv`` ; sans cette
+# création explicite le COPY échoue (régression remontée par CI A14).
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Installe Picarones avec les extras web/llm dans le venv.
 # Sprint A14 (correctif Trivy) : upgrade explicite de setuptools et wheel
 # (CVE-2022-40897, CVE-2024-6345, CVE-2025-47273, CVE-2026-24049) avant
 # l'install du package, sinon les versions héritées de la base image
-# Python (65.5.1 / 0.45.1) restent vulnérables.
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -e ".[web,llm]" && \
+# Python (65.5.1 / 0.45.1) restent vulnérables ; Trivy scanne
+# ``/opt/venv/lib/python3.11/site-packages`` après le COPY runtime.
+RUN pip install --upgrade --no-cache-dir \
+        "pip>=24.2" "setuptools>=78.1.1" "wheel>=0.46.2" && \
+    pip install --no-cache-dir -e ".[web,llm]" && \
     pip cache purge
 
-# Patch également la copie système de pip/setuptools/wheel (en dehors du
-# venv) que Trivy détecte via /usr/local/lib/python3.11/site-packages.
+# Patch également la copie système de pip/setuptools/wheel (hors venv)
+# que Trivy détecte via ``/usr/local/lib/python3.11/site-packages`` —
+# subsiste dans l'image runtime même quand le venv est utilisé.
 RUN /usr/local/bin/pip install --upgrade --no-cache-dir \
     "pip>=24.2" "setuptools>=78.1.1" "wheel>=0.46.2"
 
