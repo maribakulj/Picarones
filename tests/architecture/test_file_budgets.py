@@ -68,6 +68,10 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/measurements/numerical_sequences.py": 500, # actuel 422
     "picarones/measurements/normalization.py": 500,       # actuel 420
     "picarones/report/comparison.py": 500,                # actuel 409
+    # --- Module mutualisé créé par le sprint des render helpers
+    # (Sprint « consolidation des renderers » 2026-05-02). Budget
+    # calibré sur la taille post-documentation des conventions.
+    "picarones/report/render_helpers.py": 480,            # actuel 415
 }
 
 

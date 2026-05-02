@@ -21,6 +21,29 @@ API
 - :func:`text_color_for_bg` — noir ou blanc selon la luminosité du fond.
 - :func:`build_grid_svg` — builder de heatmap SVG paramétré.
 
+Conventions de bornes
+---------------------
+Trois conventions de paramétrage cohabitent (par dessein, pas par
+maladresse) :
+
+- :func:`color_traffic_light` accepte ``scale_min`` + ``scale_max``
+  parce que les cellules concernées (CER, ECE, deficit) peuvent
+  démarrer à une borne basse non nulle (rang 1 = vert, ou
+  ``scale_min=0.30`` pour démarrer le dégradé à partir d'un seuil).
+- :func:`color_single_gradient` accepte ``max_value`` parce que ces
+  cellules (Jaccard, densité) sont toujours bornées en bas par 0 —
+  pas besoin de ``scale_min``.
+- :func:`color_diverging` accepte ``max_abs`` parce que ces cellules
+  (deltas signés) sont symétriques autour de 0 — la borne est la
+  même des deux côtés.
+
+Le choix des couleurs reflète la sémantique métier : traffic-light
+utilise rouge/jaune/vert (échelle universelle de qualité), diverging
+utilise bleu/vert/orange par défaut (vert au centre = neutre,
+extrémités opposées sémantiquement, et ces 3 teintes restent
+distinguables en daltonisme deutéranope contrairement au
+rouge/vert).
+
 Palette
 -------
 Les bornes RGB des dégradés traffic-light sont la moyenne des palettes

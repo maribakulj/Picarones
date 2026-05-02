@@ -5,14 +5,19 @@ au moins un fichier de production (hors lui-même, hors ``tests/``).
 Sinon le module est *test-only* — sa couverture de test est haute mais
 il n'est branché à rien dans le pipeline réel.
 
-Snapshot v1.0.0 (2026-05-02) : **12 modules** dans ``measurements/``
-n'ont aucun consommateur direct hors tests :
+Snapshot v1.0.0 (2026-05-02, recalibré post-audit du 2026-05-02) :
+**13 modules** dans ``measurements/`` n'ont aucun consommateur
+direct hors tests. La baseline initiale (12 modules) reposait sur
+une regex texte qui (a) ne capturait pas la syntaxe
+``from picarones.measurements import X`` utilisée dans
+``__init__.py`` (3 faux positifs : alto_metrics, builtin_metrics,
+reading_order), et (b) capturait à tort les imports DANS DES
+DOCSTRINGS (4 faux négatifs : error_absorption, longitudinal,
+module_policy, reliability).
 
-- ``alto_metrics``, ``baseline_comparison``, ``builtin_metrics``,
-  ``cost_projection``, ``equivalence_profile``, ``layout``,
-  ``marginal_cost``, ``ner_backends``, ``rare_tokens``,
-  ``reading_order``, ``taxonomy_cooccurrence``,
-  ``taxonomy_intra_doc``.
+Le check est désormais basé sur le module ``ast`` standard de
+Python qui ignore correctement le contenu des chaînes/docstrings
+et reconnaît toutes les formes d'import valides.
 
 Trois actions possibles, par module :
 
@@ -32,26 +37,28 @@ Test ratchet :
 
 from __future__ import annotations
 
-import re
+import ast
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PICARONES_DIR = REPO_ROOT / "picarones"
 MEASUREMENTS_DIR = PICARONES_DIR / "measurements"
 
-#: Snapshot v1.0.0. Modules de ``picarones/measurements/`` sans
-#: consommateur en production. À résorber par paliers.
+#: Snapshot v1.0.0 (post-audit AST). Modules de
+#: ``picarones/measurements/`` sans consommateur en production.
+#: À résorber par paliers.
 TEST_ONLY_BASELINE: frozenset[str] = frozenset({
-    "alto_metrics",
     "baseline_comparison",
-    "builtin_metrics",
     "cost_projection",
     "equivalence_profile",
+    "error_absorption",
     "layout",
+    "longitudinal",
     "marginal_cost",
+    "module_policy",
     "ner_backends",
     "rare_tokens",
-    "reading_order",
+    "reliability",
     "taxonomy_cooccurrence",
     "taxonomy_intra_doc",
 })
@@ -65,39 +72,94 @@ def _measurements_modules() -> list[str]:
     )
 
 
+def _imports_target_module(node: ast.AST, module_name: str) -> bool:
+    """True si ce nœud AST importe ``picarones.measurements.<module_name>``.
+
+    Couvre les 5 syntaxes valides Python :
+
+    - ``import picarones.measurements.X``
+    - ``import picarones.measurements.X.sub`` (sous-module)
+    - ``from picarones.measurements.X import Y``
+    - ``from picarones.measurements import X``
+    - ``from picarones.measurements import (X, Y)`` (forme parenthésée)
+    """
+    target_dotted = f"picarones.measurements.{module_name}"
+    if isinstance(node, ast.Import):
+        for alias in node.names:
+            if alias.name == target_dotted or alias.name.startswith(
+                target_dotted + ".",
+            ):
+                return True
+        return False
+    if isinstance(node, ast.ImportFrom):
+        # ``from picarones.measurements.X import …``
+        if node.module == target_dotted:
+            return True
+        # ``from picarones.measurements import X``
+        if node.module == "picarones.measurements":
+            for alias in node.names:
+                if alias.name == module_name:
+                    return True
+    return False
+
+
+def _imports_target_relative(
+    node: ast.AST, module_name: str, source_dir: Path,
+) -> bool:
+    """True si ce nœud AST importe ``module_name`` via un import relatif
+    valide depuis le package ``measurements``.
+
+    Couvre :
+
+    - ``from . import X`` (depuis ``measurements/__init__.py`` ou
+      tout autre module dans le package).
+    - ``from .X import Y``.
+    """
+    if not isinstance(node, ast.ImportFrom):
+        return False
+    if node.level < 1:
+        return False
+    if source_dir != MEASUREMENTS_DIR:
+        return False
+    # ``from .X import …``
+    if node.module == module_name:
+        return True
+    # ``from . import X``
+    if node.module is None:
+        for alias in node.names:
+            if alias.name == module_name:
+                return True
+    return False
+
+
 def _has_production_consumer(module_name: str) -> bool:
     """True si ``module_name`` est importé par un fichier de production.
 
     "Production" = sous ``picarones/``, hors le module lui-même.
-    On accepte les imports absolus (``from picarones.measurements.X``
-    et ``import picarones.measurements.X``) ainsi que les imports
-    relatifs depuis le package ``measurements`` (``from .X``).
+
+    Le check parse l'AST de chaque fichier (au lieu de grep) pour deux
+    raisons :
+
+    1. **Toutes les syntaxes d'import sont reconnues** sans bricolage
+       de regex (``from picarones.measurements import X`` était la
+       grosse cible manquée par la regex initiale).
+    2. **Les chaînes/docstrings ne déclenchent pas de faux positif**
+       (un exemple de code dans une docstring ne compte pas comme
+       import réel).
     """
     own_file = MEASUREMENTS_DIR / f"{module_name}.py"
-    absolute_pattern = re.compile(
-        rf"\bfrom\s+picarones\.measurements\.{re.escape(module_name)}\b"
-        rf"|\bimport\s+picarones\.measurements\.{re.escape(module_name)}\b"
-    )
-    relative_pattern = re.compile(
-        rf"\bfrom\s+\.\s*{re.escape(module_name)}\b"
-        rf"|\bfrom\s+\.measurements\.{re.escape(module_name)}\b"
-    )
     for path in PICARONES_DIR.rglob("*.py"):
         if path == own_file:
             continue
         try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
             continue
-        if absolute_pattern.search(text):
-            return True
-        # Imports relatifs : ne sont valides que depuis l'arbre measurements.
-        try:
-            path.relative_to(MEASUREMENTS_DIR)
-        except ValueError:
-            continue
-        if relative_pattern.search(text):
-            return True
+        for node in ast.walk(tree):
+            if _imports_target_module(node, module_name):
+                return True
+            if _imports_target_relative(node, module_name, path.parent):
+                return True
     return False
 
 

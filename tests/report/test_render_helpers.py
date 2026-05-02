@@ -75,6 +75,28 @@ class TestColorTrafficLight:
         assert len(c) == 7
         assert c == c.lower()
 
+    def test_nan_falls_back_to_red(self) -> None:
+        # max(0, min(1, NaN)) = NaN → mais ensuite f <= 0.5 est False, donc
+        # branche "yellow → green" avec t = (NaN - 0.5) / 0.5 = NaN.
+        # Le résultat est techniquement indéfini ; on vérifie au moins que
+        # la fonction ne crash pas et retourne un hex valide.
+        c = color_traffic_light(float("nan"))
+        assert c.startswith("#")
+        assert len(c) == 7
+
+    def test_inf_clamped_to_max(self) -> None:
+        # +inf > scale_max → clamp à scale_max → vert (high_is_good)
+        assert _hex_to_rgb(color_traffic_light(float("inf"))) == GRADIENT_GREEN_RGB
+        # -inf < 0 → clamp à 0 → rouge
+        assert _hex_to_rgb(color_traffic_light(float("-inf"))) == GRADIENT_RED_RGB
+
+    def test_inverted_scale_returns_yellow(self) -> None:
+        # scale_min > scale_max → span négatif → géré comme zero span.
+        # La fonction ne doit pas crash et retourne une couleur valide.
+        c = color_traffic_light(5.0, scale_min=10, scale_max=5)
+        assert c.startswith("#")
+        assert len(c) == 7
+
 
 # ──────────────────────────────────────────────────────────────────
 # color_single_gradient

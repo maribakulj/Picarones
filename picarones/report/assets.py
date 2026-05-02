@@ -43,13 +43,19 @@ def load_vendor_js(name: str) -> str:
 
 
 def encode_image_b64(image_path: str, max_width: int = 1200) -> str:
-    """Lit une image, la redimensionne si besoin, et retourne un data-URI base64."""
+    """Lit une image, la redimensionne si besoin, et retourne un data-URI base64.
+
+    Retourne ``""`` si l'image est introuvable ou si l'encodage
+    échoue (Pillow indisponible, format non géré, fichier corrompu).
+    Logue un avertissement dans ce dernier cas — le rapport reste
+    fonctionnel mais l'image manquera dans la galerie.
+    """
+    p = Path(image_path)
+    if not p.exists():
+        return ""
     try:
         from PIL import Image
 
-        p = Path(image_path)
-        if not p.exists():
-            return ""
         with Image.open(p) as img:
             if img.width > max_width:
                 ratio = max_width / img.width
@@ -64,7 +70,13 @@ def encode_image_b64(image_path: str, max_width: int = 1200) -> str:
             b64 = base64.b64encode(buf.getvalue()).decode("ascii")
             mime = "image/jpeg" if fmt == "JPEG" else "image/png"
             return f"data:{mime};base64,{b64}"
-    except Exception:  # noqa: BLE001 — fallback silencieux côté report
+    except Exception as exc:  # noqa: BLE001 — fallback gracieux + warning
+        logger.warning(
+            "[report] échec d'encodage base64 de l'image %s : %s — "
+            "le rapport ignorera cette image",
+            image_path,
+            exc,
+        )
         return ""
 
 

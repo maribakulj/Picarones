@@ -6,11 +6,24 @@ Construit trois fronts Pareto avec des axes alternatifs :
 - ``speed`` — CER vs durée moyenne par page.
 - ``co2`` — CER vs empreinte carbone (g CO₂ / 1000 pages, expérimental).
 
-**Effet de bord** : :func:`build_pareto_section` enrichit en place
-le ``engines_summary`` reçu en argument avec les champs
-``mean_duration_seconds`` et ``cost`` (coût par 1000 pages + détail
-de pricing). Cette responsabilité partagée est documentée dans le
-module ``__init__.py`` du sous-package.
+API
+---
+Deux fonctions séparées pour rendre le contrat explicite :
+
+1. :func:`attach_engine_costs` — **mute en place** ``engines_summary``
+   en y ajoutant ``mean_duration_seconds`` et ``cost`` (extraits du
+   benchmark et de la table de pricing). Le nom dit clairement qu'il
+   y a mutation.
+2. :func:`build_pareto_section` — **fonction pure**, lit les coûts
+   déjà attachés à ``engines_summary``. Retourne le dict ``pareto``
+   prêt pour le template.
+
+L'orchestrateur (``__init__.py``) appelle les deux dans l'ordre.
+Cette séparation rend possible :
+
+- Tester :func:`build_pareto_section` indépendamment avec un
+  ``engines_summary`` pré-fabriqué.
+- Réutiliser les coûts attachés sans recalculer Pareto.
 """
 
 from __future__ import annotations
@@ -27,13 +40,20 @@ if TYPE_CHECKING:
     from picarones.core.results import BenchmarkResult
 
 
-def build_pareto_section(
+def attach_engine_costs(
     engines_summary: list[dict], benchmark: "BenchmarkResult",
-) -> dict:
-    """Construit le bloc ``pareto`` du dict de rapport.
+) -> None:
+    """Annote chaque entrée de ``engines_summary`` avec son coût.
 
-    Annote en place chaque entrée de ``engines_summary`` avec
-    ``mean_duration_seconds`` et ``cost``.
+    **Mute en place** : ajoute deux champs à chaque dict moteur :
+
+    - ``mean_duration_seconds`` (float ou ``None`` si pas de durée).
+    - ``cost`` : dict de la forme ``{cost_per_1k_pages_eur: ...,
+      co2_per_1k_pages_g: ..., ...}`` ou ``None`` si pricing
+      indisponible.
+
+    Doit être appelée AVANT :func:`build_pareto_section`, qui lit
+    ces deux champs.
     """
     durations_by_engine: dict[str, float] = {}
     for report in benchmark.engine_reports:
@@ -45,11 +65,9 @@ def build_pareto_section(
         if durs:
             durations_by_engine[report.engine_name] = sum(durs) / len(durs)
 
-    pricing_defaults, _ = load_pricing_database()
     costs_by_engine = build_costs_for_benchmark(
         engines_summary, durations_by_engine,
     )
-    # Annoter en place chaque résumé moteur avec son coût et sa durée.
     for entry in engines_summary:
         name = entry["name"]
         entry["mean_duration_seconds"] = (
@@ -57,6 +75,24 @@ def build_pareto_section(
             if name in durations_by_engine else None
         )
         entry["cost"] = costs_by_engine.get(name)
+
+
+def build_pareto_section(engines_summary: list[dict]) -> dict:
+    """Construit le bloc ``pareto`` du dict de rapport.
+
+    **Fonction pure** : ne mute rien. Lit ``mean_duration_seconds``
+    et ``cost`` qui doivent avoir été attachés en amont par
+    :func:`attach_engine_costs`. Si ces champs sont absents, le
+    moteur est silencieusement omis du front (cohérent avec un
+    moteur qui n'a pas de prix connu).
+
+    Retour
+    ------
+    dict
+        Trois fronts Pareto (``cost``, ``speed``, ``co2``) plus
+        ``pricing_meta`` (table de pricing utilisée).
+    """
+    pricing_defaults, _ = load_pricing_database()
 
     pareto_points = []
     for entry in engines_summary:
@@ -120,4 +156,4 @@ def build_pareto_section(
     }
 
 
-__all__ = ["build_pareto_section"]
+__all__ = ["attach_engine_costs", "build_pareto_section"]

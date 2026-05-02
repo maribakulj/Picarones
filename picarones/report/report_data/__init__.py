@@ -14,10 +14,14 @@ Ce sous-package éclate la construction en modules thématiques :
   reliability curves, Venn, error clusters, corrélations.
 - :mod:`scatter` — Sprint 10 : Gini vs CER, ratio vs anchor.
 - :mod:`pareto` — Sprint 19 : 3 fronts Pareto + métadonnées pricing.
+  Expose deux fonctions séparées : :func:`attach_engine_costs`
+  (mute) et :func:`build_pareto_section` (pure).
 
 L'API publique :func:`build_report_data` orchestre ces modules dans
-le bon ordre (les coûts du module Pareto enrichissent en place le
-``engines_summary`` produit par :mod:`engines`).
+le bon ordre. La séquence Pareto en deux temps
+(``attach_engine_costs`` → ``build_pareto_section``) rend la
+mutation explicite — les fonctions ``build_*`` du sous-package
+sont pures sauf ``attach_engine_costs`` dont le nom le dit.
 """
 
 from __future__ import annotations
@@ -32,7 +36,10 @@ from picarones.report.report_data.documents import (
     build_documents,
 )
 from picarones.report.report_data.engines import build_engines_summary
-from picarones.report.report_data.pareto import build_pareto_section
+from picarones.report.report_data.pareto import (
+    attach_engine_costs,
+    build_pareto_section,
+)
 from picarones.report.report_data.scatter import (
     build_gini_vs_cer,
     build_ratio_vs_anchor,
@@ -53,14 +60,21 @@ def build_report_data(
 ) -> dict:
     """Transforme un :class:`BenchmarkResult` en dict pour le rapport HTML.
 
-    L'ordre est important : :mod:`pareto` lit et enrichit en place
-    le ``engines_summary`` produit par :mod:`engines`.
+    Ordre critique :
+
+    1. Construire ``engines_summary`` (pur).
+    2. Construire ``documents`` puis annoter avec la difficulté (mute
+       ``documents``).
+    3. **Attacher** les coûts à ``engines_summary`` (mute, nom
+       explicite).
+    4. **Construire** le bloc Pareto (pure, lit les coûts attachés).
     """
     engines_summary = build_engines_summary(benchmark)
     documents = build_documents(benchmark, images_b64)
     annotate_documents_with_difficulty(benchmark, documents)
 
-    pareto_data = build_pareto_section(engines_summary, benchmark)
+    attach_engine_costs(engines_summary, benchmark)
+    pareto_data = build_pareto_section(engines_summary)
 
     return {
         "meta": {
