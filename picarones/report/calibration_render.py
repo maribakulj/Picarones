@@ -28,21 +28,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_ece(ece: float) -> str:
-    """Gradient vert (ECE = 0, bien calibré) → rouge (ECE = 0.5+)."""
-    f = max(0.0, min(1.0, ece * 2.0))  # ECE > 0.5 → rouge max
-    if f <= 0.5:
-        ratio = f / 0.5
-        r = int(130 + (240 - 130) * ratio)
-        g = int(200 + (220 - 200) * ratio)
-        b = int(130 + (130 - 130) * ratio)
-    else:
-        ratio = (f - 0.5) / 0.5
-        r = int(240 + (220 - 240) * ratio)
-        g = int(220 + (100 - 220) * ratio)
-        b = int(130 + (100 - 130) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def _engines_with_calibration(engines_summary: list[dict]) -> list[dict]:
@@ -98,7 +84,7 @@ def build_calibration_summary_html(
         acc = float(agg.get("overall_accuracy") or 0.0)
         conf = float(agg.get("overall_confidence") or 0.0)
         doc_count = int(agg.get("doc_count") or 0)
-        bg = _color_for_ece(ece)
+        bg = color_traffic_light(ece, low_is_good=True, scale_max=0.5)
         parts.append("<tr>")
         parts.append(
             f'<td style="padding:.3rem .5rem;font-weight:600">'

@@ -53,23 +53,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_deficit(deficit: float) -> str:
-    """Vert (≈0) → orange (~3 pts) → rouge (≥ 5 pts)."""
-    f = max(0.0, min(1.0, abs(deficit) / 0.05))
-    if f < 0.5:
-        # vert → orange
-        t = f / 0.5
-        r = int(167 + (235 - 167) * t)
-        g = int(240 + (180 - 240) * t)
-        b = int(167 + (60 - 167) * t)
-    else:
-        # orange → rouge
-        t = (f - 0.5) / 0.5
-        r = int(235 + (220 - 235) * t)
-        g = int(180 + (50 - 180) * t)
-        b = int(60 + (50 - 60) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def _build_summary_table(
@@ -106,7 +90,7 @@ def _build_summary_table(
         n_types = int(info.get("n_degradation_types") or 0)
         worst_type = info.get("worst_degradation_type")
         worst_deficit = info.get("worst_degradation_deficit")
-        color = _color_for_deficit(deficit)
+        color = color_traffic_light(abs(deficit), low_is_good=True, scale_max=0.05)
         worst_str = (
             f"{_e(str(worst_type))} ({worst_deficit * 100:+.1f})"
             if worst_type and isinstance(worst_deficit, (int, float))
@@ -162,7 +146,7 @@ def _build_detail_table(
             deficit = entry.get("deficit_vs_baseline")
             n_above = int(entry.get("n_docs_above_critical") or 0)
             if isinstance(deficit, (int, float)):
-                color = _color_for_deficit(float(deficit))
+                color = color_traffic_light(abs(float(deficit)), low_is_good=True, scale_max=0.05)
                 deficit_str = f"{float(deficit) * 100:+.2f}"
                 deficit_cell = (
                     f'<td style="padding:.4rem .6rem;text-align:right;'

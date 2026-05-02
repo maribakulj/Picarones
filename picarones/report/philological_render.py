@@ -36,32 +36,12 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
+from picarones.report.render_helpers import color_traffic_light
+
 
 # ──────────────────────────────────────────────────────────────────────────
 # Helpers de coloration
 # ──────────────────────────────────────────────────────────────────────────
-
-
-def _color_for_score(score: float) -> str:
-    """Gradient rouge → jaune → vert proportionnel à ``score`` ∈ [0, 1].
-
-    Identique à ``ner_render._color_for_f1``.  Les scores
-    philologiques (preservation, coverage, accuracy) suivent la même
-    sémantique « plus c'est haut, mieux c'est » donc le gradient
-    est valide.
-    """
-    f = max(0.0, min(1.0, score))
-    if f <= 0.5:
-        ratio = f / 0.5
-        r = int(220 + (240 - 220) * ratio)
-        g = int(100 + (220 - 100) * ratio)
-        b = int(100 + (130 - 100) * ratio)
-    else:
-        ratio = (f - 0.5) / 0.5
-        r = int(240 + (130 - 240) * ratio)
-        g = int(220 + (200 - 220) * ratio)
-        b = int(130 + (130 - 130) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def _engines_with_module(
@@ -83,7 +63,7 @@ def _score_cell(score: Optional[float], extra: str = "") -> str:
             '<td style="padding:.3rem .5rem;text-align:center;'
             'background:#f0f0f0;color:#999">—</td>'
         )
-    color = _color_for_score(score)
+    color = color_traffic_light(score)
     text = f"{score * 100:.1f}%"
     if extra:
         text += f" <span style=\"opacity:.6;font-size:.85em\">({_e(extra)})</span>"
@@ -539,8 +519,8 @@ def build_roman_numerals_section(
                 # la sémantique « plus c'est haut, plus l'OCR a
                 # adopté ce statut ».
                 color = (
-                    _color_for_score(1.0 - ratio) if status == "lost"
-                    else _color_for_score(ratio)
+                    color_traffic_light(1.0 - ratio) if status == "lost"
+                    else color_traffic_light(ratio)
                 )
                 parts.append(
                     f'<td style="padding:.3rem .5rem;text-align:center;'

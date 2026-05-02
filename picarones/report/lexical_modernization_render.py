@@ -19,15 +19,10 @@ from html import escape as _e
 from typing import Optional
 
 from picarones.measurements.lexical_modernization import top_modernized_tokens
-
-
-def _color_for_rate(rate: float) -> str:
-    """Gradient blanc → orange profond pour rate ∈ [0, 1]."""
-    f = max(0.0, min(1.0, rate))
-    r = int(255 + (194 - 255) * f)
-    g = int(255 + (65 - 255) * f)
-    b = int(255 + (12 - 255) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import (
+    GRADIENT_TARGET_ORANGE,
+    color_single_gradient,
+)
 
 
 def _format_variants(variants: dict, max_show: int = 3) -> str:
@@ -96,7 +91,7 @@ def build_lexical_modernization_html(
         rate = slot.get("rate_modernized", 0.0)
         n_total = slot.get("n_total", 0)
         variants_str = _format_variants(slot.get("variants") or {})
-        rate_color = _color_for_rate(rate)
+        rate_color = color_single_gradient(rate, end_rgb=GRADIENT_TARGET_ORANGE)
         parts.append(
             f'<tr>'
             f'<td style="padding:.3rem .5rem;font-family:monospace">'

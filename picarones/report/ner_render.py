@@ -23,26 +23,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_f1(f1: float) -> str:
-    """Gradient rouge → jaune → vert proportionnel à ``f1`` ∈ [0, 1].
-
-    F1 = 0 → rouge clair, F1 = 0,5 → jaune pâle, F1 = 1 → vert clair.
-    """
-    f = max(0.0, min(1.0, f1))
-    # Interpolation linéaire 2-segments :
-    # 0 → (220, 100, 100) (rouge), 0.5 → (240, 220, 130), 1 → (130, 200, 130) (vert)
-    if f <= 0.5:
-        ratio = f / 0.5
-        r = int(220 + (240 - 220) * ratio)
-        g = int(100 + (220 - 100) * ratio)
-        b = int(100 + (130 - 100) * ratio)
-    else:
-        ratio = (f - 0.5) / 0.5
-        r = int(240 + (130 - 240) * ratio)
-        g = int(220 + (200 - 220) * ratio)
-        b = int(130 + (130 - 130) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def _engines_with_ner(engines_summary: list[dict]) -> list[dict]:
@@ -110,7 +91,7 @@ def build_ner_summary_html(
         doc_count = int(agg.get("doc_count") or 0)
         hallucinated = int(agg.get("hallucinated_total") or 0)
         missed = int(agg.get("missed_total") or 0)
-        bg = _color_for_f1(f1)
+        bg = color_traffic_light(f1)
         parts.append("<tr>")
         parts.append(
             f'<td style="padding:.3rem .5rem;font-weight:600">'
@@ -222,7 +203,7 @@ def build_ner_per_category_html(
             else:
                 f1 = float(stats.get("f1") or 0.0)
                 support = int(stats.get("support", 0))
-                bg = _color_for_f1(f1)
+                bg = color_traffic_light(f1)
                 parts.append(
                     f'<td style="padding:.3rem .5rem;text-align:center;'
                     f'background:{bg};color:#222;'

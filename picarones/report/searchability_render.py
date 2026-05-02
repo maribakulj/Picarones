@@ -19,23 +19,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_recall(recall: float) -> str:
-    """Gradient rouge → jaune → vert pour rappel ∈ [0, 1]."""
-    f = max(0.0, min(1.0, recall))
-    if f < 0.5:
-        # rouge → jaune
-        t = f / 0.5
-        r = 235
-        g = int(70 + (200 - 70) * t)
-        b = 70
-    else:
-        # jaune → vert
-        t = (f - 0.5) / 0.5
-        r = int(235 + (60 - 235) * t)
-        g = int(200 + (160 - 200) * t)
-        b = int(70 + (90 - 70) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def build_searchability_summary_html(
@@ -99,7 +83,7 @@ def build_searchability_summary_html(
         n_search = int(agg.get("n_searchable") or 0)
         n_total = int(agg.get("n_gt_tokens") or 0)
         n_docs = int(agg.get("n_docs") or 0)
-        color = _color_for_recall(recall)
+        color = color_traffic_light(recall)
         parts.append(
             f'<tr>'
             f'<td style="padding:.4rem .6rem">{_e(str(name))}</td>'

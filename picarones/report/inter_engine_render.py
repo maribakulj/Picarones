@@ -21,20 +21,10 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for(value: float, vmax: float) -> str:
-    """Gradient blanc → rouge proportionnel à ``value/vmax``.
-
-    Retourne une couleur CSS hex.  ``vmax = 0`` → blanc.
-    """
-    if vmax <= 0:
-        return "#ffffff"
-    ratio = max(0.0, min(1.0, value / vmax))
-    # Blanc (255,255,255) vers rouge soutenu (200, 60, 60)
-    r = int(255 - (255 - 200) * ratio)
-    g = int(255 - (255 - 60) * ratio)
-    b = int(255 - (255 - 60) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import (
+    GRADIENT_TARGET_RED,
+    color_single_gradient,
+)
 
 
 def build_divergence_matrix_html(
@@ -126,7 +116,10 @@ def build_divergence_matrix_html(
                     f'font-style:italic">{_e(diag_label)}</td>'
                 )
             else:
-                bg = _color_for(v, vmax)
+                bg = (
+                    color_single_gradient(v, end_rgb=GRADIENT_TARGET_RED, max_value=vmax)
+                    if vmax > 0 else "#ffffff"
+                )
                 # Texte sombre toujours lisible (pas de seuil fort sur le rouge clair).
                 parts.append(
                     f'<td style="padding:.3rem .5rem;text-align:center;'

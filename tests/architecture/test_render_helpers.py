@@ -4,21 +4,21 @@ Les renderers HTML dans ``picarones/report/`` ont accumulé des helpers
 locaux dupliqués (couleur, heatmap SVG, etc.) qui devraient vivre dans
 un unique ``picarones/report/render_helpers.py``.
 
-Snapshot v1.0.0 (2026-05-02) :
+État après le sprint de consolidation : tous les ``_color_for_*`` et
+``_build_heatmap_svg`` locaux ont été déplacés dans
+``picarones/report/render_helpers.py`` qui expose
+:func:`color_traffic_light`, :func:`color_single_gradient`,
+:func:`color_diverging`, :func:`text_color_for_bg` et
+:func:`build_grid_svg`.
 
-- 25 fonctions ``_color_for_*`` distinctes (dont plusieurs portent le
-  même nom dans des fichiers différents : ``_color_for_score`` ×5,
-  ``_color_for_delta`` ×2, ``_color_for_cer`` ×2).
-- 1 fonction ``_color`` simple (``inter_engine_render``).
-- 2 fonctions ``_build_heatmap_svg`` (``taxonomy_cooccurrence``,
-  ``taxonomy_intra_doc``).
+Snapshot v1.0.0 (2026-05-02, post-consolidation) : **0 helper local
+dupliqué**.
 
-Soit **27 helpers locaux** dupliqués.
-
-Test ratchet : ce nombre ne peut que descendre. Pour le faire baisser,
-extraire un helper dans ``picarones/report/render_helpers.py`` et
-l'importer depuis les renderers qui en avaient besoin, puis abaisser
-:data:`HELPER_BASELINE` du même montant.
+Test ratchet : ce nombre ne peut que descendre. Si un nouveau helper
+``_color_for_*`` ou ``_build_heatmap_svg`` apparaît dans un renderer,
+le test échoue. La résolution est de paramétrer un des helpers de
+:mod:`picarones.report.render_helpers` plutôt que de réintroduire
+une fonction locale.
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORT_DIR = REPO_ROOT / "picarones" / "report"
 
-#: Snapshot v1.0.0. Doit baisser, jamais monter.
-HELPER_BASELINE = 27
+#: Snapshot v1.0.0 post-consolidation. Doit rester à 0.
+HELPER_BASELINE = 0
 
 #: Le module mutualisé est exempté (c'est *là* qu'on veut les voir).
 HELPERS_MODULE_NAME = "render_helpers.py"

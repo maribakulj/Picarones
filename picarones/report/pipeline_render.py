@@ -50,27 +50,12 @@ from typing import Optional
 from picarones.core.modules import ArtifactType
 from picarones.measurements.pipeline_benchmark import PipelineBenchmarkResult
 from picarones.measurements.pipeline_comparison import PipelineComparisonResult
+from picarones.report.render_helpers import color_traffic_light
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # Helpers communs
 # ──────────────────────────────────────────────────────────────────────────
-
-
-def _color_for_success_rate(rate: float) -> str:
-    """Gradient rouge → jaune → vert pour le taux de succès."""
-    f = max(0.0, min(1.0, rate))
-    if f <= 0.5:
-        ratio = f / 0.5
-        r = int(220 + (240 - 220) * ratio)
-        g = int(100 + (220 - 100) * ratio)
-        b = int(100 + (130 - 100) * ratio)
-    else:
-        ratio = (f - 0.5) / 0.5
-        r = int(240 + (130 - 240) * ratio)
-        g = int(220 + (200 - 220) * ratio)
-        b = int(130 + (130 - 130) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def _format_duration(seconds: float) -> str:
@@ -109,7 +94,7 @@ def build_pipeline_summary_html(
     failed = bench.n_pipelines_failed
     total = bench.n_docs
     rate = success / total if total > 0 else 0.0
-    color = _color_for_success_rate(rate)
+    color = color_traffic_light(rate)
 
     parts = [
         '<div class="pipeline-summary" '
@@ -195,7 +180,7 @@ def build_pipeline_steps_table_html(
 
     for agg in bench.per_step_aggregates:
         rate = agg.success_rate
-        rate_color = _color_for_success_rate(rate)
+        rate_color = color_traffic_light(rate)
         # Métriques aux jonctions : pour chaque type d'artefact,
         # liste des métriques mean
         metrics_cells: list[str] = []
@@ -381,12 +366,17 @@ class RankingSpec:
         return f"{self.artifact_type.value}.{self.metric_name}"
 
 
-def _color_for_rank(rank: int, total: int) -> str:
-    """Gradient vert (1er) → rouge (dernier) pour la cellule de rang."""
+def _bg_for_rank(rank: int, total: int) -> str:
+    """Gradient vert (rang 1) → rouge (dernier rang).
+
+    Mapping : ``rank ∈ [1, total]`` → ``color_traffic_light`` avec
+    ``low_is_good=True`` (rang bas = bon).
+    """
     if total <= 1:
-        return _color_for_success_rate(1.0)
-    score = 1.0 - (rank - 1) / (total - 1)
-    return _color_for_success_rate(score)
+        return color_traffic_light(1.0)
+    return color_traffic_light(
+        float(rank), low_is_good=True, scale_min=1.0, scale_max=float(total),
+    )
 
 
 def build_pipeline_ranking_table_html(
@@ -444,7 +434,7 @@ def build_pipeline_ranking_table_html(
             rank += 1
             rank_str = str(rank)
             value_str = f"{value:.4f}"
-            rank_color = _color_for_rank(rank, n_with_value)
+            rank_color = _bg_for_rank(rank, n_with_value)
         parts.append(
             f'<tr>'
             f'<td style="padding:.3rem .5rem;text-align:center;'

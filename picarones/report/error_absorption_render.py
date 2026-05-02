@@ -51,55 +51,15 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_correction(rate: float) -> str:
-    """Faible (rouge) → élevé (vert) — bon = beaucoup corrigées."""
-    f = max(0.0, min(1.0, rate))
-    if f < 0.5:
-        t = f / 0.5
-        r = 235
-        g = int(70 + (200 - 70) * t)
-        b = 70
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (60 - 235) * t)
-        g = int(200 + (160 - 200) * t)
-        b = int(70 + (90 - 70) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_diverging, color_traffic_light
 
 
-def _color_for_introduction(rate: float) -> str:
-    """Faible (vert) → élevé (rouge) — bon = peu introduites."""
-    f = max(0.0, min(1.0, rate))
-    if f < 0.5:
-        t = f / 0.5
-        r = int(60 + (235 - 60) * t)
-        g = int(160 + (180 - 160) * t)
-        b = int(90 + (60 - 90) * t)
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (220 - 235) * t)
-        g = int(180 + (50 - 180) * t)
-        b = int(60 + (50 - 60) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def _color_for_net(net: int, max_abs: int) -> str:
-    """Vert si positif, rouge si négatif. Saturation à max_abs."""
-    if max_abs <= 0 or net == 0:
-        return "#a7f0a7"
-    f = max(-1.0, min(1.0, net / max_abs))
-    if f >= 0:
-        # vert clair → vert profond
-        r = int(167 + (90 - 167) * f)
-        g = int(240 + (200 - 240) * f)
-        b = int(167 + (90 - 167) * f)
-    else:
-        f = -f
-        r = int(167 + (220 - 167) * f)
-        g = int(240 + (50 - 240) * f)
-        b = int(167 + (50 - 167) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+# Palette « net improvement » : vert clair au centre, vert profond
+# si favorable (net > 0), rouge si défavorable (net < 0).  Centrée
+# sur le vert clair car un delta nul est déjà « pas de régression ».
+_NET_NEUTRAL_RGB = (167, 240, 167)
+_NET_POSITIVE_RGB = (90, 200, 90)
+_NET_NEGATIVE_RGB = (220, 50, 50)
 
 
 def build_error_absorption_html(
@@ -186,7 +146,7 @@ def build_error_absorption_html(
         intro_rate = entry.get("introduction_rate")
         if isinstance(corr_rate, (int, float)):
             corr_rate_str = f"{corr_rate * 100:.1f}%"
-            corr_color = _color_for_correction(float(corr_rate))
+            corr_color = color_traffic_light(float(corr_rate))
             corr_cell = (
                 f'<td style="padding:.4rem .6rem;text-align:right;'
                 f'background:{corr_color};font-family:monospace;'
@@ -199,7 +159,7 @@ def build_error_absorption_html(
             )
         if isinstance(intro_rate, (int, float)):
             intro_rate_str = f"{intro_rate * 100:.1f}%"
-            intro_color = _color_for_introduction(float(intro_rate))
+            intro_color = color_traffic_light(float(intro_rate), low_is_good=True)
             intro_cell = (
                 f'<td style="padding:.4rem .6rem;text-align:right;'
                 f'background:{intro_color};font-family:monospace;'
@@ -210,7 +170,13 @@ def build_error_absorption_html(
                 '<td style="padding:.4rem .6rem;text-align:right;'
                 'opacity:.4">—</td>'
             )
-        net_color = _color_for_net(net, max_abs_net)
+        net_color = color_diverging(
+            float(net),
+            max_abs=float(max_abs_net) if max_abs_net else 1.0,
+            neutral_rgb=_NET_NEUTRAL_RGB,
+            positive_rgb=_NET_POSITIVE_RGB,
+            negative_rgb=_NET_NEGATIVE_RGB,
+        )
         intro_sample = entry.get("introduced_tokens_sample") or []
         sample_cell_text = ", ".join(
             _e(str(t)) for t in intro_sample[:sample_max]

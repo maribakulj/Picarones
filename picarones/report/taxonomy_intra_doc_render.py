@@ -23,24 +23,15 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_density(density: float) -> str:
-    """Gradient blanc → orange profond pour densité ∈ [0, 1].
-
-    Interpolation entre #ffffff (0) et #c2410c (1).
-    """
-    f = max(0.0, min(1.0, density))
-    r = int(255 + (194 - 255) * f)
-    g = int(255 + (65 - 255) * f)
-    b = int(255 + (12 - 255) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import (
+    GRADIENT_TARGET_ORANGE,
+    build_grid_svg,
+    color_single_gradient,
+    text_color_for_bg,
+)
 
 
-def _text_color_for_bg(density: float) -> str:
-    return "#fff" if density > 0.55 else "#222"
-
-
-def _build_heatmap_svg(
+def _build_position_heatmap_svg(
     classes_with_errors: list[str],
     per_class: dict[str, list[int]],
     n_bins: int,
@@ -50,72 +41,47 @@ def _build_heatmap_svg(
     label_left: int = 150,
     label_top: int = 30,
 ) -> str:
-    """Construit la heatmap SVG class × position."""
-    n_rows = len(classes_with_errors)
-    if n_rows == 0:
-        return ""
-    width = label_left + n_bins * cell_w + 10
-    height = label_top + n_rows * cell_h + 30  # +30 pour étiquette X
+    """Heatmap class taxonomique × position (densité relative par classe).
 
-    # Normalisation : pour chaque classe, densité relative au max
-    # de cette classe (mise en évidence des positions concentrées).
-    parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'width="{width}" height="{height}" '
-        f'viewBox="0 0 {width} {height}" '
-        f'role="img" aria-label="Heatmap class taxonomique × position">',
-    ]
-    # Étiquettes des colonnes (positions)
-    for j in range(n_bins):
-        cx = label_left + j * cell_w + cell_w // 2
-        cy = label_top - 6
-        parts.append(
-            f'<text x="{cx}" y="{cy}" '
-            f'font-size="10" fill="#666" text-anchor="middle">'
-            f'{j + 1}</text>'
-        )
-    # Cellules
-    for i, cls in enumerate(classes_with_errors):
-        # Étiquette de ligne (classe)
-        rx = label_left - 6
-        ry = label_top + i * cell_h + cell_h // 2 + 4
-        parts.append(
-            f'<text x="{rx}" y="{ry}" '
-            f'font-size="11" fill="#333" text-anchor="end">'
-            f'{_e(cls)}</text>'
-        )
+    Délègue à :func:`build_grid_svg` ; reste un wrapper local qui
+    encapsule la normalisation par classe (densité relative au max
+    observé sur la ligne).
+    """
+    if not classes_with_errors:
+        return ""
+
+    # Pré-calcule densité et count par cellule pour éviter les boucles
+    # imbriquées dans les callbacks.
+    grid: list[list[tuple[int, float]]] = []
+    for cls in classes_with_errors:
         counts = per_class.get(cls, [0] * n_bins)
         max_count = max(counts) if counts else 0
+        row: list[tuple[int, float]] = []
         for j in range(n_bins):
-            x = label_left + j * cell_w
-            y = label_top + i * cell_h
             count = counts[j] if j < len(counts) else 0
             density = (count / max_count) if max_count > 0 else 0.0
-            color = _color_for_density(density)
-            text_color = _text_color_for_bg(density)
-            parts.append(
-                f'<rect x="{x}" y="{y}" '
-                f'width="{cell_w}" height="{cell_h}" '
-                f'fill="{color}" stroke="#ddd" stroke-width="0.5"/>'
-            )
-            if count > 0:
-                parts.append(
-                    f'<text x="{x + cell_w // 2}" '
-                    f'y="{y + cell_h // 2 + 4}" '
-                    f'font-size="10" fill="{text_color}" '
-                    f'text-anchor="middle">{count}</text>'
-                )
-    # Étiquette axe X en bas
-    cx_axis = label_left + (n_bins * cell_w) // 2
-    cy_axis = height - 6
-    parts.append(
-        f'<text x="{cx_axis}" y="{cy_axis}" '
-        f'font-size="11" fill="#666" text-anchor="middle" '
-        f'font-style="italic">'
-        f'Position dans le document (1 = début)</text>'
+            row.append((count, density))
+        grid.append(row)
+
+    return build_grid_svg(
+        n_rows=len(classes_with_errors),
+        n_cols=n_bins,
+        row_label_fn=lambda i: classes_with_errors[i],
+        col_label_fn=lambda j: str(j + 1),
+        cell_color_fn=lambda i, j: color_single_gradient(
+            grid[i][j][1], end_rgb=GRADIENT_TARGET_ORANGE,
+        ),
+        cell_text_fn=lambda i, j: (
+            str(grid[i][j][0]) if grid[i][j][0] > 0 else None
+        ),
+        cell_text_color_fn=lambda i, j: text_color_for_bg(grid[i][j][1]),
+        cell_w=cell_w,
+        cell_h=cell_h,
+        label_left=label_left,
+        label_top=label_top,
+        aria_label="Heatmap class taxonomique × position",
+        x_axis_title="Position dans le document (1 = début)",
     )
-    parts.append("</svg>")
-    return "".join(parts)
 
 
 def build_taxonomy_intra_doc_html(
@@ -162,7 +128,7 @@ def build_taxonomy_intra_doc_html(
         n_words_gt=n_words_gt, n_bins=n_bins,
     )
 
-    svg = _build_heatmap_svg(classes_with_errors, per_class, n_bins)
+    svg = _build_position_heatmap_svg(classes_with_errors, per_class, n_bins)
 
     parts = [
         '<div class="intradoc" style="margin:1rem 0">',

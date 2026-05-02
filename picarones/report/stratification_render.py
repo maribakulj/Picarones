@@ -22,21 +22,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_cer(cer: float) -> str:
-    """Gradient vert (faible CER) → rouge (CER élevé), saturé à 0.30."""
-    f = max(0.0, min(1.0, cer / 0.30))
-    if f <= 0.5:
-        ratio = f / 0.5
-        r = int(130 + (240 - 130) * ratio)
-        g = int(200 + (220 - 200) * ratio)
-        b = int(130 + (130 - 130) * ratio)
-    else:
-        ratio = (f - 0.5) / 0.5
-        r = int(240 + (220 - 240) * ratio)
-        g = int(220 + (100 - 220) * ratio)
-        b = int(130 + (100 - 130) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def _format_cer(cer: Optional[float]) -> str:
@@ -167,7 +153,7 @@ def build_stratified_ranking_html(
             median = entry.get("median_cer")
             mean = entry.get("mean_cer")
             n_docs = int(entry.get("documents") or 0)
-            bg = _color_for_cer(float(median)) if median is not None else "#f4f4f4"
+            bg = color_traffic_light(float(median), low_is_good=True, scale_max=0.30) if median is not None else "#f4f4f4"
             parts.append("<tr>")
             parts.append(
                 f'<td style="padding:.3rem .5rem;font-weight:600">'

@@ -24,22 +24,7 @@ from html import escape as _e
 from typing import Optional
 
 from picarones.measurements.numerical_sequences import CATEGORIES
-
-
-def _color_for_score(score: float) -> str:
-    """Gradient rouge → jaune → vert."""
-    f = max(0.0, min(1.0, score))
-    if f < 0.5:
-        t = f / 0.5
-        r = 235
-        g = int(70 + (200 - 70) * t)
-        b = 70
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (60 - 235) * t)
-        g = int(200 + (160 - 200) * t)
-        b = int(70 + (90 - 70) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def _category_columns_with_signal(rows: list[dict]) -> list[str]:
@@ -125,7 +110,7 @@ def build_numerical_sequences_html(
         global_strict = float(agg.get("global_strict_score") or 0.0)
         global_value = float(agg.get("global_value_score") or 0.0)
         n_total = int(agg.get("n_total") or 0)
-        global_color = _color_for_score(global_strict)
+        global_color = color_traffic_light(global_strict)
         parts.append(
             f'<tr>'
             f'<td style="padding:.4rem .6rem">{_e(str(name))}</td>'
@@ -148,7 +133,7 @@ def build_numerical_sequences_html(
                 continue
             strict = float(cat_data.get("strict_score") or 0.0)
             value = float(cat_data.get("value_score") or 0.0)
-            color = _color_for_score(strict)
+            color = color_traffic_light(strict)
             parts.append(
                 f'<td style="padding:.4rem .6rem;text-align:right;'
                 f'background:{color};font-family:monospace">'
