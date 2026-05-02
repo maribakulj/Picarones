@@ -102,3 +102,10 @@ importer_fallback_triggered: >-
   "{operation}" operation ({incidents_for_importer} incident(s) this
   run). Imported data may be incomplete or from a fallback — check
   the logs for details.
+
+# Sprint A8 (m-14) — pricing table expired.
+# Payload: ``valid_until``, ``days_overdue``, ``today``.
+pricing_staleness_warning: >-
+  The pricing table used expired on {valid_until} ({days_overdue}
+  days ago). Cost/€ and CO₂ analyses reflect outdated rates — pass
+  ``pricing=`` to ``ReportGenerator`` for fresh figures.

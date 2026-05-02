@@ -1,0 +1,73 @@
+# Sprint A8 (M-18) — exclut du build context Docker tout ce qui n'est
+# pas requis pour produire l'image runtime. Réduit de ~20 % la taille
+# du context envoyé au daemon et améliore le cache hit-rate.
+
+# VCS et historique git
+.git
+.gitignore
+.gitattributes
+.github
+
+# Tests et fixtures lourdes
+tests
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+.tox
+
+# Builds locaux et artefacts
+build
+dist
+*.egg-info
+*.egg
+.eggs
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Caches d'outils
+.mypy_cache
+.ruff_cache
+.cache
+.uv-cache
+
+# Environnements virtuels
+venv
+.venv
+env
+ENV
+
+# Documentation source (le runtime n'a pas besoin du Markdown brut)
+docs
+*.md
+!README.md
+
+# Audits et rapports
+docs/audits
+*.html
+!picarones/report/templates/*.html
+
+# Données locales / uploads
+uploads
+data_local
+jobs.sqlite*
+*.partial.json
+
+# Configuration locale
+.env
+.env.local
+.env.*.local
+
+# IDE / éditeurs
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Outils de packaging non-Docker
+*.spec
+PyInstaller.spec

@@ -46,6 +46,7 @@ from picarones.measurements.narrative.detectors.ranking import (
 from picarones.measurements.narrative.detectors.pareto import (
     detect_cost_outlier,
     detect_pareto_alternative,
+    detect_pricing_staleness,
 )
 from picarones.measurements.narrative.detectors.stratum import (
     detect_stratification_recommended,
@@ -109,6 +110,7 @@ __all__ = [
     # pareto
     "detect_cost_outlier",
     "detect_pareto_alternative",
+    "detect_pricing_staleness",
     # stratum
     "detect_stratification_recommended",
     "detect_stratum_collapse",

@@ -1,19 +1,22 @@
-# Core
-click>=8.1.0
-jiwer>=3.0.0
-Pillow>=10.0.0
-pyyaml>=6.0.0
+# Sprint A8 (m-13) — ``requirements.txt`` est désormais un *pointeur*
+# vers le lock file, pas une liste manuelle qui dérive.
+#
+# La source de vérité des dépendances est :
+#
+#   - ``pyproject.toml``           — bornes minimales déclarées
+#   - ``requirements.lock``        — versions runtime résolues (uv)
+#   - ``requirements-dev.lock``    — runtime + dev + web résolu (uv)
+#
+# Pour une installation standard de développement :
+#
+#     pip install -e ".[dev,web]"
+#
+# Pour un build reproductible (Docker, CI release) :
+#
+#     uv pip sync requirements.lock         # runtime seul
+#     uv pip sync requirements-dev.lock     # avec extras de dev/web
+#
+# ``-r requirements.lock`` permet aussi à ``pip`` (sans uv) de lire
+# le lock pour les outils qui ne supportent pas encore uv.
 
-# OCR engines
-pytesseract>=0.3.10
-
-# pero-ocr (optional, install separately if needed)
-# pero-ocr>=0.1.0
-
-# Utilities
-tqdm>=4.66.0
-numpy>=1.24.0
-
-# Development / testing
-pytest>=7.4.0
-pytest-cov>=4.1.0
+-r requirements.lock

@@ -50,10 +50,12 @@ class TestDetectorsPackage:
         "detect_ensemble_opportunity",
         # Sprint A3 — détecteur d'incidents d'importer en mode dégradé.
         "detect_importer_fallback",
+        # Sprint A8 — détecteur de pricing périmé (item m-14).
+        "detect_pricing_staleness",
     ])
-    def test_all_19_detectors_importable_from_root(self, name):
-        """Rétrocompat : les 19 détecteurs (18 historiques + Sprint A3) s'importent depuis le package
-        comme avant le chantier 5 (tests Sprints 20, 23, 29, 36, 44, 46, 73)."""
+    def test_all_20_detectors_importable_from_root(self, name):
+        """Rétrocompat : les 20 détecteurs s'importent depuis le package
+        (18 historiques + Sprint A3 + Sprint A8)."""
         from picarones.measurements.narrative import detectors
         assert hasattr(detectors, name), f"{name} disparu après chantier 5"
         assert callable(getattr(detectors, name))
@@ -61,10 +63,10 @@ class TestDetectorsPackage:
     def test_DETECTORS_BY_TYPE_still_exposed(self):
         from picarones.measurements.narrative.detectors import DETECTORS_BY_TYPE
         assert isinstance(DETECTORS_BY_TYPE, dict)
-        # Sprint A3 — passage de 18 à 19 détecteurs (ajout
-        # IMPORTER_FALLBACK_TRIGGERED).
-        assert len(DETECTORS_BY_TYPE) == 19, (
-            f"DETECTORS_BY_TYPE doit contenir 19 entrées, en a {len(DETECTORS_BY_TYPE)}"
+        # Sprint A3 → 19 (IMPORTER_FALLBACK_TRIGGERED).
+        # Sprint A8 → 20 (PRICING_STALENESS_WARNING).
+        assert len(DETECTORS_BY_TYPE) == 20, (
+            f"DETECTORS_BY_TYPE doit contenir 20 entrées, en a {len(DETECTORS_BY_TYPE)}"
         )
 
     def test_register_default_detectors_still_callable(self):
@@ -73,7 +75,8 @@ class TestDetectorsPackage:
 
     @pytest.mark.parametrize("submodule, detector_count", [
         ("ranking", 5),
-        ("pareto", 2),
+        # Sprint A8 — pareto passe de 2 à 3 (ajout detect_pricing_staleness).
+        ("pareto", 3),
         ("stratum", 3),
         ("quality", 4),
         # Sprint A3 — history passe de 3 à 4 (ajout detect_importer_fallback).

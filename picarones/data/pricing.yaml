@@ -25,6 +25,12 @@
 
 meta:
   last_updated: "2026-04-01"
+  # Sprint A8 (m-14) — date au-delà de laquelle la table est considérée
+  # obsolète. Le moteur narratif émet un Fact ``PRICING_STALENESS_WARNING``
+  # si ``today > valid_until`` au moment de générer le rapport.
+  # Politique : 6 mois de validité par défaut. À ré-évaluer trimestriellement
+  # au minimum, plus souvent si un fournisseur cloud change ses tarifs.
+  valid_until: "2026-10-01"
   currency: EUR
   default_hourly_rate_local_cpu_eur: 0.08  # machine locale amortie
   default_hourly_rate_local_gpu_eur: 1.20  # g4dn.xlarge ou équivalent

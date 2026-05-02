@@ -107,3 +107,11 @@ importer_fallback_triggered: >-
   « {operation} » ({incidents_for_importer} incident·s sur ce run). Les
   données importées peuvent être incomplètes ou issues d'un fallback —
   consulter les logs pour le détail.
+
+# Sprint A8 (m-14) — table de pricing périmée.
+# Payload : ``valid_until`` (date), ``days_overdue`` (int), ``today``.
+pricing_staleness_warning: >-
+  La table de pricing utilisée a expiré le {valid_until} (il y a
+  {days_overdue} jours). Les analyses coût/€ et CO₂ du rapport
+  reflètent des tarifs anciens — surcharger via
+  ``ReportGenerator(..., pricing=...)`` pour des chiffres à jour.

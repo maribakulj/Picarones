@@ -88,6 +88,10 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     # ils viennent en toute fin de synthèse comme avertissement sur
     # la qualité du corpus.
     FactType.IMPORTER_FALLBACK_TRIGGERED,
+    # Sprint A8 — priority 200, dernier item (informationnel pur).
+    # Avertit que la table de pricing utilisée a dépassé sa date de
+    # validité — la lecture coût/CO₂ doit être nuancée.
+    FactType.PRICING_STALENESS_WARNING,
 )
 
 

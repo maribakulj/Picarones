@@ -15,7 +15,31 @@
 # ──────────────────────────────────────────────────────────────────
 # Étape 1 : builder — installe les dépendances Python dans un venv
 # ──────────────────────────────────────────────────────────────────
-FROM python:3.11-slim AS builder
+# ──────────────────────────────────────────────────────────────────
+# Sprint A8 (M-2) — image de base épinglée à un patch stable.
+#
+# Pourquoi : ``python:3.11-slim`` (sans patch) suit le stream et peut
+# changer entre deux ``docker build`` consécutifs. Pour la
+# reproductibilité institutionnelle BnF, on épingle au patch précis.
+#
+# Rotation trimestrielle : avant chaque release majeure, exécuter :
+#
+#     docker pull python:3.11.13-slim
+#     docker inspect python:3.11.13-slim --format='{{index .RepoDigests 0}}'
+#     # → mettre à jour DIGEST ci-dessous
+#
+# Le digest sha256 est volontairement laissé en commentaire plutôt
+# qu'en directive ``@sha256:...`` pour éviter un build cassé sur
+# les machines de développement qui n'ont pas accès à un registry
+# proxy. Un futur sprint dédié au build determinist (post-release v1.2)
+# basculera sur la forme ``@sha256:...`` une fois le pipeline release
+# stabilisé.
+# ──────────────────────────────────────────────────────────────────
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim
+# Last verified digest (rotate quarterly):
+#   python:3.11.13-slim @ sha256:<obtain via ``docker inspect``>
+
+FROM ${PYTHON_BASE_IMAGE} AS builder
 
 WORKDIR /app
 
@@ -40,7 +64,11 @@ RUN pip install --upgrade pip && \
 # ──────────────────────────────────────────────────────────────────
 # Étape 2 : runtime — image finale légère avec Tesseract
 # ──────────────────────────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
+# ARG redéclaré ici car les variables ARG hors ``FROM`` sont scopées
+# par étape ; sans cette redéclaration le ``FROM`` du runtime perd
+# l'épinglage du builder.
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim
+FROM ${PYTHON_BASE_IMAGE} AS runtime
 
 LABEL description="Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
 LABEL version="1.0.0"

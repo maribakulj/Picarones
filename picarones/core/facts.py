@@ -109,6 +109,14 @@ class FactType(str, Enum):
     benchmark.  Un Fact par incident, importance MEDIUM (HIGH si
     plusieurs incidents sur le même importer)."""
 
+    PRICING_STALENESS_WARNING = "pricing_staleness_warning"
+    """La table de pricing (``picarones/data/pricing.yaml``) a dépassé
+    sa date ``valid_until`` (Sprint A8, item m-14).  Les chiffres
+    coût/€ et CO₂ du rapport ne reflètent plus les tarifs courants
+    des fournisseurs cloud.  Le détecteur lit ``meta.valid_until`` et
+    compare à la date du jour ; si dépassée, émet un Fact d'importance
+    MEDIUM avec le délai dépassé en jours."""
+
 
 class FactImportance(int, Enum):
     """Score d'importance d'un fait — décide l'ordre et la sélection."""
