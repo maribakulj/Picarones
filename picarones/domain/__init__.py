@@ -6,26 +6,60 @@ Ce cercle n'importe **que** la stdlib, ``pydantic`` et
 ``typing_extensions``.  Il ne dépend d'aucun moteur OCR, d'aucune
 métrique calculée, d'aucun rendu, d'aucune couche réseau.
 
-Objets centraux (à venir aux Sprints S4-S6) :
+API publique (S4)
+-----------------
 
-- ``Artifact`` / ``ArtifactType`` — toute sortie d'une étape de
-  pipeline est un artefact traçable (id, type, hash, provenance).
-- ``DocumentRef`` — référence à un document du corpus + ses GT
-  multi-niveaux (TEXT, ALTO, PAGE, ENTITIES, READING_ORDER).
+- ``Artifact`` / ``ArtifactType`` / ``compute_content_hash`` —
+  toute sortie d'une étape de pipeline est un artefact traçable
+  (id, type, hash, provenance).
+- ``DocumentRef`` / ``GroundTruthRef`` — référence à un document
+  du corpus + ses GT multi-niveaux.
 - ``CorpusSpec`` — description immuable d'un corpus.
-- ``PipelineSpec`` / ``PipelineStep`` — DAG déclaratif d'une chaîne
-  de transformation documentaire.
-- ``EvaluationSpec`` / ``EvaluationView`` / ``ProjectionSpec`` /
-  ``MetricSpec`` — contrats des vues d'évaluation.
 - ``ProvenanceRecord`` — empreinte (timestamp, code_version,
   parameters_hash) attachée à chaque artefact.
+- ``PicaronesError`` (et sous-classes) — racine de la hiérarchie
+  d'erreurs métier.
+
+À venir aux Sprints S5-S6 :
+
+- ``EvaluationSpec`` / ``EvaluationView`` / ``ProjectionSpec`` /
+  ``MetricSpec`` — contrats des vues d'évaluation (S5).
+- ``PipelineSpec`` / ``PipelineStep`` — DAG déclaratif d'une chaîne
+  de transformation documentaire (S6).
 
 Règle d'or : si tu hésites à mettre quelque chose ici, c'est qu'il
 ne devrait pas y être.  Le domain ne fait presque rien.  Il décrit.
 
-Voir ``docs/roadmap/rewrite-2026.md`` pour le contexte du Sprint S3.
+Voir ``docs/roadmap/rewrite-2026.md`` pour le plan complet.
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.domain.artifacts import Artifact, ArtifactType, compute_content_hash
+from picarones.domain.corpus import CorpusSpec
+from picarones.domain.documents import DocumentRef, GroundTruthRef
+from picarones.domain.errors import (
+    ArtifactValidationError,
+    CorpusSpecError,
+    PicaronesError,
+    ProjectionError,
+)
+from picarones.domain.provenance import ProvenanceRecord
+
+__all__ = [
+    # Artifacts
+    "Artifact",
+    "ArtifactType",
+    "compute_content_hash",
+    # Corpus + documents
+    "CorpusSpec",
+    "DocumentRef",
+    "GroundTruthRef",
+    # Provenance
+    "ProvenanceRecord",
+    # Errors
+    "PicaronesError",
+    "ArtifactValidationError",
+    "CorpusSpecError",
+    "ProjectionError",
+]
