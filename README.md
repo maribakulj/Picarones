@@ -385,7 +385,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~3865 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~3871 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP.
 

@@ -260,10 +260,16 @@ class TestRunnerPartialResults:
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.engines.base import BaseOCREngine
-        import picarones.measurements.runner as runner_mod
+        # Sprint « découpage de runner.py » (mai 2026) : ``_save_partial_line``
+        # vit désormais dans le sous-module ``runner.partial`` ; le ré-export
+        # dans ``runner.__init__`` est une référence figée. Pour patcher
+        # dynamiquement la fonction utilisée par ``run_benchmark``, il faut
+        # cibler le module source.
+        from picarones.measurements.runner import partial as _partial_mod
+        from picarones.measurements.runner import orchestration as _orch_mod
 
         save_calls: list[str] = []
-        original_save = runner_mod._save_partial_line
+        original_save = _partial_mod._save_partial_line
 
         def tracking_save(path, doc_result):
             save_calls.append(doc_result.doc_id)
@@ -276,7 +282,9 @@ class TestRunnerPartialResults:
             def _run_ocr(self, image_path): return "texte"
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
-        with patch.object(runner_mod, "_save_partial_line", side_effect=tracking_save):
+        # Patche la fonction directement dans l'orchestrateur, qui
+        # l'a importée depuis ``partial`` au moment du chargement.
+        with patch.object(_orch_mod, "_save_partial_line", side_effect=tracking_save):
             run_benchmark(
                 corpus, [MockEngine()],
                 show_progress=False,

@@ -39,7 +39,11 @@ FILE_BUDGETS: dict[str, int] = {
     # ``picarones/measurements/statistics/`` lors du sprint
     # « découpage de statistics.py » (2026-05-02). Plus aucun fichier
     # de la famille ne dépasse 350 lignes, donc aucune entrée requise.
-    "picarones/measurements/runner.py": 1200,             # actuel 1019
+    # runner.py (1019 lignes) a été éclaté en sous-package
+    # ``picarones/measurements/runner/`` lors du sprint
+    # « découpage de runner.py » (2026-05-03). Le plus gros sous-module
+    # est ``orchestration.py`` (494 lignes), surveillé ci-dessous.
+    "picarones/measurements/runner/orchestration.py": 575,  # actuel 494
     # --- Refactor (sprint « découpage de generator.py ») : passé de
     # 1063 à 431 lignes via extraction vers picarones/report/assets.py
     # et le sous-package picarones/report/report_data/. Budget serré

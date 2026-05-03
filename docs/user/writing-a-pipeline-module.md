@@ -350,7 +350,7 @@ brancher dans la pipeline et de mesurer.
 ### 6.b « Et si je veux juste tester une pipeline OCR seule, sans étapes en aval ? »
 
 C'est exactement ce que fait le runner OCR historique
-(`run_benchmark` dans `picarones/measurements/runner.py`) — il est
+(`run_benchmark` dans `picarones/measurements/runner/`) — il est
 toujours là, n'a pas changé, et reste la voie recommandée pour
 les benchmarks d'OCR mono-étage.
 

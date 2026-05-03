@@ -38,15 +38,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   historiques référencent ``picarones/measurements/statistics.py``
 #:   qui est maintenant un sous-package. Baseline relevée.
 #: - 72 (sprint « zéro dette actionnable », 2026-05-02) : 50 chemins
-#:   massivement corrigés — 44 dans CLAUDE.md (``core/X.py`` →
-#:   ``measurements/X.py`` pour les modules réellement déplacés
-#:   historiquement) + 6 dans docs vivants (profiles, cli-workflows,
-#:   evolution-2026, user/writing-a-pipeline-module, SPECS).
+#:   massivement corrigés — 44 dans CLAUDE.md + 6 dans docs vivants.
+#: - 73 (sprint « découpage de runner.py », 2026-05-03) :
+#:   ``picarones/measurements/runner.py`` est désormais un sous-package
+#:   ``runner/``. ``docs/user/writing-a-pipeline-module.md`` a été
+#:   corrigé en place ; un audit historique
+#:   (``docs/audits/institutional-readiness-2026-05.md``) référence
+#:   l'ancien chemin et reste intouché par convention.
 #:
-#: Les 72 restants sont **TOUS** dans :
+#: Les 73 restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` (67) : journal historique versionné, intouchable.
-#: - ``docs/audits/*.md`` (5) : audits historiques, intouchables.
-BROKEN_PATHS_BASELINE = 72
+#: - ``docs/audits/*.md`` (6) : audits historiques, intouchables.
+BROKEN_PATHS_BASELINE = 73
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (
