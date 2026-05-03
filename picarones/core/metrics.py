@@ -19,17 +19,30 @@ from typing import Optional
 
 @dataclass
 class MetricsResult:
-    """Ensemble des métriques calculées pour une paire (référence, hypothèse)."""
+    """Ensemble des métriques calculées pour une paire (référence, hypothèse).
 
-    cer: float
-    cer_nfc: float
-    cer_caseless: float
-    wer: float
-    wer_normalized: float
-    mer: float
-    wil: float
-    reference_length: int
-    hypothesis_length: int
+    Sprint A14-S1 — A.I.0 P0 : les champs CER/WER/MER/WIL sont
+    ``Optional[float]``.  Auparavant, en cas d'erreur de calcul (jiwer
+    absent, exception levée), ces champs étaient remplis avec ``0.0``,
+    ce qui était indistinguable d'un score parfait pour tout
+    consommateur ne lisant pas systématiquement ``error``.  Désormais
+    ils sont à ``None`` quand ``error`` est non-None — les agrégateurs
+    filtrent déjà sur ``error is None``, les rendus HTML utilisent
+    ``safe_round`` qui mappe ``None → 0.0`` à l'affichage seul, et un
+    accès direct sans vérification d'erreur lève désormais un
+    ``TypeError`` explicite plutôt que de retourner silencieusement
+    une valeur factice.
+    """
+
+    cer: Optional[float] = None
+    cer_nfc: Optional[float] = None
+    cer_caseless: Optional[float] = None
+    wer: Optional[float] = None
+    wer_normalized: Optional[float] = None
+    mer: Optional[float] = None
+    wil: Optional[float] = None
+    reference_length: int = 0
+    hypothesis_length: int = 0
     error: Optional[str] = None
     cer_diplomatic: Optional[float] = None
     """CER calculé après normalisation diplomatique (ſ=s, u=v, i=j…).
@@ -39,14 +52,16 @@ class MetricsResult:
     """Nom du profil de normalisation diplomatique utilisé."""
 
     def as_dict(self) -> dict:
+        def _round(v: Optional[float]) -> Optional[float]:
+            return None if v is None else round(v, 6)
         d = {
-            "cer": round(self.cer, 6),
-            "cer_nfc": round(self.cer_nfc, 6),
-            "cer_caseless": round(self.cer_caseless, 6),
-            "wer": round(self.wer, 6),
-            "wer_normalized": round(self.wer_normalized, 6),
-            "mer": round(self.mer, 6),
-            "wil": round(self.wil, 6),
+            "cer": _round(self.cer),
+            "cer_nfc": _round(self.cer_nfc),
+            "cer_caseless": _round(self.cer_caseless),
+            "wer": _round(self.wer),
+            "wer_normalized": _round(self.wer_normalized),
+            "mer": _round(self.mer),
+            "wil": _round(self.wil),
             "reference_length": self.reference_length,
             "hypothesis_length": self.hypothesis_length,
             "error": self.error,
@@ -57,12 +72,12 @@ class MetricsResult:
         return d
 
     @property
-    def cer_percent(self) -> float:
-        return round(self.cer * 100, 2)
+    def cer_percent(self) -> Optional[float]:
+        return None if self.cer is None else round(self.cer * 100, 2)
 
     @property
-    def wer_percent(self) -> float:
-        return round(self.wer * 100, 2)
+    def wer_percent(self) -> Optional[float]:
+        return None if self.wer is None else round(self.wer * 100, 2)
 
 
 def aggregate_metrics(results: list[MetricsResult]) -> dict:
@@ -95,7 +110,17 @@ def aggregate_metrics(results: list[MetricsResult]) -> dict:
     metric_names = ["cer", "cer_nfc", "cer_caseless", "wer", "wer_normalized", "mer", "wil"]
     aggregated: dict = {}
     for metric in metric_names:
-        values = [getattr(r, metric) for r in results if r.error is None]
+        # Sprint A14-S1 — défense en profondeur : double filtre.  Un
+        # MetricsResult avec ``error`` doit avoir ses métriques à
+        # ``None`` (cf. compute_metrics), mais on filtre aussi les
+        # ``None`` directement au cas où un caller construirait un
+        # MetricsResult partiel.
+        values = [
+            v for r in results
+            if r.error is None
+            for v in (getattr(r, metric),)
+            if v is not None
+        ]
         aggregated[metric] = _stats(values)
 
     # CER diplomatique (optionnel — présent seulement si calculé)

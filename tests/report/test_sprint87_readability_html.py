@@ -140,13 +140,14 @@ class TestResultsFields:
         assert "readability_metrics" not in d
 
     def test_compact_clears(self) -> None:
+        # Sprint A14-S1 — opt-in via drop_analyses=True.
         dr = DocumentResult(
             doc_id="d1", image_path="x.png",
             ground_truth="x", hypothesis="x",
             metrics=_stub_metrics(), duration_seconds=1.0,
             readability_metrics={"flesch_delta": 5.0},
         )
-        dr.compact()
+        dr.compact(drop_analyses=True)
         assert dr.readability_metrics is None
 
     def test_engine_report_serializes(self) -> None:

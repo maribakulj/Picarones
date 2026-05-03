@@ -25,10 +25,15 @@ from picarones.web.benchmark_utils import (
 )
 from picarones.web.models import BenchmarkRequest, BenchmarkRunRequest
 from picarones.web.security import (
+    PathValidationError,
     assert_engines_allowed,
     assert_llm_provider_allowed,
+    compute_workspace_roots,
     get_max_concurrent_jobs,
+    validated_path,
+    validated_prompt_filename,
 )
+from picarones.web.state import UPLOADS_DIR
 
 router = APIRouter()
 
@@ -61,17 +66,34 @@ def _start_job_thread(
 @router.post("/api/benchmark/start")
 async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
     """Lance un benchmark sur une liste de moteurs OCR (mode legacy)."""
-    corpus_path = Path(req.corpus_path)
-    if not corpus_path.exists() or not corpus_path.is_dir():
-        raise HTTPException(
-            status_code=400, detail=f"Corpus non trouvé : {req.corpus_path}",
-        )
-
     # Sprint 24 — mode public : refuse les moteurs OCR cloud mutualisés.
+    # Vérifié AVANT la validation des chemins pour que la réponse
+    # 403 mode public reste prioritaire (cf. tests sprint24).
     try:
         assert_engines_allowed(req.engines)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
+
+    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur
+    # contre les racines workspace autorisées.  Bloque les chemins
+    # absolus arbitraires, la traversée (``..``), les liens symboliques
+    # vers l'extérieur, etc.
+    workspace_roots = compute_workspace_roots(UPLOADS_DIR)
+    try:
+        validated_path(
+            req.corpus_path,
+            allowed_roots=workspace_roots,
+            must_be_dir=True,
+        )
+        # ``output_dir`` peut ne pas encore exister, on valide juste
+        # qu'il sera créé dans une racine autorisée.
+        validated_path(
+            req.output_dir,
+            allowed_roots=workspace_roots,
+            must_exist=False,
+        )
+    except PathValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     # Sprint 24 — rate limit + sémaphore concurrents.
     state.enforce_rate_limit(request)
@@ -105,21 +127,43 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     Chaque ``CompetitorConfig`` peut combiner un moteur OCR et un
     provider LLM (mode post-correction, zero-shot, ou OCR seul).
     """
-    corpus_path = Path(req.corpus_path)
-    if not corpus_path.exists() or not corpus_path.is_dir():
-        raise HTTPException(
-            status_code=400, detail=f"Corpus non trouvé : {req.corpus_path}",
-        )
     # ``competitors`` non vide est garanti par Pydantic ``min_length=1``.
 
     # Mode public : refuse les pipelines LLM mutualisés et les moteurs
     # OCR cloud sollicités par n'importe quel concurrent.
+    # Vérifié AVANT la validation des chemins (cf. /api/benchmark/start
+    # pour le rationale).
     try:
         for comp in req.competitors:
             assert_engines_allowed([comp.ocr_engine] if comp.ocr_engine else [])
             assert_llm_provider_allowed(comp.llm_provider)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
+
+    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur
+    # (cf. /api/benchmark/start).  Idempotent : refuse un corpus_path
+    # absolu hors workspaces, et refuse un output_dir qui s'évaderait
+    # via ``..`` ou symlinks.
+    workspace_roots = compute_workspace_roots(UPLOADS_DIR)
+    try:
+        validated_path(
+            req.corpus_path,
+            allowed_roots=workspace_roots,
+            must_be_dir=True,
+        )
+        validated_path(
+            req.output_dir,
+            allowed_roots=workspace_roots,
+            must_exist=False,
+        )
+        # Sprint A14-S1 — restriction des prompts à la bibliothèque
+        # intégrée (``picarones/prompts/``).  Cf. validated_prompt_filename
+        # pour le rationale (vecteur d'exfiltration via LLM).
+        for comp in req.competitors:
+            if comp.prompt_file:
+                validated_prompt_filename(comp.prompt_file)
+    except PathValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     # Sprint 24 — rate limit + sémaphore concurrents.
     state.enforce_rate_limit(request)

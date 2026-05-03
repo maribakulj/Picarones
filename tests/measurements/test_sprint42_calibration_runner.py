@@ -84,8 +84,9 @@ class TestModelsSerialization:
         assert d["calibration_metrics"] == {"ece": 0.05, "mce": 0.1}
 
     def test_compact_clears_calibration(self) -> None:
+        # Sprint A14-S1 — ``compact()`` est désormais opt-in.
         dr = _make_dr({"ece": 0.05})
-        dr.compact()
+        dr.compact(drop_analyses=True)
         assert dr.calibration_metrics is None
 
     def test_engine_report_aggregated_calibration_omitted_when_none(self) -> None:

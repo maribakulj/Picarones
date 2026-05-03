@@ -63,7 +63,11 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
     "picarones/measurements/levers.py": 675,              # actuel 561
     "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
-    "picarones/web/security.py": 625,                     # actuel 532
+    # Sprint A14-S1 — A.I.0 P0 : ajout de validated_path,
+    # validated_prompt_filename, safe_report_name et compute_workspace_roots.
+    # Ces helpers seront extraits dans ``picarones/web/path_security.py``
+    # lors du Sprint S20 du rewrite ciblé (création couche app/services/).
+    "picarones/web/security.py": 800,                     # actuel 751
     "picarones/core/corpus.py": 600,                      # actuel 511
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484

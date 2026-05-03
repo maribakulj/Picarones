@@ -194,7 +194,8 @@ class TestResultsFields:
             searchability_metrics={"recall": 0.9},
             numerical_sequence_metrics={"n_total": 1},
         )
-        dr.compact()
+        # Sprint A14-S1 — opt-in via drop_analyses=True.
+        dr.compact(drop_analyses=True)
         assert dr.searchability_metrics is None
         assert dr.numerical_sequence_metrics is None
 

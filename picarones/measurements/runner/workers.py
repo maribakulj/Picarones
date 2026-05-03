@@ -33,8 +33,14 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
     - 7 éléments : legacy (Sprint 13)
     - 8 éléments : + ``corpus_lang`` (Sprint 87)
     - 9 éléments : + ``profile`` (chantier 2 post-Sprint 97)
+    - 10 éléments : + ``normalization_profile`` (Sprint A14-S1, A.I.0 P0)
     """
-    if len(args) == 9:
+    norm_profile = None
+    if len(args) == 10:
+        (engine_module, engine_class_name, engine_config, doc_id,
+         image_path, ground_truth, char_exclude_chars, corpus_lang,
+         profile, norm_profile) = args
+    elif len(args) == 9:
         (engine_module, engine_class_name, engine_config, doc_id,
          image_path, ground_truth, char_exclude_chars, corpus_lang,
          profile) = args
@@ -61,6 +67,7 @@ def _cpu_doc_worker(args: tuple) -> "DocumentResult":
         char_exclude=char_exclude,
         corpus_lang=corpus_lang,
         profile=profile,
+        normalization_profile=norm_profile,
     )
 
 
@@ -70,6 +77,7 @@ def _io_doc_worker(
     char_exclude: Optional[frozenset],
     corpus_lang: str = "fr",
     profile: str = "standard",
+    normalization_profile: Optional[object] = None,
 ) -> "DocumentResult":
     """Worker pour ThreadPoolExecutor (moteurs IO-bound / API).
 
@@ -101,6 +109,7 @@ def _io_doc_worker(
         char_exclude=char_exclude,
         corpus_lang=corpus_lang,
         profile=profile,
+        normalization_profile=normalization_profile,
     )
 
 

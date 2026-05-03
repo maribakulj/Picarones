@@ -160,35 +160,70 @@ class DocumentResult:
             d["readability_metrics"] = self.readability_metrics
         return d
 
-    def compact(self) -> None:
+    def compact(
+        self,
+        text_limit: Optional[int] = None,
+        drop_analyses: bool = False,
+    ) -> None:
         """Libère les champs lourds pour réduire l'empreinte mémoire.
 
-        Appelé après que les données ont été sérialisées dans le fichier
-        partiel et que les agrégations ont été calculées.  Les champs
-        ``ground_truth`` et ``hypothesis`` sont tronqués et les analyses
-        détaillées (confusion, taxonomy…) sont supprimées.
+        Sprint A14-S1 — A.I.0 P0 : compaction désormais opt-in.
+        Auparavant, le runner appelait ``compact()`` sans paramètres
+        avant de sérialiser le JSON, ce qui amputait silencieusement
+        toutes les analyses per-document (confusion, taxonomy,
+        philological, searchability, etc.) et tronquait
+        ``ground_truth``/``hypothesis``/``ocr_intermediate`` à 200
+        caractères.  Le rapport HTML — qui consomme ce JSON — recevait
+        des données déjà mutilées, contredisant directement la
+        promesse "self-contained HTML report" du README.
+
+        Désormais, l'appel par défaut ``compact()`` est un **no-op**.
+        Le caller doit explicitement demander la troncature et/ou la
+        suppression des analyses :
+
+        - ``compact(text_limit=200)`` : tronque les textes à 200 chars.
+        - ``compact(drop_analyses=True)`` : supprime les dicts d'analyse.
+        - ``compact(text_limit=200, drop_analyses=True)`` : ancien
+          comportement, à utiliser en pipeline web pour un rendu
+          interactif léger uniquement.
+
+        Le runner (``runner/orchestration.py``) ne compacte plus par
+        défaut ; le JSON exporté contient désormais toutes les
+        analyses détaillées.
+
+        Parameters
+        ----------
+        text_limit:
+            Si fourni (int > 0), tronque ``ground_truth``,
+            ``hypothesis`` et ``ocr_intermediate`` à cette longueur en
+            ajoutant "…".  ``None`` (défaut) = pas de troncature.
+        drop_analyses:
+            Si ``True``, met à ``None`` toutes les analyses
+            per-document (confusion, taxonomy, philological…).  Défaut :
+            ``False`` = on conserve toutes les analyses.
         """
-        # Garder un extrait pour le rapport, libérer le texte complet
-        if len(self.ground_truth) > 200:
-            self.ground_truth = self.ground_truth[:200] + "…"
-        if len(self.hypothesis) > 200:
-            self.hypothesis = self.hypothesis[:200] + "…"
-        if self.ocr_intermediate and len(self.ocr_intermediate) > 200:
-            self.ocr_intermediate = self.ocr_intermediate[:200] + "…"
-        # Les analyses per-document ne sont plus nécessaires après agrégation
-        self.confusion_matrix = None
-        self.char_scores = None
-        self.taxonomy = None
-        self.structure = None
-        self.image_quality = None
-        self.line_metrics = None
-        self.hallucination_metrics = None
-        self.ner_metrics = None
-        self.calibration_metrics = None
-        self.philological_metrics = None
-        self.searchability_metrics = None
-        self.numerical_sequence_metrics = None
-        self.readability_metrics = None
+        if text_limit is not None and text_limit > 0:
+            if len(self.ground_truth) > text_limit:
+                self.ground_truth = self.ground_truth[:text_limit] + "…"
+            if len(self.hypothesis) > text_limit:
+                self.hypothesis = self.hypothesis[:text_limit] + "…"
+            if self.ocr_intermediate and len(self.ocr_intermediate) > text_limit:
+                self.ocr_intermediate = self.ocr_intermediate[:text_limit] + "…"
+
+        if drop_analyses:
+            self.confusion_matrix = None
+            self.char_scores = None
+            self.taxonomy = None
+            self.structure = None
+            self.image_quality = None
+            self.line_metrics = None
+            self.hallucination_metrics = None
+            self.ner_metrics = None
+            self.calibration_metrics = None
+            self.philological_metrics = None
+            self.searchability_metrics = None
+            self.numerical_sequence_metrics = None
+            self.readability_metrics = None
 
 
 @dataclass

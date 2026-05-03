@@ -176,9 +176,15 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         if not engines:
             raise ValueError("Aucun concurrent valide disponible.")
 
+        # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
+        # par le router (validated_path).  ``report_name`` est sanitizé
+        # ici pour défense en profondeur (refuse ``../``, séparateurs,
+        # caractères de contrôle) avant concaténation à output_dir.
+        from picarones.web.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        report_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        report_name = safe_report_name(raw_name)
         output_json = str(output_dir / f"{report_name}.json")
         output_html = str(output_dir / f"{report_name}.html")
 
@@ -213,6 +219,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
             progress_callback=_progress_callback,
             char_exclude=char_excl,
             cancel_event=job._cancel_event,
+            normalization_profile=req.normalization_profile,
         )
 
         if job.status == "cancelled":
@@ -276,9 +283,15 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             raise ValueError("Aucun moteur valide disponible.")
 
         # Répertoire de sortie
+        # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
+        # par le router (validated_path).  ``report_name`` est sanitizé
+        # ici pour défense en profondeur (refuse ``../``, séparateurs,
+        # caractères de contrôle) avant concaténation à output_dir.
+        from picarones.web.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        report_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        report_name = safe_report_name(raw_name)
         output_json = str(output_dir / f"{report_name}.json")
         output_html = str(output_dir / f"{report_name}.html")
 
@@ -314,6 +327,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             progress_callback=_progress_callback,
             char_exclude=char_excl,
             cancel_event=job._cancel_event,
+            normalization_profile=req.normalization_profile,
         )
 
         if job.status == "cancelled":
