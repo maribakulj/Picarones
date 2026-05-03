@@ -19,15 +19,20 @@ Modules livrés au S6
   ``ValidationError``.  Validation statique sans instancier de module.
 - ``yaml_io.py`` — ``dump_spec_to_yaml`` / ``load_spec_from_yaml``.
 
-À venir aux Sprints S7-S8
--------------------------
-- ``executor.py`` — ``PipelineExecutor.run(spec, document, inputs,
-  context)`` exécute mono-document avec capture gracieuse des erreurs.
+Modules livrés au S7
+--------------------
+- ``executor.py`` — ``PipelineExecutor.run(spec, document,
+  initial_inputs, context)`` exécute mono-document avec capture
+  gracieuse des erreurs et bag d'artefacts versionné.
+  ``AdapterResolver`` type alias.
+- ``cache.py`` — ``ArtifactCache`` minimal in-memory indexé par
+  ``hash(content + spec + code_version)``.
+
+À venir au Sprint S8
+--------------------
 - ``runner.py`` — ``CorpusRunner`` orchestre l'executor sur un corpus
   complet avec **backpressure**, **timeout depuis le début
   d'exécution réelle**, **annulation propre**.
-- ``cache.py`` — ``ArtifactCache`` indexé par
-  ``hash(content + spec + code_version)``.
 
 Cible du Sprint S12 : équivalence numérique CER/WER avec l'ancien
 ``measurements.runner`` à 1e-9 près sur les fixtures.
@@ -35,6 +40,12 @@ Cible du Sprint S12 : équivalence numérique CER/WER avec l'ancien
 
 from __future__ import annotations
 
+from picarones.pipeline.cache import ArtifactCache
+from picarones.pipeline.executor import (
+    AdapterResolver,
+    PipelineExecutor,
+    PipelineSpecInvalid,
+)
 from picarones.pipeline.protocols import ExecutionMode, StepExecutor
 from picarones.pipeline.spec import INITIAL_STEP_ID, PipelineSpec, PipelineStep
 from picarones.pipeline.types import PipelineResult, RunContext, StepResult
@@ -59,4 +70,10 @@ __all__ = [
     # YAML IO
     "dump_spec_to_yaml",
     "load_spec_from_yaml",
+    # Executor (S7)
+    "PipelineExecutor",
+    "PipelineSpecInvalid",
+    "AdapterResolver",
+    # Cache (S7)
+    "ArtifactCache",
 ]
