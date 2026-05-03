@@ -90,6 +90,11 @@ EXTERNAL_ALLOWED: dict[str, frozenset[str]] = {
     "pipeline": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
         "numpy", "scipy",
+        # S6 — yaml pour la sérialisation YAML des PipelineSpec
+        # (cf. picarones/pipeline/yaml_io.py).  Versionner les
+        # pipelines en git en YAML est un cas d'usage explicite du
+        # rewrite, justifie l'ajout à la whitelist.
+        "yaml",
     }),
     "formats": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
