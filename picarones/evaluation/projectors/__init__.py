@@ -21,4 +21,6 @@ pas un projecteur.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.evaluation.projectors.base import ProjectionReport, Projector
+
+__all__ = ["Projector", "ProjectionReport"]

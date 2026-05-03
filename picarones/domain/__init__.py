@@ -6,8 +6,10 @@ Ce cercle n'importe **que** la stdlib, ``pydantic`` et
 ``typing_extensions``.  Il ne dépend d'aucun moteur OCR, d'aucune
 métrique calculée, d'aucun rendu, d'aucune couche réseau.
 
-API publique (S4)
------------------
+API publique (S4 + S5)
+----------------------
+
+S4 — modèle de base :
 
 - ``Artifact`` / ``ArtifactType`` / ``compute_content_hash`` —
   toute sortie d'une étape de pipeline est un artefact traçable
@@ -20,12 +22,18 @@ API publique (S4)
 - ``PicaronesError`` (et sous-classes) — racine de la hiérarchie
   d'erreurs métier.
 
-À venir aux Sprints S5-S6 :
+S5 — contrats des vues d'évaluation :
 
-- ``EvaluationSpec`` / ``EvaluationView`` / ``ProjectionSpec`` /
-  ``MetricSpec`` — contrats des vues d'évaluation (S5).
+- ``MetricSpec`` — déclaration d'une métrique (signature de types).
+- ``EvaluationView`` — déclaration d'une vue (sélecteur + projection
+  + métriques + dimensions ignorées).
+- ``EvaluationSpec`` — container de N vues qu'un benchmark applique.
+- ``ProjectionSpec`` — déclaration d'une projection entre types.
+
+À venir au Sprint S6 :
+
 - ``PipelineSpec`` / ``PipelineStep`` — DAG déclaratif d'une chaîne
-  de transformation documentaire (S6).
+  de transformation documentaire.
 
 Règle d'or : si tu hésites à mettre quelque chose ici, c'est qu'il
 ne devrait pas y être.  Le domain ne fait presque rien.  Il décrit.
@@ -44,22 +52,33 @@ from picarones.domain.errors import (
     PicaronesError,
     ProjectionError,
 )
+from picarones.domain.evaluation_spec import (
+    EvaluationSpec,
+    EvaluationView,
+    MetricSpec,
+)
+from picarones.domain.projection_spec import ProjectionSpec
 from picarones.domain.provenance import ProvenanceRecord
 
 __all__ = [
-    # Artifacts
+    # S4 — Artifacts
     "Artifact",
     "ArtifactType",
     "compute_content_hash",
-    # Corpus + documents
+    # S4 — Corpus + documents
     "CorpusSpec",
     "DocumentRef",
     "GroundTruthRef",
-    # Provenance
+    # S4 — Provenance
     "ProvenanceRecord",
-    # Errors
+    # S4 — Errors
     "PicaronesError",
     "ArtifactValidationError",
     "CorpusSpecError",
     "ProjectionError",
+    # S5 — Evaluation contracts
+    "MetricSpec",
+    "EvaluationView",
+    "EvaluationSpec",
+    "ProjectionSpec",
 ]

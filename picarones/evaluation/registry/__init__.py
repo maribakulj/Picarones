@@ -19,4 +19,14 @@ d'import.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.evaluation.registry.registry import (
+    MetricNotFoundError,
+    MetricRegistrationError,
+    MetricRegistry,
+)
+
+__all__ = [
+    "MetricRegistry",
+    "MetricRegistrationError",
+    "MetricNotFoundError",
+]
