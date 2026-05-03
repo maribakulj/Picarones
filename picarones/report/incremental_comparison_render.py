@@ -41,28 +41,26 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
+from picarones.report.render_helpers import color_traffic_light
 
-def _color_for_score(
+
+def _bg_for_relative_score(
     score: float, low: float, high: float, higher_is_better: bool,
 ) -> str:
-    """Vert (meilleur) → orange → rouge (pire)."""
+    """Mappe ``score`` sur une plage [low, high] et retourne une cellule
+    colorée traffic-light.
+
+    Si ``higher_is_better=True``, ``score=high`` est vert ; sinon
+    ``score=low`` est vert.
+    """
     if high == low:
-        return "#a7f0a7"
-    rel = (score - low) / (high - low)
-    if higher_is_better:
-        rel = 1.0 - rel
-    rel = max(0.0, min(1.0, rel))
-    if rel < 0.5:
-        t = rel / 0.5
-        r = int(167 + (235 - 167) * t)
-        g = int(240 + (180 - 240) * t)
-        b = int(167 + (60 - 167) * t)
-    else:
-        t = (rel - 0.5) / 0.5
-        r = int(235 + (220 - 235) * t)
-        g = int(180 + (50 - 180) * t)
-        b = int(60 + (50 - 60) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+        return color_traffic_light(1.0)  # neutre vert clair
+    return color_traffic_light(
+        score,
+        low_is_good=not higher_is_better,
+        scale_min=low,
+        scale_max=high,
+    )
 
 
 def _format_score(value: Optional[float]) -> str:
@@ -160,7 +158,7 @@ def build_incremental_comparison_html(
         rank = d.get("mean_rank")
         n_obs = int(d.get("n_observations") or 0)
         if isinstance(mean, (int, float)):
-            color = _color_for_score(
+            color = _bg_for_relative_score(
                 float(mean), low, high, higher_is_better,
             )
             mean_cell = (

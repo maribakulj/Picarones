@@ -36,21 +36,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_score(score: float) -> str:
-    """Vert (faible) → orange → rouge (élevé)."""
-    f = max(0.0, min(1.0, score))
-    if f < 0.5:
-        t = f / 0.5
-        r = int(167 + (235 - 167) * t)
-        g = int(240 + (180 - 240) * t)
-        b = int(167 + (60 - 167) * t)
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (220 - 235) * t)
-        g = int(180 + (50 - 180) * t)
-        b = int(60 + (50 - 60) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 _FEATURE_LABEL_KEYS = {
@@ -79,7 +65,7 @@ def _render_complexity_block(
     mx = float(aggregated.get("complexity_max") or 0.0)
     sd = float(aggregated.get("complexity_stdev") or 0.0)
     n_docs = int(aggregated.get("n_docs") or 0)
-    color_mean = _color_for_score(mean)
+    color_mean = color_traffic_light(mean, low_is_good=True)
     return (
         f'<div style="font-weight:600;margin:.4rem 0 .3rem 0">'
         f'{_e(h_complex)}</div>'
@@ -130,7 +116,7 @@ def _render_homogeneity_block(
         "imgpred_feat_norm", "Contribution normalisée",
     )
     score = float(homogeneity.get("score") or 0.0)
-    color = _color_for_score(score)
+    color = color_traffic_light(score, low_is_good=True)
     parts = [
         f'<div style="font-weight:600;margin:.4rem 0 .3rem 0">'
         f'{_e(h_homo)} : '
@@ -157,7 +143,7 @@ def _render_homogeneity_block(
         feat_mean = float(slot.get("mean") or 0.0)
         feat_stdev = float(slot.get("stdev") or 0.0)
         feat_norm = float(slot.get("normalised") or 0.0)
-        norm_color = _color_for_score(feat_norm)
+        norm_color = color_traffic_light(feat_norm, low_is_good=True)
         parts.append(
             f'<tr>'
             f'<td style="padding:.4rem .6rem">{_e(feat_label)}</td>'

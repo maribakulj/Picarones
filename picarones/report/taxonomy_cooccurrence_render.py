@@ -20,25 +20,15 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_jaccard(j: float) -> str:
-    """Gradient blanc → bleu profond pour Jaccard ∈ [0, 1].
-
-    Interpolation entre #ffffff (j=0) et #1e3a8a (j=1).
-    """
-    f = max(0.0, min(1.0, j))
-    r = int(255 + (30 - 255) * f)
-    g = int(255 + (58 - 255) * f)
-    b = int(255 + (138 - 255) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import (
+    GRADIENT_TARGET_BLUE,
+    build_grid_svg,
+    color_single_gradient,
+    text_color_for_bg,
+)
 
 
-def _text_color_for_bg(j: float) -> str:
-    """Texte blanc si fond foncé, noir sinon (lisibilité)."""
-    return "#fff" if j > 0.55 else "#222"
-
-
-def _build_heatmap_svg(
+def _build_jaccard_heatmap_svg(
     classes: list[str],
     matrix: dict[str, dict[str, float]],
     *,
@@ -46,66 +36,37 @@ def _build_heatmap_svg(
     label_left: int = 130,
     label_top: int = 80,
 ) -> str:
-    """Construit la heatmap SVG.
+    """Heatmap Jaccard de co-occurrence taxonomique.
 
-    Cellule = carré coloré ``_color_for_jaccard``, valeur Jaccard
-    affichée en chiffres si > 0,05.  Étiquettes des classes en
-    colonne (haut) et en ligne (gauche).
+    Délègue à :func:`build_grid_svg` ; reste un wrapper local qui
+    encapsule les conventions spécifiques à la matrice symétrique
+    (valeur affichée seulement si > 0,05, étiquettes rotées).
     """
-    n = len(classes)
-    if n == 0:
+    if not classes:
         return ""
-    width = label_left + n * cell_size + 10
-    height = label_top + n * cell_size + 10
 
-    parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'width="{width}" height="{height}" '
-        f'viewBox="0 0 {width} {height}" '
-        f'role="img" aria-label="Heatmap Jaccard co-occurrence taxonomique">',
-    ]
-    # Étiquettes de colonnes (rotées -45°)
-    for j, cls in enumerate(classes):
-        cx = label_left + j * cell_size + cell_size // 2
-        cy = label_top - 6
-        parts.append(
-            f'<text x="{cx}" y="{cy}" '
-            f'transform="rotate(-45 {cx} {cy})" '
-            f'font-size="11" fill="#333" text-anchor="start">'
-            f'{_e(cls)}</text>'
-        )
-    # Étiquettes de lignes
-    for i, cls in enumerate(classes):
-        rx = label_left - 6
-        ry = label_top + i * cell_size + cell_size // 2 + 4
-        parts.append(
-            f'<text x="{rx}" y="{ry}" '
-            f'font-size="11" fill="#333" text-anchor="end">'
-            f'{_e(cls)}</text>'
-        )
-    # Cellules
-    for i, ca in enumerate(classes):
-        for j, cb in enumerate(classes):
-            value = matrix.get(ca, {}).get(cb, 0.0)
-            x = label_left + j * cell_size
-            y = label_top + i * cell_size
-            color = _color_for_jaccard(value)
-            text_color = _text_color_for_bg(value)
-            parts.append(
-                f'<rect x="{x}" y="{y}" '
-                f'width="{cell_size}" height="{cell_size}" '
-                f'fill="{color}" stroke="#ddd" stroke-width="0.5"/>'
-            )
-            if value > 0.05:
-                parts.append(
-                    f'<text x="{x + cell_size // 2}" '
-                    f'y="{y + cell_size // 2 + 4}" '
-                    f'font-size="10" fill="{text_color}" '
-                    f'text-anchor="middle">'
-                    f'{value:.2f}</text>'
-                )
-    parts.append("</svg>")
-    return "".join(parts)
+    def cell_value(i: int, j: int) -> float:
+        return matrix.get(classes[i], {}).get(classes[j], 0.0)
+
+    return build_grid_svg(
+        n_rows=len(classes),
+        n_cols=len(classes),
+        row_label_fn=lambda i: classes[i],
+        col_label_fn=lambda j: classes[j],
+        cell_color_fn=lambda i, j: color_single_gradient(
+            cell_value(i, j), end_rgb=GRADIENT_TARGET_BLUE,
+        ),
+        cell_text_fn=lambda i, j: (
+            f"{cell_value(i, j):.2f}" if cell_value(i, j) > 0.05 else None
+        ),
+        cell_text_color_fn=lambda i, j: text_color_for_bg(cell_value(i, j)),
+        cell_w=cell_size,
+        cell_h=cell_size,
+        label_left=label_left,
+        label_top=label_top,
+        rotate_col_labels=True,
+        aria_label="Heatmap Jaccard co-occurrence taxonomique",
+    )
 
 
 def _build_top_pairs_table(
@@ -136,8 +97,9 @@ def _build_top_pairs_table(
             f'<td style="padding:.2rem .5rem">'
             f'<code>{_e(ca)}</code> ↔ <code>{_e(cb)}</code></td>'
             f'<td style="padding:.2rem .5rem;text-align:right;'
-            f'font-family:monospace;background:{_color_for_jaccard(j)};'
-            f'color:{_text_color_for_bg(j)}">{j:.2f}</td>'
+            f'font-family:monospace;'
+            f'background:{color_single_gradient(j, end_rgb=GRADIENT_TARGET_BLUE)};'
+            f'color:{text_color_for_bg(j)}">{j:.2f}</td>'
             f'</tr>'
         )
     parts.append("</tbody></table>")
@@ -175,7 +137,7 @@ def build_taxonomy_cooccurrence_html(
     )
     n_docs_phrase = n_docs_label_template.format(n_docs=n_docs)
 
-    svg = _build_heatmap_svg(classes, matrix)
+    svg = _build_jaccard_heatmap_svg(classes, matrix)
     top_table = _build_top_pairs_table(
         data.get("top_pairs") or [], labels,
     )

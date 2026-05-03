@@ -423,6 +423,50 @@ class TestRender:
         html = build_levers_section_html([bad], _load_labels("fr"))
         assert html == ""
 
+    def test_formatter_exception_logs_warning_and_skips_lever(
+        self, caplog, monkeypatch,
+    ) -> None:
+        """Si un formatter lève une exception, le levier est omis et un
+        ``logger.warning`` est émis avec le contexte (type + payload + exc).
+
+        Garantit que :
+        1. La section continue à se rendre malgré le formatter cassé.
+        2. Un diagnostic est tracé en logs (pas un fail silencieux).
+        """
+        import logging
+
+        from picarones.report import levers_render
+
+        # Patche un des formatters pour qu'il lève une exception
+        original = levers_render._FORMATTERS.copy()
+
+        def broken_formatter(payload: dict, labels: dict) -> str:
+            raise ValueError("crash test")
+
+        monkeypatch.setattr(
+            levers_render, "_FORMATTERS",
+            {**original, "complementarity_observation": broken_formatter},
+        )
+
+        d = {
+            "type": "complementarity_observation",
+            "importance": 40,
+            "payload": {"foo": "bar"},
+        }
+        with caplog.at_level(logging.WARNING, logger="picarones.report.levers_render"):
+            html = build_levers_section_html([d], _load_labels("fr"))
+
+        # 1. Le levier cassé est omis (HTML ne le contient pas).
+        assert "complementarity_observation" not in html
+
+        # 2. Un warning a été émis avec le contexte attendu.
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert any(
+            "complementarity_observation" in r.getMessage()
+            and "crash test" in r.getMessage()
+            for r in warnings
+        ), f"Expected warning with formatter context, got: {[r.getMessage() for r in warnings]}"
+
     def test_accepts_dict_input(self) -> None:
         d = {
             "type": "complementarity_observation",

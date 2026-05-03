@@ -133,7 +133,7 @@ picarones import iiif \
 Télécharge un manifeste IIIF v2/v3 (BnF Gallica, Bodleian, Vatican…) et
 crée un corpus local avec `.gt.txt` extraits de l'OCR ALTO si présent.
 Depuis le chantier 4, IIIF et Gallica utilisent les mêmes helpers HTTP
-factorisés ([`picarones/importers/_http.py`](../picarones/importers/_http.py))
+factorisés ([`picarones/extras/importers/_http.py`](../picarones/extras/importers/_http.py))
 avec garde-fou `file://`/`ftp://`/`javascript://`.
 
 ## Outils utilitaires

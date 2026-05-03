@@ -33,32 +33,23 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
+from picarones.report.render_helpers import color_diverging
 
-def _color_for_delta(delta_pct: float) -> str:
-    """Vert (≈0) → orange → rouge (≥ +5 pts CER) ;
-    vert → bleu (≤ -5 pts CER, amélioration)."""
+
+def _bg_for_cer_delta(delta_pct: float) -> str:
+    """Cellule colorée pour un delta de CER en points de pourcentage :
+    vert si delta ≈ 0, orange/rouge en régression, bleu en amélioration.
+    Saturation à ±5 points.
+    """
     if abs(delta_pct) < 1.0:
         return "#a7f0a7"
-    f = max(-1.0, min(1.0, delta_pct / 5.0))
-    if f >= 0:
-        # vert → orange profond → rouge profond
-        if f < 0.5:
-            t = f / 0.5
-            r = int(167 + (235 - 167) * t)
-            g = int(240 + (180 - 240) * t)
-            b = int(167 + (60 - 167) * t)
-        else:
-            t = (f - 0.5) / 0.5
-            r = int(235 + (220 - 235) * t)
-            g = int(180 + (50 - 180) * t)
-            b = int(60 + (50 - 60) * t)
-    else:
-        # vert → bleu (amélioration)
-        f = -f
-        r = int(167 + (90 - 167) * f)
-        g = int(240 + (160 - 240) * f)
-        b = int(167 + (210 - 167) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+    return color_diverging(
+        delta_pct,
+        max_abs=5.0,
+        neutral_rgb=(167, 240, 167),
+        positive_rgb=(220, 50, 50),
+        negative_rgb=(90, 160, 210),
+    )
 
 
 def build_longitudinal_html(
@@ -126,7 +117,7 @@ def build_longitudinal_html(
         first_cer = float(entry.get("first_cer") or 0.0)
         last_cer = float(entry.get("last_cer") or 0.0)
         delta_pct = float(entry.get("absolute_delta_pct") or 0.0)
-        delta_color = _color_for_delta(delta_pct)
+        delta_color = _bg_for_cer_delta(delta_pct)
         trend = entry.get("trend") or {}
         slope = trend.get("slope")
         r2 = trend.get("r_squared")

@@ -50,39 +50,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_pages_per_hour(value: float, max_value: float) -> str:
-    """Rouge (faible) → jaune → vert (= max)."""
-    if max_value <= 0:
-        return "#e0e0e0"
-    f = max(0.0, min(1.0, value / max_value))
-    if f < 0.5:
-        t = f / 0.5
-        r = 235
-        g = int(70 + (200 - 70) * t)
-        b = 70
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (60 - 235) * t)
-        g = int(200 + (160 - 200) * t)
-        b = int(70 + (90 - 70) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def _color_for_drag(drag: float) -> str:
-    """Vert (faible drag) → orange → rouge (drag élevé)."""
-    f = max(0.0, min(1.0, drag))
-    if f < 0.5:
-        t = f / 0.5
-        r = int(167 + (235 - 167) * t)
-        g = int(240 + (180 - 240) * t)
-        b = int(167 + (60 - 167) * t)
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (220 - 235) * t)
-        g = int(180 + (50 - 180) * t)
-        b = int(60 + (50 - 60) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def build_throughput_html(
@@ -154,8 +122,11 @@ def build_throughput_html(
         drag = row.get("drag_ratio") or 0.0
         n_pages = int(row.get("n_pages") or 0)
         n_errors = int(row.get("n_errors") or 0)
-        eff_color = _color_for_pages_per_hour(eff, max_eff)
-        drag_color = _color_for_drag(drag)
+        eff_color = (
+            color_traffic_light(eff, scale_max=max_eff)
+            if max_eff > 0 else "#e0e0e0"
+        )
+        drag_color = color_traffic_light(drag, low_is_good=True)
         raw_str = (
             f"{raw:,.0f}" if isinstance(raw, (int, float)) else "—"
         )

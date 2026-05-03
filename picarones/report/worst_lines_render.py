@@ -20,20 +20,21 @@ from typing import Optional
 
 from picarones.measurements.worst_lines import WorstLineEntry
 from picarones.core.diff_utils import compute_char_diff
+from picarones.report.render_helpers import color_traffic_light
 
 
-def _color_for_cer(cer: float) -> str:
-    """Gradient jaune → rouge : 0,3 jaune, 1,0 rouge profond."""
+def _bg_for_cer(cer: float) -> str:
+    """Beige clair sous le seuil catastrophique (0.30), gradient
+    jaune → rouge au-delà.
+
+    Le seuil dur à 0.30 préserve la sémantique « toléré jusqu'à 30 %
+    pour un manuscrit difficile ». Au-delà, on entre en zone visible
+    avec :func:`color_traffic_light` (low_is_good).
+    """
     f = max(0.0, min(1.0, cer))
-    # Au-delà de 0,3 (seuil catastrophique courant), gradient
-    # jaune → rouge. En dessous, beige clair.
     if f < 0.3:
         return "#fff8dc"
-    ratio = (f - 0.3) / 0.7
-    r = int(240 + (200 - 240) * ratio)
-    g = int(220 + (60 - 220) * ratio)
-    b = int(120 + (60 - 120) * ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
+    return color_traffic_light(f, low_is_good=True, scale_min=0.3, scale_max=1.0)
 
 
 def _render_diff_inline(reference: str, hypothesis: str) -> str:
@@ -121,7 +122,7 @@ def build_worst_lines_table_html(
         )
     parts.append("</tr></thead><tbody>")
     for entry in entries:
-        cer_color = _color_for_cer(entry.cer)
+        cer_color = _bg_for_cer(entry.cer)
         parts.append("<tr>")
         parts.append(
             f'<td style="padding:.3rem .5rem;text-align:right;'

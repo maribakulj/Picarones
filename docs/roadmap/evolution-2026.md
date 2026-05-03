@@ -442,7 +442,7 @@ nouvelle dans le rapport.
 
 **A.II.1.a — Précision sur entités nommées (NER).**
 
-Nouveau module `picarones/core/ner.py`. Backends : spaCy multilingue,
+Nouveau module `picarones/measurements/ner.py`. Backends : spaCy multilingue,
 Stanza, modèle HIPE pour les corpus historiques. Choix paramétré par
 profil (`fr_core_news_lg`, `xx_ent_wiki_sm`, `hipe2022`).
 
@@ -464,7 +464,7 @@ glossaire (entrée `ner_score`).
 
 **A.II.1.b — Score de calibration des moteurs.**
 
-Nouveau module `picarones/core/calibration.py`. Tous les moteurs cibles
+Nouveau module `picarones/measurements/calibration.py`. Tous les moteurs cibles
 fournissent une confidence par token ou par ligne (Tesseract `tsv`
 output, Pero OCR via `PageLayout`, Mistral OCR via `confidence`, Google
 Vision via `Word.confidence`). Ajout d'un champ

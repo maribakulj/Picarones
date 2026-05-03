@@ -282,6 +282,30 @@
     </div>
     {% endif %}
 
+    <!-- Sprint « câblage des modules test-only » (mai 2026) :
+         4 sections issues de ``report_data.extra_metrics``.
+         Adaptive : ne s'affichent que si le calcul a remonté du signal. -->
+    {% if rare_token_recall_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ rare_token_recall_html }}
+    </div>
+    {% endif %}
+    {% if taxonomy_cooccurrence_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ taxonomy_cooccurrence_html }}
+    </div>
+    {% endif %}
+    {% if taxonomy_intra_doc_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ taxonomy_intra_doc_html }}
+    </div>
+    {% endif %}
+    {% if marginal_cost_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ marginal_cost_html }}
+    </div>
+    {% endif %}
+
     <!-- Sprint 7 — Matrice de corrélation -->
     <div class="chart-card technical" style="grid-column:1/-1">
       <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>

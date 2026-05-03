@@ -18,15 +18,10 @@ from picarones.measurements.specialization import (
     compute_specialization_matrix,
     top_specialized_pairs,
 )
+from picarones.report.render_helpers import color_single_gradient
 
-
-def _color_for_score(score: float) -> str:
-    """Gradient blanc → bleu profond."""
-    f = max(0.0, min(1.0, score))
-    r = int(255 + (50 - 255) * f)
-    g = int(255 + (110 - 255) * f)
-    b = int(255 + (180 - 255) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+#: Bleu profond cible — préservé de l'ancien `_color_for_score` local.
+_SPECIALIZATION_BLUE = (50, 110, 180)
 
 
 def _category_label(cat: str, labels: dict[str, str]) -> str:
@@ -97,7 +92,7 @@ def build_specialization_html(
     for pair in pairs:
         score = float(pair.get("score") or 0.0)
         cat = pair.get("category") or "?"
-        color = _color_for_score(score)
+        color = color_single_gradient(score, end_rgb=_SPECIALIZATION_BLUE)
         parts.append(
             f'<tr>'
             f'<td style="padding:.4rem .6rem">'

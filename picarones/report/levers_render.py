@@ -25,8 +25,11 @@ recommandation : la phrase est purement descriptive.
 
 from __future__ import annotations
 
+import logging
 from html import escape as _e
 from typing import Iterable, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _lever_label(lever_type: str, labels: dict[str, str]) -> str:
@@ -223,7 +226,12 @@ def build_levers_section_html(
             continue
         try:
             sentence = formatter(payload, labels)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 — un formatter cassé ne doit pas casser la section
+            logger.warning(
+                "[levers_render] formatter %r a échoué sur payload=%r : %s — "
+                "ce levier sera omis du rapport",
+                lv_type, payload, exc,
+            )
             continue
         if not sentence:
             continue

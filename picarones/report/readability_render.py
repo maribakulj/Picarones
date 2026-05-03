@@ -25,27 +25,22 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
+from picarones.report.render_helpers import color_diverging
 
-def _color_for_delta(delta: float) -> str:
-    """Vert au centre, orange si over-norm, bleu si under-norm.
 
-    Plage de saturation : ±15 points de Flesch.
+def _bg_for_flesch_delta(delta: float) -> str:
+    """Vert au centre (delta ≈ 0), orange en sur-normalisation (delta > 0),
+    bleu en sous-normalisation (delta < 0). Saturation à ±15 pts Flesch.
     """
     if abs(delta) <= 1.0:
-        return "#a7f0a7"  # vert clair
-    f = max(-1.0, min(1.0, delta / 15.0))
-    if f >= 0:
-        # vert → orange profond
-        r = int(167 + (220 - 167) * f)
-        g = int(240 + (140 - 240) * f)
-        b = int(167 + (60 - 167) * f)
-    else:
-        f = -f
-        # vert → bleu profond
-        r = int(167 + (90 - 167) * f)
-        g = int(240 + (160 - 240) * f)
-        b = int(167 + (210 - 167) * f)
-    return f"#{r:02x}{g:02x}{b:02x}"
+        return "#a7f0a7"  # neutre vert clair, indistinguable du bruit
+    return color_diverging(
+        delta,
+        max_abs=15.0,
+        neutral_rgb=(167, 240, 167),
+        positive_rgb=(220, 140, 60),
+        negative_rgb=(90, 160, 210),
+    )
 
 
 def build_readability_summary_html(
@@ -107,7 +102,7 @@ def build_readability_summary_html(
         over_rate = float(agg.get("over_normalized_rate") or 0.0)
         n_under = int(agg.get("n_under_normalized") or 0)
         n_docs = int(agg.get("n_docs") or 0)
-        color = _color_for_delta(delta_mean)
+        color = _bg_for_flesch_delta(delta_mean)
         parts.append(
             f'<tr>'
             f'<td style="padding:.4rem .6rem">{_e(str(name))}</td>'

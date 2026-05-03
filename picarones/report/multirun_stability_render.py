@@ -43,21 +43,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-
-def _color_for_cv(cv: float) -> str:
-    """Vert (≈0) → orange (10 %) → rouge (≥ 25 %)."""
-    f = max(0.0, min(1.0, cv / 0.25))
-    if f < 0.5:
-        t = f / 0.5
-        r = int(167 + (235 - 167) * t)
-        g = int(240 + (180 - 240) * t)
-        b = int(167 + (60 - 167) * t)
-    else:
-        t = (f - 0.5) / 0.5
-        r = int(235 + (220 - 235) * t)
-        g = int(180 + (50 - 180) * t)
-        b = int(60 + (50 - 60) * t)
-    return f"#{r:02x}{g:02x}{b:02x}"
+from picarones.report.render_helpers import color_traffic_light
 
 
 def build_multirun_stability_html(
@@ -128,7 +114,7 @@ def build_multirun_stability_html(
         else:
             cer_str = "—"
         if isinstance(cer_cv, (int, float)):
-            cv_color = _color_for_cv(float(cer_cv))
+            cv_color = color_traffic_light(float(cer_cv), low_is_good=True, scale_max=0.25)
             cv_cell = (
                 f'<td style="padding:.4rem .6rem;text-align:right;'
                 f'background:{cv_color};font-family:monospace;'
