@@ -30,4 +30,7 @@ jobs.db-wal
 # Exceptions : fichiers HTML sources du package (templates Jinja2, pas rapports)
 !picarones/report/templates/*.html
 !picarones/web/templates/*.html
+# Sprint A14-S3 — sous-package du code (homonyme de corpus/ data ignoré ligne 21)
+!picarones/adapters/corpus/
+!picarones/adapters/corpus/**
 _version.py
