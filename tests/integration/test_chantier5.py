@@ -213,14 +213,18 @@ class TestCliPackage:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 5.C — runner.py reste tel quel (déjà allégé au chantier 2)
+# 5.C — runner reste atteignable via son API publique historique
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestRunnerStillReachable:
-    """Le chantier 2 a déjà allégé ``runner.py`` de 303 lignes (1322 → 1019).
-    Le chantier 5 ne le découpe pas davantage — vérification que les
-    fonctions historiques restent accessibles."""
+    """L'API historique de ``picarones.measurements.runner`` reste accessible.
+
+    Le chantier 2 (post-Sprint 97) avait allégé ``runner.py`` de 303 lignes
+    (1322 → 1019) ; le sprint « découpage de runner.py » (mai 2026, hors
+    chantier 5) l'a ensuite éclaté en sous-package ``runner/``. Dans tous
+    les cas, les fonctions historiques restent atteignables via les
+    ré-exports — c'est ce qu'on vérifie ici."""
 
     @pytest.mark.parametrize("name", [
         "run_benchmark",
