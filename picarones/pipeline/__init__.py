@@ -28,13 +28,23 @@ Modules livrés au S7
 - ``cache.py`` — ``ArtifactCache`` minimal in-memory indexé par
   ``hash(content + spec + code_version)``.
 
-À venir au Sprint S8
+Modules livrés au S8
 --------------------
-- ``runner.py`` — ``CorpusRunner`` orchestre l'executor sur un corpus
-  complet avec **backpressure**, **timeout depuis le début
-  d'exécution réelle**, **annulation propre**.
+- ``runner.py`` — ``CorpusRunner`` orchestre ``PipelineExecutor``
+  sur un corpus complet avec :
 
-Cible du Sprint S12 : équivalence numérique CER/WER avec l'ancien
+  * **backpressure** (``max_in_flight``, jamais plus de N futures
+    en vol),
+  * **timeout depuis le début d'exécution réelle** (pas depuis la
+    submission au pool),
+  * **annulation propre** via ``threading.Event``.
+
+  ``CorpusRunResult`` agrège ``DocumentOutcome``, qui distingue
+  ``succeeded`` / ``failed`` / ``timed_out`` / ``cancelled``.
+
+Cible du Sprint S12
+-------------------
+Équivalence numérique CER/WER avec l'ancien
 ``measurements.runner`` à 1e-9 près sur les fixtures.
 """
 
@@ -47,6 +57,13 @@ from picarones.pipeline.executor import (
     PipelineSpecInvalid,
 )
 from picarones.pipeline.protocols import ExecutionMode, StepExecutor
+from picarones.pipeline.runner import (
+    ContextFactory,
+    CorpusRunResult,
+    CorpusRunner,
+    DocumentOutcome,
+    InitialInputsFactory,
+)
 from picarones.pipeline.spec import INITIAL_STEP_ID, PipelineSpec, PipelineStep
 from picarones.pipeline.types import PipelineResult, RunContext, StepResult
 from picarones.pipeline.validation import ValidationError, validate_spec
@@ -76,4 +93,10 @@ __all__ = [
     "AdapterResolver",
     # Cache (S7)
     "ArtifactCache",
+    # CorpusRunner (S8)
+    "CorpusRunner",
+    "CorpusRunResult",
+    "DocumentOutcome",
+    "InitialInputsFactory",
+    "ContextFactory",
 ]
