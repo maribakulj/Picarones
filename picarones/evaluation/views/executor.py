@@ -135,29 +135,33 @@ class DefaultEvaluationViewExecutor:
                 f"{sorted(t.value for t in view.candidate_types)}."
             )
 
-        # 2. Projection (optionnelle).
+        # 2. Projection (optionnelle).  S14 — résolution par
+        #    ``view.projection_for(candidate.type)`` qui supporte
+        #    soit une projection unique (champ ``projection``), soit
+        #    un mapping par type source (``projections_by_source_type``).
         effective_candidate = candidate
         projection_report = None
-        if view.projection is not None and not view.projection.is_identity:
+        projection_spec = view.projection_for(candidate.type)
+        if projection_spec is not None and not projection_spec.is_identity:
             try:
                 projector = self._projectors.get(
-                    view.projection.projector_name,
+                    projection_spec.projector_name,
                 )
             except ProjectorNotFoundError as exc:
                 raise ProjectionError(
                     f"View {view.name!r} référence le projecteur "
-                    f"{view.projection.projector_name!r} introuvable "
+                    f"{projection_spec.projector_name!r} introuvable "
                     "dans le ProjectorRegistry."
                 ) from exc
             try:
                 effective_candidate, projection_report = projector.project(
-                    candidate, dict(view.projection.params),
+                    candidate, dict(projection_spec.params),
                 )
             except ProjectionError:
                 raise
             except Exception as exc:  # noqa: BLE001
                 raise ProjectionError(
-                    f"Projecteur {view.projection.projector_name!r} a "
+                    f"Projecteur {projection_spec.projector_name!r} a "
                     f"levé sur l'artefact {candidate.id!r} : {exc}"
                 ) from exc
 

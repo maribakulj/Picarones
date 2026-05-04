@@ -26,6 +26,11 @@ from picarones.evaluation.projectors.alto import (
     alto_document_to_text,
 )
 from picarones.evaluation.projectors.base import ProjectionReport, Projector
+from picarones.evaluation.projectors.canonical import (
+    CanonicalToText,
+    canonical_payload_to_text,
+    markdown_to_text,
+)
 from picarones.evaluation.projectors.pagexml import (
     PageToText,
     page_document_to_text,
@@ -44,9 +49,13 @@ __all__ = [
     "ProjectorRegistry",
     "ProjectorRegistrationError",
     "ProjectorNotFoundError",
-    # Concrete projectors (déplacés depuis formats/ au S13)
+    # Concrete projectors (S13)
     "AltoToText",
     "alto_document_to_text",
     "PageToText",
     "page_document_to_text",
+    # Canonical (S14)
+    "CanonicalToText",
+    "canonical_payload_to_text",
+    "markdown_to_text",
 ]

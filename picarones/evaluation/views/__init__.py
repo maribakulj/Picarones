@@ -25,10 +25,27 @@ from picarones.evaluation.views.executor import (
     DefaultEvaluationViewExecutor,
     PayloadLoader,
 )
+from picarones.evaluation.views.text_view import (
+    DEFAULT_TEXT_CANDIDATE_TYPES,
+    DEFAULT_TEXT_IGNORED_DIMENSIONS,
+    DEFAULT_TEXT_METRICS,
+    DEFAULT_TEXT_PROJECTIONS,
+    DEFAULT_TEXT_WARNINGS,
+    build_text_view,
+)
 
 __all__ = [
+    # Protocol + result
     "EvaluationViewExecutor",
     "ViewResult",
+    # Executor
     "DefaultEvaluationViewExecutor",
     "PayloadLoader",
+    # TextView (S14)
+    "build_text_view",
+    "DEFAULT_TEXT_METRICS",
+    "DEFAULT_TEXT_CANDIDATE_TYPES",
+    "DEFAULT_TEXT_PROJECTIONS",
+    "DEFAULT_TEXT_IGNORED_DIMENSIONS",
+    "DEFAULT_TEXT_WARNINGS",
 ]

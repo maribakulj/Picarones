@@ -142,6 +142,30 @@ class EvaluationView(BaseModel):
     description: str = ""
     candidate_types: frozenset[ArtifactType] = Field(...)
     projection: ProjectionSpec | None = None
+    """Projection unique appliquée à TOUS les candidats avant
+    évaluation.  ``None`` = pas de projection (artefact comparé
+    tel quel).  Si ``projections_by_source_type`` est aussi
+    renseigné, ce champ sert de fallback pour les types non listés."""
+    projections_by_source_type: dict[ArtifactType, ProjectionSpec] = Field(
+        default_factory=dict,
+    )
+    """S14 — projection conditionnelle par type d'artefact source.
+
+    Permet à une vue qui accepte plusieurs types (ex : ``TextView``
+    qui accepte RAW_TEXT, ALTO_XML, PAGE_XML) d'utiliser un
+    projecteur différent par type sans avoir à dupliquer la vue.
+
+    Convention de résolution dans ``DefaultEvaluationViewExecutor`` :
+
+    1. Si ``projections_by_source_type[candidate.type]`` existe :
+       utiliser cette projection.
+    2. Sinon, si ``projection`` est défini ET son ``source_type``
+       matche ``candidate.type`` : utiliser cette projection.
+    3. Sinon : pas de projection (artefact comparé tel quel).
+
+    Toutes les projections référencées doivent exister dans le
+    ``ProjectorRegistry`` au moment de l'exécution (validé runtime).
+    """
     normalization_profile: str | None = Field(default=None, max_length=128)
     metric_names: tuple[str, ...] = Field(default_factory=tuple)
     ignored_dimensions: tuple[str, ...] = Field(default_factory=tuple)
@@ -150,6 +174,28 @@ class EvaluationView(BaseModel):
     def accepts(self, artifact_type: ArtifactType) -> bool:
         """Vrai si cette vue peut consommer un artefact du type donné."""
         return artifact_type in self.candidate_types
+
+    def projection_for(
+        self, source_type: ArtifactType,
+    ) -> ProjectionSpec | None:
+        """Retourne la projection à appliquer pour un artefact source
+        de type ``source_type``, ou ``None`` si aucune projection n'est
+        applicable (artefact comparé tel quel).
+
+        Convention de résolution :
+
+        1. ``projections_by_source_type[source_type]`` si présent.
+        2. ``projection`` si son ``source_type`` matche.
+        3. ``None``.
+        """
+        if source_type in self.projections_by_source_type:
+            return self.projections_by_source_type[source_type]
+        if (
+            self.projection is not None
+            and self.projection.source_type == source_type
+        ):
+            return self.projection
+        return None
 
 
 class EvaluationSpec(BaseModel):
