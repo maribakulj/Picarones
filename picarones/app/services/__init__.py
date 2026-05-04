@@ -42,6 +42,7 @@ from picarones.app.services.path_security import (
     validated_path,
     validated_prompt_filename,
 )
+from picarones.app.services.report_service import ReportService
 
 __all__ = [
     "BenchmarkService",
@@ -52,6 +53,7 @@ __all__ = [
     "GroundTruthFactory",
     "PathValidationError",
     "PipelineInputsFactory",
+    "ReportService",
     "WorkspaceManager",
     "safe_report_name",
     "validated_path",
