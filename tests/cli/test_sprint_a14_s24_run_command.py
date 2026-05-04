@@ -297,7 +297,7 @@ class TestCLIRunE2E:
         assert result.exit_code == 0, result.output
         assert "Corpus chargé" in result.output
         assert "Run persisté" in result.output
-        assert "Rapport HTML" in result.output
+        assert "Rapport :" in result.output
 
         # 4. Vérifier les artefacts attendus.
         results_dir = out_dir / "results"
@@ -366,7 +366,7 @@ class TestCLIRunE2E:
         ])
         assert result.exit_code == 0
         assert not report_path.exists()
-        assert "Rapport HTML" not in result.output
+        assert "Rapport :" not in result.output
 
     def test_corpus_dir_alternative_works(
         self, runner: CliRunner, tmp_path: Path,

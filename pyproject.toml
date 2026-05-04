@@ -151,6 +151,11 @@ picarones = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Le repo root dans ``sys.path`` pour que ``tests.fixtures.*`` soit
+# importable de manière déterministe sur tous les OS (Linux/macOS/
+# Windows) — utilisé par les tests CLI E2E qui résolvent leurs mock
+# adapters via dotted path (``importlib.import_module("tests.fixtures.…")``).
+pythonpath = ["."]
 # Exclusion par défaut : marker network non sélectionné. Override via
 # ``pytest -m network`` (CI réseau-friendly) ou ``pytest -m ""``.
 addopts = "-v --tb=short -m 'not network'"

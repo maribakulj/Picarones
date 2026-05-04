@@ -46,11 +46,15 @@ from picarones.app.services.registry_service import (
     RegistryService,
     bootstrap_default_registries,
 )
-from picarones.app.services.report_service import ReportService
 from picarones.app.services.run_orchestrator import (
     OrchestrationResult,
     RunOrchestrator,
 )
+
+# Le rendu HTML vit dans la couche ``reports_v2/`` (cible documentée
+# du rewrite — un rapport est un format de sortie, pas un service).
+# Un caller qui veut juste générer un HTML l'importe directement
+# depuis là.
 
 __all__ = [
     "BenchmarkService",
@@ -64,7 +68,6 @@ __all__ = [
     "PipelineInputsFactory",
     "RegistriesBundle",
     "RegistryService",
-    "ReportService",
     "RunOrchestrator",
     "WorkspaceManager",
     "bootstrap_default_registries",

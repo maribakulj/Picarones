@@ -1,8 +1,7 @@
 """``picarones-rewrite report`` — génère le HTML d'un run persisté.
 
-Sprint A14-S22.
-
-Wrapper CLI minimal autour du ``ReportService`` (S21) :
+Wrapper Click mince autour du :class:`HtmlReportRenderer` (couche
+``reports_v2/html/``).
 
 ::
 
@@ -16,11 +15,10 @@ Comportement
   ``run_manifest.json``, ``pipeline_results.jsonl``,
   ``view_results.jsonl``.
 - Reconstruit le ``RunResult`` via
-  ``ReportService.load_run_result``.
-- Rend le HTML autonome via ``ReportService.render``.
-- Écrit dans ``--output`` (chemin filesystem libre — la CLI fait
-  confiance à l'opérateur), ou affiche sur stdout si ``--output -``
-  ou non précisé avec ``--stdout``.
+  :meth:`HtmlReportRenderer.load_run_result`.
+- Rend le HTML autonome via :meth:`HtmlReportRenderer.render`.
+- Écrit dans ``--output`` (chemin filesystem libre), ou affiche sur
+  stdout si ``--output`` est omis.
 - Code de sortie ``0`` succès, ``1`` fichiers persistés
   introuvables, ``2`` erreur d'usage Click.
 """
@@ -32,7 +30,7 @@ from pathlib import Path
 
 import click
 
-from picarones.app.services import ReportService
+from picarones.reports_v2.html import HtmlReportRenderer
 
 
 @click.command()
@@ -65,9 +63,9 @@ def report_command(
     lang: str,
 ) -> None:
     """Génère le rapport HTML d'un run persisté."""
-    service = ReportService(lang=lang)
+    renderer = HtmlReportRenderer(lang=lang)
     try:
-        html = service.render_from_dir(run_dir)
+        html = renderer.render_from_dir(run_dir)
     except FileNotFoundError as exc:
         click.echo(f"erreur : {exc}", err=True)
         sys.exit(1)

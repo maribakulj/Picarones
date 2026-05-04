@@ -103,12 +103,15 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/report/render_helpers.py": 480,            # actuel 415
     # --- Services applicatifs et orchestration du rewrite ciblé.
     # Budgets calibrés à current + 15 % de marge.  La CLI elle-même
-    # reste mince (~90 lignes) — toute logique métier vit dans
+    # reste mince (~110 lignes) — toute logique métier vit dans
     # ``app/services/``.
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
-    "picarones/app/services/report_service.py": 700,      # actuel 609
     "picarones/app/services/run_orchestrator.py": 500,    # actuel 432
+    # Le rendu HTML vit en couche ``reports_v2/`` (cible documentée
+    # du rewrite — un rapport est un format de sortie, pas un
+    # service métier).
+    "picarones/reports_v2/html/render.py": 700,           # actuel 615
 }
 
 

@@ -4,19 +4,25 @@ Service applicatif qui assemble :
 
 - ``CorpusService`` (import du corpus depuis ZIP ou dir extrait),
 - ``RegistryService`` (bootstrap des registres),
-- ``BenchmarkService`` (orchestration runner + vues + persistance),
-- ``ReportService`` (rendu HTML optionnel).
+- ``BenchmarkService`` (orchestration runner + vues + persistance).
 
-C'est le « workflow par défaut » d'un run YAML.  Il vit dans
-``app/services/`` (couche métier, pas couche d'interface) pour que
-toutes les interfaces (CLI Click, futur HTTP, scripts Python tiers)
-puissent l'invoquer sans dupliquer la logique d'orchestration.
+Le rendu de rapport (HTML, JSON, CSV) est **injecté par le caller**
+via le paramètre ``report_renderer`` — le service ``app/`` ne peut
+pas importer ``reports_v2/`` car cette couche est plus externe
+(``domain → … → app → reports_v2 → interfaces``).  Cette inversion
+de dépendance garantit que :
+
+- L'orchestrateur n'est pas couplé à un format de sortie spécifique.
+- Une nouvelle couche de rapport (CSV, JSON) s'ajoute sans modifier
+  l'orchestrateur.
+- L'ordre des couches reste inviolable (test d'architecture).
 
 Anti-bricolage
 --------------
 Pas de fonction-helper privée éparpillée dans la CLI.  L'interface
 ``picarones-rewrite run`` est désormais un thin wrapper Click qui
-appelle ``RunOrchestrator.execute(spec)`` et formate la sortie.
+appelle ``RunOrchestrator.execute(spec, report_renderer=…)`` et
+formate la sortie.
 
 Anti-sur-ingénierie
 -------------------
@@ -45,7 +51,6 @@ from picarones.app.services.corpus_service import (
 )
 from picarones.app.services.path_security import WorkspaceManager
 from picarones.app.services.registry_service import RegistryService
-from picarones.app.services.report_service import ReportService
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef
@@ -70,6 +75,14 @@ from picarones.pipeline import (
 # ──────────────────────────────────────────────────────────────────────
 
 
+#: Type alias d'un renderer de rapport injecté par le caller.
+#: Reçoit ``(run_result, output_path, lang)``, écrit le fichier
+#: et retourne le ``Path`` effectivement écrit (généralement
+#: identique à ``output_path``, mais le renderer peut décider de
+#: changer l'extension par exemple).
+ReportRenderer = Callable[[RunResult, Path, str], Path]
+
+
 @dataclass(frozen=True)
 class OrchestrationResult:
     """Tout ce qu'un caller (CLI, HTTP, script) doit savoir d'un run.
@@ -85,14 +98,16 @@ class OrchestrationResult:
         Map ``{kind: path}`` des 3 fichiers persistés
         (``run_manifest.json``, ``pipeline_results.jsonl``,
         ``view_results.jsonl``).
-    report_html_path:
-        Chemin du rapport HTML écrit, ou ``None`` si pas demandé.
+    report_path:
+        Chemin du rapport effectivement écrit par le
+        ``report_renderer`` injecté, ou ``None`` si aucun renderer
+        n'a été fourni ou si ``spec.report_html`` est vide.
     """
 
     run_result: RunResult
     extracted_corpus_dir: Path
     persisted_files: dict[str, Path] = field(default_factory=dict)
-    report_html_path: Path | None = None
+    report_path: Path | None = None
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -125,7 +140,7 @@ class RunOrchestrator:
         self,
         spec: RunSpec,
         *,
-        emit_report: bool = True,
+        report_renderer: ReportRenderer | None = None,
     ) -> OrchestrationResult:
         """Exécute le run complet et retourne tout ce qu'on en sait.
 
@@ -133,10 +148,13 @@ class RunOrchestrator:
         ----------
         spec:
             ``RunSpec`` validée (pydantic).
-        emit_report:
-            Si ``True`` (défaut) ET que ``spec.report_html`` est
-            renseigné, génère le rapport HTML.  Sinon, retourne
-            ``OrchestrationResult.report_html_path = None``.
+        report_renderer:
+            Callable optionnel ``(run_result, output_path, lang) →
+            written_path`` qui rend le rapport.  Si ``None`` (défaut)
+            OU si ``spec.report_html`` est vide, aucun rapport n'est
+            émis.  L'inversion de dépendance évite à
+            ``app/services/`` d'importer ``reports_v2/`` (couche plus
+            externe — interdit par l'architecture).
 
         Raises
         ------
@@ -182,20 +200,21 @@ class RunOrchestrator:
         persist_dir = self._output_dir / "results"
         persisted = bench.persist(result, persist_dir)
 
-        # 7. Rapport HTML optionnel.
+        # 7. Rapport optionnel — délégué au renderer injecté.
+        # Inversion de dépendance : ``app/`` ne peut pas importer
+        # ``reports_v2/`` (plus externe).  Le caller fournit un
+        # callable.
         report_path: Path | None = None
-        if emit_report and spec.report_html:
-            report_service = ReportService(lang=spec.report_lang)
-            html = report_service.render(result)
-            report_path = Path(spec.report_html)
-            report_path.parent.mkdir(parents=True, exist_ok=True)
-            report_path.write_text(html, encoding="utf-8")
+        if report_renderer is not None and spec.report_html:
+            target = Path(spec.report_html)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            report_path = report_renderer(result, target, spec.report_lang)
 
         return OrchestrationResult(
             run_result=result,
             extracted_corpus_dir=extracted_dir,
             persisted_files=persisted,
-            report_html_path=report_path,
+            report_path=report_path,
         )
 
     # ──────────────────────────────────────────────────────────────────

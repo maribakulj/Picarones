@@ -1,6 +1,10 @@
-"""``ReportService`` — produit un rapport HTML depuis un ``RunResult``.
+"""``HtmlReportRenderer`` — produit un rapport HTML depuis un ``RunResult``.
 
-Sprint A14-S21 du rewrite ciblé.
+Cible documentée du rewrite : la génération HTML vit dans la couche
+``reports_v2/html/`` (cf. ``picarones/reports_v2/__init__.py``).
+Un rapport est un **format de sortie** consommant un ``RunResult``
+persisté — pas un service métier.  ``app/services/`` orchestre la
+génération via ``RunOrchestrator``, mais le rendu lui-même est ici.
 
 Premier rapport HTML du nouveau monde.  Volontairement minimal : ce
 service répond à *« je veux ouvrir un fichier ``.html`` et voir mon
@@ -170,7 +174,7 @@ class _Aggregate:
     n: int
 
 
-class ReportService:
+class HtmlReportRenderer:
     """Génère un rapport HTML à partir d'un ``RunResult``.
 
     Parameters
@@ -607,5 +611,5 @@ def _aggregate_view_by_pipeline(
 
 
 __all__ = [
-    "ReportService",
+    "HtmlReportRenderer",
 ]

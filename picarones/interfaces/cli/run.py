@@ -2,7 +2,9 @@
 
 Wrapper Click mince autour du :class:`RunOrchestrator` (couche
 ``app/services/``) — toute la logique métier vit dans le service,
-ce module ne fait que du parsing CLI et du formatage de sortie.
+ce module ne fait que du parsing CLI, l'injection du renderer HTML
+(:class:`HtmlReportRenderer` de la couche ``reports_v2/``) et le
+formatage de sortie.
 
 Usage
 -----
@@ -22,9 +24,21 @@ from pathlib import Path
 
 import click
 
+from picarones.app.results import RunResult
 from picarones.app.schemas import RunSpecLoadError, load_run_spec_from_yaml
 from picarones.app.services.corpus_service import CorpusImportError
 from picarones.app.services.run_orchestrator import RunOrchestrator
+from picarones.reports_v2.html import HtmlReportRenderer
+
+
+def _render_html_report(
+    result: RunResult, output_path: Path, lang: str,
+) -> Path:
+    """Adapte :class:`HtmlReportRenderer` au protocole ``ReportRenderer``
+    attendu par :meth:`RunOrchestrator.execute`."""
+    renderer = HtmlReportRenderer(lang=lang)
+    output_path.write_text(renderer.render(result), encoding="utf-8")
+    return output_path
 
 
 @click.command()
@@ -55,10 +69,12 @@ def run_command(spec_path: Path, no_report: bool) -> None:
         click.echo(f"erreur : spec invalide : {exc}", err=True)
         sys.exit(1)
 
-    # 2. Délégation au service d'orchestration.
+    # 2. Délégation au service d'orchestration avec injection du
+    # renderer HTML (sauf si --no-report).
     orchestrator = RunOrchestrator(output_dir=Path(spec.output_dir))
+    renderer = None if no_report else _render_html_report
     try:
-        result = orchestrator.execute(spec, emit_report=not no_report)
+        result = orchestrator.execute(spec, report_renderer=renderer)
     except CorpusImportError as exc:
         click.echo(f"erreur : import corpus : {exc}", err=True)
         sys.exit(1)
@@ -82,8 +98,8 @@ def run_command(spec_path: Path, no_report: bool) -> None:
     click.echo(f"Run persisté dans : {persist_dir}")
     for kind, path in result.persisted_files.items():
         click.echo(f"  {kind}: {path}")
-    if result.report_html_path is not None:
-        click.echo(f"Rapport HTML : {result.report_html_path}")
+    if result.report_path is not None:
+        click.echo(f"Rapport : {result.report_path}")
     click.echo("OK")
 
 
