@@ -248,26 +248,46 @@ def _build_pipelines(spec: RunSpec) -> tuple[
     """Construit les ``PipelineSpec`` + un ``adapter_resolver`` qui
     instancie les adapters au besoin.
 
-    Le resolver maintient un cache instance-par-nom (un adapter est
-    instancié une seule fois pour tout le run).
+    Disambiguation des steps :
+
+    - Deux steps qui ont la même ``(class, kwargs)`` partagent la
+      même instance d'adapter (cache).
+    - Deux steps qui ont la même ``id`` mais une ``class`` ou des
+      ``kwargs`` différents reçoivent des ``adapter_name`` distincts
+      (préfixés par le nom de pipeline).
+
+    C'est essentiel pour le cas BnF où plusieurs pipelines utilisent
+    la **même classe** avec des **kwargs différents** (ex :
+    ``PrecomputedTextAdapter`` instancié 3 fois avec
+    ``source_label`` distincts).
     """
     instance_cache: dict[str, object] = {}
+    # ``adapter_name`` → ``(class, kwargs_signature)`` pour valider
+    # qu'on n'écrase pas un adapter avec un autre.
+    registered: dict[str, tuple[type, str]] = {}
     name_to_class: dict[str, type] = {}
     name_to_kwargs: dict[str, dict] = {}
+
+    def _kwargs_signature(kwargs: dict) -> str:
+        # Signature stable : ordre de tri sur les clés.  ``str(value)``
+        # suffit pour comparer — les types JSON-serializable seront
+        # déterministes.
+        return "|".join(f"{k}={kwargs[k]!r}" for k in sorted(kwargs))
 
     pipeline_specs: list[PipelineSpec] = []
     for p in spec.pipelines:
         steps = []
         for s in p.steps:
             cls = resolve_adapter_class(s.adapter_class)
+            kwargs_sig = _kwargs_signature(s.adapter_kwargs)
             adapter_name = s.id
-            # Si le même step.id apparaît dans deux pipelines avec
-            # des classes différentes, on disambiguë par la pipeline.
-            if (
-                adapter_name in name_to_class
-                and name_to_class[adapter_name] is not cls
-            ):
+            # Si le step.id existe déjà mais avec une autre signature
+            # (class ou kwargs distincts), on disambigue en préfixant
+            # par le nom de la pipeline.
+            existing = registered.get(adapter_name)
+            if existing is not None and existing != (cls, kwargs_sig):
                 adapter_name = f"{p.name}__{s.id}"
+            registered[adapter_name] = (cls, kwargs_sig)
             name_to_class[adapter_name] = cls
             name_to_kwargs[adapter_name] = s.adapter_kwargs
             steps.append(PipelineStep(

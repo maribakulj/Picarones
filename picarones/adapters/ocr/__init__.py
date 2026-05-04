@@ -1,16 +1,29 @@
-"""Adaptateurs OCR — Sprint S11.
+"""Adapters OCR du nouveau monde — Sprint A14-S26.
 
-Cible : déplacement (sans modification logique) de
-``picarones.engines.{tesseract,pero_ocr,mistral_ocr,google_vision,
-azure_doc_intel}``.  Chaque adapter implémente le protocole
-``StepExecutor`` du package ``pipeline``.
+Contrat ``BaseOCRAdapter`` natif au rewrite : pas hérité du legacy
+``picarones.engines.base.BaseOCREngine``, exprimé directement en
+termes du nouveau ``ArtifactType`` et de l'interface
+``execute(inputs, params, context)`` du ``PipelineExecutor``.
 
-Règle : un adapter OCR produit un artefact ``RAW_TEXT`` (et
-optionnellement ``ALTO_XML`` / ``token_confidences``).  Il ne
-calcule **rien** sur ce texte — pas de CER, pas de normalisation,
-pas d'analyse linguistique.  Tout ça est dans ``evaluation/``.
+Implémentations livrées
+-----------------------
+- ``PrecomputedTextAdapter`` — lit un texte OCR pré-calculé depuis
+  le filesystem.  Cas BnF : comparer N transcriptions déjà produites
+  par d'autres outils sans relancer d'OCR.
+
+Adapters concrets pour Tesseract / Pero OCR / Mistral OCR / Google
+Vision / Azure DI : à écrire au cas par cas dans des sprints
+dédiés, **natifs** au nouveau contrat (pas de shim sur le legacy
+``picarones.engines``).
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
+from picarones.adapters.ocr.precomputed import PrecomputedTextAdapter
+
+__all__ = [
+    "BaseOCRAdapter",
+    "OCRAdapterError",
+    "PrecomputedTextAdapter",
+]
