@@ -59,6 +59,8 @@ from picarones.domain.evaluation_spec import (
 )
 from picarones.domain.projection_spec import ProjectionSpec
 from picarones.domain.provenance import ProvenanceRecord
+from picarones.domain.run_manifest import RunManifest, utcnow
+from picarones.domain.run_result import RunDocumentResult, RunResult
 
 __all__ = [
     # S4 — Artifacts
@@ -81,4 +83,9 @@ __all__ = [
     "EvaluationView",
     "EvaluationSpec",
     "ProjectionSpec",
+    # S17 — Run manifest + result
+    "RunManifest",
+    "RunDocumentResult",
+    "RunResult",
+    "utcnow",
 ]

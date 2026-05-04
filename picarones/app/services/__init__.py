@@ -24,4 +24,16 @@ Cibles :
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.app.services.benchmark_service import (
+    BenchmarkService,
+    ContextFactory,
+    GroundTruthFactory,
+    PipelineInputsFactory,
+)
+
+__all__ = [
+    "BenchmarkService",
+    "GroundTruthFactory",
+    "PipelineInputsFactory",
+    "ContextFactory",
+]
