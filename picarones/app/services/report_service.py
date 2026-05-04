@@ -259,7 +259,9 @@ class ReportService:
             raise FileNotFoundError(
                 f"view_results.jsonl absent du dossier : {d!r}",
             )
-        manifest = RunManifest.model_validate_json(manifest_path.read_text())
+        manifest = RunManifest.model_validate_json(
+            manifest_path.read_text(encoding="utf-8"),
+        )
 
         # Reconstruire les pipeline_results et view_results par doc.
         # ``PipelineResult`` porte déjà ``document_id`` dans son schéma

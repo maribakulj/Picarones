@@ -503,19 +503,25 @@ class BenchmarkResult:
 
             entries: list[dict] = []
             for report in self.engine_reports:
-                cers = [
+                # ``Sprint A14-S1`` : ``MetricsResult.cer`` / ``.wer`` sont
+                # ``Optional[float]`` ; le double filtre ``error is None``
+                # garantit ``cer/wer is not None`` par convention, mais on
+                # le filtre explicitement aussi pour que mypy le voie.
+                cers: list[float] = [
                     dr.metrics.cer
                     for dr in report.document_results
                     if dr.doc_id in doc_ids
                     and dr.metrics is not None
                     and dr.metrics.error is None
+                    and dr.metrics.cer is not None
                 ]
-                wers = [
+                wers: list[float] = [
                     dr.metrics.wer
                     for dr in report.document_results
                     if dr.doc_id in doc_ids
                     and dr.metrics is not None
                     and dr.metrics.error is None
+                    and dr.metrics.wer is not None
                 ]
                 failed = sum(
                     1 for dr in report.document_results

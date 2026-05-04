@@ -67,6 +67,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from picarones.domain.artifacts import ArtifactType
+from picarones.domain.errors import PicaronesError
 
 
 #: Vues canoniques supportées par la CLI.
@@ -167,7 +168,7 @@ class RunSpec(BaseModel):
 # ──────────────────────────────────────────────────────────────────────
 
 
-class RunSpecLoadError(Exception):
+class RunSpecLoadError(PicaronesError):
     """Échec de chargement / validation d'une spec YAML."""
 
 

@@ -57,9 +57,10 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from picarones.domain.artifacts import Artifact, ArtifactType
+from picarones.domain.errors import PicaronesError
 
 
-class OCRAdapterError(Exception):
+class OCRAdapterError(PicaronesError):
     """Erreur typée pour un échec d'adapter OCR du nouveau monde.
 
     Le ``PipelineExecutor`` capture cette exception (et toute autre)

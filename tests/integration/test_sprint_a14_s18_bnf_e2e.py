@@ -462,14 +462,19 @@ def _build_pipelines() -> list[PipelineSpec]:
 
 
 def _build_corpus(gt_paths: dict[str, Path]) -> CorpusSpec:
+    # ``image_uri`` et le ``uri`` de la GT RAW_TEXT ne sont jamais lus
+    # dans S18 — les payloads sont fournis in-memory par le loader.
+    # On utilise un chemin **sous le tmp_path partagé** pour rester
+    # portable cross-OS.
+    base_dir = next(iter(gt_paths.values())).parent
     docs = tuple(
         DocumentRef(
             id=doc_id,
-            image_uri=f"/tmp/{doc_id}.png",
+            image_uri=str(base_dir / f"{doc_id}.png"),
             ground_truths=(
                 GroundTruthRef(
                     type=ArtifactType.RAW_TEXT,
-                    uri=f"/tmp/{doc_id}.gt.txt",
+                    uri=str(base_dir / f"{doc_id}.gt.txt"),
                 ),
                 GroundTruthRef(
                     type=ArtifactType.ALTO_XML,

@@ -101,12 +101,14 @@ FILE_BUDGETS: dict[str, int] = {
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
     # calibré sur la taille post-documentation des conventions.
     "picarones/report/render_helpers.py": 480,            # actuel 415
-    # --- Sprint A14-S20/S21/S24 — services applicatifs et CLI du
-    # rewrite ciblé.  Budgets calibrés à current + 15 % de marge.
-    "picarones/app/services/corpus_service.py": 625,      # actuel 540
-    "picarones/app/services/path_security.py": 465,       # actuel 403
+    # --- Services applicatifs et orchestration du rewrite ciblé.
+    # Budgets calibrés à current + 15 % de marge.  La CLI elle-même
+    # reste mince (~90 lignes) — toute logique métier vit dans
+    # ``app/services/``.
+    "picarones/app/services/corpus_service.py": 625,      # actuel 541
+    "picarones/app/services/path_security.py": 470,       # actuel 410
     "picarones/app/services/report_service.py": 700,      # actuel 609
-    "picarones/interfaces/cli/run.py": 500,               # actuel 436
+    "picarones/app/services/run_orchestrator.py": 500,    # actuel 432
 }
 
 

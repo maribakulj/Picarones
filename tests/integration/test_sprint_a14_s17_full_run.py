@@ -306,14 +306,20 @@ def _build_service(tmp_path: Path) -> tuple[BenchmarkService, dict[str, Path]]:
 
 
 def _build_corpus_and_specs(gt_paths: dict[str, Path]):
+    # Note : ``image_uri`` et le ``uri`` de la GT RAW_TEXT ne sont
+    # jamais lus dans S17 (les payloads sont fournis in-memory par le
+    # loader des stubs).  On les construit comme des chemins **sous le
+    # tmp_path partagé** pour rester portable cross-OS — sur Windows
+    # ``/tmp/...`` n'est pas un chemin absolu valide.
+    base_dir = next(iter(gt_paths.values())).parent
     docs = tuple(
         DocumentRef(
             id=doc_id,
-            image_uri=f"/tmp/{doc_id}.png",
+            image_uri=str(base_dir / f"{doc_id}.png"),
             ground_truths=(
                 GroundTruthRef(
                     type=ArtifactType.RAW_TEXT,
-                    uri=f"/tmp/{doc_id}.gt.txt",
+                    uri=str(base_dir / f"{doc_id}.gt.txt"),
                 ),
                 GroundTruthRef(
                     type=ArtifactType.ALTO_XML,

@@ -47,6 +47,10 @@ from picarones.app.services.registry_service import (
     bootstrap_default_registries,
 )
 from picarones.app.services.report_service import ReportService
+from picarones.app.services.run_orchestrator import (
+    OrchestrationResult,
+    RunOrchestrator,
+)
 
 __all__ = [
     "BenchmarkService",
@@ -55,11 +59,13 @@ __all__ = [
     "CorpusImportReport",
     "CorpusService",
     "GroundTruthFactory",
+    "OrchestrationResult",
     "PathValidationError",
     "PipelineInputsFactory",
     "RegistriesBundle",
     "RegistryService",
     "ReportService",
+    "RunOrchestrator",
     "WorkspaceManager",
     "bootstrap_default_registries",
     "safe_report_name",

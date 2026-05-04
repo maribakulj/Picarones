@@ -64,11 +64,12 @@ from picarones.app.services.path_security import (
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef, GroundTruthRef
+from picarones.domain.errors import PicaronesError
 
 logger = logging.getLogger(__name__)
 
 
-class CorpusImportError(Exception):
+class CorpusImportError(PicaronesError):
     """Levée quand l'import ZIP échoue de manière irrécupérable.
 
     Cas typiques :

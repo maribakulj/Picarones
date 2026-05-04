@@ -35,9 +35,16 @@ import shutil
 import uuid
 from pathlib import Path
 
+from picarones.domain.errors import PicaronesError
 
-class PathValidationError(ValueError):
-    """Levée quand un chemin utilisateur sort de la zone autorisée."""
+
+class PathValidationError(PicaronesError, ValueError):
+    """Levée quand un chemin utilisateur sort de la zone autorisée.
+
+    Hérite à la fois de :class:`PicaronesError` (convention métier
+    du nouveau code) et :class:`ValueError` (rétrocompat S1 — un
+    caller historique qui ``except ValueError`` continue de marcher).
+    """
 
 
 def validated_path(

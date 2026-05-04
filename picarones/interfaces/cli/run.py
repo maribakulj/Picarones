@@ -1,38 +1,18 @@
-"""``picarones-rewrite run`` — workflow benchmark complet via YAML.
+"""``picarones-rewrite run`` — exécute un benchmark depuis un YAML.
 
-Orchestre tous les services applicatifs du rewrite pour exécuter
-un benchmark bout-en-bout depuis une spec YAML déclarative, sans
-écrire de Python :
+Wrapper Click mince autour du :class:`RunOrchestrator` (couche
+``app/services/``) — toute la logique métier vit dans le service,
+ce module ne fait que du parsing CLI et du formatage de sortie.
+
+Usage
+-----
 
 ::
 
     python -m picarones.interfaces.cli run --spec ./run.yaml
 
-Étapes
-------
-1. Charger ``run.yaml`` via :func:`load_run_spec_from_yaml`.
-2. Créer un ``WorkspaceManager`` sous ``output_dir``.
-3. Importer le corpus via ``CorpusService`` — depuis ZIP ou depuis
-   un dir pré-extrait.
-4. Bootstrap des registres via ``RegistryService``.
-5. Construire les ``PipelineSpec`` à partir de la YAML (résolution
-   dotted-path des adapters via :func:`resolve_adapter_class`).
-6. Construire les vues canoniques (TextView / AltoView / SearchView)
-   demandées dans ``views``.
-7. Construire le ``BenchmarkService`` et lancer ``run()``.
-8. Persister les 3 fichiers JSONL.
-9. (Optionnel) Générer le rapport HTML via ``ReportService``.
-
-Limites
--------
-- Vues : seulement les 3 canoniques (``text_final``,
-  ``alto_documentary``, ``searchability``).  Vues custom via API
-  Python directe.
-- Factories ``ground_truth`` / ``pipeline_inputs`` / ``context``
-  filesystem-by-default minimales (cf. helpers privés en bas du
-  module).
-
-Codes de sortie : 0 succès, 1 erreur typée, 2 erreur d'usage Click.
+Codes de sortie : 0 succès, 1 erreur métier (typée
+``PicaronesError``), 2 erreur Click (option mal formée).
 """
 
 from __future__ import annotations
@@ -42,37 +22,9 @@ from pathlib import Path
 
 import click
 
-from picarones.app.services import (
-    BenchmarkService,
-    CorpusImportError,
-    CorpusService,
-    RegistryService,
-    ReportService,
-    WorkspaceManager,
-)
-from picarones.app.schemas import (
-    RunSpec,
-    RunSpecLoadError,
-    load_run_spec_from_yaml,
-    resolve_adapter_class,
-)
-from picarones.domain.artifacts import Artifact, ArtifactType
-from picarones.domain.corpus import CorpusSpec
-from picarones.domain.documents import DocumentRef
-from picarones.evaluation.views import (
-    DefaultEvaluationViewExecutor,
-    build_alto_view,
-    build_search_view,
-    build_text_view,
-)
-from picarones.formats.alto.parser import parse_alto
-from picarones.pipeline import (
-    CorpusRunner,
-    PipelineExecutor,
-    PipelineSpec,
-    PipelineStep,
-    RunContext,
-)
+from picarones.app.schemas import RunSpecLoadError, load_run_spec_from_yaml
+from picarones.app.services.corpus_service import CorpusImportError
+from picarones.app.services.run_orchestrator import RunOrchestrator
 
 
 @click.command()
@@ -96,295 +48,43 @@ from picarones.pipeline import (
 )
 def run_command(spec_path: Path, no_report: bool) -> None:
     """Exécute un benchmark complet depuis une spec YAML."""
-    # 1. Charger la spec.
+    # 1. Parsing de la spec.
     try:
         spec = load_run_spec_from_yaml(spec_path.read_text(encoding="utf-8"))
     except RunSpecLoadError as exc:
         click.echo(f"erreur : spec invalide : {exc}", err=True)
         sys.exit(1)
 
-    # 2. Workspace.
-    output_dir = Path(spec.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    workspace = WorkspaceManager(output_dir)
-
-    # 3. Corpus.
+    # 2. Délégation au service d'orchestration.
+    orchestrator = RunOrchestrator(output_dir=Path(spec.output_dir))
     try:
-        corpus_spec, extracted_dir = _load_corpus(spec, workspace)
+        result = orchestrator.execute(spec, emit_report=not no_report)
     except CorpusImportError as exc:
         click.echo(f"erreur : import corpus : {exc}", err=True)
         sys.exit(1)
-    click.echo(
-        f"Corpus chargé : {corpus_spec.name} "
-        f"({len(corpus_spec.documents)} docs, {extracted_dir})",
-    )
-
-    # 4. Registries.
-    registries = RegistryService.bootstrap_defaults()
-
-    # 5. Pipelines.
-    try:
-        pipeline_specs, adapter_resolver = _build_pipelines(spec)
     except RunSpecLoadError as exc:
         click.echo(f"erreur : résolution pipeline : {exc}", err=True)
         sys.exit(1)
 
-    # 6. Vues.
-    views = _build_views(spec.views)
-
-    # 7. BenchmarkService.
-    pipeline_executor = PipelineExecutor(adapter_resolver=adapter_resolver)
-    corpus_runner = CorpusRunner(
-        pipeline_executor,
-        max_in_flight=2,
-        timeout_seconds_per_doc=300.0,
-        poll_interval_seconds=0.05,
-    )
-    view_executor = DefaultEvaluationViewExecutor(
-        registries.metrics,
-        registries.projectors,
-        _make_filesystem_loader(),
-    )
-    bench = BenchmarkService(
-        corpus_runner=corpus_runner,
-        view_executor=view_executor,
-        code_version=spec.code_version,
-    )
-
+    # 3. Formatage de la sortie utilisateur.
     click.echo(
-        f"Lancement du run : {len(pipeline_specs)} pipeline(s) × "
-        f"{len(views)} vue(s) × {len(corpus_spec.documents)} doc(s)…",
+        f"Corpus chargé : {result.run_result.manifest.corpus_name} "
+        f"({result.run_result.n_documents} docs, "
+        f"{result.extracted_corpus_dir})",
     )
-    result = bench.run(
-        corpus=corpus_spec,
-        pipelines=pipeline_specs,
-        views=views,
-        ground_truth_factory=_default_gt_factory,
-        pipeline_inputs_factory=_default_inputs_factory,
-        context_factory=_make_context_factory(spec.code_version),
-        metadata={"operator_cli": "picarones-rewrite-s24"},
+    click.echo(
+        f"Lancement du run : "
+        f"{len(result.run_result.manifest.pipeline_names)} pipeline(s) × "
+        f"{len(result.run_result.manifest.view_specs)} vue(s) × "
+        f"{result.run_result.n_documents} doc(s)…",
     )
-
-    # 8. Persistance.
-    persist_dir = output_dir / "results"
-    files = bench.persist(result, persist_dir)
+    persist_dir = next(iter(result.persisted_files.values())).parent
     click.echo(f"Run persisté dans : {persist_dir}")
-    for kind, path in files.items():
+    for kind, path in result.persisted_files.items():
         click.echo(f"  {kind}: {path}")
-
-    # 9. Rapport HTML optionnel.
-    if spec.report_html and not no_report:
-        report_service = ReportService(lang=spec.report_lang)
-        html = report_service.render(result)
-        report_path = Path(spec.report_html)
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(html, encoding="utf-8")
-        click.echo(f"Rapport HTML : {report_path}")
-
+    if result.report_html_path is not None:
+        click.echo(f"Rapport HTML : {result.report_html_path}")
     click.echo("OK")
-
-
-# ──────────────────────────────────────────────────────────────────────
-# Helpers privés
-# ──────────────────────────────────────────────────────────────────────
-
-
-def _load_corpus(
-    spec: RunSpec, workspace: WorkspaceManager,
-) -> tuple[CorpusSpec, Path]:
-    """Charge le corpus selon ``corpus_zip`` ou ``corpus_dir``.
-
-    Pour ``corpus_dir``, on construit directement un ``CorpusSpec``
-    depuis les fichiers présents (réutilise la détection de patterns
-    de ``CorpusService`` via la même classification interne).
-    """
-    if spec.corpus_zip is not None:
-        zip_path = Path(spec.corpus_zip)
-        zip_bytes = zip_path.read_bytes()
-        corpus_service = CorpusService(workspace)
-        report = corpus_service.import_zip(
-            zip_bytes,
-            corpus_name=spec.corpus_name or zip_path.stem,
-            metadata=spec.corpus_metadata,
-        )
-        return report.spec, report.extracted_dir
-    # corpus_dir : on zippe à la volée le contenu du dir et on
-    # délègue à ``CorpusService`` — réutilise toute la détection
-    # sans dupliquer la logique de classification image / GT.
-    import io
-    import zipfile
-
-    src_dir = Path(spec.corpus_dir)
-    if not src_dir.is_dir():
-        raise CorpusImportError(
-            f"corpus_dir n'est pas un répertoire : {src_dir!r}.",
-        )
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, mode="w") as zf:
-        for file_path in src_dir.rglob("*"):
-            if file_path.is_file():
-                arc = file_path.relative_to(src_dir).as_posix()
-                zf.write(file_path, arcname=arc)
-    corpus_service = CorpusService(workspace)
-    report = corpus_service.import_zip(
-        buf.getvalue(),
-        corpus_name=spec.corpus_name or src_dir.name,
-        metadata=spec.corpus_metadata,
-    )
-    return report.spec, report.extracted_dir
-
-
-def _build_pipelines(spec: RunSpec) -> tuple[
-    list[PipelineSpec], "callable",
-]:
-    """Construit les ``PipelineSpec`` + un ``adapter_resolver`` qui
-    instancie les adapters au besoin.
-
-    Disambiguation des steps :
-
-    - Deux steps qui ont la même ``(class, kwargs)`` partagent la
-      même instance d'adapter (cache).
-    - Deux steps qui ont la même ``id`` mais une ``class`` ou des
-      ``kwargs`` différents reçoivent des ``adapter_name`` distincts
-      (préfixés par le nom de pipeline).
-
-    C'est essentiel pour le cas BnF où plusieurs pipelines utilisent
-    la **même classe** avec des **kwargs différents** (ex :
-    ``PrecomputedTextAdapter`` instancié 3 fois avec
-    ``source_label`` distincts).
-    """
-    instance_cache: dict[str, object] = {}
-    # ``adapter_name`` → ``(class, kwargs_signature)`` pour valider
-    # qu'on n'écrase pas un adapter avec un autre.
-    registered: dict[str, tuple[type, str]] = {}
-    name_to_class: dict[str, type] = {}
-    name_to_kwargs: dict[str, dict] = {}
-
-    def _kwargs_signature(kwargs: dict) -> str:
-        # Signature stable : ordre de tri sur les clés.  ``str(value)``
-        # suffit pour comparer — les types JSON-serializable seront
-        # déterministes.
-        return "|".join(f"{k}={kwargs[k]!r}" for k in sorted(kwargs))
-
-    pipeline_specs: list[PipelineSpec] = []
-    for p in spec.pipelines:
-        steps = []
-        for s in p.steps:
-            cls = resolve_adapter_class(s.adapter_class)
-            kwargs_sig = _kwargs_signature(s.adapter_kwargs)
-            adapter_name = s.id
-            # Si le step.id existe déjà mais avec une autre signature
-            # (class ou kwargs distincts), on disambigue en préfixant
-            # par le nom de la pipeline.
-            existing = registered.get(adapter_name)
-            if existing is not None and existing != (cls, kwargs_sig):
-                adapter_name = f"{p.name}__{s.id}"
-            registered[adapter_name] = (cls, kwargs_sig)
-            name_to_class[adapter_name] = cls
-            name_to_kwargs[adapter_name] = s.adapter_kwargs
-            steps.append(PipelineStep(
-                id=s.id,
-                kind="step",
-                adapter_name=adapter_name,
-                input_types=s.input_types,
-                output_types=s.output_types,
-            ))
-        pipeline_specs.append(PipelineSpec(
-            name=p.name,
-            initial_inputs=p.initial_inputs,
-            steps=tuple(steps),
-        ))
-
-    def resolver(name: str):
-        if name not in instance_cache:
-            cls = name_to_class[name]
-            kwargs = name_to_kwargs[name]
-            instance_cache[name] = cls(**kwargs)
-        return instance_cache[name]
-
-    return pipeline_specs, resolver
-
-
-def _build_views(view_names: tuple[str, ...]):
-    """Map noms canoniques → vues construites."""
-    builders = {
-        "text_final": build_text_view,
-        "alto_documentary": build_alto_view,
-        "searchability": build_search_view,
-    }
-    return [builders[name]() for name in view_names]
-
-
-def _default_gt_factory(doc: DocumentRef, art_type: ArtifactType):
-    """Factory GT par défaut : retourne un Artifact pointant sur la
-    GT du type demandé si présente, ou tombe sur RAW_TEXT pour
-    CORRECTED_TEXT (les deux sont du texte plat — convention S18)."""
-    effective_type = (
-        ArtifactType.RAW_TEXT
-        if art_type == ArtifactType.CORRECTED_TEXT
-        else art_type
-    )
-    gt_ref = doc.gt_for(effective_type)
-    if gt_ref is None:
-        return None
-    return Artifact(
-        id=f"{doc.id}:gt:{effective_type.value}",
-        document_id=doc.id,
-        type=effective_type,
-        uri=gt_ref.uri,
-    )
-
-
-def _default_inputs_factory(doc: DocumentRef):
-    """``{IMAGE: artifact_image}``."""
-    return {ArtifactType.IMAGE: Artifact(
-        id=f"{doc.id}:image",
-        document_id=doc.id,
-        type=ArtifactType.IMAGE,
-        uri=doc.image_uri,
-    )}
-
-
-def _make_context_factory(code_version: str):
-    def _factory(doc: DocumentRef, pipeline_name: str) -> RunContext:
-        return RunContext(
-            document_id=doc.id,
-            code_version=code_version,
-            pipeline_name=pipeline_name,
-        )
-    return _factory
-
-
-def _make_filesystem_loader():
-    """Loader filesystem : lit RAW_TEXT depuis le fichier pointé par
-    l'URI, parse ALTO_XML depuis le fichier pointé.
-
-    Les artefacts projetés (sans URI) sont gérés directement par
-    l'executor (le projecteur retourne le payload calculé) — le
-    loader ne gère que les artefacts avec URI (candidats directs
-    et GT).
-    """
-
-    def loader(art: Artifact):
-        if art.uri is None:
-            raise FileNotFoundError(
-                f"Loader CLI : artifact {art.id!r} sans URI ; "
-                "appelez le projecteur d'abord pour produire le "
-                "payload (S25)."
-            )
-        path = Path(art.uri)
-        if art.type == ArtifactType.ALTO_XML:
-            return parse_alto(path.read_bytes())
-        if art.type in (
-            ArtifactType.RAW_TEXT,
-            ArtifactType.CORRECTED_TEXT,
-        ):
-            return path.read_text(encoding="utf-8")
-        raise ValueError(
-            f"Loader CLI : type {art.type.value!r} non géré.",
-        )
-
-    return loader
 
 
 __all__ = ["run_command"]
