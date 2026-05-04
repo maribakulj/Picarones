@@ -30,6 +30,11 @@ from picarones.app.services.benchmark_service import (
     GroundTruthFactory,
     PipelineInputsFactory,
 )
+from picarones.app.services.corpus_service import (
+    CorpusImportError,
+    CorpusImportReport,
+    CorpusService,
+)
 from picarones.app.services.path_security import (
     PathValidationError,
     WorkspaceManager,
@@ -41,6 +46,9 @@ from picarones.app.services.path_security import (
 __all__ = [
     "BenchmarkService",
     "ContextFactory",
+    "CorpusImportError",
+    "CorpusImportReport",
+    "CorpusService",
     "GroundTruthFactory",
     "PathValidationError",
     "PipelineInputsFactory",
