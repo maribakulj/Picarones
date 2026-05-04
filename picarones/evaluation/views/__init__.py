@@ -20,6 +20,13 @@ Reporté post-livraison : ``LayoutView``, ``HallucinationView``,
 
 from __future__ import annotations
 
+from picarones.evaluation.views.alto_view import (
+    DEFAULT_ALTO_CANDIDATE_TYPES,
+    DEFAULT_ALTO_IGNORED_DIMENSIONS,
+    DEFAULT_ALTO_METRICS,
+    DEFAULT_ALTO_WARNINGS,
+    build_alto_view,
+)
 from picarones.evaluation.views.base import EvaluationViewExecutor, ViewResult
 from picarones.evaluation.views.executor import (
     DefaultEvaluationViewExecutor,
@@ -48,4 +55,10 @@ __all__ = [
     "DEFAULT_TEXT_PROJECTIONS",
     "DEFAULT_TEXT_IGNORED_DIMENSIONS",
     "DEFAULT_TEXT_WARNINGS",
+    # AltoView (S15)
+    "build_alto_view",
+    "DEFAULT_ALTO_METRICS",
+    "DEFAULT_ALTO_CANDIDATE_TYPES",
+    "DEFAULT_ALTO_IGNORED_DIMENSIONS",
+    "DEFAULT_ALTO_WARNINGS",
 ]
