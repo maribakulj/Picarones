@@ -30,10 +30,22 @@ from picarones.app.services.benchmark_service import (
     GroundTruthFactory,
     PipelineInputsFactory,
 )
+from picarones.app.services.path_security import (
+    PathValidationError,
+    WorkspaceManager,
+    safe_report_name,
+    validated_path,
+    validated_prompt_filename,
+)
 
 __all__ = [
     "BenchmarkService",
-    "GroundTruthFactory",
-    "PipelineInputsFactory",
     "ContextFactory",
+    "GroundTruthFactory",
+    "PathValidationError",
+    "PipelineInputsFactory",
+    "WorkspaceManager",
+    "safe_report_name",
+    "validated_path",
+    "validated_prompt_filename",
 ]

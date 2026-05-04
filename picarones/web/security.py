@@ -98,184 +98,20 @@ def assert_llm_provider_allowed(llm_provider: str) -> None:
 
 # ---------------------------------------------------------------------------
 # Validation des chemins utilisateur (Sprint A14-S1, A.I.0 P0)
+#
+# Ré-importé depuis le foyer définitif ``picarones.app.services.path_security``
+# (Sprint A14-S19).  Pas de duplication — le code vit en un seul
+# endroit dans la couche app, accessible aussi par la CLI et les jobs
+# background.
 # ---------------------------------------------------------------------------
 
-class PathValidationError(ValueError):
-    """Levée quand un chemin utilisateur sort de la zone autorisée."""
-
-
-def validated_path(
-    user_path: str,
-    allowed_roots: list[Path],
-    must_exist: bool = False,
-    must_be_dir: bool = False,
-) -> Path:
-    """Résout un chemin utilisateur et vérifie qu'il reste dans une racine autorisée.
-
-    Garde-fou central contre la traversée de répertoires (path traversal)
-    et l'écriture/lecture arbitraire dans le système de fichiers du
-    serveur.  Avant ce sprint, les endpoints ``/api/benchmark/*``
-    acceptaient n'importe quel ``corpus_path`` ou ``output_dir`` validé
-    uniquement par ``Path.exists()`` — ce qui permettait à un client
-    de pousser le serveur à lire/écrire en dehors de ses propres
-    workspaces, dans la limite des permissions du process.
-
-    Algorithme :
-
-    1. Refuse les chemins vides ou contenant des octets nuls.
-    2. Résout le chemin de manière absolue (``Path.resolve()``) — ça
-       écrase ``..``, les liens symboliques et les chemins relatifs.
-    3. Vérifie que le résultat est ``.is_relative_to(root)`` pour au
-       moins une des ``allowed_roots`` (elles aussi pré-résolues).
-    4. Optionnellement : vérifie l'existence et le type (dir).
-
-    Parameters
-    ----------
-    user_path:
-        Chemin tel que reçu de l'utilisateur (str).  Peut être absolu
-        ou relatif.
-    allowed_roots:
-        Liste de répertoires racines (``Path``) au sein desquels le
-        chemin résolu doit se trouver.  Liste vide = tout refuser.
-    must_exist:
-        Si ``True``, exige que le chemin résolu existe sur le disque
-        après validation.
-    must_be_dir:
-        Si ``True``, exige que le chemin résolu existe ET soit un
-        répertoire.  Implique ``must_exist=True``.
-
-    Returns
-    -------
-    Path
-        Chemin résolu absolu, garanti dans une des racines autorisées.
-
-    Raises
-    ------
-    PathValidationError
-        Si le chemin est vide, contient un octet nul, sort des racines
-        autorisées, ou ne satisfait pas ``must_exist`` / ``must_be_dir``.
-    """
-    if not user_path or not user_path.strip():
-        raise PathValidationError("Chemin vide.")
-    if "\x00" in user_path:
-        raise PathValidationError("Chemin contient un octet nul.")
-    if not allowed_roots:
-        raise PathValidationError(
-            "Aucune racine autorisée — refus de toute requête de chemin."
-        )
-
-    try:
-        resolved = Path(user_path).expanduser().resolve()
-    except (OSError, RuntimeError) as exc:
-        raise PathValidationError(f"Chemin invalide : {exc}") from exc
-
-    resolved_roots = [Path(r).expanduser().resolve() for r in allowed_roots]
-    if not any(_is_within(resolved, root) for root in resolved_roots):
-        raise PathValidationError(
-            f"Chemin hors zone autorisée : {user_path!r}.  "
-            f"Racines acceptées : {[str(r) for r in resolved_roots]}."
-        )
-
-    if must_be_dir or must_exist:
-        if not resolved.exists():
-            raise PathValidationError(f"Chemin inexistant : {user_path!r}.")
-    if must_be_dir and not resolved.is_dir():
-        raise PathValidationError(f"Chemin n'est pas un répertoire : {user_path!r}.")
-
-    return resolved
-
-
-def _is_within(child: Path, parent: Path) -> bool:
-    """Vrai si ``child`` est ``parent`` ou un descendant.
-
-    ``Path.is_relative_to`` n'apparaît qu'en Python 3.9 — on l'utilise
-    via try/except pour rester explicite sur l'intention sans
-    dépendre du comportement exact de la stdlib selon la version.
-    """
-    try:
-        child.relative_to(parent)
-        return True
-    except ValueError:
-        return False
-
-
-def validated_prompt_filename(name: str) -> str:
-    """Valide qu'un ``prompt_file`` web est un simple nom de fichier sûr.
-
-    Sprint A14-S1 — A.I.0 P0 : le pipeline OCR+LLM lit un prompt
-    depuis le disque via ``picarones.pipelines.base._load_prompt``,
-    qui acceptait n'importe quel chemin absolu existant.  En contexte
-    web, ça permettait à un utilisateur d'API de pousser le serveur à
-    lire un fichier arbitraire (``/etc/passwd``, ``.env``, etc.) puis
-    à l'envoyer comme prompt à un LLM externe — vecteur classique
-    d'exfiltration via tokens.
-
-    Cette fonction restreint la valeur reçue à un simple nom de
-    fichier de la **bibliothèque de prompts intégrée**
-    (``picarones/prompts/``).  Pas de ``/``, pas de ``\\``, pas de
-    ``..``, pas d'absolu.
-
-    Le caller (web layer) est responsable d'appeler cette fonction
-    AVANT de transmettre la valeur au pipeline.
-
-    Returns
-    -------
-    str
-        Nom de fichier validé (basename uniquement).
-
-    Raises
-    ------
-    PathValidationError
-        Si la valeur contient un séparateur de chemin, un caractère de
-        contrôle, ou ressemble à un chemin absolu/relatif suspect.
-    """
-    if not name:
-        raise PathValidationError("Nom de prompt vide.")
-    if "\x00" in name:
-        raise PathValidationError("Nom de prompt contient un octet nul.")
-    if any(c in name for c in ("/", "\\")):
-        raise PathValidationError(
-            f"Nom de prompt invalide (séparateur de chemin) : {name!r}.  "
-            "Le web n'accepte que les prompts de la bibliothèque intégrée "
-            "(``picarones/prompts/``) — fournir le simple nom de fichier."
-        )
-    if name.startswith(".") or ".." in name:
-        raise PathValidationError(
-            f"Nom de prompt suspect : {name!r}.  "
-            "Refus des préfixes ``.`` et des séquences ``..``."
-        )
-    if any(ord(c) < 0x20 for c in name):
-        raise PathValidationError("Nom de prompt contient un caractère de contrôle.")
-    return name
-
-
-def safe_report_name(name: str, max_length: int = 128) -> str:
-    """Sanitize un nom de rapport utilisateur en composant de chemin sûr.
-
-    Refuse les séparateurs de chemin (``/``, ``\\``), les caractères
-    de contrôle, les octets nuls.  Tronque à ``max_length``.  Si la
-    chaîne devient vide après nettoyage, lève ``PathValidationError``.
-
-    Cette fonction NE produit PAS un chemin — elle produit un nom
-    qu'un caller peut concaténer à un répertoire qu'il a déjà validé
-    avec ``validated_path``.
-    """
-    if not name:
-        raise PathValidationError("Nom de rapport vide.")
-    if "\x00" in name:
-        raise PathValidationError("Nom de rapport contient un octet nul.")
-    # Refus explicite de tout séparateur de chemin et de caractères de contrôle.
-    bad = set("/\\")
-    cleaned = "".join(
-        c for c in name
-        if c not in bad and ord(c) >= 0x20
-    )
-    cleaned = cleaned.strip().strip(".")  # pas de "." en début/fin (caché Unix, extension forçée)
-    if not cleaned:
-        raise PathValidationError(f"Nom de rapport invalide après nettoyage : {name!r}.")
-    if cleaned in (".", "..", ""):
-        raise PathValidationError(f"Nom de rapport réservé : {name!r}.")
-    return cleaned[:max_length]
+from picarones.app.services.path_security import (  # noqa: F401
+    PathValidationError,
+    safe_report_name,
+    validated_path,
+    validated_prompt_filename,
+)
+from picarones.app.services.path_security import _is_within  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
