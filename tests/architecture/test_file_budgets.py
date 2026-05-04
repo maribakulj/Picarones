@@ -82,7 +82,11 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484
     "picarones/measurements/roman_numerals.py": 575,      # actuel 478
-    "picarones/extras/importers/htr_united.py": 575,      # actuel 473
+    "picarones/extras/importers/htr_united.py": 575,      # actuel 473 (re-export S11)
+    # Sprint A14-S11 — d\xc3\xa9plac\xc3\xa9s depuis extras/importers/, l'ancien
+    # emplacement est d\xc3\xa9sormais un re-export.
+    "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
+    "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     "picarones/cli/_workflows.py": 550,                   # actuel 469
     "picarones/extras/importers/huggingface.py": 550,     # actuel 464
     "picarones/core/metric_hooks.py": 500,                # actuel 423

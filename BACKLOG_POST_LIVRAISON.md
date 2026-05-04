@@ -126,7 +126,24 @@ exister à la livraison BnF.
 
 → Sprint S5 + S20 du rewrite.
 
-### 2.5 Migration des fichiers `measurements/*.py` restants vers `evaluation/metrics/`
+### 2.5b Migration des adapters restants
+
+Le Sprint S11 a migré 5 LLM (base + openai/mistral/anthropic/ollama)
++ 2 corpus importers (htr_united, huggingface) + 1 helper privé
+(_fallback_log).  L'ancien emplacement est un re-export.
+
+**Adapters OCR** (5 fichiers : tesseract, pero_ocr, mistral_ocr,
+google_vision, azure_doc_intel) restent dans `picarones/engines/`.
+Tous importent `engines/base.py` qui hérite de `core.modules.BaseModule`.
+Migration différée jusqu'au S20 quand `core.modules` aura disparu
+(remplacé par le protocole `StepExecutor` du S6).
+
+**Importers patrimoniaux** (3 fichiers : iiif, gallica, escriptorium)
+restent dans `picarones/extras/importers/`.  Tous importent
+`core.corpus.{Corpus, Document}`.  Migration différée jusqu'au
+déplacement de `core.corpus` vers `domain/` (sprint dédié).
+
+### 2.5c Migration des fichiers `measurements/*.py` restants vers `evaluation/metrics/`
 
 Le Sprint S10 a migré 23 fichiers de calcul autonomes.  17 fichiers
 restent dans `picarones/measurements/` à migrer.
