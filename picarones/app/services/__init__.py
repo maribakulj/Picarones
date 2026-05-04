@@ -42,6 +42,11 @@ from picarones.app.services.path_security import (
     validated_path,
     validated_prompt_filename,
 )
+from picarones.app.services.registry_service import (
+    RegistriesBundle,
+    RegistryService,
+    bootstrap_default_registries,
+)
 from picarones.app.services.report_service import ReportService
 
 __all__ = [
@@ -53,8 +58,11 @@ __all__ = [
     "GroundTruthFactory",
     "PathValidationError",
     "PipelineInputsFactory",
+    "RegistriesBundle",
+    "RegistryService",
     "ReportService",
     "WorkspaceManager",
+    "bootstrap_default_registries",
     "safe_report_name",
     "validated_path",
     "validated_prompt_filename",
