@@ -48,9 +48,19 @@ from picarones.app.services.registry_service import (
     bootstrap_default_registries,
 )
 from picarones.app.services.report_service import ReportService
+from picarones.app.services.run_spec import (
+    CANONICAL_VIEW_NAMES,
+    PipelineSpecYaml,
+    RunSpec,
+    RunSpecLoadError,
+    StepSpec,
+    load_run_spec_from_yaml,
+    resolve_adapter_class,
+)
 
 __all__ = [
     "BenchmarkService",
+    "CANONICAL_VIEW_NAMES",
     "ContextFactory",
     "CorpusImportError",
     "CorpusImportReport",
@@ -58,11 +68,17 @@ __all__ = [
     "GroundTruthFactory",
     "PathValidationError",
     "PipelineInputsFactory",
+    "PipelineSpecYaml",
     "RegistriesBundle",
     "RegistryService",
     "ReportService",
+    "RunSpec",
+    "RunSpecLoadError",
+    "StepSpec",
     "WorkspaceManager",
     "bootstrap_default_registries",
+    "load_run_spec_from_yaml",
+    "resolve_adapter_class",
     "safe_report_name",
     "validated_path",
     "validated_prompt_filename",

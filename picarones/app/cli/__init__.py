@@ -39,13 +39,14 @@ import click
 
 from picarones.app.cli.import_corpus import import_corpus_command
 from picarones.app.cli.report import report_command
+from picarones.app.cli.run import run_command
 
 
 @click.group(
     name="picarones-rewrite",
     help=(
-        "CLI du rewrite ciblé Picarones (S22).  Sous-commandes : "
-        "import-corpus, report."
+        "CLI du rewrite ciblé Picarones (S22-S24).  Sous-commandes : "
+        "import-corpus, report, run."
     ),
 )
 @click.version_option(package_name="picarones")
@@ -55,6 +56,7 @@ def cli() -> None:
 
 cli.add_command(import_corpus_command, name="import-corpus")
 cli.add_command(report_command, name="report")
+cli.add_command(run_command, name="run")
 
 
 __all__ = ["cli"]
