@@ -61,7 +61,12 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/core/pipeline.py": 675,                    # actuel 571
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
-    "picarones/measurements/levers.py": 675,              # actuel 561
+    "picarones/measurements/levers.py": 675,              # actuel 561 (re-export S10)
+    # Sprint A14-S10 — déplacés depuis measurements/, l'ancien
+    # emplacement est désormais un re-export.  Le contenu canonique
+    # vit dans evaluation/metrics/.
+    "picarones/evaluation/metrics/levers.py": 675,        # actuel 561
+    "picarones/evaluation/metrics/inter_engine.py": 575,  # actuel 484
     "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
     # Sprint A14-S1 — A.I.0 P0 : ajout de validated_path,
     # validated_prompt_filename, safe_report_name et compute_workspace_roots.

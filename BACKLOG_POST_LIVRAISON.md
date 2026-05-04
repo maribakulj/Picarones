@@ -126,6 +126,48 @@ exister à la livraison BnF.
 
 → Sprint S5 + S20 du rewrite.
 
+### 2.5 Migration des fichiers `measurements/*.py` restants vers `evaluation/metrics/`
+
+Le Sprint S10 a migré 23 fichiers de calcul autonomes.  17 fichiers
+restent dans `picarones/measurements/` à migrer.
+
+**Catégorie B — utilisent `@register_metric`** (singleton global
+`core.metric_registry` à supprimer au S20) :
+  `mufi`, `abbreviations`, `unicode_blocks`, `roman_numerals`,
+  `early_modern_typography`, `modern_archives`, `reading_order`,
+  `ner`, `readability`, `searchability`, `numerical_sequences`.
+
+→ Migrés au S20 quand le `MetricRegistry` instancié explicitement
+(S5) deviendra le seul registre.
+
+**Catégorie C — dépendances vers `core.corpus` / `engines.base` /
+`measurements.metrics`** :
+  `robustness`.
+
+→ Migré après S11 (déplacement des adapters) et S12 (équivalence
+numérique).
+
+**Catégorie D — dépendances inter-fichiers à orchestrer** :
+  `cost_projection` (→ pricing, déjà migré),
+  `equivalence_profile` (→ formats.text.normalization, déjà migré),
+  `specialization` (→ inter_engine, déjà migré),
+  `taxonomy_intra_doc` (→ taxonomy),
+  `taxonomy` (→ char_scores).
+
+→ Trois de ces fichiers (cost_projection, equivalence_profile,
+specialization) peuvent être migrés dès le S11+ puisque leurs deps
+sont déjà migrées.
+
+**Fichiers d'orchestration legacy** (à NE PAS migrer en l'état,
+remplacés par `pipeline/executor` + `pipeline/runner` au S22) :
+  `runner/` (sous-package), `pipeline_benchmark`,
+  `pipeline_comparison`, `pipeline_spec_loader`,
+  `builtin_hooks`, `builtin_metrics`, `philological_hooks`,
+  `readability_hooks`, `searchability_hooks`,
+  `numerical_sequences_hooks`, `ner_backends`,
+  `metrics`, `history`, `structure`, `difficulty`,
+  `char_scores`, `alto_metrics`, `narrative/`, `statistics/`.
+
 ### 2.5 Suppression des références "Sprint X" dans le code
 
 Le repo contient ~679 références à "Sprint N" dans les fichiers

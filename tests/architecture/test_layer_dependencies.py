@@ -86,6 +86,9 @@ EXTERNAL_ALLOWED: dict[str, frozenset[str]] = {
     "evaluation": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
         "numpy", "scipy", "jiwer", "rapidfuzz",
+        # S10 — fichiers de calcul migrés depuis measurements/ :
+        "PIL",      # image_quality utilise Pillow pour analyser les images
+        "yaml",     # pricing charge sa table de coûts depuis YAML
     }),
     "pipeline": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
