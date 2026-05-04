@@ -82,7 +82,11 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/extras/importers/huggingface.py": 550,     # actuel 464
     "picarones/core/metric_hooks.py": 500,                # actuel 423
     "picarones/measurements/numerical_sequences.py": 500, # actuel 422
-    "picarones/measurements/normalization.py": 500,       # actuel 420
+    "picarones/measurements/normalization.py": 500,       # actuel 420 (re-export S9)
+    # Sprint A14-S9 — déplacé depuis measurements/normalization.py.
+    # L'ancien emplacement est désormais un re-export ; le contenu
+    # canonique vit ici.
+    "picarones/formats/text/normalization.py": 500,       # actuel 420
     "picarones/report/comparison.py": 500,                # actuel 409
     # --- Module mutualisé créé par le sprint des render helpers
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
