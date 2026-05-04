@@ -32,6 +32,14 @@ from picarones.evaluation.views.executor import (
     DefaultEvaluationViewExecutor,
     PayloadLoader,
 )
+from picarones.evaluation.views.search_view import (
+    DEFAULT_SEARCH_CANDIDATE_TYPES,
+    DEFAULT_SEARCH_IGNORED_DIMENSIONS,
+    DEFAULT_SEARCH_METRICS,
+    DEFAULT_SEARCH_PROJECTIONS,
+    DEFAULT_SEARCH_WARNINGS,
+    build_search_view,
+)
 from picarones.evaluation.views.text_view import (
     DEFAULT_TEXT_CANDIDATE_TYPES,
     DEFAULT_TEXT_IGNORED_DIMENSIONS,
@@ -61,4 +69,11 @@ __all__ = [
     "DEFAULT_ALTO_CANDIDATE_TYPES",
     "DEFAULT_ALTO_IGNORED_DIMENSIONS",
     "DEFAULT_ALTO_WARNINGS",
+    # SearchView (S16)
+    "build_search_view",
+    "DEFAULT_SEARCH_METRICS",
+    "DEFAULT_SEARCH_CANDIDATE_TYPES",
+    "DEFAULT_SEARCH_PROJECTIONS",
+    "DEFAULT_SEARCH_IGNORED_DIMENSIONS",
+    "DEFAULT_SEARCH_WARNINGS",
 ]
