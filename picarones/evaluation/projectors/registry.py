@@ -19,7 +19,7 @@ Pattern d'utilisation
     registry.register(PageToText())
 
     projector = registry.get("alto_to_text")
-    target_artifact, report = projector.project(source_artifact, {})
+    target_artifact, payload, report = projector.project(source_artifact, {})
 
 Au S20, ce registre sera construit par
 ``app/services/registry_service.py`` au démarrage de l'application.

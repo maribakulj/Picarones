@@ -173,12 +173,19 @@ class TestTextViewWithExecutor:
         assert result.metric_values["wer"] == 0.0
         assert result.projection_report is None
 
-    def test_canonical_document_routed_to_canonical_to_text(self) -> None:
-        """Cas 6 — CANONICAL_DOCUMENT → CanonicalToText, ProjectionReport présent."""
+    def test_canonical_document_routed_to_canonical_to_text(
+        self, tmp_path,
+    ) -> None:
+        """Cas 6 — CANONICAL_DOCUMENT → CanonicalToText, ProjectionReport présent.
+
+        Sprint S25 — le projecteur lit le markdown source depuis l'URI
+        et calcule le texte projeté lui-même (plus de hack via
+        ``cand:projected_text`` dans le loader)."""
+        # Markdown source écrit sur disque ; le projecteur le lit et
+        # produit "Bonjour le monde".
+        md_path = tmp_path / "cand.md"
+        md_path.write_text("# Bonjour le monde\n", encoding="utf-8")
         payloads = {
-            # Le payload du candidat projeté est récupéré via le
-            # canonical_payload_to_text helper appliqué côté loader.
-            "cand:projected_text": "Bonjour le monde",
             "gt": "Bonjour le monde",
         }
         executor = _build_executor(payloads)
@@ -186,6 +193,7 @@ class TestTextViewWithExecutor:
         cand = Artifact(
             id="cand", document_id="d",
             type=ArtifactType.CANONICAL_DOCUMENT,
+            uri=str(md_path),
         )
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
         result = executor.evaluate(view, cand, gt)

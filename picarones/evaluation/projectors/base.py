@@ -1,4 +1,4 @@
-"""``Projector`` (Protocol) + ``ProjectionReport`` — Sprint A14-S5.
+"""``Projector`` (Protocol) + ``ProjectionReport`` — Sprint A14-S5 / S25.
 
 Un projecteur convertit un ``Artifact`` d'un type vers un autre,
 en documentant explicitement ce qu'il **perd** au passage.
@@ -9,6 +9,22 @@ ignore.  Sans ce report, comparer "Tesseract texte brut" et
 "VLM + reconstruction ALTO" sur la sortie texte serait
 trompeur — l'utilisateur penserait juger les pipelines en bloc
 alors qu'il ne juge qu'une projection.
+
+Sprint S25 — payload retourné directement
+-----------------------------------------
+``project()`` retourne désormais ``(Artifact, payload, report)``
+au lieu de ``(Artifact, report)``.  Le projecteur a déjà calculé
+le contenu projeté (texte pour ALTO→texte, etc.) — le retourner
+directement évite à l'executor de devoir le re-charger via un
+``payload_loader`` qui ne saurait pas le récupérer (l'artefact
+projeté n'a typiquement pas d'URI puisqu'il est intermédiaire).
+
+Avant S25, l'executor appelait ``loader(projected_artifact)`` —
+ce qui obligeait les tests à pré-stocker manuellement le payload
+projeté dans une map (cf. le hack ``payloads[":projected_text"]``
+des tests S17/S18).  Après S25, l'executor utilise directement le
+payload retourné — la projection fonctionne bout-en-bout sans
+collaboration explicite du loader.
 
 Implémentations concrètes au Sprint S14 dans
 ``picarones/evaluation/projectors/`` :
@@ -21,7 +37,7 @@ Implémentations concrètes au Sprint S14 dans
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -75,13 +91,17 @@ class Projector(Protocol):
 
     Une implémentation expose deux choses : sa **signature de types**
     statique (pour que le registre puisse l'indexer) et un appel
-    ``project(artifact, params) -> (Artifact, ProjectionReport)``.
+    ``project(artifact, params) -> (Artifact, payload, ProjectionReport)``.
 
     Note d'implémentation : on ne contraint pas que le projecteur
     soit une classe — une simple fonction qui satisfait le protocole
     convient.  Les projecteurs canoniques du S14 seront probablement
     des classes pour porter leur configuration via constructeur,
     mais ce n'est pas une exigence du contrat.
+
+    Le ``payload`` retourné est le contenu du nouvel artefact projeté
+    (str pour RAW_TEXT, dict pour ENTITIES, etc.) — l'executor S25
+    l'utilise directement sans re-passer par un ``payload_loader``.
     """
 
     @property
@@ -97,7 +117,7 @@ class Projector(Protocol):
         self,
         artifact: Artifact,
         params: dict[str, str | int | float | bool],
-    ) -> tuple[Artifact, ProjectionReport]: ...
+    ) -> tuple[Artifact, Any, ProjectionReport]: ...
 
 
 __all__ = ["Projector", "ProjectionReport"]

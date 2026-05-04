@@ -51,6 +51,12 @@ from picarones.evaluation.views.base import ViewResult
 logger = logging.getLogger(__name__)
 
 
+#: Sentinelle interne pour distinguer "pas de projection" de "projection
+#: a retourné None comme payload" (cas pathologique mais théoriquement
+#: possible).  Ne jamais comparer avec ``==`` — toujours ``is``.
+_UNSET = object()
+
+
 #: Type alias : un payload loader prend un Artifact et retourne le
 #: contenu chargé (str pour RAW_TEXT, dict pour ENTITIES, etc.).
 PayloadLoader = Callable[[Artifact], Any]
@@ -139,8 +145,12 @@ class DefaultEvaluationViewExecutor:
         #    ``view.projection_for(candidate.type)`` qui supporte
         #    soit une projection unique (champ ``projection``), soit
         #    un mapping par type source (``projections_by_source_type``).
+        # Sprint S25 : le projecteur retourne désormais
+        # ``(Artifact, payload, report)`` — on conserve le payload
+        # pour le passer aux métriques sans repasser par le loader.
         effective_candidate = candidate
         projection_report = None
+        projected_payload: Any = _UNSET
         projection_spec = view.projection_for(candidate.type)
         if projection_spec is not None and not projection_spec.is_identity:
             try:
@@ -154,7 +164,11 @@ class DefaultEvaluationViewExecutor:
                     "dans le ProjectorRegistry."
                 ) from exc
             try:
-                effective_candidate, projection_report = projector.project(
+                (
+                    effective_candidate,
+                    projected_payload,
+                    projection_report,
+                ) = projector.project(
                     candidate, dict(projection_spec.params),
                 )
             except ProjectionError:
@@ -168,19 +182,25 @@ class DefaultEvaluationViewExecutor:
         # 3. Chargement des payloads.
         # Échec de chargement = ViewResult avec une erreur globale
         # (pas de failed_metric par métrique — l'erreur est en amont).
-        try:
-            cand_payload = self._loader(effective_candidate)
-        except Exception as exc:  # noqa: BLE001
-            return self._failed_view_result(
-                view=view,
-                candidate=candidate,
-                ground_truth=ground_truth,
-                projection_report=projection_report,
-                global_error=(
-                    f"payload_loader a échoué sur le candidat "
-                    f"{effective_candidate.id!r} : {exc}"
-                ),
-            )
+        if projected_payload is not _UNSET:
+            # Sprint S25 : payload calculé par le projecteur, pas
+            # besoin de re-passer par le loader (l'artefact projeté
+            # est intermédiaire et n'a typiquement pas d'URI).
+            cand_payload = projected_payload
+        else:
+            try:
+                cand_payload = self._loader(effective_candidate)
+            except Exception as exc:  # noqa: BLE001
+                return self._failed_view_result(
+                    view=view,
+                    candidate=candidate,
+                    ground_truth=ground_truth,
+                    projection_report=projection_report,
+                    global_error=(
+                        f"payload_loader a échoué sur le candidat "
+                        f"{effective_candidate.id!r} : {exc}"
+                    ),
+                )
         try:
             gt_payload = self._loader(ground_truth)
         except Exception as exc:  # noqa: BLE001

@@ -123,8 +123,11 @@ class TestProjector:
             type=ArtifactType.PAGE_XML,
             uri=str(path),
         )
-        target, report = PageToText().project(artifact, {})
+        target, payload, report = PageToText().project(artifact, {})
         assert target.type == ArtifactType.RAW_TEXT
+        # Sprint S25 — le projecteur retourne le texte calculé.
+        assert isinstance(payload, str)
+        assert len(payload) > 0
         assert "geometry" in report.ignored_dimensions
 
     def test_wrong_type_rejected(self) -> None:

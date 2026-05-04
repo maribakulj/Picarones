@@ -146,16 +146,46 @@ class CanonicalToText:
         self,
         artifact: Artifact,
         params: dict[str, str | int | float | bool],
-    ) -> tuple[Artifact, ProjectionReport]:
+    ) -> tuple[Artifact, str, ProjectionReport]:
         if artifact.type != self.source_type:
             raise ProjectionError(
                 f"CanonicalToText n'accepte que CANONICAL_DOCUMENT, "
                 f"reçu {artifact.type.value!r}"
             )
 
-        # Lecture optionnelle depuis le filesystem.  Si ``uri`` absent,
-        # on retourne un Artifact vide — le payload_loader de
-        # l'executor récupérera le contenu réel ailleurs.
+        # Sprint S25 : le projecteur calcule directement le texte projeté
+        # et le retourne via le tuple ``(artifact, payload, report)``.
+        # Lecture du contenu source depuis l'URI (markdown / JSON
+        # canonique sur disque).
+        if artifact.uri is None:
+            raise ProjectionError(
+                f"CanonicalToText : artifact {artifact.id!r} sans URI."
+            )
+        from pathlib import Path
+
+        try:
+            raw = Path(artifact.uri).read_bytes()
+        except OSError as exc:
+            raise ProjectionError(
+                f"CanonicalToText : impossible de lire {artifact.uri!r} : "
+                f"{exc}",
+            ) from exc
+
+        # Tentative de parsing JSON ; sinon on traite comme markdown.
+        import json
+        try:
+            decoded = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ProjectionError(
+                f"CanonicalToText : encodage non-UTF-8 : {exc}",
+            ) from exc
+        try:
+            payload = json.loads(decoded)
+        except json.JSONDecodeError:
+            payload = decoded  # markdown brut
+
+        text = canonical_payload_to_text(payload)
+
         target = Artifact(
             id=f"{artifact.id}:projected_text",
             document_id=artifact.document_id,
@@ -181,7 +211,7 @@ class CanonicalToText:
                 "listes hiérarchiques) sont aplaties.",
             ),
         )
-        return target, report
+        return target, text, report
 
 
 __all__ = [

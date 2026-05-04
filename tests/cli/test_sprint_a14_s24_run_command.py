@@ -479,6 +479,99 @@ class TestCLIRunErrors:
 # ──────────────────────────────────────────────────────────────────
 
 
+class TestS25ProjectionEnabledInCLI:
+    """Validation S25 : un pipeline qui produit ALTO_XML est désormais
+    correctement évalué par TextView via projection automatique
+    ALTO → texte, dans le contexte CLI.
+
+    Avant S25, ce cas retournait ``failed_metrics`` car le projecteur
+    ne stockait pas son output et le loader CLI ne savait pas
+    récupérer le texte projeté."""
+
+    def test_alto_pipeline_evaluated_via_textview_projection(
+        self, runner: CliRunner, tmp_path: Path,
+    ) -> None:
+        # Construire un corpus avec image + GT texte (pour TextView via
+        # projection ALTO→texte) et GT ALTO (pour AltoView direct).
+        from picarones.formats.alto.types import (
+            AltoBBox, AltoDocument, AltoLine, AltoPage, AltoString,
+            AltoTextBlock,
+        )
+        from picarones.formats.alto.writer import write_alto
+
+        def _alto_for(text: str) -> bytes:
+            doc = AltoDocument(pages=(AltoPage(blocks=(AltoTextBlock(lines=(AltoLine(strings=tuple(
+                AltoString(content=w, bbox=AltoBBox(hpos=0, vpos=0, width=10, height=10))
+                for w in text.split()
+            )),),),),),),)
+            return write_alto(doc)
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w") as zf:
+            zf.writestr("doc01.png", _png_bytes())
+            zf.writestr("doc01.gt.txt", "Hello world")
+            zf.writestr("doc01.gt.alto.xml", _alto_for("Hello world"))
+            zf.writestr("doc02.png", _png_bytes())
+            zf.writestr("doc02.gt.txt", "Bonjour monde")
+            zf.writestr("doc02.gt.alto.xml", _alto_for("Bonjour monde"))
+        corpus_zip = tmp_path / "corpus.zip"
+        corpus_zip.write_bytes(buf.getvalue())
+
+        spec_path = tmp_path / "run.yaml"
+        out_dir = tmp_path / "out"
+        spec_path.write_text(textwrap.dedent(f"""
+            corpus_zip: {corpus_zip}
+            corpus_name: s25_alto_proj
+            pipelines:
+              - name: pero_like
+                initial_inputs: [image]
+                steps:
+                  - id: ocr
+                    adapter_class: tests.fixtures.cli_mock_adapters.MockAltoOCR
+                    input_types: [image]
+                    output_types: [alto_xml]
+            views: [text_final, alto_documentary]
+            output_dir: {out_dir}
+            code_version: "1.0.0-s25"
+        """))
+
+        result = runner.invoke(cli, ["run", "--spec", str(spec_path)])
+        assert result.exit_code == 0, result.output
+
+        # Le pipeline a produit ALTO_XML, donc :
+        # - text_final via projection alto_to_text → CER 0.
+        # - alto_documentary direct → validity 1.
+        results_dir = out_dir / "results"
+        view_lines = [
+            json.loads(line)
+            for line in (results_dir / "view_results.jsonl").read_text().strip().split("\n")
+            if line.strip()
+        ]
+        # 2 docs × (1 text_final via projection + 1 alto_documentary direct) = 4.
+        assert len(view_lines) == 4
+
+        # Vérifier que text_final est bien renseignée (pas omise) — la
+        # projection a réussi.
+        text_results = [v for v in view_lines if v["view_name"] == "text_final"]
+        assert len(text_results) == 2
+        for vr in text_results:
+            # Métriques cer/wer présentes et = 0 (ALTO contient la GT).
+            assert vr["metric_values"]["cer"] == 0.0
+            # Le projection_report est présent (preuve que la projection
+            # ALTO → texte a bien eu lieu).
+            assert vr["projection_report"] is not None
+            assert vr["projection_report"]["projector_name"] == "alto_to_text"
+            # Aucune métrique en échec.
+            assert vr["failed_metrics"] == {}
+
+        # AltoView direct (sans projection).
+        alto_results = [v for v in view_lines if v["view_name"] == "alto_documentary"]
+        assert len(alto_results) == 2
+        for vr in alto_results:
+            assert vr["projection_report"] is None
+            assert vr["failed_metrics"] == {}
+
+
 class TestGroupIncludesRun:
     def test_help_lists_run_subcommand(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--help"])

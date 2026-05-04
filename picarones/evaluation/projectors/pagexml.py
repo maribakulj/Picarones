@@ -40,7 +40,7 @@ class PageToText:
         self,
         artifact: Artifact,
         params: dict[str, str | int | float | bool],
-    ) -> tuple[Artifact, ProjectionReport]:
+    ) -> tuple[Artifact, str, ProjectionReport]:
         from picarones.domain.errors import ProjectionError
         if artifact.type != self.source_type:
             raise ProjectionError(
@@ -90,7 +90,7 @@ class PageToText:
                 "d'OCR) sont collapsées au premier Unicode rencontré.",
             ),
         )
-        return target, report
+        return target, text, report
 
 
 __all__ = ["page_document_to_text", "PageToText"]

@@ -25,16 +25,16 @@ sans écrire de Python :
 8. Persister les 3 fichiers JSONL.
 9. (Optionnel) Générer le rapport HTML via ``ReportService`` (S21).
 
-Limitations MVP S24
--------------------
+Limitations MVP S24 (mises à jour S25)
+--------------------------------------
 - Vues : seulement les 3 canoniques (``text_final``,
   ``alto_documentary``, ``searchability``).
-- Projection ALTO → texte non câblée bout-en-bout : un pipeline qui
-  produit ALTO_XML évalué par TextView via projection retournera
-  ``failed_metrics`` (le projecteur ne stocke pas son output).  Cas
-  fonctionnel : pipelines RAW_TEXT direct dans TextView,
-  ALTO_XML direct dans AltoView.  La projection sera traitée dans
-  un sprint dédié au design Projector.
+- ~~Projection ALTO → texte non câblée bout-en-bout~~ — **levée
+  au S25** : le projecteur retourne désormais le payload calculé
+  via ``(Artifact, payload, ProjectionReport)``, l'executor
+  l'utilise directement sans repasser par le loader.  Un pipeline
+  produisant ALTO_XML évalué via TextView projeté fonctionne
+  bout-en-bout.
 - ``ground_truth_factory`` / ``pipeline_inputs_factory`` /
   ``context_factory`` : versions filesystem-by-default minimales
   (cf. helpers privés en bas du module).
@@ -347,16 +347,19 @@ def _make_filesystem_loader():
     """Loader filesystem MVP : lit RAW_TEXT depuis le fichier
     pointé par l'URI, parse ALTO_XML depuis le fichier pointé.
 
-    Limitation S24 : les artefacts projetés (sans URI) ne sont pas
-    résolus — le caller utilisant TextView avec un candidat
-    ALTO_XML projeté verra ``failed_metrics``.
+    Sprint S25 : les artefacts projetés (sans URI) ne sont plus un
+    problème — l'executor utilise directement le payload retourné
+    par le projecteur, le loader n'est plus appelé pour ces cas.
+    Le loader ne gère donc que les artefacts avec URI (candidats
+    directs et GT).
     """
 
     def loader(art: Artifact):
         if art.uri is None:
             raise FileNotFoundError(
-                f"Artifact {art.id!r} sans URI — projection non "
-                "supportée en CLI MVP.",
+                f"Loader CLI : artifact {art.id!r} sans URI ; "
+                "appelez le projecteur d'abord pour produire le "
+                "payload (S25)."
             )
         path = Path(art.uri)
         if art.type == ArtifactType.ALTO_XML:

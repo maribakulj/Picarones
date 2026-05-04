@@ -293,8 +293,11 @@ class TestAltoToTextProjector:
             uri=str(path),
         )
         projector = AltoToText()
-        target, report = projector.project(artifact, {})
+        target, payload, report = projector.project(artifact, {})
         assert target.type == ArtifactType.RAW_TEXT
+        # Sprint S25 — le projecteur retourne le texte calculé.
+        assert isinstance(payload, str)
+        assert len(payload) > 0
         assert report.lossy is True
         assert "geometry" in report.ignored_dimensions
 

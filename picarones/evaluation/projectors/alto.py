@@ -145,7 +145,7 @@ class AltoToText:
         self,
         artifact: Artifact,
         params: dict[str, str | int | float | bool],
-    ) -> tuple[Artifact, ProjectionReport]:
+    ) -> tuple[Artifact, str, ProjectionReport]:
         if artifact.type != self.source_type:
             from picarones.domain.errors import ProjectionError
             raise ProjectionError(
@@ -191,7 +191,7 @@ class AltoToText:
                 "HypPart1/HypPart2 est résolue (mot recombiné).",
             ),
         )
-        return target, report
+        return target, text, report
 
     @staticmethod
     def _read_xml(artifact: Artifact) -> bytes:

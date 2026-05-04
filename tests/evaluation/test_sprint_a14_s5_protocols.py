@@ -94,7 +94,7 @@ class _StubProjector:
         self,
         artifact: Artifact,
         params: dict[str, str | int | float | bool],
-    ) -> tuple[Artifact, ProjectionReport]:
+    ) -> tuple[Artifact, str, ProjectionReport]:
         target = Artifact(
             id=artifact.id + ":projected",
             document_id=artifact.document_id,
@@ -106,7 +106,8 @@ class _StubProjector:
             target_type=self.target_type,
             projector_name=self.name,
         )
-        return target, report
+        # Sprint S25 — le projecteur retourne aussi le payload calculé.
+        return target, "stub_projected_text", report
 
 
 class TestProjectorProtocol:
@@ -120,8 +121,9 @@ class TestProjectorProtocol:
             document_id="d1",
             type=ArtifactType.ALTO_XML,
         )
-        tgt, report = _StubProjector().project(src, {})
+        tgt, payload, report = _StubProjector().project(src, {})
         assert tgt.type == ArtifactType.RAW_TEXT
+        assert payload == "stub_projected_text"
         assert report.source_artifact_id == "d1:ocr:alto"
 
     def test_non_conforming_object_does_not_satisfy(self) -> None:

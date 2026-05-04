@@ -86,4 +86,54 @@ class MockBrokenOCR:
         raise RuntimeError("MockBrokenOCR : échec simulé.")
 
 
-__all__ = ["MockBrokenOCR", "MockTextOCR"]
+class MockAltoOCR:
+    """OCR structuré mock : produit ALTO_XML déterministe sur disque.
+
+    Lit la GT texte (``<stem>.gt.txt`` à côté de l'image) et écrit un
+    ALTO contenant exactement ce texte (1 page / 1 bloc / 1 ligne).
+    Sert à tester la projection ALTO→texte bout-en-bout dans le CLI
+    après le fix du protocole Projector au S25.
+    """
+
+    name = "mock_alto_ocr"
+    input_types = frozenset({ArtifactType.IMAGE})
+    output_types = frozenset({ArtifactType.ALTO_XML})
+    execution_mode = "io"
+
+    def execute(self, inputs, params, context):
+        from picarones.formats.alto.types import (
+            AltoBBox, AltoDocument, AltoLine, AltoPage, AltoString,
+            AltoTextBlock,
+        )
+        from picarones.formats.alto.writer import write_alto
+
+        image_artifact = inputs[ArtifactType.IMAGE]
+        image_path = Path(image_artifact.uri)
+        gt_path = image_path.parent / f"{image_path.stem}.gt.txt"
+        text = (
+            gt_path.read_text(encoding="utf-8") if gt_path.exists()
+            else "fallback"
+        )
+
+        alto_doc = AltoDocument(pages=(AltoPage(blocks=(AltoTextBlock(lines=(AltoLine(strings=tuple(
+            AltoString(content=w, bbox=AltoBBox(hpos=0, vpos=0, width=10, height=10))
+            for w in text.split()
+        )),),),),),),)
+
+        out_dir = image_path.parent / "_mock_alto_out"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{context.document_id}.alto.xml"
+        out_path.write_bytes(write_alto(alto_doc))
+
+        return {
+            ArtifactType.ALTO_XML: Artifact(
+                id=f"{context.document_id}:mock_alto_ocr:alto",
+                document_id=context.document_id,
+                type=ArtifactType.ALTO_XML,
+                produced_by_step="ocr",
+                uri=str(out_path),
+            ),
+        }
+
+
+__all__ = ["MockAltoOCR", "MockBrokenOCR", "MockTextOCR"]

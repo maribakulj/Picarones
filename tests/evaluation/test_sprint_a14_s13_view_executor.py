@@ -59,7 +59,8 @@ class _StubProjector:
             ignored_dimensions=("geometry", "blocks"),
             warnings=("ordre de lecture deviné",),
         )
-        return target, report
+        # Sprint S25 — retourne le payload directement.
+        return target, self.output_payload, report
 
 
 def _build_executor(
