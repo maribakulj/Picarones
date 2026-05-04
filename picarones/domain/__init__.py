@@ -60,7 +60,11 @@ from picarones.domain.evaluation_spec import (
 from picarones.domain.projection_spec import ProjectionSpec
 from picarones.domain.provenance import ProvenanceRecord
 from picarones.domain.run_manifest import RunManifest, utcnow
-from picarones.domain.run_result import RunDocumentResult, RunResult
+
+# Note S26 — ``RunResult`` / ``RunDocumentResult`` ont été déplacés
+# vers ``picarones.app.results`` car ils agrègent des objets de
+# ``evaluation/`` et ``pipeline/`` (couches plus externes que
+# ``domain``).  Le domain reste pur — il ne décrit que des contrats.
 
 __all__ = [
     # S4 — Artifacts
@@ -83,9 +87,7 @@ __all__ = [
     "EvaluationView",
     "EvaluationSpec",
     "ProjectionSpec",
-    # S17 — Run manifest + result
+    # S17 — Run manifest (pure domain ; RunResult vit dans app/)
     "RunManifest",
-    "RunDocumentResult",
-    "RunResult",
     "utcnow",
 ]

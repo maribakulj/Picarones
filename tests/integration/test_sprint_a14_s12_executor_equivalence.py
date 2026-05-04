@@ -43,7 +43,7 @@ import pytest
 
 from picarones.core.corpus import Corpus, Document
 from picarones.domain import Artifact, ArtifactType, DocumentRef
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.engines.base import BaseOCREngine
 from picarones.measurements.metrics import compute_metrics
 from picarones.measurements.runner import run_benchmark
 from picarones.pipeline import (

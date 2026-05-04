@@ -21,12 +21,12 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from picarones.app.cli import cli
+from picarones.interfaces.cli import cli
 from picarones.app.services import BenchmarkService
 from picarones.domain.evaluation_spec import EvaluationView
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.run_manifest import RunManifest
-from picarones.domain.run_result import RunResult
+from picarones.app.results import RunResult
 
 
 # ──────────────────────────────────────────────────────────────────

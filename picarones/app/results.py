@@ -1,6 +1,9 @@
-"""``RunResult`` et ``RunDocumentResult`` — agrégats d'un run.
+"""``RunResult`` et ``RunDocumentResult`` — agrégats applicatifs d'un run.
 
-Sprint A14-S17 du rewrite ciblé.
+Sprint A14-S17 (créé) / S26 (déplacé depuis ``domain/`` car
+agrège des objets de ``evaluation/`` et ``pipeline/`` — la couche
+``domain`` n'a pas le droit d'importer de ces couches plus
+externes).
 
 Structure
 ---------

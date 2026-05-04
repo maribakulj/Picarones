@@ -10,10 +10,8 @@ démarre réellement (cf. ``CorpusRunner._run_one`` qui écrit
 
 from __future__ import annotations
 
-import threading
 import time
 
-import pytest
 
 from picarones.domain import Artifact, ArtifactType, DocumentRef
 from picarones.pipeline import (

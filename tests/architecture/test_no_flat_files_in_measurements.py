@@ -132,8 +132,8 @@ def test_no_new_flat_file_in_measurements() -> None:
     actual = _flat_python_files()
     new_files = actual - WHITELIST_FLAT_FILES_S3
     assert not new_files, (
-        f"\nNouveaux fichiers ``.py`` à plat dans ``picarones/measurements/`` "
-        f"(plan rewrite-2026 §S3 — fragmentation gelée) :\n"
+        "\nNouveaux fichiers ``.py`` à plat dans ``picarones/measurements/`` "
+        "(plan rewrite-2026 §S3 — fragmentation gelée) :\n"
         + "\n".join(f"  - {f}" for f in sorted(new_files))
         + "\n\nDéplacer ces fichiers vers ``picarones/evaluation/metrics/`` "
         "ou un sous-package approprié.  Voir docs/roadmap/rewrite-2026.md."
@@ -151,8 +151,8 @@ def test_no_orphaned_whitelist_entries() -> None:
     actual = _flat_python_files()
     orphans = WHITELIST_FLAT_FILES_S3 - actual
     assert not orphans, (
-        f"\nWhitelist contient des fichiers qui n'existent plus dans "
-        f"``picarones/measurements/`` :\n"
+        "\nWhitelist contient des fichiers qui n'existent plus dans "
+        "``picarones/measurements/`` :\n"
         + "\n".join(f"  - {f}" for f in sorted(orphans))
         + "\n\nLe fichier a été déplacé/supprimé — retirer l'entrée "
         "de WHITELIST_FLAT_FILES_S3 dans ce fichier."

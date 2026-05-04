@@ -41,8 +41,7 @@ Conventions
 - ``corpus_zip`` ou ``corpus_dir`` est requis (pas les deux).
 - ``views`` accepte uniquement les noms canoniques :
   ``text_final``, ``alto_documentary``, ``searchability``.  Le
-  caller qui veut des vues custom passe par l'API Python directe
-  (la CLI MVP reste sur les 3 canoniques).
+  caller qui veut des vues custom passe par l'API Python directe.
 - ``adapter_class`` est un dotted path Python.  La classe doit être
   importable au moment du run (l'utilisateur installe ses propres
   packages dans le venv courant).
@@ -70,7 +69,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from picarones.domain.artifacts import ArtifactType
 
 
-#: Vues canoniques supportées par la CLI MVP.
+#: Vues canoniques supportées par la CLI.
 CANONICAL_VIEW_NAMES: frozenset[str] = frozenset({
     "text_final",
     "alto_documentary",
@@ -149,7 +148,7 @@ class RunSpec(BaseModel):
             raise ValueError(
                 f"RunSpec : vue(s) inconnue(s) {unknown!r}.  "
                 f"Seules les vues canoniques sont supportées par la "
-                f"CLI MVP : {sorted(CANONICAL_VIEW_NAMES)}.",
+                f"CLI : {sorted(CANONICAL_VIEW_NAMES)}.",
             )
         return self
 

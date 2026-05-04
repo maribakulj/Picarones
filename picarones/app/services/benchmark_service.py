@@ -49,7 +49,7 @@ from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef
 from picarones.domain.evaluation_spec import EvaluationView
 from picarones.domain.run_manifest import RunManifest, utcnow
-from picarones.domain.run_result import RunDocumentResult, RunResult
+from picarones.app.results import RunDocumentResult, RunResult
 from picarones.evaluation.views.base import ViewResult
 from picarones.evaluation.views.executor import DefaultEvaluationViewExecutor
 from picarones.pipeline.runner import CorpusRunner

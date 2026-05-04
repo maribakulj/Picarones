@@ -26,8 +26,8 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from picarones.app.cli import cli
-from picarones.app.services import (
+from picarones.interfaces.cli import cli
+from picarones.app.schemas import (
     RunSpec,
     RunSpecLoadError,
     load_run_spec_from_yaml,

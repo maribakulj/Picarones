@@ -7,7 +7,7 @@ plat comparable.
 Stratégies de payload supportées
 --------------------------------
 1. **str (markdown)** — décape les balises markdown courantes : ``#``,
-   ``*``, ``_``, ``\``, ``> ``, ``\`\`\``, listes ``- ``, lignes
+   ``*``, ``_``, ``\\``, ``> ``, ``\\`\\`\\``, listes ``- ``, lignes
    horizontales.  Préserve le contenu textuel.
 
 2. **dict** — cherche en cascade ``"text"``, ``"content"``,
@@ -153,10 +153,10 @@ class CanonicalToText:
                 f"reçu {artifact.type.value!r}"
             )
 
-        # Sprint S25 : le projecteur calcule directement le texte projeté
-        # et le retourne via le tuple ``(artifact, payload, report)``.
         # Lecture du contenu source depuis l'URI (markdown / JSON
-        # canonique sur disque).
+        # canonique sur disque) puis projection vers texte plat.
+        # Le texte calculé est retourné via le tuple
+        # ``(artifact, payload, report)``.
         if artifact.uri is None:
             raise ProjectionError(
                 f"CanonicalToText : artifact {artifact.id!r} sans URI."

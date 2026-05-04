@@ -11,15 +11,11 @@ contrôler exactement le payload de chaque artefact.  En prod
 
 from __future__ import annotations
 
-import pytest
 
 from picarones.domain import (
     Artifact,
     ArtifactType,
-    EvaluationView,
     MetricSpec,
-    PicaronesError,
-    ProjectionError,
 )
 from picarones.evaluation.projectors import (
     AltoToText,
@@ -28,8 +24,6 @@ from picarones.evaluation.projectors import (
     ProjectorRegistry,
     canonical_payload_to_text,
 )
-from picarones.evaluation.projectors.alto import alto_document_to_text
-from picarones.evaluation.projectors.pagexml import page_document_to_text
 from picarones.evaluation.registry import MetricRegistry
 from picarones.evaluation.views import (
     DEFAULT_TEXT_METRICS,
@@ -249,7 +243,6 @@ class TestBnFCentralUseCase:
         # dict in-memory.
         from picarones.evaluation.projectors import (
             alto_document_to_text,
-            canonical_payload_to_text,
         )
         from picarones.formats.alto import parse_alto
 
@@ -269,7 +262,6 @@ class TestBnFCentralUseCase:
             "cand_3:projected_text": canonical_extracted,
         }
 
-        from pathlib import Path
 
         def loader(artifact: Artifact):
             if artifact.id in payloads_in_memory:

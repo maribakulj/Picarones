@@ -33,7 +33,7 @@ from picarones.adapters.ocr import (
     OCRAdapterError,
     PrecomputedTextAdapter,
 )
-from picarones.app.cli import cli
+from picarones.interfaces.cli import cli
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.pipeline.types import RunContext
 

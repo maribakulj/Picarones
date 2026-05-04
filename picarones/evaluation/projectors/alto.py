@@ -20,7 +20,7 @@ from __future__ import annotations
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.evaluation.projectors.base import ProjectionReport
 from picarones.formats.alto.parser import AltoParseError, parse_alto
-from picarones.formats.alto.types import AltoDocument, AltoLine
+from picarones.formats.alto.types import AltoDocument, AltoLine, AltoTextBlock
 
 
 def alto_document_to_text(document: AltoDocument) -> str:
@@ -52,14 +52,13 @@ def alto_document_to_text(document: AltoDocument) -> str:
     return "\n\n".join(blocks_text).strip()
 
 
-def _extract_block_text(block: "AltoTextBlock") -> str:
+def _extract_block_text(block: AltoTextBlock) -> str:
     """Extrait le texte d'un bloc en gérant la césure cross-ligne.
 
     L'usage standard ALTO place ``HypPart1`` en fin d'une ligne et
     ``HypPart2`` en début de la ligne suivante du **même** bloc.
     """
-    from picarones.formats.alto.types import AltoTextBlock as _ATB
-    assert isinstance(block, _ATB)
+    assert isinstance(block, AltoTextBlock)
     lines_text: list[str] = []
     skip_first_if_hyppart2 = False
     for line in block.lines:

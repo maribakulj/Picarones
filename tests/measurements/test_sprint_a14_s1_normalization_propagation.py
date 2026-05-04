@@ -26,7 +26,6 @@ from picarones.measurements.normalization import (
 from picarones.measurements.runner import run_benchmark
 from picarones.measurements.runner.document import _compute_document_result
 from picarones.measurements.runner.workers import (
-    _cpu_doc_worker,
     _io_doc_worker,
 )
 

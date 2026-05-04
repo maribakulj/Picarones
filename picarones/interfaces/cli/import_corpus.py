@@ -6,7 +6,7 @@ Wrapper CLI minimal autour du ``CorpusService`` (S20) :
 
 ::
 
-    python -m picarones.app.cli import-corpus mon_corpus.zip \\
+    python -m picarones.interfaces.cli import-corpus mon_corpus.zip \\
         --output-dir ./workspaces/sess1 \\
         --corpus-name bnf_xviiie \\
         --metadata language=fr \\

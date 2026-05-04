@@ -127,7 +127,9 @@ class _StubExecutor:
         params: dict[str, str | int | float | bool],
         context: RunContext,
     ) -> dict[ArtifactType, Artifact]:
-        image = inputs[ArtifactType.IMAGE]
+        # Vérifie la présence sans utiliser la valeur — l'appel a un
+        # effet de bord en termes de validation des inputs.
+        _ = inputs[ArtifactType.IMAGE]
         return {
             ArtifactType.RAW_TEXT: Artifact(
                 id=f"{context.document_id}:tesseract:raw_text",

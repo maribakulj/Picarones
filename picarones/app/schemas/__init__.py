@@ -28,4 +28,22 @@ Exemple cible :
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.app.schemas.run_spec import (
+    CANONICAL_VIEW_NAMES,
+    PipelineSpecYaml,
+    RunSpec,
+    RunSpecLoadError,
+    StepSpec,
+    load_run_spec_from_yaml,
+    resolve_adapter_class,
+)
+
+__all__ = [
+    "CANONICAL_VIEW_NAMES",
+    "PipelineSpecYaml",
+    "RunSpec",
+    "RunSpecLoadError",
+    "StepSpec",
+    "load_run_spec_from_yaml",
+    "resolve_adapter_class",
+]

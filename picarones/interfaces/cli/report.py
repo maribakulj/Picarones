@@ -6,7 +6,7 @@ Wrapper CLI minimal autour du ``ReportService`` (S21) :
 
 ::
 
-    python -m picarones.app.cli report ./runs/run_001 \\
+    python -m picarones.interfaces.cli report ./runs/run_001 \\
         --output rapport.html \\
         --lang fr
 

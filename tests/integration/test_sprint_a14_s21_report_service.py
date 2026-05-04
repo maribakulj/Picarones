@@ -28,7 +28,7 @@ from picarones.app.services import ReportService
 from picarones.domain.evaluation_spec import EvaluationView
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.run_manifest import RunManifest
-from picarones.domain.run_result import RunResult
+from picarones.app.results import RunResult
 from picarones.evaluation.views.base import ViewResult
 
 

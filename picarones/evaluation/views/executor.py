@@ -141,13 +141,14 @@ class DefaultEvaluationViewExecutor:
                 f"{sorted(t.value for t in view.candidate_types)}."
             )
 
-        # 2. Projection (optionnelle).  S14 — résolution par
+        # 2. Projection (optionnelle).  Résolution par
         #    ``view.projection_for(candidate.type)`` qui supporte
         #    soit une projection unique (champ ``projection``), soit
         #    un mapping par type source (``projections_by_source_type``).
-        # Sprint S25 : le projecteur retourne désormais
-        # ``(Artifact, payload, report)`` — on conserve le payload
-        # pour le passer aux métriques sans repasser par le loader.
+        # Le projecteur retourne ``(Artifact, payload, report)`` —
+        # on conserve le payload pour le passer aux métriques sans
+        # repasser par le loader (l'artefact projeté est intermédiaire
+        # et n'a typiquement pas d'URI).
         effective_candidate = candidate
         projection_report = None
         projected_payload: Any = _UNSET
@@ -183,9 +184,8 @@ class DefaultEvaluationViewExecutor:
         # Échec de chargement = ViewResult avec une erreur globale
         # (pas de failed_metric par métrique — l'erreur est en amont).
         if projected_payload is not _UNSET:
-            # Sprint S25 : payload calculé par le projecteur, pas
-            # besoin de re-passer par le loader (l'artefact projeté
-            # est intermédiaire et n'a typiquement pas d'URI).
+            # Payload déjà calculé par le projecteur — on l'utilise
+            # tel quel sans repasser par le loader.
             cand_payload = projected_payload
         else:
             try:

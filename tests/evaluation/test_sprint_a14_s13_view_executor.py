@@ -25,7 +25,6 @@ from picarones.evaluation.projectors import (
 from picarones.evaluation.registry import MetricRegistry
 from picarones.evaluation.views import (
     DefaultEvaluationViewExecutor,
-    ViewResult,
 )
 
 

@@ -10,7 +10,6 @@ inégalité large pour éviter d'être flaky en CI.
 
 from __future__ import annotations
 
-import os
 import resource
 import time
 

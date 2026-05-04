@@ -13,7 +13,6 @@ Cas démontrés :
 
 from __future__ import annotations
 
-import pytest
 
 from picarones.domain import Artifact, ArtifactType, MetricSpec
 from picarones.evaluation.metrics.alto_structural import (

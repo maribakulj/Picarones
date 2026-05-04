@@ -11,7 +11,6 @@ from __future__ import annotations
 import asyncio
 import threading
 import uuid
-from pathlib import Path
 from typing import AsyncIterator, Callable, Optional
 
 from fastapi import APIRouter, HTTPException, Request

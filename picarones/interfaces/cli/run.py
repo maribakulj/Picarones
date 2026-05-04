@@ -1,43 +1,36 @@
 """``picarones-rewrite run`` — workflow benchmark complet via YAML.
 
-Sprint A14-S24.
-
-Orchestre tous les services applicatifs livrés en S17-S23 pour
-exécuter un benchmark bout-en-bout depuis une spec YAML déclarative,
-sans écrire de Python :
+Orchestre tous les services applicatifs du rewrite pour exécuter
+un benchmark bout-en-bout depuis une spec YAML déclarative, sans
+écrire de Python :
 
 ::
 
-    python -m picarones.app.cli run --spec ./run.yaml
+    python -m picarones.interfaces.cli run --spec ./run.yaml
 
 Étapes
 ------
 1. Charger ``run.yaml`` via :func:`load_run_spec_from_yaml`.
-2. Créer un ``WorkspaceManager`` (S19) sous ``output_dir``.
-3. Importer le corpus (S20) — depuis ZIP ou depuis un dir
-   pré-extrait.
-4. Bootstrap du ``RegistryService`` (S23).
+2. Créer un ``WorkspaceManager`` sous ``output_dir``.
+3. Importer le corpus via ``CorpusService`` — depuis ZIP ou depuis
+   un dir pré-extrait.
+4. Bootstrap des registres via ``RegistryService``.
 5. Construire les ``PipelineSpec`` à partir de la YAML (résolution
    dotted-path des adapters via :func:`resolve_adapter_class`).
-6. Construire les vues canoniques (TextView/AltoView/SearchView)
+6. Construire les vues canoniques (TextView / AltoView / SearchView)
    demandées dans ``views``.
-7. Construire le ``BenchmarkService`` (S17) et lancer ``run()``.
+7. Construire le ``BenchmarkService`` et lancer ``run()``.
 8. Persister les 3 fichiers JSONL.
-9. (Optionnel) Générer le rapport HTML via ``ReportService`` (S21).
+9. (Optionnel) Générer le rapport HTML via ``ReportService``.
 
-Limitations MVP S24 (mises à jour S25)
---------------------------------------
+Limites
+-------
 - Vues : seulement les 3 canoniques (``text_final``,
-  ``alto_documentary``, ``searchability``).
-- ~~Projection ALTO → texte non câblée bout-en-bout~~ — **levée
-  au S25** : le projecteur retourne désormais le payload calculé
-  via ``(Artifact, payload, ProjectionReport)``, l'executor
-  l'utilise directement sans repasser par le loader.  Un pipeline
-  produisant ALTO_XML évalué via TextView projeté fonctionne
-  bout-en-bout.
-- ``ground_truth_factory`` / ``pipeline_inputs_factory`` /
-  ``context_factory`` : versions filesystem-by-default minimales
-  (cf. helpers privés en bas du module).
+  ``alto_documentary``, ``searchability``).  Vues custom via API
+  Python directe.
+- Factories ``ground_truth`` / ``pipeline_inputs`` / ``context``
+  filesystem-by-default minimales (cf. helpers privés en bas du
+  module).
 
 Codes de sortie : 0 succès, 1 erreur typée, 2 erreur d'usage Click.
 """
@@ -57,7 +50,7 @@ from picarones.app.services import (
     ReportService,
     WorkspaceManager,
 )
-from picarones.app.services.run_spec import (
+from picarones.app.schemas import (
     RunSpec,
     RunSpecLoadError,
     load_run_spec_from_yaml,
@@ -66,7 +59,6 @@ from picarones.app.services.run_spec import (
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef
-from picarones.domain.run_result import RunResult
 from picarones.evaluation.views import (
     DefaultEvaluationViewExecutor,
     build_alto_view,
@@ -216,9 +208,9 @@ def _load_corpus(
             metadata=spec.corpus_metadata,
         )
         return report.spec, report.extracted_dir
-    # corpus_dir : on délègue à un import en mode "déjà extrait".
-    # MVP S24 : on zippe à la volée le contenu du dir et on délègue
-    # à CorpusService — réutilise toute la détection sans dupliquer.
+    # corpus_dir : on zippe à la volée le contenu du dir et on
+    # délègue à ``CorpusService`` — réutilise toute la détection
+    # sans dupliquer la logique de classification image / GT.
     import io
     import zipfile
 
@@ -364,14 +356,13 @@ def _make_context_factory(code_version: str):
 
 
 def _make_filesystem_loader():
-    """Loader filesystem MVP : lit RAW_TEXT depuis le fichier
-    pointé par l'URI, parse ALTO_XML depuis le fichier pointé.
+    """Loader filesystem : lit RAW_TEXT depuis le fichier pointé par
+    l'URI, parse ALTO_XML depuis le fichier pointé.
 
-    Sprint S25 : les artefacts projetés (sans URI) ne sont plus un
-    problème — l'executor utilise directement le payload retourné
-    par le projecteur, le loader n'est plus appelé pour ces cas.
-    Le loader ne gère donc que les artefacts avec URI (candidats
-    directs et GT).
+    Les artefacts projetés (sans URI) sont gérés directement par
+    l'executor (le projecteur retourne le payload calculé) — le
+    loader ne gère que les artefacts avec URI (candidats directs
+    et GT).
     """
 
     def loader(art: Artifact):
@@ -394,43 +385,6 @@ def _make_filesystem_loader():
         )
 
     return loader
-
-
-# Réexpose une fonction utile aux tests d'intégration.
-def _execute_run_for_tests(spec: RunSpec, output_dir: Path) -> RunResult:
-    """Exécute le run sans passer par Click — utilisé par les tests
-    d'intégration qui veulent inspecter le ``RunResult`` directement."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    workspace = WorkspaceManager(output_dir)
-    corpus_spec, _ = _load_corpus(spec, workspace)
-    registries = RegistryService.bootstrap_defaults()
-    pipeline_specs, adapter_resolver = _build_pipelines(spec)
-    views = _build_views(spec.views)
-    pipeline_executor = PipelineExecutor(adapter_resolver=adapter_resolver)
-    corpus_runner = CorpusRunner(
-        pipeline_executor,
-        max_in_flight=2,
-        timeout_seconds_per_doc=300.0,
-        poll_interval_seconds=0.05,
-    )
-    view_executor = DefaultEvaluationViewExecutor(
-        registries.metrics,
-        registries.projectors,
-        _make_filesystem_loader(),
-    )
-    bench = BenchmarkService(
-        corpus_runner=corpus_runner,
-        view_executor=view_executor,
-        code_version=spec.code_version,
-    )
-    return bench.run(
-        corpus=corpus_spec,
-        pipelines=pipeline_specs,
-        views=views,
-        ground_truth_factory=_default_gt_factory,
-        pipeline_inputs_factory=_default_inputs_factory,
-        context_factory=_make_context_factory(spec.code_version),
-    )
 
 
 __all__ = ["run_command"]
