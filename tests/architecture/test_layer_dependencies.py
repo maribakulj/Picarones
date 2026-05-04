@@ -64,9 +64,13 @@ PICARONES_ROOT = REPO_ROOT / "picarones"
 #: avant** la sienne (i.e. plus internes), mais jamais l'inverse.
 LAYER_ORDER: tuple[str, ...] = (
     "domain",
+    "formats",      # S13 — re-ordonné : parsers/normalization sont des
+                    # utilitaires bas niveau qu'``evaluation`` consomme
+                    # (ex : ``DefaultEvaluationViewExecutor`` charge un
+                    # profil de normalisation depuis
+                    # ``formats.text.normalization``).
     "evaluation",
     "pipeline",
-    "formats",
     "adapters",
     "app",
     "reports_v2",

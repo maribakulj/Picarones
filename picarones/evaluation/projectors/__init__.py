@@ -21,6 +21,32 @@ pas un projecteur.
 
 from __future__ import annotations
 
+from picarones.evaluation.projectors.alto import (
+    AltoToText,
+    alto_document_to_text,
+)
 from picarones.evaluation.projectors.base import ProjectionReport, Projector
+from picarones.evaluation.projectors.pagexml import (
+    PageToText,
+    page_document_to_text,
+)
+from picarones.evaluation.projectors.registry import (
+    ProjectorNotFoundError,
+    ProjectorRegistrationError,
+    ProjectorRegistry,
+)
 
-__all__ = ["Projector", "ProjectionReport"]
+__all__ = [
+    # Protocol + report
+    "Projector",
+    "ProjectionReport",
+    # Registry
+    "ProjectorRegistry",
+    "ProjectorRegistrationError",
+    "ProjectorNotFoundError",
+    # Concrete projectors (déplacés depuis formats/ au S13)
+    "AltoToText",
+    "alto_document_to_text",
+    "PageToText",
+    "page_document_to_text",
+]

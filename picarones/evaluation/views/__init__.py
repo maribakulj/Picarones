@@ -21,5 +21,14 @@ Reporté post-livraison : ``LayoutView``, ``HallucinationView``,
 from __future__ import annotations
 
 from picarones.evaluation.views.base import EvaluationViewExecutor, ViewResult
+from picarones.evaluation.views.executor import (
+    DefaultEvaluationViewExecutor,
+    PayloadLoader,
+)
 
-__all__ = ["EvaluationViewExecutor", "ViewResult"]
+__all__ = [
+    "EvaluationViewExecutor",
+    "ViewResult",
+    "DefaultEvaluationViewExecutor",
+    "PayloadLoader",
+]

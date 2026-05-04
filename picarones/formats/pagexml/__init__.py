@@ -16,13 +16,15 @@ est plus rare que pour ALTO).
 from __future__ import annotations
 
 from picarones.formats.pagexml.parser import PageParseError, parse_pagexml
-from picarones.formats.pagexml.projector import PageToText, page_document_to_text
 from picarones.formats.pagexml.types import (
     PageDocument,
     PagePage,
     PageTextLine,
     PageTextRegion,
 )
+
+# S13 — les projecteurs vivent désormais dans
+# ``picarones.evaluation.projectors.pagexml``.
 
 __all__ = [
     "PageTextLine",
@@ -31,6 +33,4 @@ __all__ = [
     "PageDocument",
     "parse_pagexml",
     "PageParseError",
-    "page_document_to_text",
-    "PageToText",
 ]

@@ -25,7 +25,6 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 from picarones.formats.alto.parser import AltoParseError, parse_alto
-from picarones.formats.alto.projector import AltoToText, alto_document_to_text
 from picarones.formats.alto.types import (
     AltoBBox,
     AltoDocument,
@@ -35,6 +34,15 @@ from picarones.formats.alto.types import (
     AltoTextBlock,
 )
 from picarones.formats.alto.writer import write_alto
+
+# S13 — les projecteurs ``alto_document_to_text`` et ``AltoToText``
+# vivent désormais dans ``picarones.evaluation.projectors.alto``
+# (la projection est conceptuellement un composant d'évaluation,
+# pas un format).  Importer depuis le nouveau chemin :
+#
+#     from picarones.evaluation.projectors import (
+#         AltoToText, alto_document_to_text,
+#     )
 
 __all__ = [
     # Types
@@ -48,7 +56,4 @@ __all__ = [
     "parse_alto",
     "AltoParseError",
     "write_alto",
-    # Projector
-    "alto_document_to_text",
-    "AltoToText",
 ]

@@ -15,6 +15,7 @@ import pytest
 
 from picarones.domain import Artifact, ArtifactType
 from picarones.domain.errors import ProjectionError
+from picarones.evaluation.projectors import AltoToText, alto_document_to_text
 from picarones.formats.alto import (
     AltoBBox,
     AltoDocument,
@@ -23,8 +24,6 @@ from picarones.formats.alto import (
     AltoParseError,
     AltoString,
     AltoTextBlock,
-    AltoToText,
-    alto_document_to_text,
     parse_alto,
     write_alto,
 )

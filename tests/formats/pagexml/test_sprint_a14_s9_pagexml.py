@@ -6,14 +6,13 @@ import pytest
 
 from picarones.domain import Artifact, ArtifactType
 from picarones.domain.errors import ProjectionError
+from picarones.evaluation.projectors import PageToText, page_document_to_text
 from picarones.formats.pagexml import (
     PageDocument,
     PageParseError,
     PagePage,
     PageTextLine,
     PageTextRegion,
-    PageToText,
-    page_document_to_text,
     parse_pagexml,
 )
 
