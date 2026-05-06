@@ -340,4 +340,4 @@ jobs:
   #           --corpus ./tests/fixtures/reference_corpus/ \
   #           --engines tesseract \
   #           --output results_pr.json \
-  #           --fail-if-cer-above 15.0
+  #           --fail-if-cer-above 0.15  # fraction (0.15 = 15 %)

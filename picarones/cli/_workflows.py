@@ -54,7 +54,10 @@ from picarones.cli import cli, _engine_from_name, _setup_logging
     default=None,
     type=float,
     metavar="THRESHOLD",
-    help="Quitte avec code 1 si CER moyen > THRESHOLD (usage CI/CD)",
+    help=(
+        "Quitte avec code 1 si CER moyen > THRESHOLD (usage CI/CD). "
+        "THRESHOLD est une fraction ∈ [0, 1] (ex : 0.15 = 15 %)."
+    ),
 )
 @click.option(
     "--profile",
@@ -139,13 +142,19 @@ def run_cmd(
 
     click.echo(f"\nRésultats écrits dans : {output}")
 
-    # Mode CI/CD : exit code non-zero si CER > seuil
+    # Mode CI/CD : exit code non-zero si CER > seuil.
+    # ``fail_if_cer_above`` est une fraction ∈ [0, 1] (ex : 0.15 = 15 %),
+    # cohérent avec la représentation interne de ``mean_cer``.
     if fail_if_cer_above is not None:
         for entry in result.ranking():
-            if entry["mean_cer"] is not None and entry["mean_cer"] * 100 > fail_if_cer_above:
+            if (
+                entry["mean_cer"] is not None
+                and entry["mean_cer"] > fail_if_cer_above
+            ):
                 click.echo(
-                    f"\nECHEC : {entry['engine']} CER={entry['mean_cer']*100:.2f}% "
-                    f"> seuil {fail_if_cer_above:.2f}%",
+                    f"\nECHEC : {entry['engine']} "
+                    f"CER={entry['mean_cer']*100:.2f}% "
+                    f"> seuil {fail_if_cer_above*100:.2f}%",
                     err=True,
                 )
                 sys.exit(1)
