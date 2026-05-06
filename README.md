@@ -21,7 +21,7 @@ A targeted rewrite (see
 rebuilds the orchestration layer and evaluation views for a stable
 2.0 release by the end of 2026.
 
-[![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
+[![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/maribakulj/Picarones/graph/badge.svg)](https://codecov.io/gh/maribakulj/Picarones)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/lint-ruff-46aef7.svg)](https://github.com/astral-sh/ruff)

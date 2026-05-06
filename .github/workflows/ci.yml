@@ -30,6 +30,13 @@ jobs:
     name: Tests Python ${{ matrix.python-version }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
+    # ``CODECOV_TOKEN`` au niveau JOB plutôt que step : nécessaire
+    # pour que ``env.CODECOV_TOKEN`` soit visible dans le ``if:`` de
+    # l'étape Codecov (le ``env`` d'un step n'est PAS résolu avant
+    # l'évaluation du ``if`` de ce même step).
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -103,22 +110,29 @@ jobs:
           PYTHONUTF8: "1"
 
       # ── Couverture ──────────────────────────────────────────────
-      # ``timeout-minutes: 5`` : codecov-action v4 a déjà bloqué la CI
-      # 50+ min en attendant un upload qui n'aboutissait pas.
-      # ``fail_ci_if_error: false`` : un échec d'upload n'invalide pas
-      # le run de tests qui vient de passer.
+      # Conditions :
+      # - ``always()`` : on remonte la couverture MÊME quand pytest a
+      #   échoué (utile pour suivre la dérive sur un build cassé).
+      # - ``runner.os == 'Linux' && python-version == '3.11'`` : un seul
+      #   upload par run pour ne pas saturer le rate limit Codecov.
+      # - ``env.CODECOV_TOKEN != ''`` : skip si le secret n'est pas
+      #   défini (fork PR, environnement de dev local).
+      #
+      # Garde-fous :
+      # - ``timeout-minutes: 5`` : codecov-action v4 a déjà bloqué la CI
+      #   50+ min en attendant un upload qui n'aboutissait pas.
+      # - ``fail_ci_if_error: false`` : un échec d'upload n'invalide
+      #   pas un run de tests valide.
       - name: Upload coverage to Codecov
-        if: runner.os == 'Linux' && matrix.python-version == '3.11' && env.CODECOV_TOKEN != ''
+        if: always() && runner.os == 'Linux' && matrix.python-version == '3.11' && env.CODECOV_TOKEN != ''
         timeout-minutes: 5
         uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ env.CODECOV_TOKEN }}
           files: coverage.xml
           flags: unittests
           name: picarones-coverage
           fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # ──────────────────────────────────────────────────────────────────
   # Job 2 : Vérification du rapport demo
