@@ -1,0 +1,18 @@
+# Picarones — security.txt (RFC 9116)
+#
+# This file is meant to be served at:
+#   https://<deployment-host>/.well-known/security.txt
+#
+# Institutional deployments (BnF, LoC, BL) MUST update the values
+# below before going live — the canonical contact for the upstream
+# project is the GitHub Security Advisories endpoint, but each
+# deployment SHOULD designate its own security contact.
+
+Contact: https://github.com/maribakulj/Picarones/security/advisories/new
+Expires: 2027-05-31T23:59:59.000Z
+Encryption: https://github.com/maribakulj/Picarones/security/advisories/new
+Acknowledgments: https://github.com/maribakulj/Picarones/security/advisories
+Preferred-Languages: fr, en
+Canonical: https://github.com/maribakulj/Picarones/blob/main/.well-known/security.txt
+Policy: https://github.com/maribakulj/Picarones/blob/main/SECURITY.md
+Hiring: https://github.com/maribakulj/Picarones/issues

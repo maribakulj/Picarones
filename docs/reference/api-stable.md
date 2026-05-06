@@ -241,7 +241,7 @@ def reset_default_store(...)
   reflètent ces changements.
 - **Modules `picarones.extras/`** : statut variable selon le
   sous-package (academic / governance / historical / importers).
-  Voir `docs/architecture.md`.
+  Voir `docs/explanation/architecture.md`.
 - **Comportement des renderers HTML** : la structure des fichiers HTML
   peut évoluer entre versions mineures. Nous gardons les noms des
   vues principales.
@@ -296,8 +296,8 @@ Pour les **nouvelles** intégrations, préférer les chemins canoniques :
 
 ## Voir aussi
 
-- [`docs/architecture.md`](architecture.md) — cartographie
+- [`docs/explanation/architecture.md`](architecture.md) — cartographie
   des 3 cercles + critères d'assignation.
-- [`docs/architecture.md`](architecture.md) — vue d'ensemble post-chantiers.
+- [`docs/explanation/architecture.md`](architecture.md) — vue d'ensemble post-chantiers.
 - [`tests/test_public_api.py`](../tests/test_public_api.py) — test
   automatique qui échoue si un nom listé ici disparaît.

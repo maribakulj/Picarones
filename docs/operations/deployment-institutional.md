@@ -8,7 +8,7 @@
 > plutôt que sur HuggingFace Space public.
 >
 > Pour le déploiement HuggingFace Space ou un usage local rapide,
-> voir [`INSTALL.md`](../../INSTALL.md).
+> voir [`how-to/install.md`](../how-to/install.md).
 
 ## Pré-requis
 

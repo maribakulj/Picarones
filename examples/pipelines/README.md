@@ -48,4 +48,4 @@ pointé**. Picarones livre :
 Pour brancher votre propre module (correcteur LLM, reconstructeur
 ALTO plus avancé, mappeur VLM…), exposez une classe qui hérite de
 `picarones.core.modules.BaseModule` et déclarez son chemin dans le
-YAML. Voir `docs/user/writing-a-pipeline-module.md` pour les détails.
+YAML. Voir `docs/tutorials/writing-a-pipeline-module.md` pour les détails.

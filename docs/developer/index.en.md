@@ -13,7 +13,7 @@ module.
 ## Architecture
 
 Picarones uses a **3-circle architecture** (manifesto in
-[`docs/architecture.md`](../architecture.md)):
+[`docs/explanation/architecture.md`](../architecture.md)):
 
 ```
    Circle 3 (extras, report, cli, web)

@@ -1,5 +1,5 @@
 <!-- translation: machine + human review pending -->
-<!-- canonical: docs/developer/narrative-engine.md (FR) -->
+<!-- canonical: docs/explanation/narrative-engine.md (FR) -->
 
 # Extending the narrative engine
 

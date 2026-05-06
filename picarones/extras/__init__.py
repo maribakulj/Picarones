@@ -17,6 +17,6 @@ Sous-packages
 PyPI séparés (``picarones-importers``…). Pour l'instant ils vivent
 comme sous-packages internes pour limiter le churn.
 
-Voir :doc:`docs/architecture.md` pour la cartographie complète
+Voir :doc:`docs/explanation/architecture.md` pour la cartographie complète
 et les critères d'assignation au Cercle 3.
 """

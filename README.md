@@ -102,7 +102,7 @@ Three families of metrics calibrated for historical documents:
   trend with change-point detection; controlled per-slot ANOVA-like
   comparison.
 
-For the full list with definitions, see [`docs/views.md`](docs/views.md)
+For the full list with definitions, see [`docs/reference/views.md`](docs/reference/views.md)
 and the contextual glossary embedded in every report (25 bilingual
 entries).
 
@@ -189,7 +189,7 @@ picarones serve --port 8080
 ```
 
 For Docker, institutional deployment, or HuggingFace Spaces, see
-[`INSTALL.md`](INSTALL.md) and
+[`docs/how-to/install.md`](docs/how-to/install.md) and
 [`docs/operations/deployment-institutional.md`](docs/operations/deployment-institutional.md).
 
 ---
@@ -210,7 +210,7 @@ For Docker, institutional deployment, or HuggingFace Spaces, see
 
 LLM/VLM adapters (used through pipelines, not as standalone OCR
 engines): GPT-4o, Claude, Mistral Large, Ollama (local). See
-[`docs/cli-workflows.md`](docs/cli-workflows.md).
+[`docs/how-to/cli-workflows.md`](docs/how-to/cli-workflows.md).
 
 The `Engine` table is regenerated automatically by
 `scripts/gen_readme_tables.py` — adding a new adapter under
@@ -244,7 +244,7 @@ fail.
 <!-- /generated:cli -->
 
 Each command supports `--help` for full options. See
-[`docs/cli-workflows.md`](docs/cli-workflows.md) for end-to-end
+[`docs/how-to/cli-workflows.md`](docs/how-to/cli-workflows.md) for end-to-end
 examples.
 
 ---
@@ -309,7 +309,7 @@ exposed via `/api/normalization/profiles`):
 
 Custom profiles can be loaded from YAML files with user-defined
 diplomatic tables and `exclude_chars` sets. See
-[`docs/profiles.md`](docs/profiles.md).
+[`docs/reference/normalization-profiles.md`](docs/reference/normalization-profiles.md).
 
 A traceability table mapping each profile to its source standard
 (MUFI v4.0, TEI P5, DEAF) will ship in Sprint A12 (B-6).
@@ -336,7 +336,7 @@ picarones/
 
 Strict 3-circle architecture: imports flow only from outer to inner.
 Enforced by `tests/core/test_circle_dependencies.py` (Sprint A3).
-See [`docs/architecture.md`](docs/architecture.md) for the full
+See [`docs/explanation/architecture.md`](docs/explanation/architecture.md) for the full
 manifesto.
 
 ---
@@ -396,7 +396,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~5030 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~5040 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when
@@ -456,11 +456,11 @@ experimental demonstrator and the CLI as the supported interface.
 
 | Audience | Entry point |
 |----------|-------------|
-| **End user** | [`docs/user/reading-a-report.md`](docs/user/reading-a-report.md) ([EN](docs/user/reading-a-report.en.md)) |
+| **End user** | [`docs/tutorials/reading-a-report.md`](docs/tutorials/reading-a-report.md) ([EN](docs/tutorials/reading-a-report.en.md)) |
 | **Developer** | [`docs/developer/index.md`](docs/developer/index.md) ([EN](docs/developer/index.en.md)) |
 | **Operations / DSI** | [`docs/operations/deployment-institutional.md`](docs/operations/deployment-institutional.md), [`docs/operations/data-retention-rgpd.md`](docs/operations/data-retention-rgpd.md), [`docs/operations/release-process.md`](docs/operations/release-process.md) |
-| **Architect** | [`docs/architecture.md`](docs/architecture.md), [`docs/api-stable.md`](docs/api-stable.md) |
-| **Researcher** | [`docs/case-studies/`](docs/case-studies/), [`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md) |
+| **Architect** | [`docs/explanation/architecture.md`](docs/explanation/architecture.md), [`docs/reference/api-stable.md`](docs/reference/api-stable.md) |
+| **Researcher** | [`docs/case-studies/`](docs/case-studies/), [`docs/reference/reproducibility-snapshots.md`](docs/reference/reproducibility-snapshots.md) |
 | **Contributor** | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`GOVERNANCE.md`](GOVERNANCE.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
 | **Security** | [`SECURITY.md`](SECURITY.md) |
 | **Accessibility** | [`ACCESSIBILITY.md`](ACCESSIBILITY.md) |
@@ -477,7 +477,7 @@ shipped (see [`BACKLOG_POST_LIVRAISON.md`](BACKLOG_POST_LIVRAISON.md)).
 Cite the GitHub repository with the commit SHA used in your benchmark.
 Every Picarones report embeds the commit hash and a snapshot of the
 parameters used (cf.
-[`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md))
+[`docs/reference/reproducibility-snapshots.md`](docs/reference/reproducibility-snapshots.md))
 so the cited commit is sufficient to attribute the result.
 
 ---

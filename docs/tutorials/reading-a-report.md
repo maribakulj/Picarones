@@ -24,7 +24,7 @@ Visible dès l'ouverture, sans navigation. Contient :
 1. **Synthèse factuelle** — 3 à 5 phrases générées mécaniquement à
    partir des résultats. Aucun LLM dans la chaîne, donc le texte est
    reproductible bit-à-bit. Chaque nombre cité est traçable au JSON
-   de résultats. Voir [docs/developer/narrative-engine.md] pour la liste
+   de résultats. Voir [docs/explanation/narrative-engine.md] pour la liste
    complète des faits que le moteur peut détecter.
 2. **Critical Difference Diagram** (Friedman-Nemenyi) — un graphique
    horizontal qui place chaque moteur sur un axe de rang moyen. Les
@@ -133,7 +133,7 @@ LibreOffice.
 ## Pour aller plus loin
 
 - [Glossaire complet] (intégré dans le rapport, accessible via les `?`)
-- [docs/developer/narrative-engine.md] — comment ajouter un détecteur
+- [docs/explanation/narrative-engine.md] — comment ajouter un détecteur
 - [docs/developer/extending-glossary.md] — comment enrichir le glossaire
 - [SPECS.md] — spécifications complètes du projet
 

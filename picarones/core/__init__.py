@@ -20,7 +20,7 @@ Modules
 - :mod:`pipeline`         PipelineRunner, PipelineSpec, PipelineStep
 - :mod:`facts`            Fact, FactType, FactImportance, DetectorRegistry
 
-Voir :doc:`docs/architecture.md` pour le manifeste complet et
-:doc:`docs/api-stable.md` pour le contrat de stabilité de chaque
+Voir :doc:`docs/explanation/architecture.md` pour le manifeste complet et
+:doc:`docs/reference/api-stable.md` pour le contrat de stabilité de chaque
 nom exporté.
 """

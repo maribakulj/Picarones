@@ -19,7 +19,7 @@ recherchabilité si les erreurs sont sur des caractères non-significatifs.
 
 Cette divergence est précisément ce que le rapport BnF doit rendre
 visible — c'est l'objet du document
-``docs/views/comparing-views.md``.
+``docs/reference/comparing-views.md``.
 
 Types acceptés
 --------------

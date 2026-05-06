@@ -7,9 +7,15 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
-## [Unreleased] — fix CI Windows + cap timeout — 2026-05
+## [Unreleased] — towards 1.3.0 (release institutionnelle BnF) — 2026-05
 
-### Bug Windows : `:` dans les clés du store
+> Section unique conforme à Keep-a-Changelog.  Les chantiers actifs
+> sont regroupés ci-dessous par thème ; chaque thème reflète un audit
+> ou un fix livré sur la branche ``claude/repo-analysis-cukvm``.
+
+### Fix CI : Windows + cap timeout (S59)
+
+#### Bug Windows : `:` dans les clés du store
 
 Le ``FilesystemArtifactStore`` produisait des filenames de la forme
 ``<step_hash>:<output_type>.json`` (séparateur ``:``).  ``:`` est un
@@ -29,7 +35,7 @@ les ``ArtifactType`` et tous les caractères Windows réservés.
 acceptable.  Aucun impact sur les artefacts persistés (l'index
 ``index.jsonl`` est régénéré automatiquement).
 
-### CI : exclusion des tests live + timeout codecov
+#### CI : exclusion des tests live + timeout codecov
 
 Voir commit `ce30e80` :
 
@@ -40,11 +46,9 @@ Voir commit `ce30e80` :
   ``timeout-minutes: 5`` sur ``Upload coverage to Codecov`` ;
   ``fail_ci_if_error: false`` sur codecov.
 
----
+### Audit institutionnel S58-S59 (post-S57)
 
-## [Unreleased] — audit institutionnel S58-S59 (post-S57) — 2026-05
-
-### ⚠️ BREAKING CHANGES (déprécations en cours, suppression en 2.0)
+#### ⚠️ BREAKING CHANGES (déprécations en cours, suppression en 2.0)
 
 Trois symboles supprimés au S57 sont **restaurés en S59** comme alias
 dépréciés avec `DeprecationWarning` à l'accès.  Ils seront supprimés
@@ -142,17 +146,15 @@ réseau (TimeoutError, ConnectionError, URLError).
 - `tests/architecture/test_manifest_reproducibility.py` : 4 tests.
 - `tests/interfaces/web/test_rate_limit_xff.py` : 7 tests.
 
----
+### Rewrite A14 (S27-S46) + audit remediation (S47-S57)
 
-## [Unreleased] — rewrite A14 (S27-S46) + audit remediation (S47-S57) — 2026-05
+Cette section couvre la phase **rewrite ciblé** (S27-S46) puis les
+**6 vagues de remédiation** des dettes identifiées en audit
+*institutional readiness 2026-05* (S47-S57).  Détail complet dans
+`docs/migration/rewrite-status-s46.md` et
+`docs/audits/remediation-plan-2026-05.md`.
 
-> Cette section couvre la phase **rewrite ciblé** (S27-S46) puis les
-> **6 vagues de remédiation** des dettes identifiées en audit
-> *institutional readiness 2026-05* (S47-S57).  Détail complet dans
-> `docs/migration/rewrite-status-s46.md` et
-> `docs/audits/remediation-plan-2026-05.md`.
-
-### Phase rewrite (S27-S46) — partial rewrite
+#### Phase rewrite (S27-S46) — partial rewrite
 
 20 sprints sur la directive *« rewrite tout, le plus solide, sans dette
 technique »*.  Stratégie : **rewrite parallèle**, pas full rewrite — le
@@ -177,7 +179,7 @@ benchmark, jobs), JobStore SQLite, UI Jinja2 + i18n FR/EN.
 SearchView).  Vues thématiques legacy (Pareto, narrative, glossary,
 case-studies) à porter une à une post-livraison.
 
-### Phase remédiation (S47-S57) — 30 dettes adressées en 6 vagues
+#### Phase remédiation (S47-S57) — 30 dettes adressées en 6 vagues
 
 | Vague | Sprint | Issues | Thème |
 |-------|--------|--------|-------|
@@ -191,7 +193,7 @@ case-studies) à porter une à une post-livraison.
 
 **Tous les 30 issues sont adressés au S57**.
 
-### S57 — détail des rectifications
+#### S57 — détail des rectifications
 
 - **#15 Lazy imports SDK tiers** : confirmé intentionnel — `mistralai`,
   `anthropic`, `openai`, `ollama` sont importés à l'intérieur des
@@ -254,11 +256,9 @@ case-studies) à porter une à une post-livraison.
   qualité d'image, présence de notes marginales).  Un seuil à 10
   points faisait échouer la CI sur du bruit légitime.
 
----
+### Fix CI perf_regression
 
-## [Unreleased] — fix CI perf_regression — 2026-05
-
-### ⚠️ BREAKING CHANGE — sémantique `--fail-if-cer-above`
+#### ⚠️ BREAKING CHANGE — sémantique `--fail-if-cer-above`
 
 L'option `picarones run --fail-if-cer-above` interprétait sa valeur
 comme un **pourcentage** (ex : `15.0` = 15 %).  Désormais elle attend
@@ -1889,7 +1889,7 @@ sur des monolithes globaux.
   ingénieur qui veut **brancher son propre module** dans Picarones
   (correcteur LLM, reconstructeur ALTO, classifieur d'entités,
   re-segmenteur…) trouve maintenant un guide complet bout-en-bout.
-  - Nouveau document `docs/user/writing-a-pipeline-module.md` :
+  - Nouveau document `docs/tutorials/writing-a-pipeline-module.md` :
     - **TL;DR** avec un exemple `MyCorrector` minimal en 25 lignes.
     - Section **« Le contrat ``BaseModule`` »** : tableau des
       champs obligatoires (``input_types``, ``output_types``,
@@ -3437,7 +3437,7 @@ sur des monolithes globaux.
   `CONFIDENCE_WARNING`, `cost_unit_pages=1000` propagé dans
   `PARETO_ALTERNATIVE`/`COST_OUTLIER`, paramètre `select_facts(..., type_order=...)`,
   test stabilité bootstrap (±0,5 pp inter-seeds), test E2E synthèse EN.
-  Doc « Politique éditoriale » dans `docs/developer/narrative-engine.md`.
+  Doc « Politique éditoriale » dans `docs/explanation/narrative-engine.md`.
 - **Sprint 24** — durcissement sécurité institutionnelle : mode public
   (`PICARONES_PUBLIC_MODE=1`), `PICARONES_BROWSE_ROOTS`, validation Pillow
   sur upload (CVE-2023-50447), rate limit + sémaphore concurrence,
@@ -3520,7 +3520,7 @@ sur des monolithes globaux.
   vue opt-in « score composite personnel » avec curseurs à 0 par défaut
   et formule visible. État persisté en URL. +21 tests.
 - **Sprint 22** — études de cas (`docs/case-studies/`),
-  `docs/user/reading-a-report.md`, trois guides développeur dans
+  `docs/tutorials/reading-a-report.md`, trois guides développeur dans
   `docs/developer/`. Garde-fou « pas de fausses études prétendant
   être réelles ». +18 tests.
 

@@ -14,8 +14,10 @@ from pathlib import Path
 
 import pytest
 
+# S60 — restructuration Diataxis : ``user/`` éclaté en
+# ``tutorials/`` (apprendre).
 DOC_PATH = (
-    Path(__file__).parent.parent.parent / "docs" / "user"
+    Path(__file__).parent.parent.parent / "docs" / "tutorials"
     / "writing-a-pipeline-module.md"
 )
 

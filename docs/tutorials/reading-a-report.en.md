@@ -1,5 +1,5 @@
 <!-- translation: machine + human review pending -->
-<!-- canonical: docs/user/reading-a-report.md (FR) -->
+<!-- canonical: docs/tutorials/reading-a-report.md (FR) -->
 
 # Reading a Picarones report
 
@@ -98,6 +98,6 @@ relative path and loaded by the browser on-demand
 ## Further reading
 
 - [Glossary] (embedded in report, accessible via `?` icons)
-- [docs/developer/narrative-engine.en.md](../developer/narrative-engine.en.md) — adding a detector
+- [docs/explanation/narrative-engine.en.md](../developer/narrative-engine.en.md) — adding a detector
 - [docs/developer/extending-glossary.en.md](../developer/extending-glossary.en.md) — enriching the glossary
 - [SPECS.md](../../SPECS.md) — full project specifications

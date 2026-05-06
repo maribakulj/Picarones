@@ -21,7 +21,7 @@ corpus-level** du registre central
 > **Note rétrocompat** : aujourd'hui les profils `philological`, `diagnostics`,
 > `economics`, `pipeline` et `full` activent **le même ensemble** que `standard`
 > côté hooks calculés. Ce qui change, c'est la **vue HTML rendue** : chaque
-> profil active des sous-sections différentes du rapport (cf. `docs/views.md`).
+> profil active des sous-sections différentes du rapport (cf. `docs/reference/views.md`).
 > Les profils sont volontairement génériques pour permettre aux contributeurs
 > futurs d'ajouter des hooks spécifiques sans casser l'API.
 
@@ -127,7 +127,7 @@ reproductibilité scientifique maximale.
 
 ## Comment ajouter un hook personnalisé
 
-Voir [`docs/developer/narrative-engine.md`](developer/narrative-engine.md)
+Voir [`docs/explanation/narrative-engine.md`](developer/narrative-engine.md)
 pour le détail. Pattern de base :
 
 ```python

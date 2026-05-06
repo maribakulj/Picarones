@@ -28,14 +28,17 @@ class TestDocsStructure:
         assert DOCS.is_dir(), "docs/ doit exister à la racine"
 
     def test_subdirectories_present(self):
-        for sub in ("case-studies", "user", "developer"):
+        # S60 — restructuration Diataxis : ``user/`` éclaté en
+        # ``tutorials/`` (apprendre) + ``how-to/`` (résoudre).  Les
+        # studies de cas et le dossier developer/ restent.
+        for sub in ("case-studies", "tutorials", "developer"):
             assert (DOCS / sub).is_dir(), f"docs/{sub}/ manquant"
 
     def test_case_studies_index_exists(self):
         assert (DOCS / "case-studies" / "README.md").is_file()
 
     def test_user_guide_exists(self):
-        assert (DOCS / "user" / "reading-a-report.md").is_file()
+        assert (DOCS / "tutorials" / "reading-a-report.md").is_file()
 
     def test_developer_index_exists(self):
         assert (DOCS / "developer" / "index.md").is_file()
@@ -80,20 +83,22 @@ class TestCaseStudies:
 # ---------------------------------------------------------------------------
 
 class TestDeveloperDocs:
-    @pytest.mark.parametrize("name", [
-        "index.md",
-        "narrative-engine.md",
-        "extending-glossary.md",
-        "extending-i18n.md",
+    # S60 — restructuration Diataxis : ``narrative-engine.md`` a
+    # migré sous ``docs/explanation/``.
+    @pytest.mark.parametrize("rel_path", [
+        "developer/index.md",
+        "explanation/narrative-engine.md",
+        "developer/extending-glossary.md",
+        "developer/extending-i18n.md",
     ])
-    def test_dev_doc_exists_and_non_empty(self, name):
-        f = DOCS / "developer" / name
-        assert f.is_file(), f"docs/developer/{name} manquant"
+    def test_dev_doc_exists_and_non_empty(self, rel_path):
+        f = DOCS / rel_path
+        assert f.is_file(), f"docs/{rel_path} manquant"
         content = f.read_text(encoding="utf-8")
-        assert len(content) > 500, f"docs/developer/{name} suspectement court"
+        assert len(content) > 500, f"docs/{rel_path} suspectement court"
 
     def test_narrative_doc_explains_anti_hallucination(self):
-        content = (DOCS / "developer" / "narrative-engine.md").read_text(encoding="utf-8")
+        content = (DOCS / "explanation" / "narrative-engine.md").read_text(encoding="utf-8")
         assert "anti-hallucination" in content.lower() or \
                "traçable" in content.lower(), \
                "Le guide narratif doit expliciter l'invariant anti-hallucination"

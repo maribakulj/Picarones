@@ -142,9 +142,9 @@ def test_env_example_exists_and_documents_keys() -> None:
 
 
 def test_reproducibility_snapshots_doc_exists() -> None:
-    """``docs/reproducibility-snapshots.md`` doit exister et documenter
-    la procédure end-to-end."""
-    f = REPO_ROOT / "docs" / "reproducibility-snapshots.md"
+    """``docs/reference/reproducibility-snapshots.md`` doit exister et
+    documenter la procédure end-to-end (S60 — Diataxis)."""
+    f = REPO_ROOT / "docs" / "reference" / "reproducibility-snapshots.md"
     assert f.exists()
     text = f.read_text(encoding="utf-8")
     # Sections clés attendues.

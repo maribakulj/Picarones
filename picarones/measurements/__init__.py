@@ -114,7 +114,7 @@ Moteur narratif :
   ``FactType``, ``DetectorRegistry``) vit en cercle 1 dans
   :mod:`picarones.core.facts`.
 
-Voir :doc:`docs/architecture.md` pour la cartographie complète et
+Voir :doc:`docs/explanation/architecture.md` pour la cartographie complète et
 la règle de dépendance des 3 cercles.
 """
 

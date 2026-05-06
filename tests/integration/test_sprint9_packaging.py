@@ -374,8 +374,10 @@ class TestInstallMd:
 
     @pytest.fixture
     def install(self):
-        path = ROOT / "INSTALL.md"
-        assert path.exists(), "INSTALL.md est manquant"
+        # S60 — INSTALL.md a migré sous ``docs/how-to/install.md``
+        # (Diataxis).  Le fichier racine n'existe plus.
+        path = ROOT / "docs" / "how-to" / "install.md"
+        assert path.exists(), "docs/how-to/install.md est manquant"
         return path.read_text(encoding="utf-8")
 
     def test_has_linux_section(self, install):

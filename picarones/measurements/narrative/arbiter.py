@@ -27,7 +27,7 @@ from picarones.core.facts import Fact, FactImportance, FactType
 # Ordre canonique des types pour départager les ex-aequo à l'importance égale.
 #
 # Politique éditoriale — exposée et documentée dans
-# ``docs/developer/narrative-engine.md`` § Editorial policy.
+# ``docs/explanation/narrative-engine.md`` § Editorial policy.
 # L'ordre encode quels faits sont remontés en priorité quand plusieurs ont
 # la même ``FactImportance``. Surchargeable via le paramètre ``type_order``
 # de ``select_facts`` sans patcher le code.
@@ -206,7 +206,7 @@ def select_facts(
         Surcharge optionnelle de l'ordre canonique des types pour départager
         les faits d'égale importance. ``None`` (défaut) utilise
         ``DEFAULT_TYPE_ORDER``. Une institution peut passer son propre ordre
-        sans patcher le code — voir ``docs/developer/narrative-engine.md``.
+        sans patcher le code — voir ``docs/explanation/narrative-engine.md``.
 
     Returns
     -------

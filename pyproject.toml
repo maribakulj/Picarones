@@ -47,7 +47,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/maribakulj/Picarones"
-Documentation = "https://github.com/maribakulj/Picarones/blob/main/INSTALL.md"
+Documentation = "https://github.com/maribakulj/Picarones/blob/main/docs/index.md"
 Repository = "https://github.com/maribakulj/Picarones"
 Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/maribakulj/Picarones/issues"
@@ -82,6 +82,15 @@ stats = ["scipy>=1.11.0"]
 ner = ["spacy>=3.7.0"]
 # Import HuggingFace Datasets
 hf = ["datasets>=2.19.0"]
+# Site documentation auto-généré (mkdocstrings + mkdocs-material).
+# Build : ``mkdocs build`` ; serve : ``mkdocs serve``.  La référence
+# d'API ``docs/api/`` est régénérée à chaque build depuis les
+# docstrings — pas de drift possible avec le code.
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.25.0",
+]
 # Moteurs OCR optionnels
 pero = ["pero-ocr>=0.1.0"]
 kraken = ["kraken>=4.0.0"]

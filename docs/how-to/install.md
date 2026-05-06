@@ -1,7 +1,13 @@
 # Guide d'installation — Picarones
 
 > Guide détaillé pour Linux, macOS et Windows.
-> Pour une installation en 5 minutes : voir [README.md](README.md#installation-rapide).
+> Pour une installation en 5 minutes, voir le bloc *Setup* du
+> [README](../../README.md).
+>
+> Audience : opérateur ou développeur qui installe Picarones en
+> local ou sur un serveur.  Pour un déploiement institutionnel
+> (BnF, LoC, BL), voir aussi
+> [`../operations/deployment-institutional.md`](../operations/deployment-institutional.md).
 
 ---
 
@@ -236,19 +242,7 @@ config_path: /path/to/pero_model/config.yaml
 EOF
 ```
 
-### 5.3 Kraken (optionnel)
-
-```bash
-pip install kraken
-
-# Télécharger un modèle
-kraken get 10.5281/zenodo.XXXXXXX
-
-# Lister les modèles installés
-kraken list
-```
-
-### 5.4 Ollama (LLMs locaux)
+### 5.3 Ollama (LLMs locaux)
 
 ```bash
 # Installer Ollama
@@ -289,11 +283,6 @@ MISTRAL_API_KEY=...
 
 # Google Vision
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-
-# AWS Textract
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_DEFAULT_REGION=eu-west-1
 
 # Azure Document Intelligence
 AZURE_DOC_INTEL_ENDPOINT=https://...cognitiveservices.azure.com/

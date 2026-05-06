@@ -15,8 +15,8 @@ utiliser les sous-packages explicites :
 >>> from picarones.measurements.metrics import compute_metrics
 >>> from picarones.engines.tesseract import TesseractEngine
 
-Voir ``docs/architecture.md`` pour la cartographie complète des
-3 cercles, et ``docs/api-stable.md`` pour le contrat de stabilité.
+Voir ``docs/explanation/architecture.md`` pour la cartographie complète des
+3 cercles, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
 """
 
 from __future__ import annotations

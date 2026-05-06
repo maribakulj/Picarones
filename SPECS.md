@@ -649,7 +649,7 @@ qui contient :
   git, paquets installés (top 200).
 
 Procédure complète de re-jeu d'un benchmark à 5 ans d'écart :
-[`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md)
+[`docs/reference/reproducibility-snapshots.md`](docs/reference/reproducibility-snapshots.md)
 (Sprint A8 / M-12).
 
 ### 9.2 Reproductibilité des builds

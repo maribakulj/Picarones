@@ -454,8 +454,14 @@ class TestApiStableDoc:
     def test_doc_exists(self):
         from pathlib import Path
 
-        path = Path(__file__).parent.parent.parent / "docs" / "api-stable.md"
-        assert path.exists(), "docs/api-stable.md manquant"
+        # S60 — la doc a migré sous ``docs/reference/`` (Diataxis).
+        path = (
+            Path(__file__).parent.parent.parent
+            / "docs"
+            / "reference"
+            / "api-stable.md"
+        )
+        assert path.exists(), "docs/reference/api-stable.md manquant"
         content = path.read_text(encoding="utf-8")
         # Présence des 14 sections (1 par module)
         for module in [
@@ -481,7 +487,12 @@ class TestApiStableDoc:
     def test_doc_mentions_stability_policy(self):
         from pathlib import Path
 
-        path = Path(__file__).parent.parent.parent / "docs" / "api-stable.md"
+        path = (
+            Path(__file__).parent.parent.parent
+            / "docs"
+            / "reference"
+            / "api-stable.md"
+        )
         content = path.read_text(encoding="utf-8")
         # Les sections clés du contrat
         assert "Politique de stabilité" in content

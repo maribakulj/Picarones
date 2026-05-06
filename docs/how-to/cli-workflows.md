@@ -216,5 +216,5 @@ pour découvrir la sortie sans corpus réel.
   run, diagnose, economics, edition, compare + helper `_run_workflow`.
 - [`picarones/cli/_pipeline.py`](../picarones/cli/_pipeline.py) —
   pipeline group.
-- Voir aussi [`docs/profiles.md`](profiles.md) et
-  [`docs/views.md`](views.md).
+- Voir aussi [`docs/reference/normalization-profiles.md`](profiles.md) et
+  [`docs/reference/views.md`](views.md).
