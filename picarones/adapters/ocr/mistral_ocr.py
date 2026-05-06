@@ -215,7 +215,13 @@ class MistralOCRAdapter(BaseOCRAdapter):
         api_key = self._resolve_api_key()
         image_url = self._encode_image(image_path)
 
-        if "mistral-ocr" in self._model.lower():
+        # Sprint S56 (audit #27) : routing case-insensitive et plus
+        # strict.  Avant le fix, ``"mistral-ocr" in model.lower()``
+        # matchait aussi un modèle exotique comme
+        # ``"pixtral-MISTRAL-OCR-fancy"``.  On exige désormais que
+        # le model commence par "mistral-ocr" (préfixe officiel
+        # documenté).
+        if self._model.lower().startswith("mistral-ocr"):
             text = self._call_native_ocr_api(image_url, api_key)
         else:
             text = self._call_chat_vision_api(image_url, api_key)

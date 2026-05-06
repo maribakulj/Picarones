@@ -297,12 +297,26 @@ def create_app(
             _runs_dir,
             _summarize,
         )
+        # Sprint S56 (audit #17) : pour des workspaces utilisateur
+        # standard (< 100 runs), le scan filesystem à chaque requête
+        # reste sous la milliseconde et c'est acceptable.  Pour un
+        # déploiement multi-tenants (>1000 runs), un cache LRU avec
+        # invalidation sur mtime du runs_dir serait pertinent —
+        # reporté à un sprint dédié si le besoin se présente.
+        # On limite déjà à 20 runs dans la liste pour ne pas générer
+        # de pages énormes.
+        MAX_RUNS_DISPLAYED = 20
         runs_dir = _runs_dir(state)
         runs: list[dict] = []
         if runs_dir.exists():
-            for entry in sorted(runs_dir.iterdir()):
-                if not entry.is_dir():
-                    continue
+            # Tri ordre décroissant (mtime) pour avoir les plus
+            # récents en tête, puis cap à MAX_RUNS_DISPLAYED.
+            entries = sorted(
+                (e for e in runs_dir.iterdir() if e.is_dir()),
+                key=lambda e: e.stat().st_mtime,
+                reverse=True,
+            )[:MAX_RUNS_DISPLAYED]
+            for entry in entries:
                 manifest_path = entry / "run_manifest.json"
                 if not manifest_path.exists():
                     continue

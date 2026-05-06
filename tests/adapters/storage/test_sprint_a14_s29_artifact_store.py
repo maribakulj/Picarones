@@ -321,8 +321,8 @@ class TestInMemoryArtifactStore(_SharedStoreContract):
         keys = store.keys()
         assert set(keys) == {"k1", "k2"}
 
-    def test_thread_safe_basic(self) -> None:
-        """100 threads écrivent chacun 10 entrées → 1000 entrées."""
+    def test_thread_safe_disjoint_keys(self) -> None:
+        """100 threads écrivent chacun 10 clés disjointes → 1000."""
         store = InMemoryArtifactStore()
         artifact = _make_artifact()
 
@@ -339,6 +339,41 @@ class TestInMemoryArtifactStore(_SharedStoreContract):
         for t in threads:
             t.join()
         assert len(store) == 1000
+
+    def test_thread_safe_concurrent_overwrites_same_key(self) -> None:
+        """Sprint S56 (audit #29) : test de concurrence sur la MÊME
+        clé.  Avec 50 threads qui put la même clé en parallèle, le
+        store doit converger sur une valeur (last-write-wins) sans
+        crash, sans corruption, sans clé fantôme."""
+        store = InMemoryArtifactStore()
+
+        def writer(i: int) -> None:
+            for _ in range(20):
+                store.put(
+                    "shared_key",
+                    _make_artifact(artifact_id=f"d{i}:art"),
+                    payload=f"payload_{i}".encode(),
+                )
+
+        threads = [
+            threading.Thread(target=writer, args=(i,))
+            for i in range(50)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        # Une seule clé "shared_key" — pas de duplication.
+        assert len(store) == 1
+        # Le stored est cohérent (artifact + payload appartiennent
+        # au même writer, pas un mix).
+        stored = store.get("shared_key")
+        assert stored is not None
+        # L'id de l'artefact détermine quel writer a gagné ; le
+        # payload doit correspondre au même writer.
+        assert stored.artifact.id.startswith("d")
+        winner_idx = stored.artifact.id.split(":")[0][1:]
+        assert stored.payload == f"payload_{winner_idx}".encode()
 
 
 class TestFilesystemArtifactStore(_SharedStoreContract):

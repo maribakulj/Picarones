@@ -148,12 +148,43 @@ class JobStore:
         Chemin du fichier SQLite.  Créé s'il n'existe pas.
     """
 
+    #: Version du schéma SQL.  Incrémenter à chaque migration.
+    #: Sprint S56 (audit #19) : avant ce sprint, aucune table de
+    #: version n'existait — un upgrade futur du schéma (ajout de
+    #: colonne) cassait silencieusement les bases existantes.
+    SCHEMA_VERSION = 1
+
     def __init__(self, db_path: Path | str) -> None:
         self._path = Path(db_path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         # Initialisation du schéma + WAL.
         with self._connect() as conn:
             conn.executescript(_SCHEMA_SQL)
+            # Table de version (S56) — pas dans le schéma principal
+            # pour rester rétrocompatible avec les bases pré-S56.
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS schema_version "
+                "(version INTEGER PRIMARY KEY)",
+            )
+            cur = conn.execute("SELECT version FROM schema_version")
+            row = cur.fetchone()
+            if row is None:
+                conn.execute(
+                    "INSERT INTO schema_version (version) VALUES (?)",
+                    (self.SCHEMA_VERSION,),
+                )
+            else:
+                existing = row[0]
+                if existing > self.SCHEMA_VERSION:
+                    raise JobStoreError(
+                        f"JobStore : base SQLite à la version "
+                        f"{existing}, code à la version "
+                        f"{self.SCHEMA_VERSION}.  Downgrade non "
+                        "supporté.",
+                    )
+                # Pour S56, on n'a qu'une version — quand un futur
+                # sprint introduira la version 2, ajouter ici les
+                # ALTER TABLE conditionnels.
             try:
                 conn.execute("PRAGMA journal_mode = WAL;")
             except sqlite3.Error:  # pragma: no cover
@@ -166,14 +197,23 @@ class JobStore:
         return self._path
 
     def _connect(self) -> sqlite3.Connection:
-        """Ouvre une nouvelle connexion.  Le caller est responsable
-        du commit + close (on utilise le context manager Python qui
-        gère ça automatiquement)."""
+        """Ouvre une nouvelle connexion.
+
+        Sprint S56 (audit #28) : timeout porté à 30s (de 10s) pour
+        absorber les contentions de courte durée, et configuration
+        ``busy_timeout`` côté SQLite (cohérent avec ``timeout`` mais
+        explicite pour les opérations qui ne passent pas par le
+        cursor Python).  Le mode autocommit + WAL garantit que les
+        lectures n'attendent pas les écritures (cf.
+        https://sqlite.org/wal.html).
+        """
         conn = sqlite3.connect(
             str(self._path),
             isolation_level=None,  # autocommit pour simplicité
-            timeout=10.0,
+            timeout=30.0,
         )
+        # busy_timeout (ms) — backup au timeout Python.
+        conn.execute("PRAGMA busy_timeout = 30000;")
         conn.row_factory = sqlite3.Row
         return conn
 
