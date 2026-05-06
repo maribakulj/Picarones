@@ -7,6 +7,39 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — fix CI perf_regression — 2026-05
+
+### ⚠️ BREAKING CHANGE — sémantique `--fail-if-cer-above`
+
+L'option `picarones run --fail-if-cer-above` interprétait sa valeur
+comme un **pourcentage** (ex : `15.0` = 15 %).  Désormais elle attend
+une **fraction** ∈ [0, 1] (ex : `0.15` = 15 %), cohérent avec la
+représentation interne de `BenchmarkResult.ranking()[i]["mean_cer"]`.
+
+**Migration** : si vous passiez `--fail-if-cer-above 15.0` (intention
+« 15 % »), passez maintenant `--fail-if-cer-above 0.15`.
+
+**Garde-fou** : un callback Click rejette à l'analyse toute valeur
+> 1.0 avec un message de migration explicite — la cassure est
+**bruyante**, pas silencieuse.  Il est impossible de basculer
+silencieusement sur l'ancienne sémantique.
+
+**Pourquoi** : le job CI hebdomadaire `perf_regression.yml` passait
+`0.15` en pensant fraction, mais la CLI le traitait comme 0.15 % et
+échouait toujours.  Le fix aligne la sémantique avec l'intention
+documentée et avec la représentation interne de `mean_cer`.
+
+**Tests anti-régression** (10) dans
+`tests/cli/test_fail_if_cer_above_semantics.py` :
+
+- Sémantique fraction (sous/au seuil/None/strict 1 %/lax 50 %).
+- `perf_regression.yml` doit passer une valeur ∈ ]0, 1].
+- Help texte mentionne explicitement « fraction ».
+- Migration guard : `15.0` → `BadParameter` avec hint « divisez par 100 ».
+- `1.0` et `0.0` acceptés (bornes valides).
+
+---
+
 ## [post-Sprint 97] — chantiers de consolidation — 2026-04 → ongoing
 
 > 6 chantiers de consolidation **sans suppression** sur la branche

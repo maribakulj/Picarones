@@ -168,3 +168,69 @@ class TestCliEndToEnd:
         # Le message doit afficher les deux valeurs en pourcentage clair.
         assert "12.00%" in msg
         assert "5.00%" in msg
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Garde-fou migration : valeurs > 1.0 rejetées avec message clair
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestMigrationGuard:
+    """Avant le fix B, ``--fail-if-cer-above 15.0`` voulait dire 15 %
+    (sémantique pourcentage).  Avec la nouvelle sémantique fraction,
+    un caller qui passe encore 15.0 par erreur doit obtenir une
+    erreur explicite plutôt qu'un comportement silencieusement faux
+    (seuil 1500 % qui ne se déclenche jamais)."""
+
+    def _invoke(
+        self, threshold: str, tmp_path: Path,
+    ) -> tuple[int, str]:
+        """Invoque ``picarones run --fail-if-cer-above THRESHOLD`` avec
+        un corpus tmp vide pour aller jusqu'à la validation du seuil
+        à l'analyse Click (callback ``_validate_cer_threshold``).
+        Une valeur invalide doit être rejetée à l'analyse, AVANT
+        toute opération coûteuse."""
+        from picarones.cli import cli
+        runner = CliRunner()
+        result = runner.invoke(cli, [
+            "run",
+            "--corpus", str(tmp_path),
+            "--engines", "tesseract",
+            "--output", str(tmp_path / "x.json"),
+            "--fail-if-cer-above", threshold,
+        ])
+        return result.exit_code, result.output + (result.stderr or "")
+
+    def test_value_greater_than_one_rejected_with_migration_hint(
+        self, tmp_path: Path,
+    ) -> None:
+        """Passer 15.0 (ancienne sémantique pourcentage) doit échouer
+        en early-validation avec un message qui pointe vers la
+        nouvelle sémantique."""
+        exit_code, output = self._invoke("15.0", tmp_path)
+        assert exit_code != 0
+        # Message doit contenir la valeur reçue ET la migration hint.
+        assert "15.0" in output
+        assert "fraction" in output.lower() or "0.15" in output
+        # Migration hint explicite.
+        assert "divisez" in output.lower() or "diviser" in output.lower()
+
+    def test_negative_value_rejected(self, tmp_path: Path) -> None:
+        exit_code, output = self._invoke("-0.1", tmp_path)
+        assert exit_code != 0
+        assert "≥ 0" in output or ">= 0" in output
+
+    def test_value_at_one_accepted(self, tmp_path: Path) -> None:
+        """1.0 est la borne haute valide (= 100 % de CER)."""
+        exit_code, output = self._invoke("1.0", tmp_path)
+        # Validation du seuil OK : pas de mention de "fraction" ou
+        # de migration hint.  Le run échoue ensuite parce que le
+        # corpus est vide, mais c'est un autre problème.
+        assert "doit être une fraction" not in output
+        assert "divisez" not in output.lower()
+
+    def test_value_at_zero_accepted(self, tmp_path: Path) -> None:
+        """0.0 est valide (seuil zéro tolérance)."""
+        exit_code, output = self._invoke("0.0", tmp_path)
+        assert "doit être une fraction" not in output
+        assert "≥ 0" not in output
