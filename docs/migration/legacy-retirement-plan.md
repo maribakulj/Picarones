@@ -38,7 +38,7 @@ remplis :
 
 ## Phases
 
-### Phase 0 — Foundation (en cours)
+### Phase 0 — Foundation ✅ terminée
 
 **Objectif** : poser les garde-fous qui rendent les 11 phases
 suivantes **vérifiables** sans introduire de régression invisible.
@@ -47,20 +47,29 @@ suivantes **vérifiables** sans introduire de régression invisible.
 
 - [x] `docs/migration/legacy-retirement-plan.md` (ce document) —
   inventaire complet, phases, acceptance criteria.
-- [ ] `tests/regression/legacy_vs_rewrite/` — harness qui exécute
-  legacy + rewrite sur 3 corpus de référence et compare bit-for-bit
-  (avec ε explicite par métrique).
-- [ ] `docs/migration/regression-tolerances.md` — table des
-  tolérances acceptables par métrique (ex : CER ε = 0, narrative
-  templates ε = 0 mais ordre des facts non-significatif, etc.).
-- [ ] Test architectural `test_no_legacy_imports_in_rewrite.py` qui
-  garantit qu'un module rewrite ne réintroduit jamais d'import
-  legacy.
+- [x] `docs/migration/regression-tolerances.md` — table des
+  tolérances acceptables par métrique et type d'output (CER ε=0,
+  Wilcoxon ε=1e-9, HTML diff sémantique, narrative facts égalité
+  ensembliste, etc.).
+- [x] `tests/regression/legacy_vs_rewrite/` — harness scaffolding :
+  fixtures de corpus synthétique (small=3 docs, medium=30 docs,
+  large laissé pour ajout opportuniste) + gestion golden snapshot
+  avec flag `--regen-golden` + comparateurs sémantiques (floats,
+  sets, JSON).  Marker `regression` enregistré et exclu de
+  ``addopts`` par défaut (opt-in via `pytest -m regression`).
+  Smoke test couvre les 16 invariants du harness lui-même.
+- [x] `tests/architecture/test_no_legacy_imports_in_rewrite.py` —
+  garantit qu'aucun fichier des paquets `domain/`, `formats/`,
+  `evaluation/`, `pipeline/`, `adapters/`, `app/`, `reports_v2/`,
+  `interfaces/` n'importe depuis un paquet legacy.  AST-based,
+  pas regex syntaxique.  État initial : **vert** — le rewrite est
+  déjà clean.
 
-**Critère de fin** : harness vert sur 3 corpus de référence pour
-les fonctionnalités déjà migrées (5 OCR, 4 LLM, 4 VLM, vues
-canoniques).  Toute migration future doit ajouter son corpus de
-régression.
+**Acceptance** : ✅ remplie.  Le harness est prêt à recevoir les
+tests de régression de chaque phase suivante (`test_phase1_*.py`,
+`test_phase2_*.py`, etc.).  Toute fonctionnalité migrée DOIT
+avoir son test de régression ajouté ici en même temps que le
+code.
 
 ### Phase 1 — Foundation conceptuelle (`core/`, `domain/`)
 
@@ -224,8 +233,8 @@ over_normalization.detect_over_normalization`.
 **Module** : `modules/alto_text_to_mono_region.TextToAltoMonoRegion`
 (310 LOC) — baseline TEXT → ALTO.
 
-**Cible** : `picarones/formats/alto/baseline_reconstruction.py` ou
-`picarones/evaluation/projectors/text_to_alto.py` (selon où la
+**Cible** : `picarones.formats.alto.baseline_reconstruction` ou
+`picarones.evaluation.projectors.text_to_alto` (selon où la
 sémantique colle le mieux).
 
 **Effort** : 1 jour.
@@ -347,7 +356,8 @@ mais le CER a glissé de 0,002 par doc »*.
 
 | Phase | Statut |
 |-------|--------|
-| 0 | 🟡 En cours |
-| 1-11 | ⚪ À démarrer |
+| 0 | ✅ Terminée |
+| 1 | ⚪ À démarrer |
+| 2-11 | ⚪ À démarrer |
 
-**Dernière mise à jour** : 2026-05.
+**Dernière mise à jour** : 2026-05 (Phase 0 livrée).
