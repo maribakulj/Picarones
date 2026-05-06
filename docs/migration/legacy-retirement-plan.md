@@ -111,19 +111,45 @@ migrés (pas de spam de warning à `import picarones`).  Les 6 autres
 modules `core/` fonctionnent inchangés ; ils seront migrés au
 moment de la migration de leurs callers.
 
-### Phase 2 — Statistics (`measurements/statistics/`)
+### Phase 2 — Statistics (`measurements/statistics/`) — ✅ terminée
 
-**Modules** : `wilcoxon.py`, `friedman_nemenyi.py`, `bootstrap.py`,
-`pareto.py`, `clustering.py`, `correlation.py`, `distributions.py`,
-`cdd_render.py`.
+**Modules migrés** : 8 modules (`wilcoxon.py`, `friedman_nemenyi.py`,
+`bootstrap.py`, `pareto.py`, `clustering.py`, `correlation.py`,
+`distributions.py`, `cdd_render.py`).
 
-**Cible** : nouveau sous-package `picarones/evaluation/statistics/`.
+**Canonique** : `picarones/evaluation/statistics/`.
 
-**Effort** : 5-7 jours.  Code mathématique pur, pas de couplage
-applicatif.
+**Travaux** :
 
-**Acceptance** : régression bit-for-bit sur les outputs des 8 tests
-statistiques + le rendu CDD SVG.
+- 8 modules copiés bit-for-bit dans `evaluation/statistics/`.
+- 1 import legacy dans `clustering.py` migré
+  (`picarones.core.diff_utils.compute_word_diff`
+  → `picarones.evaluation.compute_word_diff`).
+- 1 import auto-référencé dans `friedman_nemenyi.py` migré
+  (`picarones.measurements.statistics.wilcoxon._normal_sf`
+  → `picarones.evaluation.statistics.wilcoxon._normal_sf`).
+- `evaluation/statistics/__init__.py` ré-exporte 14 symboles
+  publics (`bootstrap_ci`, `wilcoxon_test`, `compute_pairwise_stats`,
+  `friedman_test`, `nemenyi_posthoc`, `build_critical_difference_svg`,
+  `compute_pareto_front`, `ErrorCluster`, `cluster_errors`,
+  `compute_correlation_matrix`, `compute_reliability_curve`,
+  `compute_venn_data`, `_SCIPY_AVAILABLE`, `_chi_square_sf`,
+  `_nemenyi_critical_value`, `_normal_sf`, `_rank_row`).
+- 8 shims `measurements/statistics/<X>.py` + 1 shim
+  `measurements/statistics/__init__.py` avec `DeprecationWarning`,
+  `__all__` complet pour rétrocompat des callers (5 fichiers
+  `report/`, 6 fichiers tests).
+
+**Effort réel** : ~1 jour (vs estimation 5-7 j — code mathématique
+pur, pas de couplage applicatif comme prévu, mais aussi script
+de génération de shims qui a accéléré).
+
+**Acceptance** : suite par défaut 5019+ passed (inchangée), tests
+ciblés sur les statistiques 226 passed, test architectural
+anti-imports legacy reste vert (3 passed).  Pas de régression
+détectée — les algorithmes scipy/numpy sont déterministes par
+construction (seed=42 partout) ; le rendu SVG est strictement
+identique parce que c'est le même fichier.
 
 ### Phase 3 — Narrative engine (`measurements/narrative/`)
 
@@ -374,7 +400,8 @@ mais le CER a glissé de 0,002 par doc »*.
 |-------|--------|
 | 0 | ✅ Terminée |
 | 1 | ✅ Partielle (3/9 modules ; les 6 autres reportés en Phase 4) |
-| 2 | ⚪ À démarrer |
-| 3-11 | ⚪ À démarrer |
+| 2 | ✅ Terminée (8/8 modules statistics migrés) |
+| 3 | ⚪ À démarrer |
+| 4-11 | ⚪ À démarrer |
 
-**Dernière mise à jour** : 2026-05 (Phase 1 partielle livrée).
+**Dernière mise à jour** : 2026-05 (Phase 2 livrée).

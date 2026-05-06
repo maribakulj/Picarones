@@ -1,75 +1,23 @@
-"""Matrice de corrélation entre métriques (Sprint 7).
+"""``picarones.measurements.statistics.correlation`` — shim re-export (déprécié, suppression 2.0).
 
-Coefficient de Pearson entre toutes les métriques numériques d'un
-DocumentResult — montre les redondances (CER ↔ WER ≈ 1) et les
-dimensions indépendantes (CER ↔ image_quality ≈ 0.5).
+Canonique : :mod:`picarones.evaluation.statistics.correlation`.  Migration ::
+
+    from picarones.evaluation.statistics import ...
 """
 
 from __future__ import annotations
 
-import math
-from typing import Optional
+import warnings
 
+from picarones.evaluation.statistics.correlation import (
+    compute_correlation_matrix,
+)
 
-def _pearson(x: list[float], y: list[float]) -> float:
-    """Coefficient de corrélation de Pearson."""
-    n = len(x)
-    if n < 2:
-        return 0.0
-    mx = sum(x) / n
-    my = sum(y) / n
-    num = sum((xi - mx) * (yi - my) for xi, yi in zip(x, y))
-    den = math.sqrt(
-        sum((xi - mx) ** 2 for xi in x) * sum((yi - my) ** 2 for yi in y)
-    )
-    return num / den if den > 0 else 0.0
+warnings.warn(
+    "picarones.measurements.statistics.correlation is deprecated and will be "
+    "removed in 2.0.  Import from picarones.evaluation.statistics instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-
-def compute_correlation_matrix(
-    metrics_per_doc: list[dict],
-    metric_keys: Optional[list[str]] = None,
-) -> dict:
-    """Calcule la matrice de corrélation entre toutes les métriques numériques.
-
-    Parameters
-    ----------
-    metrics_per_doc : liste de dicts, un par document, contenant les métriques
-    metric_keys     : clés à inclure (None → toutes les clés numériques)
-
-    Returns
-    -------
-    {
-      "labels": [...],
-      "matrix": [[r_ij, ...], ...]   // coefficients de Pearson
-    }
-    """
-    if not metrics_per_doc:
-        return {"labels": [], "matrix": []}
-
-    if metric_keys is None:
-        # Déduire les clés numériques
-        sample = metrics_per_doc[0]
-        metric_keys = [k for k, v in sample.items() if isinstance(v, (int, float))]
-
-    # Construire les vecteurs
-    vectors: dict[str, list[float]] = {k: [] for k in metric_keys}
-    for doc in metrics_per_doc:
-        for k in metric_keys:
-            v = doc.get(k)
-            vectors[k].append(float(v) if v is not None else 0.0)
-
-    # Calculer la matrice
-    labels = metric_keys
-    n = len(labels)
-    matrix = []
-    for i in range(n):
-        row = []
-        for j in range(n):
-            r = _pearson(vectors[labels[i]], vectors[labels[j]])
-            row.append(round(r, 4))
-        matrix.append(row)
-
-    return {"labels": labels, "matrix": matrix}
-
-
-__all__ = ["compute_correlation_matrix"]
+__all__ = ['compute_correlation_matrix']
