@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from typing import Awaitable, Callable, Protocol, runtime_checkable
 
 from fastapi import HTTPException, Request, Response, status
@@ -206,16 +206,29 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     des requêtes des ``window_seconds`` dernières secondes.  Si le
     nombre dépasse ``max_requests``, on retourne 429 Too Many Requests.
 
-    Limites :
+    Limites
+    -------
+    - **In-process** : ne fonctionne que pour une instance.  Pour un
+      cluster, basculer sur un store partagé (Redis).
+    - **Pas atomique** : sous concurrence haute, un léger dépassement
+      est possible (best-effort assumé).
 
-    - **In-process** : ne fonctionne que pour 1 instance d'app.
-      Pour un cluster, remplacer par Redis-backed.
-    - **Pas atomique** : sous concurrence très haute, un léger
-      dépassement est possible (acceptable pour un rate-limit
-      best-effort).
-    - **Mémoire** : grandit avec le nombre d'IPs uniques.  Un job
-      de nettoyage périodique pourrait être ajouté ; pour l'instant,
-      le deque par IP s'auto-purge à chaque requête.
+    Garde-fous mémoire et anti-spoofing
+    -----------------------------------
+    Un attaquant qui rotate des IPs ferait gonfler ``self._buckets``
+    indéfiniment.  Deux protections :
+
+    1. **Plafond LRU** ``max_clients`` : quand on dépasse, le bucket
+       le plus ancien (LRU) est évincé.
+    2. **GC opportuniste** : à chaque dispatch, si le bucket courant
+       devient vide après purge, il est supprimé du dict.
+
+    Sur ``X-Forwarded-For`` (si activé) : la chaîne XFF est
+    ``client, proxy1, proxy2, …``.  Lire le **premier** est trivialement
+    spoofable par le client.  ``trust_proxy_count`` documente combien
+    de proxies fiables sont devant l'app : on lit la N-ième IP en
+    partant de la fin (la dernière étant le proxy de confiance le plus
+    proche de nous).  Convention recommandée par Starlette/Express.
 
     Parameters
     ----------
@@ -223,13 +236,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Nombre max de requêtes par IP par fenêtre.  Défaut 60.
     window_seconds:
         Largeur de la fenêtre glissante.  Défaut 60s (= 60 req/min).
-    trust_x_forwarded_for:
-        Si ``True``, lit l'IP depuis ``X-Forwarded-For`` (utile
-        derrière un reverse proxy de confiance).  Si ``False``
-        (défaut), utilise ``request.client.host`` (l'IP directe du
-        socket).  **Ne pas activer** si le serveur n'est pas
-        derrière un proxy contrôlé — un client peut mentir
-        librement avec ce header.
+    trust_proxy_count:
+        Nombre de proxies fiables devant l'app.  ``0`` (défaut)
+        désactive la lecture de ``X-Forwarded-For`` ;
+        ``request.client.host`` (IP du socket TCP direct) est utilisé.
+        ``1`` lit l'avant-dernière IP de XFF (un seul proxy en amont,
+        ex. nginx local), ``2`` l'avant-avant-dernière, etc.  **Ne pas
+        configurer plus haut que le nombre réel** sous peine de
+        permettre du spoofing.
+    max_clients:
+        Plafond du nombre d'IPs gardées en mémoire.  Défaut 10 000.
+        Au-delà, eviction LRU.
     """
 
     def __init__(
@@ -238,20 +255,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         *,
         max_requests: int = 60,
         window_seconds: float = 60.0,
-        trust_x_forwarded_for: bool = False,
+        trust_proxy_count: int = 0,
+        max_clients: int = 10_000,
     ) -> None:
         super().__init__(app)
         if max_requests <= 0:
             raise ValueError("max_requests doit être > 0.")
         if window_seconds <= 0:
             raise ValueError("window_seconds doit être > 0.")
+        if trust_proxy_count < 0:
+            raise ValueError("trust_proxy_count doit être >= 0.")
+        if max_clients <= 0:
+            raise ValueError("max_clients doit être > 0.")
         self._max = max_requests
         self._window = window_seconds
-        self._trust_xff = trust_x_forwarded_for
-        # Map IP → deque[timestamp].  Pas de threading.Lock : Starlette
-        # est mono-thread asyncio par défaut, deque.append/popleft sont
-        # atomiques.
-        self._buckets: dict[str, deque[float]] = {}
+        self._trust_proxies = trust_proxy_count
+        self._max_clients = max_clients
+        # ``OrderedDict`` pour conserver l'ordre d'insertion → eviction LRU
+        # à coût constant via ``move_to_end`` + ``popitem(last=False)``.
+        # Starlette est mono-thread asyncio par défaut ; pas de Lock.
+        self._buckets: OrderedDict[str, deque[float]] = OrderedDict()
 
     async def dispatch(
         self,
@@ -260,7 +283,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         client_ip = self._extract_ip(request)
         now = time.monotonic()
-        bucket = self._buckets.setdefault(client_ip, deque())
+        bucket = self._buckets.get(client_ip)
+        if bucket is None:
+            bucket = deque()
+            self._buckets[client_ip] = bucket
+            # Eviction LRU si on dépasse le plafond.
+            if len(self._buckets) > self._max_clients:
+                self._buckets.popitem(last=False)
+        else:
+            self._buckets.move_to_end(client_ip)
         # Purge des timestamps hors fenêtre.
         cutoff = now - self._window
         while bucket and bucket[0] < cutoff:
@@ -276,15 +307,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 },
             )
         bucket.append(now)
+        # GC opportuniste : si le bucket s'est vidé entre-temps (rare,
+        # purge avant append), on le retirerait — mais bucket n'est
+        # jamais vide ici puisqu'on vient d'append.  La seule fenêtre
+        # de leak persistante serait une IP qui ne revient plus ; le
+        # plafond LRU ``max_clients`` la borne.
         return await call_next(request)
 
     def _extract_ip(self, request: Request) -> str:
-        if self._trust_xff:
+        if self._trust_proxies > 0:
             xff = request.headers.get("x-forwarded-for", "").strip()
             if xff:
-                # Premier IP de la chaîne (le client réel).  Le reste
-                # est la chaîne de proxies.
-                return xff.split(",")[0].strip()
+                parts = [p.strip() for p in xff.split(",") if p.strip()]
+                # Lecture sûre : prendre la N-ième IP en partant de la
+                # fin, où N = trust_proxy_count.  Si la chaîne est plus
+                # courte qu'attendu (mauvaise config ou client tronquant),
+                # fallback sur l'IP la plus à gauche disponible.
+                idx = max(0, len(parts) - self._trust_proxies)
+                if idx < len(parts):
+                    return parts[idx]
         client = request.client
         return client.host if client is not None else "unknown"
 

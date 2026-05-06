@@ -47,6 +47,8 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -125,10 +127,27 @@ def write_confidences_sidecar(
         "extractor": extractor or adapter_name,
         "model_version": model_version,
     }
-    sidecar_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+    # Écriture atomique : un crash mi-write ne doit pas laisser un
+    # sidecar tronqué (qui ferait planter le parser à la lecture).
+    # ``tempfile`` dans le même répertoire pour garantir que
+    # ``os.replace`` reste atomique (rename inter-volume échouerait).
+    encoded = json.dumps(payload, ensure_ascii=False, indent=2)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{sidecar_path.name}.",
+        suffix=".tmp",
+        dir=str(sidecar_path.parent),
     )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(encoded)
+        os.replace(tmp_name, sidecar_path)
+    except Exception:
+        # Best-effort cleanup du tmp si le replace n'a pas eu lieu.
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
     return Artifact(
         id=f"{document_id}:{adapter_name}:confidences",
         document_id=document_id,

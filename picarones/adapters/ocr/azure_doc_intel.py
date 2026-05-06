@@ -68,6 +68,7 @@ from pathlib import Path
 from typing import Any
 
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
+from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
 
 
@@ -214,8 +215,11 @@ class AzureDocIntelAdapter(BaseOCRAdapter):
         except _SDKMissing:
             text = self._call_via_rest(image_path, endpoint, api_key)
 
-        text_path = (
-            image_path.parent / f"{image_path.stem}.{self.name}.txt"
+        text_path = resolve_output_path(
+            input_path=image_path,
+            adapter_name=self.name,
+            suffix="txt",
+            context=context,
         )
         text_path.write_text(text, encoding="utf-8")
 

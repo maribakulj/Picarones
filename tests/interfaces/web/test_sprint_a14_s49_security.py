@@ -16,6 +16,9 @@ from fastapi import HTTPException, Request, status
 from fastapi.testclient import TestClient
 
 from picarones.app.services import RegistryService, WorkspaceManager
+from picarones.app.services.benchmark_service import BenchmarkService
+from picarones.app.services.corpus_service import CorpusService
+from picarones.app.services.run_orchestrator import RunOrchestrator
 from picarones.interfaces.web import WebAppState, create_app
 
 
@@ -23,9 +26,9 @@ def _state(tmp_path: Path) -> WebAppState:
     return WebAppState(
         workspace=WorkspaceManager(base_dir=tmp_path, session_id="s49"),
         registry=RegistryService.bootstrap_defaults(),
-        corpus=MagicMock(),
-        benchmark=MagicMock(),
-        orchestrator=MagicMock(),
+        corpus=MagicMock(spec=CorpusService),
+        benchmark=MagicMock(spec=BenchmarkService),
+        orchestrator=MagicMock(spec=RunOrchestrator),
     )
 
 

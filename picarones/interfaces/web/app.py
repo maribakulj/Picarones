@@ -135,7 +135,7 @@ def create_app(
     enable_security_headers: bool = True,
     max_body_bytes: int | None = 100 * 1024 * 1024,
     rate_limit_per_minute: int | None = 60,
-    rate_limit_trust_proxy: bool = False,
+    rate_limit_trust_proxy_count: int = 0,
     auth_backend: AuthenticationBackend | None = None,
 ) -> FastAPI:
     """Construit une instance FastAPI consommant l'``WebAppState``.
@@ -160,10 +160,12 @@ def create_app(
         Si non ``None`` (défaut 60), monte ``RateLimitMiddleware`` avec
         cette limite par IP par minute.  ``None`` désactive (mode
         public sans rate limit).
-    rate_limit_trust_proxy:
-        Si ``True``, le rate limit lit l'IP depuis ``X-Forwarded-For``
-        — à activer **uniquement** si un reverse proxy de confiance
-        est en amont (sinon n'importe quel client peut mentir).
+    rate_limit_trust_proxy_count:
+        Nombre de proxies fiables devant l'app.  ``0`` (défaut) →
+        ``X-Forwarded-For`` ignoré, ``request.client.host`` utilisé.
+        ``1`` → un seul proxy en amont (ex. nginx local) ; ``2`` →
+        deux ; etc.  **Ne pas surdéclarer** : un client peut alors
+        forger XFF pour spoofer son IP.
     auth_backend:
         Backend d'authentification optionnel.  Si ``None`` (défaut),
         mode public total (cohérent avec HuggingFace Space).  Sinon,
@@ -238,7 +240,7 @@ def create_app(
             RateLimitMiddleware,
             max_requests=rate_limit_per_minute,
             window_seconds=60.0,
-            trust_x_forwarded_for=rate_limit_trust_proxy,
+            trust_proxy_count=rate_limit_trust_proxy_count,
         )
     if max_body_bytes is not None:
         app.add_middleware(BodySizeLimitMiddleware, max_bytes=max_body_bytes)

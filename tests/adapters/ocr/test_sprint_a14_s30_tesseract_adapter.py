@@ -128,14 +128,14 @@ class TestTesseractAdapterContract:
         assert TesseractAdapter.input_types == frozenset({ArtifactType.IMAGE})
 
     def test_output_types(self) -> None:
-        # Sprint S50 : output_types est une property d'instance qui
-        # dépend de ``expose_confidences``.
-        assert TesseractAdapter().output_types == frozenset(
+        """``output_types`` est l'ensemble maximal produit (constante de
+        classe).  Si ``expose_confidences=False``, l'execute() omet
+        CONFIDENCES du dict — le YAML ``PipelineSpec`` doit alors
+        déclarer seulement ``[raw_text]`` pour cohérence.
+        """
+        assert TesseractAdapter.output_types == frozenset(
             {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
         )
-        assert TesseractAdapter(
-            expose_confidences=False,
-        ).output_types == frozenset({ArtifactType.RAW_TEXT})
 
     def test_execution_mode_is_cpu(self) -> None:
         """Tesseract est CPU-bound — utilise un ProcessPool dans le runner."""

@@ -99,11 +99,16 @@ class TesseractAdapter(BaseOCRAdapter):
     """
 
     input_types = frozenset({ArtifactType.IMAGE})
-    # ``output_types`` est une property d'instance plutôt qu'une
-    # constante de classe : son contenu dépend de
-    # ``expose_confidences``.  Sans ce conditionnement, l'executor
-    # validerait un output ``CONFIDENCES`` que l'adapter ne produit
-    # pas en mode opt-out.
+    #: Set maximal de types que l'adapter peut produire.  Le YAML
+    #: ``PipelineSpec`` choisit ceux qui sont effectivement consommés
+    #: par les étapes en aval ; l'executor filtre la sortie de
+    #: ``execute()`` sur ``step.output_types``.  Si l'utilisateur
+    #: désactive ``expose_confidences``, le YAML doit déclarer
+    #: ``output_types: [raw_text]`` (sinon la jonction sera vue par
+    #: l'aval comme manquant son input ``confidences``).
+    output_types = frozenset(
+        {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
+    )
     execution_mode = "cpu"
 
     def __init__(
@@ -143,21 +148,6 @@ class TesseractAdapter(BaseOCRAdapter):
     @property
     def name(self) -> str:
         return self._name
-
-    @property
-    def output_types(self) -> frozenset:  # type: ignore[override]
-        """Output_types dynamique selon ``expose_confidences``.
-
-        Si l'instance expose les confidences, déclare
-        ``{RAW_TEXT, CONFIDENCES}`` ; sinon ``{RAW_TEXT}`` seul.
-        Le ``PipelinePlanner`` lit cette propriété pour valider
-        que les types s'enchaînent.
-        """
-        if self._expose_confidences:
-            return frozenset(
-                {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
-            )
-        return frozenset({ArtifactType.RAW_TEXT})
 
     @property
     def expose_confidences(self) -> bool:
@@ -332,9 +322,6 @@ class TesseractAdapter(BaseOCRAdapter):
             document_id=document_id,
             extractor="tesseract",
         )
-
-
-__all__ = ["TesseractAdapter"]
 
 
 __all__ = ["TesseractAdapter"]

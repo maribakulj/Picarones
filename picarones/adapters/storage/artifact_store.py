@@ -51,8 +51,18 @@ from pathlib import Path
 
 from picarones.domain.artifact_key import ArtifactKey
 from picarones.domain.artifacts import Artifact
+from picarones.domain.errors import PicaronesError
 
 logger = logging.getLogger(__name__)
+
+
+class ArtifactStoreError(PicaronesError):
+    """Erreur de persistance d'artefact (clé invalide, I/O en échec).
+
+    Hérite de ``PicaronesError`` — un caller qui catche
+    ``PicaronesError`` rattrape aussi cette branche, cohérent avec
+    la hiérarchie d'exceptions unifiée.
+    """
 
 
 # Sprint A14-S47 — ``ArtifactKey`` (type pur) a migré dans
@@ -181,7 +191,7 @@ class InMemoryArtifactStore(ArtifactStore):
         payload: bytes | None = None,
     ) -> None:
         if not key:
-            raise ValueError("ArtifactStore.put : key vide non autorisé")
+            raise ArtifactStoreError("ArtifactStore.put : key vide non autorisé")
         with self._lock:
             self._store[key] = StoredArtifact(
                 key=key, artifact=artifact, payload=payload,
@@ -302,7 +312,7 @@ class FilesystemArtifactStore(ArtifactStore):
         payload: bytes | None = None,
     ) -> None:
         if not key:
-            raise ValueError("ArtifactStore.put : key vide non autorisé")
+            raise ArtifactStoreError("ArtifactStore.put : key vide non autorisé")
         with self._lock:
             artifact_path = self._root / self.ARTIFACTS_DIR / f"{key}.json"
             tmp_path = artifact_path.with_suffix(".json.tmp")

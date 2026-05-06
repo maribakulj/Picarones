@@ -34,6 +34,7 @@ from __future__ import annotations
 from picarones.adapters.storage.artifact_store import (
     ArtifactKey,
     ArtifactStore,
+    ArtifactStoreError,
     FilesystemArtifactStore,
     InMemoryArtifactStore,
     StoredArtifact,
@@ -47,6 +48,7 @@ from picarones.adapters.storage.job_store import (
 __all__ = [
     "ArtifactKey",
     "ArtifactStore",
+    "ArtifactStoreError",
     "FilesystemArtifactStore",
     "InMemoryArtifactStore",
     "StoredArtifact",

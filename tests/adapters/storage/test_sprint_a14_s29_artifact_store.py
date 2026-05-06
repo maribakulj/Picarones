@@ -42,6 +42,7 @@ import pytest
 from picarones.adapters.storage import (
     ArtifactKey,
     ArtifactStore,
+    ArtifactStoreError,
     FilesystemArtifactStore,
     InMemoryArtifactStore,
     StoredArtifact,
@@ -295,7 +296,7 @@ class _SharedStoreContract:
 
     def test_empty_key_rejected(self, tmp_path: Path) -> None:
         store = self.make_store(tmp_path)
-        with pytest.raises(ValueError, match="vide"):
+        with pytest.raises(ArtifactStoreError, match="vide"):
             store.put("", _make_artifact(), payload=b"x")
 
     def test_multiple_artifacts_independent(self, tmp_path: Path) -> None:

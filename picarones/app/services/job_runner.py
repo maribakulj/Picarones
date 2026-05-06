@@ -53,6 +53,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from picarones.adapters.storage import JobStore
+from picarones.app.results import ReportRenderer
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,6 @@ logger = logging.getLogger(__name__)
 # évite à ce module d'importer ``RunOrchestrator`` directement
 # (cycles potentiels) et permet aux tests d'injecter un mock.
 OrchestratorFactory = Callable[[Path], Any]
-ReportRenderer = Callable[[Any, Path, str], Path]
 
 
 class JobRunner:
@@ -190,6 +190,22 @@ class JobRunner:
 
         Sinon, statut final = ``complete`` ou ``error``.
         """
+        try:
+            self._run_unwrapped(job_id, run_spec, output_dir)
+        finally:
+            # ``_threads`` retient la référence pour ``wait(job_id)``.
+            # Quand le thread sort, on libère pour borner la mémoire
+            # même sur des serveurs longue durée.
+            self._threads.pop(job_id, None)
+
+    def _run_unwrapped(
+        self,
+        job_id: str,
+        run_spec: Any,
+        output_dir: Path,
+    ) -> None:
+        """Implémentation séparée pour que ``_run`` puisse garantir le
+        cleanup en ``finally`` sans nesting profond."""
         # 1. Check pré-démarrage : annulé avant que le thread n'ait
         #    pris la main ?
         rec = self._store.get(job_id)
@@ -248,4 +264,4 @@ class JobRunner:
         logger.info("[job_runner] job %s terminé avec succès.", job_id)
 
 
-__all__ = ["JobRunner", "OrchestratorFactory", "ReportRenderer"]
+__all__ = ["JobRunner", "OrchestratorFactory"]

@@ -35,6 +35,9 @@ ses agrégats à la volée depuis les ``ViewResult`` listés.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from picarones.domain.run_manifest import RunManifest
@@ -107,4 +110,14 @@ class RunResult(BaseModel):
         return tuple(out)
 
 
-__all__ = ["RunDocumentResult", "RunResult"]
+#: Type alias d'un renderer de rapport injecté par le caller.
+#:
+#: Signature canonique partagée par le ``RunOrchestrator`` (qui
+#: l'invoque) et le ``JobRunner`` (qui le transmet).  Reçoit
+#: ``(run_result, output_path, lang)``, écrit le fichier et retourne
+#: le ``Path`` effectivement écrit (généralement identique à
+#: ``output_path``, mais le renderer peut changer l'extension).
+ReportRenderer = Callable[["RunResult", Path, str], Path]
+
+
+__all__ = ["ReportRenderer", "RunDocumentResult", "RunResult"]

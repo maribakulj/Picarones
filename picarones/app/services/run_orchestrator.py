@@ -42,7 +42,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from picarones.app.results import RunResult
+from picarones.app.results import ReportRenderer, RunResult
 from picarones.app.schemas import RunSpec, resolve_adapter_class
 from picarones.app.services.benchmark_service import BenchmarkService
 from picarones.app.services.corpus_service import (
@@ -75,12 +75,6 @@ from picarones.pipeline import (
 # ──────────────────────────────────────────────────────────────────────
 
 
-#: Type alias d'un renderer de rapport injecté par le caller.
-#: Reçoit ``(run_result, output_path, lang)``, écrit le fichier
-#: et retourne le ``Path`` effectivement écrit (généralement
-#: identique à ``output_path``, mais le renderer peut décider de
-#: changer l'extension par exemple).
-ReportRenderer = Callable[[RunResult, Path, str], Path]
 
 
 @dataclass(frozen=True)

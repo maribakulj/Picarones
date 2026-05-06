@@ -61,6 +61,7 @@ import json
 import logging
 import sqlite3
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -133,6 +134,18 @@ class JobStoreError(PicaronesError):
     """Erreur de persistance SQLite côté JobStore."""
 
 
+#: Dispatcher de migrations ascendantes ``v_n → v_{n+1}``.
+#:
+#: Une migration est une callable ``(sqlite3.Connection) -> None``
+#: appliquée dans une transaction implicite (mode autocommit du
+#: ``JobStore`` désactivé pendant la migration).  Pour ajouter une
+#: migration, déclarer une fonction ``_migrate_v1_to_v2(conn)`` qui
+#: applique les ``ALTER TABLE`` nécessaires, puis ajouter
+#: ``2: _migrate_v1_to_v2`` au dict.  La clé est la version
+#: **source** ; la valeur est la version **cible**.
+_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {}
+
+
 class JobStore:
     """Store SQLite des jobs de benchmark.
 
@@ -140,13 +153,26 @@ class JobStore:
     ----------
     db_path:
         Chemin du fichier SQLite.  Créé s'il n'existe pas.
+
+    Migration de schéma
+    -------------------
+    L'ouverture d'une base SQLite vérifie sa version contre
+    ``SCHEMA_VERSION`` (lue dans la table ``schema_version``) :
+
+    - Version absente → fresh DB, on insère ``SCHEMA_VERSION``.
+    - Version == code → no-op.
+    - Version < code → on applique en chaîne les migrations
+      ``_MIGRATIONS`` jusqu'à atteindre ``SCHEMA_VERSION``.  Si
+      l'une manque dans le dispatcher, ``JobStoreError`` (la
+      release n'a pas livré la migration nécessaire).
+    - Version > code → ``JobStoreError`` (downgrade non supporté ;
+      l'utilisateur doit utiliser un build plus récent ou
+      réinitialiser).
     """
 
-    #: Version du schéma SQL.  À incrémenter à chaque migration ;
-    #: une base ouverte avec une version > ``SCHEMA_VERSION`` est
-    #: rejetée (downgrade non supporté).  Les futures migrations
-    #: descendantes ajouteront leurs ``ALTER TABLE`` conditionnels
-    #: après la lecture de ``schema_version``.
+    #: Version du schéma SQL.  À incrémenter ENSEMBLE avec une
+    #: entrée correspondante dans ``_MIGRATIONS`` (pas l'un sans
+    #: l'autre — un test architectural vérifie l'invariant).
     SCHEMA_VERSION = 1
 
     def __init__(self, db_path: Path | str) -> None:
@@ -174,6 +200,10 @@ class JobStore:
                         f"{self.SCHEMA_VERSION}.  Downgrade non "
                         "supporté.",
                     )
+                if existing < self.SCHEMA_VERSION:
+                    self._apply_migrations(
+                        conn, from_version=existing,
+                    )
             try:
                 conn.execute("PRAGMA journal_mode = WAL;")
             except sqlite3.Error:  # pragma: no cover
@@ -181,6 +211,38 @@ class JobStore:
                 # reste en rollback journal, fonctionnel mais moins
                 # concurrent en lecture.
                 pass
+
+    @classmethod
+    def _apply_migrations(
+        cls,
+        conn: sqlite3.Connection,
+        *,
+        from_version: int,
+    ) -> None:
+        """Applique en chaîne ``_MIGRATIONS[v]`` pour ``v`` de
+        ``from_version`` à ``SCHEMA_VERSION - 1``.
+
+        Une migration manquante est une erreur dure : la release du
+        code prétend être à ``SCHEMA_VERSION`` mais n'a pas livré
+        la transformation nécessaire.  ``JobStoreError`` plutôt
+        qu'un warning silencieux qui laisserait le schéma incohérent.
+        """
+        current = from_version
+        while current < cls.SCHEMA_VERSION:
+            migrate = _MIGRATIONS.get(current)
+            if migrate is None:
+                raise JobStoreError(
+                    f"JobStore : migration manquante de v{current} "
+                    f"vers v{current + 1}.  Le code prétend être à "
+                    f"la version {cls.SCHEMA_VERSION} mais n'a pas "
+                    "livré la migration.",
+                )
+            migrate(conn)
+            conn.execute(
+                "UPDATE schema_version SET version = ?",
+                (current + 1,),
+            )
+            current += 1
 
     @property
     def db_path(self) -> Path:
