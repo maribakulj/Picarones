@@ -206,50 +206,77 @@ anti-imports legacy : 3 passed (le rewrite reste autonome).
 Garde-fou anti-hallucination préservé (les détecteurs lisent
 toujours le dict JSON d'entrée, pas une source externe).
 
-### Phase 4 — 35 mesures legacy (`measurements/*.py`)
+### Phase 4 — 35 mesures legacy (`measurements/*.py`) — partielle ✅
 
-**Modules** (ordre par cluster thématique, chaque cluster = un PR/sprint) :
+**Audit de migrabilité** : sur 35 mesures legacy, **24 étaient
+déjà des re-exports** (Phase 4 partielle pré-existante avec un
+canonique `evaluation/metrics/X.py`).  Sur les 11 modules réellement
+"contenu" :
 
-#### 4.A — Philologique (8 modules) — 5 jours
+- **9 sont migrés en Phase 4 (cette session)** sans toucher à
+  `core.modules` : autonomes ou en cascade vers d'autres modules
+  migrables.
+- **13 modules réels** restent bloqués par
+  `core.modules.ArtifactType` (enum legacy 6 valeurs incompatible
+  avec le superset `domain.artifacts.ArtifactType` 10 valeurs ;
+  `TEXT` ≠ `RAW_TEXT`, `ALTO` ≠ `ALTO_XML`, `PAGE` ≠ `PAGE_XML`).
+  Substitution non transparente — exigerait un travail de
+  remapping sémantique sur chaque caller.
 
-`mufi.py`, `abbreviations.py`, `early_modern_typography.py`,
-`modern_archives.py`, `roman_numerals.py`, `unicode_blocks.py`,
-`equivalence_profile.py`, `philological_hooks.py`.
+**Migrés en Phase 4 — 9 modules** :
 
-#### 4.B — NER + readability (6 modules) — 4 jours
+| Legacy | Canonique | Notes |
+|--------|-----------|-------|
+| `measurements/char_scores.py` (307) | `evaluation/metrics/char_scores.py` | Autonome |
+| `measurements/difficulty.py` (161) | `evaluation/metrics/difficulty.py` | Autonome |
+| `measurements/ner_backends.py` (186) | `evaluation/metrics/ner_backends.py` | Autonome |
+| `measurements/normalization.py` (51) | `evaluation/metrics/normalization.py` | Autonome |
+| `measurements/structure.py` (182) | `evaluation/metrics/structure.py` | Autonome |
+| `measurements/cost_projection.py` (140) | `evaluation/metrics/cost_projection.py` | dep `pricing` (déjà migré) |
+| `measurements/specialization.py` (158) | `evaluation/metrics/specialization.py` | dep `inter_engine` (re-export déjà) |
+| `measurements/taxonomy.py` (294) | `evaluation/metrics/taxonomy.py` | dep `char_scores` (en cascade) |
+| `measurements/taxonomy_intra_doc.py` (178) | `evaluation/metrics/taxonomy_intra_doc.py` | dep `taxonomy` (en cascade) |
 
-`ner.py`, `ner_backends.py`, `readability.py`, `readability_hooks.py`,
-`searchability.py`, `searchability_hooks.py`.
+Total : **1657 lignes de code migrées + 9 shims legacy**.
 
-#### 4.C — Structurel (5 modules) — 3 jours
+**Bloqués — 13 modules + 1 sous-package + 6 modules `core/`** :
 
-`reading_order.py`, `structure.py`, `alto_metrics.py`, `line_metrics.py`
-(legacy), `numerical_sequences.py` + `numerical_sequences_hooks.py`.
+Reportés à une phase dédiée **« Phase 4-bis : ArtifactType
+migration »** dont le périmètre est :
 
-#### 4.D — Robustness, reliability, history (4 modules) — 4 jours
+1. Décider le mapping sémantique TEXT → RAW_TEXT vs CORRECTED_TEXT
+   (par module, en lisant le contexte d'usage).
+2. Migrer `core/modules.py` (`BaseModule` + `ArtifactType` 6
+   valeurs) vers `domain/module_protocol.py`.
+3. Migrer `core/metric_registry.py` + `core/metric_hooks.py` vers
+   `evaluation/registry/`.
+4. Adapter chaque module bloqué : `mufi.py`, `abbreviations.py`,
+   `early_modern_typography.py`, `modern_archives.py`,
+   `roman_numerals.py`, `unicode_blocks.py`, `equivalence_profile.py`,
+   `philological_hooks.py`, `ner.py`, `readability.py`,
+   `readability_hooks.py`, `searchability.py`,
+   `searchability_hooks.py`, `reading_order.py`, `alto_metrics.py`,
+   `numerical_sequences.py`, `numerical_sequences_hooks.py`,
+   `builtin_hooks.py`, `builtin_metrics.py`, `metrics.py`,
+   `pipeline_benchmark.py`, `pipeline_comparison.py`,
+   `pipeline_spec_loader.py`, `robustness.py`, `reliability.py`,
+   `history.py`.
+5. Migrer le sous-package `measurements/runner/` (orchestrateur
+   legacy → fondre dans `pipeline/` + `app/services/`).
+6. Migrer `core/results.py` (`BenchmarkResult` + 30 champs agrégés
+   → typed Artifacts dans `domain/`).
+7. Migrer `core/corpus.py` (`Document`/`Corpus`/`GTLevel` → modèle
+   convergent avec `domain.corpus`).
 
-`robustness.py`, `reliability.py`, `history.py`, `specialization.py`.
+**Effort estimé Phase 4-bis** : 18-22 jours (vs 23-28 j initialement
+estimés pour Phase 4 complète — la moitié déjà faite par les
+re-exports pré-existants et les 9 modules de cette session).
 
-#### 4.E — Pipeline metrics (3 modules) — 3 jours
-
-`pipeline_benchmark.py`, `pipeline_comparison.py`,
-`pipeline_spec_loader.py` — opèrent sur le `PipelineSpec` legacy.
-À fondre dans la couche `app/services/` du rewrite.
-
-#### 4.F — Utility / hooks (9 modules) — 4 jours
-
-`builtin_hooks.py`, `builtin_metrics.py`, `metrics.py`, `char_scores.py`,
-`cost_projection.py`, `difficulty.py`, `taxonomy.py`,
-`taxonomy_intra_doc.py`, `runner/*` (sous-package).
-
-**Cible** : chaque mesure migre vers `evaluation/metrics/<thème>/`
-ou un sous-package adapté.  Enregistrement via la `MetricRegistry`
-typée (signature `(input_type, output_type) → score`).
-
-**Effort total Phase 4** : 23-28 jours.
-
-**Acceptance** : régression bit-for-bit sur les ~5000 tests existants
-qui pointent vers ces métriques.
+**Acceptance Phase 4 partielle** : 9 modules migrés, 1191 tests
+mesures passent (inchangés), test architectural anti-imports
+legacy reste vert.  Les 13 modules réels + 6 modules `core/`
+restants sont documentés comme dépendant d'une migration
+ArtifactType.
 
 ### Phase 5 — Reports HTML (`report/`)
 
@@ -434,10 +461,11 @@ mais le CER a glissé de 0,002 par doc »*.
 | Phase | Statut |
 |-------|--------|
 | 0 | ✅ Terminée |
-| 1 | ✅ Partielle (3/9 modules ; les 6 autres reportés en Phase 4) |
+| 1 | ✅ Partielle (3/9 modules ; les 6 autres → Phase 4-bis) |
 | 2 | ✅ Terminée (8/8 modules statistics migrés) |
 | 3 | ✅ Terminée (11 modules narrative + 2 templates + 18 détecteurs migrés) |
-| 4 | ⚪ À démarrer |
+| 4 | ✅ Partielle (9 modules autonomes/cascade ; 13 modules + 6 modules `core/` + 1 sous-package → Phase 4-bis) |
+| 4-bis | ⚪ À démarrer (migration ArtifactType + débloqueur des bloqués) |
 | 5-11 | ⚪ À démarrer |
 
-**Dernière mise à jour** : 2026-05 (Phase 3 livrée).
+**Dernière mise à jour** : 2026-05 (Phase 4 partielle livrée).
