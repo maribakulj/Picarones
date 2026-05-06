@@ -41,10 +41,10 @@ Comportement
 3. Applique ``tesseract_cmd`` s'il est fourni.
 4. Appelle ``pytesseract.image_to_string`` avec ``lang`` et
    ``--oem N --psm M``.
-5. Écrit le texte dans ``<stem>.<name>.txt`` à côté de l'image.
-   Cohérent avec le pattern ``PrecomputedTextAdapter`` (Sprint S26)
-   — un caller peut relire la sortie via cet adapter pour la
-   comparer dans un second run.
+5. Écrit le texte dans ``<stem>.<name>.txt`` à côté de l'image
+   (cohérent avec le pattern ``PrecomputedTextAdapter`` — un caller
+   peut relire la sortie via cet adapter pour la comparer dans un
+   second run).
 6. Retourne un ``Artifact`` ``RAW_TEXT`` pointant vers le fichier
    produit.
 
@@ -67,7 +67,7 @@ from pathlib import Path
 from typing import Any
 
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
-from picarones.adapters.ocr.output_paths import resolve_output_path
+from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
 
 
@@ -99,12 +99,11 @@ class TesseractAdapter(BaseOCRAdapter):
     """
 
     input_types = frozenset({ArtifactType.IMAGE})
-    # Sprint S50 : ``output_types`` est désormais une property
-    # d'instance qui inclut CONFIDENCES si et seulement si
-    # ``expose_confidences=True`` (défaut).  Permet de désactiver
-    # la production du sidecar en mode opt-out sans déclarer un
-    # output que l'adapter ne produit pas (l'executor validerait
-    # alors un manque).
+    # ``output_types`` est une property d'instance plutôt qu'une
+    # constante de classe : son contenu dépend de
+    # ``expose_confidences``.  Sans ce conditionnement, l'executor
+    # validerait un output ``CONFIDENCES`` que l'adapter ne produit
+    # pas en mode opt-out.
     execution_mode = "cpu"
 
     def __init__(
@@ -149,7 +148,7 @@ class TesseractAdapter(BaseOCRAdapter):
     def output_types(self) -> frozenset:  # type: ignore[override]
         """Output_types dynamique selon ``expose_confidences``.
 
-        Sprint S50 : si l'instance expose les confidences, déclare
+        Si l'instance expose les confidences, déclare
         ``{RAW_TEXT, CONFIDENCES}`` ; sinon ``{RAW_TEXT}`` seul.
         Le ``PipelinePlanner`` lit cette propriété pour valider
         que les types s'enchaînent.
@@ -242,13 +241,9 @@ class TesseractAdapter(BaseOCRAdapter):
 
         text = text.strip()
 
-        # Écriture du résultat à côté de l'image.  Cohérent avec le
-        # pattern ``PrecomputedTextAdapter`` — un caller peut relire
-        # la sortie via cet adapter pour la comparer dans un second run.
-        # Sprint S51 : résolution du chemin via le helper qui respecte
-        # ``context.workspace_uri`` quand fourni (sandbox par doc sous
-        # le workspace).  Sinon fallback à côté de l'image
-        # (comportement S30 — rétrocompat CLI).
+        # Le helper résout vers le workspace si fourni (sandbox par
+        # doc), sinon écrit à côté de l'image — cohérent avec le
+        # pattern ``PrecomputedTextAdapter`` qui peut relire la sortie.
         text_path = resolve_output_path(
             input_path=image_path,
             adapter_name=self.name,
@@ -267,10 +262,9 @@ class TesseractAdapter(BaseOCRAdapter):
             ),
         }
 
-        # Sprint S50 : extraction des confidences via image_to_data
-        # (best-effort).  Si l'extraction échoue, on log et on saute
-        # — l'OCR reste valide, seule la calibration est indisponible
-        # pour ce document.
+        # Extraction des confidences via image_to_data (best-effort).
+        # Si l'extraction échoue, on log et on saute — l'OCR reste
+        # valide, seule la calibration est indisponible pour ce doc.
         if self._expose_confidences:
             confidences_artifact = self._extract_and_persist_confidences(
                 image_path=image_path,

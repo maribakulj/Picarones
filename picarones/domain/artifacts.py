@@ -22,12 +22,9 @@ introduites aux Sprints S13-S18 :
   VLM) n'a pas de coordonnées et ne peut pas être projeté vers
   ``ALTO_XML`` sans étape de reconstruction.
 
-Au Sprint S10, un convertisseur explicite mappera l'ancien type
-vers le nouveau pour la durée de la migration.
-
 Anti-sur-ingénierie
 -------------------
-``Artifact`` ne porte que les champs nécessaires aux vues du S13-S18.
+``Artifact`` ne porte que les champs nécessaires aux vues actuelles.
 Champs reportés (à ajouter quand un caller en a concrètement besoin) :
 ``media_type``, ``cost``, ``latency``, ``warnings``, ``model_version``,
 ``parent_artifact_ids`` (DAG d'origine).
@@ -94,11 +91,11 @@ class ArtifactType(str, Enum):
     #: ``error_absorption``.
     ALIGNMENT = "alignment"
 
-    #: Confidences OCR au niveau token (Sprint S50).  Sidecar JSON
-    #: produit par les adapters OCR qui exposent des scores natifs
-    #: (Tesseract image_to_data, Pero transcription_confidence,
-    #: Mistral OCR API confidences, Google Vision Word.confidence,
-    #: Azure DI Word.confidence).
+    #: Confidences OCR au niveau token.  Sidecar JSON produit par les
+    #: adapters OCR qui exposent des scores natifs (Tesseract
+    #: image_to_data, Pero transcription_confidence, Mistral OCR API
+    #: confidences, Google Vision Word.confidence, Azure DI
+    #: Word.confidence).
     #:
     #: Schéma JSON : ``{"tokens": [{"text": str, "confidence":
     #: float ∈ [0, 1]}], "extractor": str, "model_version": str |
@@ -132,7 +129,7 @@ class Artifact(BaseModel):
 
     Sérialisation déterministe : ``model_dump_json()`` produit les
     mêmes octets pour le même contenu (champs Pydantic ordonnés).
-    Indispensable pour le cache d'artefacts du Sprint S7.
+    Indispensable pour le cache d'artefacts.
 
     Attributs
     ---------

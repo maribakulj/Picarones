@@ -141,6 +141,7 @@ class TestViewResult:
     def test_minimal_result(self) -> None:
         r = ViewResult(
             view_name="text_final",
+            pipeline_name="ocr",
             candidate_artifact_id="d1:ocr:raw_text",
             ground_truth_artifact_id="d1:gt:raw_text",
         )
@@ -151,6 +152,7 @@ class TestViewResult:
     def test_with_metrics_and_failures(self) -> None:
         r = ViewResult(
             view_name="text_final",
+            pipeline_name="ocr",
             candidate_artifact_id="x",
             ground_truth_artifact_id="y",
             metric_values={"cer": 0.05, "wer": 0.12},
@@ -169,6 +171,7 @@ class TestViewResult:
         )
         r = ViewResult(
             view_name="text_final",
+            pipeline_name="ocr",
             candidate_artifact_id="src",
             ground_truth_artifact_id="gt",
             projection_report=report,
@@ -180,6 +183,7 @@ class TestViewResult:
     def test_frozen(self) -> None:
         r = ViewResult(
             view_name="x",
+            pipeline_name="ocr",
             candidate_artifact_id="a",
             ground_truth_artifact_id="b",
         )
@@ -189,6 +193,7 @@ class TestViewResult:
     def test_json_roundtrip(self) -> None:
         r = ViewResult(
             view_name="text_final",
+            pipeline_name="ocr",
             candidate_artifact_id="x",
             ground_truth_artifact_id="y",
             metric_values={"cer": 0.05},
@@ -198,6 +203,21 @@ class TestViewResult:
         )
         r2 = ViewResult.model_validate_json(r.model_dump_json())
         assert r == r2
+
+    def test_pipeline_name_required(self) -> None:
+        """``pipeline_name`` est un champ structurel, pas optionnel.
+
+        Garde-fou : ce champ doit rester explicitement passé par le
+        ``EvaluationViewExecutor`` au lieu d'être inféré par les
+        renderers via parsing de string.
+        """
+        with pytest.raises(Exception):
+            ViewResult(
+                view_name="text_final",
+                # pipeline_name=...  manquant
+                candidate_artifact_id="x",
+                ground_truth_artifact_id="y",
+            )
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -218,9 +238,12 @@ class _StubExecutor:
         view: EvaluationView,
         candidate: Artifact,
         ground_truth: Artifact,
+        *,
+        pipeline_name: str,
     ) -> ViewResult:
         return ViewResult(
             view_name=view.name,
+            pipeline_name=pipeline_name,
             candidate_artifact_id=candidate.id,
             ground_truth_artifact_id=ground_truth.id,
         )
@@ -238,6 +261,7 @@ class TestEvaluationViewExecutorProtocol:
         )
         cand = Artifact(id="c", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="g", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = _StubExecutor().evaluate(view, cand, gt)
+        result = _StubExecutor().evaluate(view, cand, gt, pipeline_name="ocr")
         assert result.view_name == "text_final"
+        assert result.pipeline_name == "ocr"
         assert result.candidate_artifact_id == "c"

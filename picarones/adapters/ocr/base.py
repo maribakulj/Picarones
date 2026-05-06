@@ -63,10 +63,10 @@ from picarones.domain.errors import AdapterStepError
 class OCRAdapterError(AdapterStepError):
     """Erreur typée pour un échec d'adapter OCR du nouveau monde.
 
-    Hérite de ``AdapterStepError`` (Sprint S52) qui hérite de
-    ``PicaronesError``.  Un caller peut catcher
-    ``AdapterStepError`` pour toute erreur d'adapter (OCR/LLM/VLM)
-    sans connaître la sous-classe.
+    Hérite de ``AdapterStepError`` (racine commune avec LLM et VLM)
+    qui hérite de ``PicaronesError``.  Un caller peut catcher
+    ``AdapterStepError`` pour toute erreur d'adapter sans connaître
+    la sous-classe.
 
     Le ``PipelineExecutor`` capture cette exception (et toute autre)
     et marque le step correspondant comme failed avec

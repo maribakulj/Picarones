@@ -196,16 +196,10 @@ class ExecutionPlan:
         d'exécution.
     metric_junctions:
         Jonctions auto-détectées si un ``MetricRegistry`` était
-        fourni au planner ; tuple vide sinon.
-
-        Sprint S54 — note honnête (audit #14) : à ce jour, le
-        ``PipelineExecutor`` ne consomme pas ces jonctions au runtime
-        (le calcul des métriques aux jonctions intra-pipeline est
-        prévu dans un sprint dédié de l'axe « auto-évaluation »).
-        Le champ est livré dès maintenant pour fixer le contrat —
-        un caller peut déjà l'utiliser pour de l'introspection
-        (rapport, diagnostic).  Pas de risque de breaking change
-        quand l'auto-évaluation arrivera.
+        fourni au planner ; tuple vide sinon.  Le ``PipelineExecutor``
+        ne les consomme pas encore au runtime — elles sont exposées
+        pour l'introspection (rapport, diagnostic).  L'auto-évaluation
+        intra-pipeline sera ajoutée sans breaking change.
     """
 
     spec: PipelineSpec

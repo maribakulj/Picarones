@@ -201,7 +201,7 @@ class TestSearchViewWithExecutor:
         view = build_search_view()
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.metric_values["searchability_recall"] == 1.0
         assert result.metric_values["numerical_sequence_preservation"] == 1.0
 
@@ -214,7 +214,7 @@ class TestSearchViewWithExecutor:
         view = build_search_view()
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         # "petit"→"pelit" = 1 sub, OK ; "1789"→"1798" = 2 subs, OK pour
         # searchability fuzzy.  Donc searchability_recall ≈ 1.0.
         assert result.metric_values["searchability_recall"] >= 0.8

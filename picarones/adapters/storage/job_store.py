@@ -130,13 +130,7 @@ from picarones.domain.errors import PicaronesError
 
 
 class JobStoreError(PicaronesError):
-    """Erreur de persistance SQLite côté JobStore.
-
-    Sprint S52 : hérite désormais de ``PicaronesError`` (avant
-    héritait directement d'``Exception`` — un caller qui faisait
-    ``except PicaronesError`` ratait silencieusement les erreurs
-    JobStore).
-    """
+    """Erreur de persistance SQLite côté JobStore."""
 
 
 class JobStore:
@@ -148,20 +142,18 @@ class JobStore:
         Chemin du fichier SQLite.  Créé s'il n'existe pas.
     """
 
-    #: Version du schéma SQL.  Incrémenter à chaque migration.
-    #: Sprint S56 (audit #19) : avant ce sprint, aucune table de
-    #: version n'existait — un upgrade futur du schéma (ajout de
-    #: colonne) cassait silencieusement les bases existantes.
+    #: Version du schéma SQL.  À incrémenter à chaque migration ;
+    #: une base ouverte avec une version > ``SCHEMA_VERSION`` est
+    #: rejetée (downgrade non supporté).  Les futures migrations
+    #: descendantes ajouteront leurs ``ALTER TABLE`` conditionnels
+    #: après la lecture de ``schema_version``.
     SCHEMA_VERSION = 1
 
     def __init__(self, db_path: Path | str) -> None:
         self._path = Path(db_path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        # Initialisation du schéma + WAL.
         with self._connect() as conn:
             conn.executescript(_SCHEMA_SQL)
-            # Table de version (S56) — pas dans le schéma principal
-            # pour rester rétrocompatible avec les bases pré-S56.
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS schema_version "
                 "(version INTEGER PRIMARY KEY)",
@@ -182,14 +174,12 @@ class JobStore:
                         f"{self.SCHEMA_VERSION}.  Downgrade non "
                         "supporté.",
                     )
-                # Pour S56, on n'a qu'une version — quand un futur
-                # sprint introduira la version 2, ajouter ici les
-                # ALTER TABLE conditionnels.
             try:
                 conn.execute("PRAGMA journal_mode = WAL;")
             except sqlite3.Error:  # pragma: no cover
-                # Si WAL pas supporté (FAT32, etc.), on continue en
-                # mode rollback journal — déjà fonctionnel.
+                # WAL non supporté (FAT32, NFS sans verrous) : on
+                # reste en rollback journal, fonctionnel mais moins
+                # concurrent en lecture.
                 pass
 
     @property
@@ -199,13 +189,10 @@ class JobStore:
     def _connect(self) -> sqlite3.Connection:
         """Ouvre une nouvelle connexion.
 
-        Sprint S56 (audit #28) : timeout porté à 30s (de 10s) pour
-        absorber les contentions de courte durée, et configuration
-        ``busy_timeout`` côté SQLite (cohérent avec ``timeout`` mais
-        explicite pour les opérations qui ne passent pas par le
-        cursor Python).  Le mode autocommit + WAL garantit que les
-        lectures n'attendent pas les écritures (cf.
-        https://sqlite.org/wal.html).
+        ``timeout=30s`` côté driver Python + ``PRAGMA busy_timeout``
+        côté SQLite absorbent les contentions courtes.  Le mode
+        autocommit combiné au journal WAL garantit que les lectures
+        n'attendent pas les écritures (cf. https://sqlite.org/wal.html).
         """
         conn = sqlite3.connect(
             str(self._path),

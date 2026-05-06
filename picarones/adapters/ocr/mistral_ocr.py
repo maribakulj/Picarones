@@ -215,12 +215,11 @@ class MistralOCRAdapter(BaseOCRAdapter):
         api_key = self._resolve_api_key()
         image_url = self._encode_image(image_path)
 
-        # Sprint S56 (audit #27) : routing case-insensitive et plus
-        # strict.  Avant le fix, ``"mistral-ocr" in model.lower()``
-        # matchait aussi un modèle exotique comme
-        # ``"pixtral-MISTRAL-OCR-fancy"``.  On exige désormais que
-        # le model commence par "mistral-ocr" (préfixe officiel
-        # documenté).
+        # Le préfixe ``mistral-ocr-*`` est documenté par Mistral pour
+        # l'API dédiée ``/v1/ocr``.  Tout autre nom (``pixtral-*``,
+        # etc.) bascule sur l'API chat/vision.  Match strict par
+        # préfixe pour éviter qu'un modèle exotique nommé
+        # ``pixtral-MISTRAL-OCR-fancy`` ne soit confondu.
         if self._model.lower().startswith("mistral-ocr"):
             text = self._call_native_ocr_api(image_url, api_key)
         else:
@@ -307,11 +306,9 @@ class MistralOCRAdapter(BaseOCRAdapter):
                 f"{type(exc).__name__}: {exc}",
             ) from exc
 
-        # Sprint S53 — fix audit #8 : Mistral peut retourner
-        # ``content`` sous forme de ``list[ContentChunk]`` au lieu
-        # de ``str`` (cf. legacy commentaires sur les chunks).
-        # On délègue à ``normalize_llm_content`` qui gère les deux
-        # formats.
+        # Mistral peut retourner ``content`` sous forme de
+        # ``list[ContentChunk]`` au lieu de ``str``.  Le helper
+        # ``normalize_llm_content`` gère les deux formats.
         from picarones.adapters.llm.base import normalize_llm_content
 
         try:

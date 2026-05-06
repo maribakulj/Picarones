@@ -134,7 +134,7 @@ class TestProjectionWithoutLoaderHack:
             uri=str(gt_path),
         )
         view = build_text_view()
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
 
         # Validation : la projection a bien eu lieu, le payload retourné
         # par le projecteur a été utilisé (le loader strict aurait levé
@@ -179,7 +179,7 @@ class TestProjectionWithoutLoaderHack:
             uri=str(gt_path),
         )
         view = build_text_view()
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
 
         assert result.projection_report is not None
         assert result.projection_report.projector_name == "canonical_to_text"
@@ -220,7 +220,7 @@ class TestProjectionWithoutLoaderHack:
             uri=str(gt_path),
         )
         view = build_text_view()
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
 
         # Pas de projection → loader appelé sur le candidat directement.
         assert result.projection_report is None
@@ -302,7 +302,7 @@ class TestPayloadFromProjectorIsAuthoritative:
             type=ArtifactType.RAW_TEXT,
             uri=str(gt_path),
         )
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert captured["reference"] == "exact"
         assert captured["hypothesis"] == "exact"
         assert result.metric_values["capture"] == 1.0

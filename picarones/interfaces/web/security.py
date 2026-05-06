@@ -1,13 +1,8 @@
-"""Middlewares de sécurité — Sprint A14-S49.
+"""Middlewares de sécurité pour l'interface web.
 
-Fix audit #3 : avant ce sprint, ``picarones/interfaces/web/`` n'avait
-aucune sécurité (pas de CSP, pas de rate limit, pas de body size
-limit, upload illimité, no-auth pour DELETE de jobs).  La cible
-institutionnelle documentée listait 6 P0 — tous absents.
-
-Ce module livre une **base de sécurité** activable opt-out (par
-défaut OFF pour rester compatible avec le mode public HF Space, mais
-chaque flag s'active via un argument explicite à ``create_app``).
+Module de **base de sécurité** activable opt-in (par défaut OFF pour
+rester compatible avec le mode public HuggingFace Space ; chaque flag
+s'active via un argument explicite à ``create_app``).
 
 Composants
 ----------

@@ -1,9 +1,4 @@
-"""Helpers de cache d'artefacts pour le ``PipelineExecutor`` — Sprint A14-S47.
-
-Fix de l'audit #1 du rewrite ciblé : avant ce sprint,
-``picarones/adapters/storage/artifact_store.py`` (S29) existait sans
-être consommé par aucun runtime — promesse de « reprise par hash »
-non tenue.
+"""Helpers de cache d'artefacts pour le ``PipelineExecutor``.
 
 Ce module fournit les **fonctions pures** qui transforment un
 ``(PipelineStep, inputs, RunContext)`` en ``ArtifactKey`` et en clés

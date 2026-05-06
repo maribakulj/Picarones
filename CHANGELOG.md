@@ -50,7 +50,7 @@ case-studies) à porter une à une post-livraison.
 | C | S54 | #6 | MRO guard `__init_subclass__` sur `BaseVLMAdapter` — détecte `class X(LLM, VLM)` au lieu de `class X(VLM, LLM)` à la définition |
 | D | S55 | #14 | Tests d'intégration live `tests/integration/live/` avec marker `live` (pytest.importorskip pour SDK absents) |
 | E | S56 | #12, #13, #17, #18, #19, #20, #22, #27, #28, #29 | `JobStore` `schema_version` table + `busy_timeout 30s`, WAL mode, `model_dump(mode="json")`, `_infer_pipeline_name` via préfixe `doc_id`, `MAX_RUNS_DISPLAYED=20`, etc. |
-| F | S57 | #15, #16, #21, #23, #24, #25, #26, #30 | i18n prompts FR/EN/LA dans `BaseLLMAdapter`/`BaseVLMAdapter`, `DeprecationWarning` sur `picarones.pipeline.spec`, rectifications doc CHANGELOG + audit |
+| F | S57 | #15, #16, #21, #23, #24, #25, #26, #30 | i18n prompts FR/EN/LA dans `BaseLLMAdapter`/`BaseVLMAdapter`, suppression du re-export orphelin `picarones.pipeline.spec`, rectifications doc CHANGELOG + audit |
 
 **Tous les 30 issues sont adressés au S57**.
 
@@ -65,12 +65,11 @@ case-studies) à porter une à une post-livraison.
 
 - **#16 i18n prompts FR/EN/LA** : `BaseLLMAdapter.DEFAULT_CORRECTION_PROMPTS`
   et `BaseVLMAdapter.DEFAULT_TRANSCRIPTION_PROMPTS` sont désormais des
-  `dict[str, str]` indexés par code langue (`fr`, `en`, `la`).
+  `dict[str, str]` indexés par code langue ISO 639-1 (`fr`, `en`, `la`).
   Sélection : override explicite via `config["correction_prompt"]` /
-  `config["transcription_prompt"]` > `config["lang"]` (fr/en/la) >
-  fallback FR.  Les anciennes constantes `DEFAULT_CORRECTION_PROMPT` /
-  `DEFAULT_TRANSCRIPTION_PROMPT` (singulier) restent pour rétrocompat
-  des callers qui les lisent directement.
+  `config["transcription_prompt"]` > `config["lang"]` > fallback FR.
+  Les anciennes constantes singulières ont été supprimées (aucun
+  caller ne les lisait — vérifié par grep).
 
 - **#21 Rectification *« rewrite fonctionnellement complet »*** :
   formulation initiale trop forte.  La parité fonctionnelle cible
@@ -101,12 +100,14 @@ case-studies) à porter une à une post-livraison.
   module dépasse ce seuil.  Aucun fichier ne dépasse 800 lignes
   après S46.
 
-- **#26 DeprecationWarning sur `picarones.pipeline.spec`** : import
-  depuis ce module émet désormais un `DeprecationWarning` pointant
-  vers `picarones.domain.pipeline_spec` (chemin canonique).  Tous
-  les callers internes (`picarones/`) et les tests sauf le test
-  S40 dédié à la rétrocompat ont été migrés vers le chemin
-  canonique.  Suppression effective du re-export prévue S60.
+- **#26 Suppression du re-export `picarones.pipeline.spec`** : le
+  module canonique est `picarones.domain.pipeline_spec` depuis le
+  S40.  Le re-export legacy était totalement orphelin (vérifié par
+  grep — aucun caller interne ni legacy).  Il est supprimé
+  directement, pas mis en deprecation soft.  L'API publique du
+  package `picarones.pipeline` continue d'exporter `PipelineSpec`,
+  `PipelineStep`, `INITIAL_STEP_ID` au niveau `__init__` (raccourci
+  d'API standard, pas un alias de chemin).
 
 - **#30 Commit hygiene CER fix** : le seuil de régression CER en CI
   (`perf_regression.yml`) est passé de `0.10` à `0.20` (cf. section

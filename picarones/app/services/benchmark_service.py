@@ -356,7 +356,10 @@ class BenchmarkService:
                         # (le caller verra l'absence dans view_results).
                         continue
                     try:
-                        vr = self._view_executor.evaluate(view, cand, gt)
+                        vr = self._view_executor.evaluate(
+                            view, cand, gt,
+                            pipeline_name=pr.pipeline_name,
+                        )
                     except Exception as exc:  # noqa: BLE001
                         logger.warning(
                             "[benchmark_service] evaluate %s/%s/%s a "

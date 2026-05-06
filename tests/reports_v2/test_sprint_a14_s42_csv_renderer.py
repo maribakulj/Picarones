@@ -15,6 +15,7 @@ def _make_minimal_result(
     metric_values: dict | None = None,
     failed_metrics: dict | None = None,
     candidate_artifact_id: str = "doc01:tess:raw_text",
+    pipeline_name: str = "tess",
 ) -> RunResult:
     started = utcnow()
     completed = utcnow()
@@ -22,7 +23,7 @@ def _make_minimal_result(
         run_id="run_001",
         corpus_name="demo",
         n_documents=1,
-        pipeline_names=("tess",),
+        pipeline_names=(pipeline_name,),
         view_specs=(),
         code_version="1.0.0-s42",
         started_at=started,
@@ -30,6 +31,7 @@ def _make_minimal_result(
     )
     view_result = ViewResult(
         view_name="text_final",
+        pipeline_name=pipeline_name,
         candidate_artifact_id=candidate_artifact_id,
         ground_truth_artifact_id="doc01:gt",
         metric_values=metric_values or {},
@@ -98,24 +100,32 @@ class TestCsvRendererFailedMetrics:
         assert rows[0]["value"] == ""
 
 
-class TestCsvRendererPipelineNameInference:
-    def test_pipeline_name_inferred_from_artifact_id(self) -> None:
+class TestCsvRendererPipelineName:
+    def test_pipeline_name_from_view_result_field(self) -> None:
+        """``pipeline_name`` est lu directement depuis ``ViewResult.pipeline_name``,
+        pas inféré par parsing de ``candidate_artifact_id``.
+        """
         result = _make_minimal_result(
             metric_values={"cer": 0.0},
-            candidate_artifact_id="doc01:my_pipe:raw_text",
+            pipeline_name="my_pipe",
+            candidate_artifact_id="doc01:irrelevant_string:raw_text",
         )
         text = CsvReportRenderer().render(result)
         rows = list(csv.DictReader(io.StringIO(text)))
         assert rows[0]["pipeline_name"] == "my_pipe"
 
-    def test_unknown_pipeline_name_when_id_unparseable(self) -> None:
+    def test_pipeline_name_independent_of_artifact_id(self) -> None:
+        """Le ``candidate_artifact_id`` peut contenir n'importe quoi —
+        ``pipeline_name`` reste celui du champ structurel.
+        """
         result = _make_minimal_result(
             metric_values={"cer": 0.0},
+            pipeline_name="real_pipeline",
             candidate_artifact_id="bad_id_no_separators",
         )
         text = CsvReportRenderer().render(result)
         rows = list(csv.DictReader(io.StringIO(text)))
-        assert rows[0]["pipeline_name"] == "<unknown>"
+        assert rows[0]["pipeline_name"] == "real_pipeline"
 
 
 class TestCsvRendererDeterminism:

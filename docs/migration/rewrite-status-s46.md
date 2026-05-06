@@ -156,9 +156,12 @@ adressées en 6 vagues (S47-S57) :
   `dict[str, str]` indexés par code langue.  Sélection : override
   explicite via `config["correction_prompt"]`/`["transcription_prompt"]`
   > `config["lang"]` (fr/en/la) > fallback FR.
-- **#26 DeprecationWarning legacy spec.py** : import depuis
-  `picarones.pipeline.spec` émet désormais un `DeprecationWarning`
-  pointant vers `picarones.domain`.  Suppression effective prévue S60.
+- **#26 Suppression du re-export `picarones.pipeline.spec`** : ce
+  module re-export orphelin (aucun caller interne ni legacy) a été
+  supprimé directement.  Le chemin canonique unique est
+  `picarones.domain.pipeline_spec`, re-exporté au niveau `__init__`
+  des packages `picarones.domain` et `picarones.pipeline` (API
+  publique standard).
 - **#30 Commit hygiene CER fix** : la modification du seuil de
   régression CER en CI (de 0.10 à 0.20) est documentée dans le
   CHANGELOG sous *« CER regression check threshold rationale »*

@@ -162,7 +162,7 @@ class TestTextViewWithExecutor:
         view = build_text_view()
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.metric_values["cer"] == 0.0
         assert result.metric_values["wer"] == 0.0
         assert result.projection_report is None
@@ -190,7 +190,7 @@ class TestTextViewWithExecutor:
             uri=str(md_path),
         )
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.projection_report is not None
         assert result.projection_report.projector_name == "canonical_to_text"
         assert "structure" in result.projection_report.ignored_dimensions
@@ -305,10 +305,10 @@ class TestBnFCentralUseCase:
 
     def test_three_heterogeneous_pipelines_evaluated_via_same_view(self, tmp_path) -> None:
         """Cas 7 — les 3 pipelines passent dans le même
-        ``executor.evaluate(view, candidate, gt)``."""
+        ``executor.evaluate(view, candidate, gt, pipeline_name="test")``."""
         executor, view, gt, candidates = self._setup(tmp_path)
         results = [
-            executor.evaluate(view, cand, gt) for cand in candidates
+            executor.evaluate(view, cand, gt, pipeline_name="test") for cand in candidates
         ]
         # Tous ont produit un ViewResult avec CER/WER calculés.
         for r in results:
@@ -323,7 +323,7 @@ class TestBnFCentralUseCase:
         CANONICAL_DOCUMENT)."""
         executor, view, gt, candidates = self._setup(tmp_path)
         results = [
-            executor.evaluate(view, cand, gt) for cand in candidates
+            executor.evaluate(view, cand, gt, pipeline_name="test") for cand in candidates
         ]
         # Tesseract : pas de projection.
         assert results[0].projection_report is None
@@ -339,10 +339,10 @@ class TestBnFCentralUseCase:
         + ceux de la projection, sans duplication."""
         executor, view, gt, candidates = self._setup(tmp_path)
         # Pipeline 1 (texte direct) : ignored_dimensions = celles de la vue.
-        r1 = executor.evaluate(view, candidates[0], gt)
+        r1 = executor.evaluate(view, candidates[0], gt, pipeline_name="test")
         assert "geometry" in r1.ignored_dimensions  # vient de la vue
         # Pipeline 2 (ALTO) : ignored_dimensions = vue + projection ALTO.
-        r2 = executor.evaluate(view, candidates[1], gt)
+        r2 = executor.evaluate(view, candidates[1], gt, pipeline_name="test")
         assert "geometry" in r2.ignored_dimensions
         # AltoToText ajoute "ids" et "confidence" (déjà dans la vue,
         # donc déduplication).
@@ -364,7 +364,7 @@ class TestNormalizationApplied:
         view = build_text_view(normalization_profile="medieval_french")
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         # Après normalisation : afpre → afpre (ſ pas dans payload),
         # aſpre → aspre.  Donc CER non nul mais cohérent.
         assert "cer" in result.metric_values

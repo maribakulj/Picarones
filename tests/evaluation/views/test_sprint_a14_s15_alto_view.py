@@ -199,7 +199,7 @@ class TestAltoViewWithExecutor:
         view = build_alto_view()
         gt_art = Artifact(id="gt", document_id="d", type=ArtifactType.ALTO_XML)
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.ALTO_XML)
-        result = executor.evaluate(view, cand, gt_art)
+        result = executor.evaluate(view, cand, gt_art, pipeline_name="test")
         assert result.metric_values["alto_validity"] == 1.0
         assert result.metric_values["alto_line_count_ratio"] == 1.0
         assert result.metric_values["alto_word_box_coverage"] == 1.0
@@ -214,7 +214,7 @@ class TestAltoViewWithExecutor:
         view = build_alto_view()
         gt_art = Artifact(id="gt", document_id="d", type=ArtifactType.ALTO_XML)
         cand_art = Artifact(id="cand", document_id="d", type=ArtifactType.ALTO_XML)
-        result = executor.evaluate(view, cand_art, gt_art)
+        result = executor.evaluate(view, cand_art, gt_art, pipeline_name="test")
         assert result.metric_values["alto_validity"] == 1.0  # cohérent
         assert result.metric_values["alto_line_count_ratio"] == 0.5
         assert result.metric_values["alto_word_box_coverage"] == 1.0
@@ -275,7 +275,7 @@ class TestOmissionPattern:
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.ALTO_XML)
         with pytest.raises(ValueError, match="n'accepte pas"):
-            executor.evaluate(view, cand, gt)
+            executor.evaluate(view, cand, gt, pipeline_name="test")
 
 
 # ──────────────────────────────────────────────────────────────────────

@@ -1,13 +1,8 @@
-"""``JobRunner`` — Sprint A14-S48.
+"""``JobRunner`` — pont entre l'API web et le ``RunOrchestrator``.
 
-Fix audit #2 : avant ce sprint, ``JobStore`` (S37) existait avec ses
-endpoints ``GET / DELETE /api/jobs``, mais aucun moyen de **créer**
-un job via l'API — pas de ``POST /api/jobs``, pas d'orchestrateur
-async qui pousse les jobs.  ``mark_orphaned_jobs_interrupted()`` était
-documenté mais jamais appelé au boot.
-
-``JobRunner`` est le pont manquant entre l'API web et
-``RunOrchestrator``.  Il :
+Le ``JobStore`` persiste l'état des jobs.  L'API web déclenche
+l'exécution via ``POST /api/jobs``.  ``JobRunner`` orchestre le
+cycle de vie complet :
 
 1. Crée un ``JobRecord`` dans le ``JobStore`` (status ``pending``).
 2. Lance un **thread daemon** qui exécute l'orchestrator de façon

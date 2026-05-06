@@ -142,10 +142,10 @@ from picarones.domain.errors import AdapterStepError
 
 
 class LLMAdapterError(AdapterStepError):
-    """Erreur typée pour un échec d'adapter LLM (Sprint S52).
+    """Erreur typée pour un échec d'adapter LLM.
 
-    Hérite de ``AdapterStepError`` (commune avec OCR et VLM) → un
-    caller peut catcher ``AdapterStepError`` pour toute erreur
+    Hérite de ``AdapterStepError`` (racine commune avec OCR et VLM)
+    → un caller peut catcher ``AdapterStepError`` pour toute erreur
     d'adapter sans connaître la sous-classe.
 
     Avant S52, ``BaseLLMAdapter.execute`` levait ``OCRAdapterError``
@@ -243,10 +243,8 @@ class BaseLLMAdapter(ABC):
     execution_mode: str = "io"
 
     #: Prompts de post-correction par défaut, indexés par code langue
-    #: ISO-639-1.  Sprint S57 (audit #16) : avant ce sprint, seul le
-    #: prompt FR existait — un corpus EN/LA était sous-optimal.
-    #: Le prompt est sélectionné selon ``config["lang"]``,
-    #: défaut FR.
+    #: ISO-639-1 (``fr``, ``en``, ``la``).  Sélection via
+    #: ``config["lang"]`` ; fallback FR si la langue est absente.
     DEFAULT_CORRECTION_PROMPTS: dict[str, str] = {
         "fr": (
             "Corrige les erreurs OCR dans le texte suivant en "
@@ -267,11 +265,6 @@ class BaseLLMAdapter(ABC):
             "ulla glossa:\n\n{text}"
         ),
     }
-
-    #: Alias rétrocompat — Sprint S44 utilisait
-    #: ``DEFAULT_CORRECTION_PROMPT`` (FR uniquement).  Toujours exposé
-    #: pour ne pas casser les tests S44 ; pointe vers le prompt FR.
-    DEFAULT_CORRECTION_PROMPT: str = DEFAULT_CORRECTION_PROMPTS["fr"]
 
     def __init__(
         self,
@@ -409,9 +402,8 @@ class BaseLLMAdapter(ABC):
                     image_path.read_bytes(),
                 ).decode("ascii")
 
-        # Sprint S57 (audit #16) : sélection du prompt par langue.
-        # Priorité : config["correction_prompt"] (override explicite)
-        # > prompt par langue selon config["lang"] > FR par défaut.
+        # Priorité : override explicite via config > prompt par langue
+        # selon config["lang"] > FR par défaut.
         custom_prompt = self.config.get("correction_prompt")
         if custom_prompt is not None:
             prompt_template = custom_prompt
@@ -428,10 +420,7 @@ class BaseLLMAdapter(ABC):
                 f"{self.name} : LLM a échoué ({result.error}).",
             )
 
-        # Sprint S51 : résolution du chemin via le helper qui respecte
-        # ``context.workspace_uri`` quand fourni.  Sinon fallback
-        # à côté de l'input (comportement S44 — rétrocompat).
-        from picarones.adapters.ocr.output_paths import resolve_output_path
+        from picarones.adapters.output_paths import resolve_output_path
         out_path = resolve_output_path(
             input_path=text_path,
             adapter_name=self.name,

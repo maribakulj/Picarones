@@ -1,15 +1,12 @@
-"""Sidecar de confidences OCR — Sprint A14-S50.
+"""Sidecar de confidences OCR.
 
-Fix audit #4 : avant ce sprint, la migration native des 5 OCR adapters
-(S30-S34) avait perdu la feature ``token_confidences`` du legacy.
-Les vues de calibration (ECE/MCE, reliability diagram) devenaient
-inopérantes pour les pipelines new-world.
-
-Stratégie
----------
-Plutôt que de stuffer les confidences dans ``EngineResult`` legacy
-(qui n'existe plus), on les expose comme un **artefact dédié**
-``ArtifactType.CONFIDENCES`` (sidecar JSON à côté du fichier texte).
+Les confidences au niveau token sont exposées comme un **artefact
+dédié** ``ArtifactType.CONFIDENCES`` (sidecar JSON à côté du fichier
+texte), pas stuffé dans le résultat texte de l'adapter.  Ce
+découplage permet aux vues de calibration (ECE/MCE, reliability
+diagram) de consommer les confidences indépendamment de la
+production du texte, et n'oblige pas un adapter qui n'a pas de
+confidences à porter un champ vide.
 
 Format JSON canonique
 ---------------------

@@ -297,12 +297,10 @@ class RunOrchestrator:
                 registered[adapter_name] = (cls, kwargs_sig)
                 name_to_class[adapter_name] = cls
                 name_to_kwargs[adapter_name] = s.adapter_kwargs
-                # Sprint S53 — fix audit #20 : propagation de
-                # ``inputs_from`` du StepSpec YAML vers le
-                # ``domain.PipelineSpec`` exécuté.  Avant le fix, la
-                # validation du YAML acceptait inputs_from mais le
-                # champ était silencieusement perdu — le DAG branchant
-                # se comportait comme un DAG linéaire.
+                # ``inputs_from`` du StepSpec YAML doit être propagé au
+                # ``domain.PipelineSpec`` pour que le DAG branchant soit
+                # honoré ; sans ce passage, un DAG branchant déclaré dans
+                # le YAML serait silencieusement exécuté en linéaire.
                 steps.append(PipelineStep(
                     id=s.id,
                     kind="step",

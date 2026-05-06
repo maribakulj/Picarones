@@ -60,6 +60,7 @@ class TestJsonRendererStructure:
     def test_document_has_pipeline_and_view_results(self) -> None:
         view_result = ViewResult(
             view_name="text_final",
+            pipeline_name="tess",
             candidate_artifact_id="doc01:tess:raw_text",
             ground_truth_artifact_id="doc01:gt",
             metric_values={"cer": 0.05},
@@ -92,6 +93,7 @@ class TestJsonRendererDeterminism:
     def test_unicode_preserved(self) -> None:
         view_result = ViewResult(
             view_name="text_final",
+            pipeline_name="tess",
             candidate_artifact_id="doc01:tess:raw_text",
             ground_truth_artifact_id="doc01:gt",
             warnings=("français médiéval",),

@@ -1,7 +1,7 @@
-"""Router jobs — Sprints A14-S37 + S48.
+"""Router jobs — gestion des jobs de benchmark via l'API web.
 
-Endpoints de gestion des jobs de benchmark, adossés à
-``JobStore`` (S37) + ``JobRunner`` (S48).
+Endpoints adossés à ``JobStore`` (persistance SQLite) + ``JobRunner``
+(orchestration thread).
 
 Endpoints
 ---------
@@ -10,15 +10,10 @@ Endpoints
 - ``POST   /api/jobs``            : création + lancement asynchrone.
 - ``DELETE /api/jobs/{job_id}``   : annulation explicite.
 
-S37 (initial) livrait les 3 premiers (lecture + cancellation).
-S48 ajoute ``POST`` qui était identifié comme **manque critique**
-dans l'audit du rewrite (l'audit #2).
-
 Anti-sur-ingénierie
 -------------------
-- Pas de SSE / event stream (legacy ``job_events``) : reporté quand
-  un caller en a besoin ; le polling sur ``progress`` suffit pour
-  l'UI minimaliste S38.
+- Pas de SSE / event stream : le polling sur ``progress`` suffit pour
+  l'UI minimaliste actuelle.
 - Pas de filtre par status/corpus : facile à ajouter quand un caller
   le demande.
 """

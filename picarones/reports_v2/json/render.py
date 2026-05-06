@@ -72,13 +72,11 @@ class JsonReportRenderer:
     def _build_document(self, result: RunResult) -> dict:
         """Construit le dict canonique avant sérialisation.
 
-        Sprint S56 (audit #18) : on utilise désormais
-        ``model_dump(mode="json")`` directement au lieu de faire un
-        round-trip ``model_dump_json() → loads → dumps``.  Pydantic
-        2.x sait produire un dict JSON-serializable directement
-        (datetime → ISO string, enum → value, etc.) ; le double
-        encode/decode était gaspilleur (~10× le coût pour des
-        manifests gros).
+        ``model_dump(mode="json")`` produit directement un dict
+        JSON-serializable (datetime → ISO string, enum → value,
+        etc.).  Préférable au round-trip
+        ``model_dump_json() → loads → dumps`` qui est ~10× plus coûteux
+        sur des manifests volumineux.
         """
         return {
             "run_manifest": result.manifest.model_dump(mode="json"),

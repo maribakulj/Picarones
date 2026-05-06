@@ -40,10 +40,11 @@ logger = logging.getLogger(__name__)
 
 
 class VLMAdapterError(AdapterStepError):
-    """Erreur typée pour un échec d'adapter VLM (Sprint S52).
+    """Erreur typée pour un échec d'adapter VLM.
 
-    Hérite de ``AdapterStepError`` (commune avec OCR et LLM).
-    Avant S52, les VLM levaient ``OCRAdapterError`` par confusion.
+    Hérite de ``AdapterStepError`` — racine commune avec les erreurs
+    OCR et LLM, ce qui permet à un orchestrateur d'attraper toutes
+    les erreurs d'adapter sans connaître le type concret.
     """
 
 
@@ -62,8 +63,8 @@ class BaseVLMAdapter(BaseLLMAdapter):
         ``config["transcription_prompt"]`` pour personnaliser le
         prompt de transcription.
 
-    Sprint S54 — garde-fou MRO (audit #6)
-    -------------------------------------
+    Garde-fou MRO
+    -------------
     Les VLM concrets utilisent l'héritage multiple :
 
     ::
@@ -72,7 +73,7 @@ class BaseVLMAdapter(BaseLLMAdapter):
 
     L'ordre est critique : ``BaseVLMAdapter`` doit venir d'ABORD
     pour que ``input_types``, ``output_types``, ``execute``, et
-    ``DEFAULT_TRANSCRIPTION_PROMPT`` soient résolus depuis lui (et
+    ``DEFAULT_TRANSCRIPTION_PROMPTS`` soient résolus depuis lui (et
     pas depuis le LLM sibling qui aurait des output_types =
     {CORRECTED_TEXT}).
 
@@ -126,7 +127,7 @@ class BaseVLMAdapter(BaseLLMAdapter):
         return frozenset({ArtifactType.RAW_TEXT})
 
     #: Prompts de transcription VLM par défaut, indexés par code
-    #: langue (Sprint S57 / audit #16).
+    #: langue ISO 639-1 (``fr``, ``en``, ``la``).
     DEFAULT_TRANSCRIPTION_PROMPTS: dict[str, str] = {
         "fr": (
             "Transcris fidèlement le texte visible sur cette image "
@@ -147,14 +148,6 @@ class BaseVLMAdapter(BaseLLMAdapter):
             "transcriptum, sine ulla glossa."
         ),
     }
-
-    #: Alias rétrocompat (Sprint S45 utilisait cette constante).
-    DEFAULT_TRANSCRIPTION_PROMPT: str = (
-        "Transcris fidèlement le texte visible sur cette image de "
-        "document historique. Conserve l'orthographe historique, les "
-        "abréviations, et la ponctuation. Retourne uniquement le "
-        "texte transcrit, sans commentaire."
-    )
 
     def execute(
         self,
@@ -189,8 +182,7 @@ class BaseVLMAdapter(BaseLLMAdapter):
             image_path.read_bytes(),
         ).decode("ascii")
 
-        # Sprint S57 (audit #16) : sélection du prompt par langue.
-        # Override explicite > prompt par langue > FR.
+        # Override explicite > prompt par langue > FR (fallback).
         custom = self.config.get("transcription_prompt")
         if custom is not None:
             prompt = custom
@@ -206,8 +198,7 @@ class BaseVLMAdapter(BaseLLMAdapter):
                 f"{self.name} : VLM a échoué ({result.error}).",
             )
 
-        # Sprint S51 : workspace_uri respecté quand fourni.
-        from picarones.adapters.ocr.output_paths import resolve_output_path
+        from picarones.adapters.output_paths import resolve_output_path
         out_path = resolve_output_path(
             input_path=image_path,
             adapter_name=self.name,

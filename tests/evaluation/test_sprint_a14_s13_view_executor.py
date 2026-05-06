@@ -147,7 +147,7 @@ class TestEvaluator:
         view = _text_view(metric_names=("cer", "wer"))
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.metric_values["cer"] == 0.0
         assert result.metric_values["wer"] == 0.0
         assert result.projection_report is None
@@ -160,7 +160,7 @@ class TestEvaluator:
         view = _text_view()
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.metric_values["cer"] > 0
 
     def test_alto_to_text_via_projection(self) -> None:
@@ -179,7 +179,7 @@ class TestEvaluator:
         )
         cand = Artifact(id="alto", document_id="d", type=ArtifactType.ALTO_XML)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.projection_report is not None
         assert result.projection_report.projector_name == "stub_alto_to_text"
         assert "geometry" in result.ignored_dimensions
@@ -196,7 +196,7 @@ class TestEvaluator:
         cand = Artifact(id="x", document_id="d", type=ArtifactType.IMAGE)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
         with pytest.raises(ValueError, match="n'accepte pas"):
-            executor.evaluate(view, cand, gt)
+            executor.evaluate(view, cand, gt, pipeline_name="test")
 
     def test_unknown_projector_raises_projection_error(self) -> None:
         """Cas 5 — la vue référence un projecteur non enregistré."""
@@ -212,7 +212,7 @@ class TestEvaluator:
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.ALTO_XML)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
         with pytest.raises(ProjectionError, match="introuvable"):
-            executor.evaluate(view, cand, gt)
+            executor.evaluate(view, cand, gt, pipeline_name="test")
 
     def test_projector_that_raises_wraps_in_projection_error(self) -> None:
         """Cas 6 — le projecteur lève une exception interne."""
@@ -240,7 +240,7 @@ class TestEvaluator:
         cand = Artifact(id="c", document_id="d", type=ArtifactType.ALTO_XML)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
         with pytest.raises(ProjectionError, match="boom interne"):
-            executor.evaluate(view, cand, gt)
+            executor.evaluate(view, cand, gt, pipeline_name="test")
 
     def test_metric_that_raises_goes_to_failed_metrics(self) -> None:
         """Cas 7 — une métrique qui lève → failed_metrics, pas plante."""
@@ -254,7 +254,7 @@ class TestEvaluator:
         view = _text_view(metric_names=("cer", "broken", "wer"))
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert "cer" in result.metric_values
         assert "wer" in result.metric_values
         assert "broken" in result.failed_metrics
@@ -267,7 +267,7 @@ class TestEvaluator:
         view = _text_view(metric_names=("cer", "nonexistent_metric"))
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert "cer" in result.metric_values
         assert "nonexistent_metric" in result.failed_metrics
         assert "non enregistrée" in result.failed_metrics["nonexistent_metric"]
@@ -281,7 +281,7 @@ class TestEvaluator:
         view = _text_view(normalization_profile="medieval_french")
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         # Après normalisation, les deux deviennent "aspre" (cer stub
         # retourne 0.5 pour len égal, 0.0 pour égalité stricte).
         # On vérifie au moins que la métrique a été calculée.
@@ -310,7 +310,7 @@ class TestEvaluator:
         view = _text_view(metric_names=("cer",))
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
-        result = executor.evaluate(view, cand, gt)
+        result = executor.evaluate(view, cand, gt, pipeline_name="test")
         assert result.metric_values == {}
         assert "cer" in result.failed_metrics
         assert "payload_loader a échoué" in result.failed_metrics["cer"]

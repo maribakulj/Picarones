@@ -139,6 +139,8 @@ class DefaultEvaluationViewExecutor:
         view: EvaluationView,
         candidate: Artifact,
         ground_truth: Artifact,
+        *,
+        pipeline_name: str,
     ) -> ViewResult:
         """Évalue la vue sur la paire (candidat, GT).
 
@@ -190,6 +192,7 @@ class DefaultEvaluationViewExecutor:
             except Exception as exc:  # noqa: BLE001
                 return self._failed_view_result(
                     view=view,
+                    pipeline_name=pipeline_name,
                     candidate=candidate,
                     ground_truth=ground_truth,
                     projection_report=projection_result.report,
@@ -203,6 +206,7 @@ class DefaultEvaluationViewExecutor:
         except Exception as exc:  # noqa: BLE001
             return self._failed_view_result(
                 view=view,
+                pipeline_name=pipeline_name,
                 candidate=candidate,
                 ground_truth=ground_truth,
                 projection_report=projection_result.report,
@@ -237,6 +241,7 @@ class DefaultEvaluationViewExecutor:
 
         return ViewResult(
             view_name=view.name,
+            pipeline_name=pipeline_name,
             candidate_artifact_id=candidate.id,
             ground_truth_artifact_id=ground_truth.id,
             metric_values=evaluation_result.metric_values,
@@ -287,6 +292,7 @@ class DefaultEvaluationViewExecutor:
     def _failed_view_result(
         *,
         view: EvaluationView,
+        pipeline_name: str,
         candidate: Artifact,
         ground_truth: Artifact,
         projection_report: Any,
@@ -298,6 +304,7 @@ class DefaultEvaluationViewExecutor:
         failed = {name: global_error for name in view.metric_names}
         return ViewResult(
             view_name=view.name,
+            pipeline_name=pipeline_name,
             candidate_artifact_id=candidate.id,
             ground_truth_artifact_id=ground_truth.id,
             metric_values={},

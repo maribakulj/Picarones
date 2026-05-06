@@ -46,6 +46,11 @@ class ViewResult(BaseModel):
     ---------
     view_name:
         Nom de la vue qui a produit ce résultat.
+    pipeline_name:
+        Nom du pipeline qui a produit l'artefact candidat.  Champ
+        structurel — les renderers (CSV/JSON/HTML) ne doivent pas
+        deviner cette information par parsing de
+        ``candidate_artifact_id``.
     candidate_artifact_id:
         Id de l'artefact évalué (avant projection éventuelle).
     ground_truth_artifact_id:
@@ -73,6 +78,7 @@ class ViewResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     view_name: str
+    pipeline_name: str = Field(min_length=1, max_length=128)
     candidate_artifact_id: str
     ground_truth_artifact_id: str
     metric_values: dict[str, Any] = Field(default_factory=dict)
@@ -113,6 +119,8 @@ class EvaluationViewExecutor(Protocol):
         view: EvaluationView,
         candidate: Artifact,
         ground_truth: Artifact,
+        *,
+        pipeline_name: str,
     ) -> ViewResult: ...
 
 

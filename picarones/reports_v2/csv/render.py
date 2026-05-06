@@ -76,11 +76,8 @@ class CsvReportRenderer:
 
         for doc_result in result.document_results:
             for view_result in doc_result.view_results:
-                # Métriques calculées avec succès.
+                pipeline_name = view_result.pipeline_name
                 for metric_name, value in view_result.metric_values.items():
-                    pipeline_name = self._infer_pipeline_name(
-                        view_result, doc_result,
-                    )
                     writer.writerow([
                         run_id,
                         doc_result.document_id,
@@ -90,11 +87,7 @@ class CsvReportRenderer:
                         self._format_value(value),
                         "ok",
                     ])
-                # Métriques en échec.
                 for metric_name, _err in view_result.failed_metrics.items():
-                    pipeline_name = self._infer_pipeline_name(
-                        view_result, doc_result,
-                    )
                     writer.writerow([
                         run_id,
                         doc_result.document_id,
@@ -117,40 +110,6 @@ class CsvReportRenderer:
         if isinstance(value, (int, float)):
             return f"{float(value):.6f}"
         return str(value)
-
-    @staticmethod
-    def _infer_pipeline_name(view_result, doc_result) -> str:
-        """Inféré depuis le ``candidate_artifact_id`` qui suit la
-        convention ``<doc>:<pipeline>:<artifact_type>``.
-
-        Sprint S56 (audit #12) : le ``document_id`` autorise les ``:``
-        dans son format (cf. ``Artifact._ID_RE``).  Un naive
-        ``split(":")[1]`` casse pour ``"d:1:tess:raw_text"``.  On
-        utilise le ``doc_result.document_id`` connu pour stripper
-        le préfixe avec précision avant de parser.
-
-        Fallback ``"<unknown>"`` si l'id n'est pas parseable même
-        après stripping.
-        """
-        cand_id = view_result.candidate_artifact_id
-        doc_id = doc_result.document_id
-        # Strip le préfixe document_id de l'id.  Format attendu :
-        # "<document_id>:<pipeline_name>:<artifact_type>".
-        prefix = f"{doc_id}:"
-        if cand_id.startswith(prefix):
-            remainder = cand_id[len(prefix):]
-            # remainder = "<pipeline>:<artifact_type>" (ou plus
-            # de ":" si artifact_type est composé, ce qui n'arrive
-            # pas avec ArtifactType mais on défend).  rsplit gère.
-            pipeline_part = remainder.rsplit(":", 1)
-            if len(pipeline_part) == 2:
-                return pipeline_part[0]
-        # Fallback : ancienne heuristique pour les ids qui ne
-        # respectent pas la convention.
-        parts = cand_id.split(":")
-        if len(parts) >= 3:
-            return parts[1]
-        return "<unknown>"
 
 
 __all__ = ["CsvReportRenderer"]

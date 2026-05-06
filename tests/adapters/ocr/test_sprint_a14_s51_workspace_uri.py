@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from picarones.adapters.ocr import TesseractAdapter
-from picarones.adapters.ocr.output_paths import resolve_output_path
+from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.pipeline.types import RunContext
 

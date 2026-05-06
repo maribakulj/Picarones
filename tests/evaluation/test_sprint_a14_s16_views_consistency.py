@@ -153,8 +153,8 @@ class TestPerfectPipelineAcrossViews:
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt_text", document_id="d", type=ArtifactType.RAW_TEXT)
 
-        text_result = executor.evaluate(text_view, cand, gt)
-        search_result = executor.evaluate(search_view, cand, gt)
+        text_result = executor.evaluate(text_view, cand, gt, pipeline_name="test")
+        search_result = executor.evaluate(search_view, cand, gt, pipeline_name="test")
 
         assert text_result.metric_values["cer"] == 0.0
         assert search_result.metric_values["searchability_recall"] == 1.0
@@ -190,8 +190,8 @@ class TestDivergencePattern:
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
 
-        text_result = executor.evaluate(build_text_view(), cand, gt)
-        search_result = executor.evaluate(build_search_view(), cand, gt)
+        text_result = executor.evaluate(build_text_view(), cand, gt, pipeline_name="test")
+        search_result = executor.evaluate(build_search_view(), cand, gt, pipeline_name="test")
 
         # CER ≈ 0.03 (3 chars sur ~58)
         assert text_result.metric_values["cer"] < 0.1, "CER doit rester faible"
@@ -267,15 +267,15 @@ class TestAltoPipelineEvaluatedInThreeViews:
         )
 
         # TextView : projette ALTO → texte, compare au gt_text.
-        text_result = executor.evaluate(build_text_view(), cand_art, gt_text_art)
+        text_result = executor.evaluate(build_text_view(), cand_art, gt_text_art, pipeline_name="test")
         assert text_result.metric_values["cer"] == 0.0
 
         # SearchView : projette ALTO → texte, mesure recall + années.
-        search_result = executor.evaluate(build_search_view(), cand_art, gt_text_art)
+        search_result = executor.evaluate(build_search_view(), cand_art, gt_text_art, pipeline_name="test")
         assert search_result.metric_values["searchability_recall"] == 1.0
 
         # AltoView : compare ALTO direct contre ALTO GT.
-        alto_result = executor.evaluate(build_alto_view(), cand_art, gt_alto_art)
+        alto_result = executor.evaluate(build_alto_view(), cand_art, gt_alto_art, pipeline_name="test")
         assert alto_result.metric_values["alto_validity"] == 1.0
         assert alto_result.metric_values["alto_line_count_ratio"] == 1.0
         assert alto_result.metric_values["alto_word_box_coverage"] == 1.0
@@ -318,8 +318,8 @@ class TestProjectionReportConsistency:
         )
         gt = Artifact(id="gt_text", document_id="d", type=ArtifactType.RAW_TEXT)
 
-        text_result = executor.evaluate(build_text_view(), cand, gt)
-        search_result = executor.evaluate(build_search_view(), cand, gt)
+        text_result = executor.evaluate(build_text_view(), cand, gt, pipeline_name="test")
+        search_result = executor.evaluate(build_search_view(), cand, gt, pipeline_name="test")
 
         # Les deux doivent avoir un projection_report (même projecteur).
         assert text_result.projection_report is not None
