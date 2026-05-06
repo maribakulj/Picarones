@@ -56,6 +56,14 @@ from picarones.pipeline.executor import (
     PipelineExecutor,
     PipelineSpecInvalid,
 )
+from picarones.pipeline.planner import (
+    ExecutionPlan,
+    MetricJunction,
+    PipelinePlanner,
+    PlanningError,
+    ResolvedStep,
+    StepInputBinding,
+)
 from picarones.pipeline.protocols import ExecutionMode, StepExecutor
 from picarones.pipeline.runner import (
     ContextFactory,
@@ -91,6 +99,13 @@ __all__ = [
     "PipelineExecutor",
     "PipelineSpecInvalid",
     "AdapterResolver",
+    # Planner (S28)
+    "PipelinePlanner",
+    "PlanningError",
+    "ExecutionPlan",
+    "ResolvedStep",
+    "StepInputBinding",
+    "MetricJunction",
     # Cache (S7)
     "ArtifactCache",
     # CorpusRunner (S8)

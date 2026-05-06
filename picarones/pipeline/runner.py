@@ -206,6 +206,12 @@ class CorpusRunner:
                 outcomes=(),
             )
 
+        # S28 : on planifie une seule fois pour la spec.  Si la spec
+        # est invalide, on lève maintenant — pas dans chaque worker.
+        # Les workers consomment ensuite ``executor.run_plan(plan, ...)``
+        # → N-1 validations économisées.
+        plan = self._executor.plan(spec)
+
         # Pool instancié explicitement avec ``shutdown(wait=False,
         # cancel_futures=True)`` à la sortie : les futures en queue
         # sont annulées, les threads en cours continuent en
@@ -240,7 +246,7 @@ class CorpusRunner:
                     return False
                 fut = pool.submit(
                     self._run_one,
-                    spec=spec,
+                    plan=plan,
                     document=doc,
                     initial_inputs_factory=initial_inputs_factory,
                     context_factory=context_factory,
@@ -358,15 +364,15 @@ class CorpusRunner:
     def _run_one(
         self,
         *,
-        spec: PipelineSpec,
+        plan,  # ExecutionPlan ; type omis pour éviter l'import top-level
         document: DocumentRef,
         initial_inputs_factory: InitialInputsFactory,
         context_factory: ContextFactory,
         started_at: dict[str, float],
         started_at_lock: threading.Lock,
     ) -> PipelineResult:
-        """Exécute la pipeline sur un document.  Appelé dans un thread
-        du pool.
+        """Exécute le plan pré-calculé sur un document.  Appelé dans
+        un thread du pool.
 
         Enregistre ``started_at[doc.id]`` au tout début pour que
         l'orchestrateur puisse mesurer le timeout depuis le début
@@ -381,9 +387,11 @@ class CorpusRunner:
         initial_inputs = initial_inputs_factory(document)
         context = context_factory(document)
 
-        # 3. Déléguer au PipelineExecutor mono-doc (S7).
-        return self._executor.run(
-            spec=spec,
+        # 3. Déléguer au PipelineExecutor.run_plan (S28).  Le plan a
+        #    déjà été validé une fois par le runner ; pas de re-validation
+        #    par doc.
+        return self._executor.run_plan(
+            plan=plan,
             document=document,
             initial_inputs=initial_inputs,
             context=context,

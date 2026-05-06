@@ -78,6 +78,12 @@ FILE_BUDGETS: dict[str, int] = {
     # réel / annulation propre.  Budget stable, l'extension
     # ProcessPoolExecutor (S11) restera dans cette enveloppe.
     "picarones/pipeline/runner.py": 550,                  # actuel 462
+    # Sprint A14-S28 — PipelineExecutor refondu pour consommer un
+    # ExecutionPlan (run_plan) tout en gardant run(spec) comme sucre.
+    # PipelinePlanner introduit pour transformer une PipelineSpec en
+    # plan immuable (validation + bindings + jonctions de métriques).
+    "picarones/pipeline/executor.py": 475,                # actuel 413
+    "picarones/pipeline/planner.py": 465,                 # actuel 403
     "picarones/core/corpus.py": 600,                      # actuel 511
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484
