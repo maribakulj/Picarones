@@ -102,9 +102,24 @@ def compute_step_artifact_key(
     )
 
 
+#: Séparateur de la clé composite ``<step_hash><SEP><output_type>``.
+#:
+#: Le caractère ``:`` est réservé sous Windows (Alternate Data Streams) :
+#: un filename comme ``abc:raw_text.json`` est rejeté avec WinError 87.
+#: ``__`` est filesystem-safe sur les trois OS (Linux/macOS/Windows) et
+#: lisible visuellement.  Pas de risque de collision avec un hash
+#: hex (caractères ``[0-9a-f]`` uniquement) ou un ``ArtifactType.value``
+#: (``[a-z_]+``).
+_KEY_SEPARATOR = "__"
+
+
 def storage_key_for_output(step_hash: str, output_type: ArtifactType) -> str:
-    """Construit la clé de stockage composite pour un output donné."""
-    return f"{step_hash}:{output_type.value}"
+    """Construit la clé de stockage composite pour un output donné.
+
+    Format : ``<step_hash>__<output_type>``.  Le séparateur ``__``
+    est filesystem-safe sur les trois OS (cf. ``_KEY_SEPARATOR``).
+    """
+    return f"{step_hash}{_KEY_SEPARATOR}{output_type.value}"
 
 
 def read_cached_outputs(

@@ -7,6 +7,41 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — fix CI Windows + cap timeout — 2026-05
+
+### Bug Windows : `:` dans les clés du store
+
+Le ``FilesystemArtifactStore`` produisait des filenames de la forme
+``<step_hash>:<output_type>.json`` (séparateur ``:``).  ``:`` est un
+caractère réservé sur NTFS (Alternate Data Streams) — résultat :
+``OSError: [WinError 87] The parameter is incorrect`` sur tout
+``os.replace(tmp, dst)`` côté Windows.  Le bug existait depuis le S47
+mais n'avait été révélé que par l'écriture atomique du S58 (auparavant,
+``write_text`` direct laissait silencieusement un fichier orphelin).
+
+**Fix** : ``cache_helpers.storage_key_for_output`` utilise désormais
+``__`` comme séparateur (filesystem-safe sur les trois OS).  Test
+architectural ``test_storage_keys_filesystem_safe.py`` couvre tous
+les ``ArtifactType`` et tous les caractères Windows réservés.
+
+**Impact cache** : invalide les caches préexistants (qui contenaient
+``:``).  Le cache est régénéré au prochain run — coût ponctuel
+acceptable.  Aucun impact sur les artefacts persistés (l'index
+``index.jsonl`` est régénéré automatiquement).
+
+### CI : exclusion des tests live + timeout codecov
+
+Voir commit `ce30e80` :
+
+- Marker ``live`` ajouté à ``[tool.pytest.ini_options].markers`` et
+  inclus dans ``addopts`` (``-m 'not network and not live'``).
+  Les ``tests/integration/live/`` ne tournent plus en CI par défaut.
+- ``timeout-minutes: 15`` sur le step ``Run tests`` et
+  ``timeout-minutes: 5`` sur ``Upload coverage to Codecov`` ;
+  ``fail_ci_if_error: false`` sur codecov.
+
+---
+
 ## [Unreleased] — audit institutionnel S58-S59 (post-S57) — 2026-05
 
 ### ⚠️ BREAKING CHANGES (déprécations en cours, suppression en 2.0)
