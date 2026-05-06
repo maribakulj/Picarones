@@ -214,7 +214,17 @@ def _replace_section(text: str, marker: str, content: str) -> str:
 def _replace_test_count(text: str, count: int) -> str:
     """Remplace les mentions ``N tests`` ou ``N passed`` qui citent un
     nombre dans la fenêtre [count*0.5, count*2]. Garde la formulation
-    exacte (espace, ponctuation) intacte."""
+    exacte (espace, ponctuation) intacte.
+
+    Le count est **arrondi à la dizaine** pour rendre le résultat
+    OS-déterministe : sur Windows certains tests POSIX-only sont
+    skipés (cf. ``pytest.importorskip``) ce qui décale le compteur
+    de quelques unités.  L'arrondi absorbe ces écarts mineurs sans
+    masquer une vraie évolution (le seuil de tolérance des tests
+    consistency reste à ±5 %).
+    """
+    rounded_count = round(count, -1)  # -1 = arrondi à la dizaine
+
     def _sub(match: re.Match) -> str:
         cited = int(match.group(1))
         # Ne touche pas si le nombre cité est complètement hors plage —
@@ -222,7 +232,7 @@ def _replace_test_count(text: str, count: int) -> str:
         # phrase qui parle d'autre chose).
         if cited < count * 0.5 or cited > count * 2:
             return match.group(0)
-        return match.group(0).replace(str(cited), str(count))
+        return match.group(0).replace(str(cited), str(rounded_count))
 
     return re.sub(r"(\d{3,5})\s+(?:tests|passed)\b", _sub, text)
 

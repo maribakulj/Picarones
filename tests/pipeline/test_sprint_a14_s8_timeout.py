@@ -124,7 +124,20 @@ def test_timeout_measured_from_real_start_not_submission() -> None:
 def test_some_docs_succeed_others_timeout() -> None:
     """Mix : la moitié des docs sont rapides, l'autre lente.  Avec
     un timeout intermédiaire, les rapides réussissent et les lents
-    timeout."""
+    timeout.
+
+    Marges de robustesse cross-OS
+    ------------------------------
+    - Timeout : **0.5s**.
+    - Docs pairs dorment **0.05s** (10× sous le timeout) — ne ratent
+      pas même sur runners macOS lents avec scheduler imprécis.
+    - Docs impairs dorment **2.0s** (4× au-dessus) — timeout
+      garanti.
+
+    L'ancienne version utilisait timeout=0.1s / sleep pair=0.01s
+    qui était à 10 ms du timeout — le jitter du scheduler macOS sur
+    runners GitHub Actions le faisait basculer aléatoirement.
+    """
 
     class _ConditionalSlow:
         name = "cond"
@@ -135,9 +148,9 @@ def test_some_docs_succeed_others_timeout() -> None:
         def execute(self, inputs, params, context):
             # Les docs avec id pair sont rapides.
             if int(context.document_id.removeprefix("d")) % 2 == 0:
-                time.sleep(0.01)
+                time.sleep(0.05)  # 10× sous le timeout (0.5s)
             else:
-                time.sleep(0.5)
+                time.sleep(2.0)  # 4× au-dessus du timeout
             return {
                 ArtifactType.RAW_TEXT: Artifact(
                     id=f"{context.document_id}:raw_text",
@@ -147,10 +160,14 @@ def test_some_docs_succeed_others_timeout() -> None:
             }
 
     adapter = _ConditionalSlow()
-    runner, spec = _build(adapter, timeout=0.1, max_in_flight=2)
+    runner, spec = _build(adapter, timeout=0.5, max_in_flight=2)
     inputs, ctx = _factories()
     docs = [DocumentRef(id=f"d{i}") for i in range(6)]
 
     result = runner.run(spec, docs, inputs, ctx)
-    assert result.n_succeeded == 3  # pairs : d0, d2, d4
-    assert result.n_timed_out == 3  # impairs : d1, d3, d5
+    assert result.n_succeeded == 3, (
+        f"pairs (d0/d2/d4) auraient dû réussir, "
+        f"obtenu n_succeeded={result.n_succeeded}, "
+        f"n_timed_out={result.n_timed_out}"
+    )
+    assert result.n_timed_out == 3
