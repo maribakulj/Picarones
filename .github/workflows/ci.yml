@@ -85,10 +85,14 @@ jobs:
       # ── Tests ───────────────────────────────────────────────────
       # Sprint A1 : --cov-fail-under=85 (baseline mesuré 87 %, marge 2 pts).
       # pytest-timeout est configuré dans pyproject.toml [tool.pytest.ini_options].
+      # ``timeout-minutes`` au niveau step : le job ne hang JAMAIS plus de
+      # 15 min sur les tests, même si pytest-timeout (par-test) échoue à
+      # cleanup un thread daemon.
       - name: Run tests
         # Sur Python 3.13, on continue malgré une erreur pour ne pas bloquer
         # le merge pendant la fenêtre informationnelle de 6 mois (m-8).
         continue-on-error: ${{ matrix.python-version == '3.13' }}
+        timeout-minutes: 15
         shell: bash
         run: |
           pytest tests/ -q --tb=short --no-header \
@@ -99,15 +103,20 @@ jobs:
           PYTHONUTF8: "1"
 
       # ── Couverture ──────────────────────────────────────────────
+      # ``timeout-minutes: 5`` : codecov-action v4 a déjà bloqué la CI
+      # 50+ min en attendant un upload qui n'aboutissait pas.
+      # ``fail_ci_if_error: false`` : un échec d'upload n'invalide pas
+      # le run de tests qui vient de passer.
       - name: Upload coverage to Codecov
         if: runner.os == 'Linux' && matrix.python-version == '3.11' && env.CODECOV_TOKEN != ''
+        timeout-minutes: 5
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
           flags: unittests
           name: picarones-coverage
-          fail_ci_if_error: true
+          fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
