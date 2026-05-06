@@ -21,9 +21,11 @@ from __future__ import annotations
 
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.ocr.precomputed import PrecomputedTextAdapter
+from picarones.adapters.ocr.tesseract import TesseractAdapter
 
 __all__ = [
     "BaseOCRAdapter",
     "OCRAdapterError",
     "PrecomputedTextAdapter",
+    "TesseractAdapter",
 ]
