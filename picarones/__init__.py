@@ -55,7 +55,8 @@ from picarones.core.corpus import (
     ReadingOrderGT,
     load_corpus_from_directory,
 )
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 from picarones.core.results import (
     BenchmarkResult,
     DocumentResult,

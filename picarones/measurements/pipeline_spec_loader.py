@@ -67,7 +67,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 from picarones.core.pipeline import PipelineSpec, PipelineStep
 
 logger = logging.getLogger(__name__)

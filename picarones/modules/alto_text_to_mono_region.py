@@ -33,7 +33,7 @@ avec les mêmes entrées produisent le même XML octet par octet.
 
 Exemple
 -------
->>> from picarones.core.modules import ArtifactType
+>>> from picarones.domain.artifacts import ArtifactType
 >>> from picarones.modules import TextToAltoMonoRegion
 >>> module = TextToAltoMonoRegion()
 >>> outputs = module.process({
@@ -52,7 +52,8 @@ from pathlib import Path
 from typing import Any, Optional
 from xml.sax.saxutils import escape as _xml_escape
 
-from picarones.core.modules import ArtifactType, BaseModule, ExecutionMode
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule, ExecutionMode
 
 logger = logging.getLogger(__name__)
 

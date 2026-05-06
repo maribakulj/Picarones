@@ -331,6 +331,96 @@ pas été vu à l'audit).
 **Statut Phase 4-bis** : analyse posée, exécution reportée à un
 sprint dédié de plusieurs sessions.
 
+#### Phase 4-bis — Reprise et complétion (2026-05)
+
+La reprise s'appuie sur le **diagnostic de la tentative avortée**
+en adoptant la stratégie « double-clé » : on garde les aliases
+legacy ``TEXT``/``ALTO``/``PAGE`` dans
+``domain.artifacts.ArtifactType``, et on s'engage à ce que tout
+dict indexé par ``ArtifactType.value`` présente en parallèle la
+clé canonique (``"raw_text"``) **et** la clé legacy (``"text"``)
+quand un alias existe.
+
+**Ajouts dans le canonique** :
+
+- ``LEGACY_VALUE_ALIASES = {"raw_text": "text", "alto_xml": "alto",
+  "page_xml": "page"}`` dans ``domain.artifacts``.
+- ``expand_legacy_keys(d)`` qui mute un dict pour y copier les
+  valeurs canoniques sous les alias legacy.
+- ``BaseModule`` canonique dans ``domain/module_protocol.py``
+  (10 valeurs vs 6 legacy).
+
+**Sites mis à jour** :
+
+- ``core/pipeline.py`` : ``StepResult.junction_metrics`` enrichi
+  via ``expand_legacy_keys`` à la production.
+  ``PipelineResult.junction_metrics_for`` essaie la clé canonique
+  puis l'alias legacy.
+  ``_artifact_type_to_gt_level`` utilise une map explicite
+  ``ArtifactType → GTLevel`` (les valeurs canoniques
+  ``"raw_text"``/``"alto_xml"``/``"page_xml"`` ne matchent plus
+  ``GTLevel`` qui garde ``"text"``/``"alto"``/``"page"``).
+- ``measurements/pipeline_benchmark.py`` :
+  ``StepAggregate.junction_metrics`` enrichi via
+  ``expand_legacy_keys`` après agrégation.
+- ``measurements/pipeline_comparison.py`` :
+  ``_final_metric_value`` essaie canonique puis legacy.
+- ``evaluation/metrics/module_policy.py`` : la comparaison
+  manifest vs déclaration normalise via les aliases (``"text"``
+  match ``"raw_text"``).
+
+**Migration des callers** : 16 modules ``measurements/`` + 6
+modules `core/`/`engines/`/`modules/`/`cli/`/`report/` migrés
+de ``from picarones.core.modules import ArtifactType`` vers
+``from picarones.domain.artifacts import ArtifactType`` (et
+``from picarones.domain.module_protocol import BaseModule``
+quand applicable).
+
+**``core/modules.py``** : transformé en shim avec
+``DeprecationWarning`` à l'import.
+
+**Tests adaptés** :
+
+- ``test_public_api.py::test_artifact_type_values`` —
+  asserte le set canonique 10 valeurs.
+- ``test_sprint33_module_interface.py::test_repr_shows_io_types``
+  — asserte ``"raw_text→raw_text"``.
+- ``test_sprint68_pipeline_comparison_html.py::test_display_label_default``
+  — asserte ``"raw_text.cer"``.
+
+**Acceptance Phase 4-bis** : 5019 tests passent (vs 5008 avant la
+reprise — 11 tests étaient cassés par la première tentative et
+sont maintenant verts).  Les 24 fichiers de tests qui importent
+encore ``from picarones.core.modules`` continuent à fonctionner via
+le shim — ils ne deviendront erronés que quand le shim sera retiré
+en 2.0.
+
+**Reportés à Phase 4-ter** :
+
+- ``core/metric_registry.py`` (263 l) et ``core/metric_hooks.py``
+  (423 l) restent en place : ils sont consommés par 30+ modules
+  ``measurements/`` via le décorateur ``@register_metric`` et les
+  hooks ``register_document_metric``/``register_corpus_aggregator``.
+  Le canonique existant ``evaluation/registry/registry.py`` utilise
+  un design **instance-based** (``MetricRegistry()`` explicite,
+  pas de décorateur module-level) qui est incompatible avec le
+  pattern legacy.  La migration exige un choix de design (garder
+  les deux, fondre dans une API unique, etc.) qui dépasse Phase
+  4-bis.
+- ``core/metrics.py`` (144 l, ``MetricsResult`` +
+  ``aggregate_metrics``) reste en place : pas d'équivalent
+  canonique dans ``domain/`` ou ``evaluation/`` à ce jour.  La
+  conversion nécessitera d'abord de créer le destinataire dans
+  ``domain.measurements`` (typé Pydantic au lieu de dataclass) ou
+  ``evaluation.aggregation``.
+- ``core/results.py`` (``BenchmarkResult`` + champs agrégés) :
+  même statut.
+- ``core/corpus.py`` (``Document``/``Corpus``/``GTLevel``) :
+  même statut.  Note : ``GTLevel`` étant intentionnellement
+  conservé en parallèle d'``ArtifactType``, son retrait dépend
+  de la fin de migration des callers qui parsent les types de GT
+  par leur valeur string.
+
 ### Phase 5 — Reports HTML (`report/`)
 
 **Modules** :

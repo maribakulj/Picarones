@@ -134,6 +134,35 @@ class ArtifactType(str, Enum):
         return legacy_map.get(value)
 
 
+#: Map valeur canonique → valeur string legacy.  Permet aux dicts
+#: indexés par ``ArtifactType.value`` (junction_metrics du runner
+#: legacy, etc.) de présenter les **deux** clés pendant la phase de
+#: migration : un caller rewrite qui cherche ``["raw_text"]`` et un
+#: test legacy qui cherche ``["text"]`` voient le même résultat.
+#:
+#: Phase 4-bis du retrait du legacy.  Sera retiré en 2.0 quand tous
+#: les callers utilisent les valeurs canoniques.
+LEGACY_VALUE_ALIASES: dict[str, str] = {
+    "raw_text": "text",
+    "alto_xml": "alto",
+    "page_xml": "page",
+}
+
+
+def expand_legacy_keys(d: dict) -> dict:
+    """Pour chaque clé canonique de ``d`` qui a un alias legacy
+    (cf. :data:`LEGACY_VALUE_ALIASES`), copie la valeur sous l'alias.
+
+    Mute le dict en place ET le retourne (chainable).  Idempotent :
+    si la clé legacy existe déjà avec une valeur différente, on ne
+    l'écrase pas (un override explicite gagne).
+    """
+    for canonical, legacy in LEGACY_VALUE_ALIASES.items():
+        if canonical in d and legacy not in d:
+            d[legacy] = d[canonical]
+    return d
+
+
 def compute_content_hash(payload: bytes) -> str:
     """SHA-256 hex (64 chars) d'un payload binaire.
 

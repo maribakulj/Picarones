@@ -38,7 +38,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 
 logger = logging.getLogger(__name__)
 

@@ -51,7 +51,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from picarones.core.corpus import Corpus
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.pipeline_benchmark import (
     InitialInputsFactory,
     PipelineBenchmarkResult,
@@ -117,8 +117,19 @@ class PipelineComparisonResult:
         bench = self.per_pipeline.get(pipeline_name)
         if bench is None:
             return None
+        from picarones.domain.artifacts import LEGACY_VALUE_ALIASES
+        legacy_alias = LEGACY_VALUE_ALIASES.get(artifact_type.value)
         for agg in reversed(bench.per_step_aggregates):
             type_metrics = agg.junction_metrics.get(artifact_type.value)
+            if not type_metrics and legacy_alias is not None:
+                # Phase 4-bis : un caller (typiquement les tests
+                # ou un agrégateur tiers) peut avoir construit le
+                # dict avec la clé legacy ``"text"`` au lieu de la
+                # canonique ``"raw_text"``.  expand_legacy_keys
+                # synchronise les deux côtés sur les sites
+                # d'écriture du runner — ce fallback couvre le
+                # reste.
+                type_metrics = agg.junction_metrics.get(legacy_alias)
             if not type_metrics:
                 continue
             stats = type_metrics.get(metric_name)

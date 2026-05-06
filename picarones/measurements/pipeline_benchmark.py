@@ -46,7 +46,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from picarones.core.corpus import Corpus, Document
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.core.pipeline import (
     PipelineResult,
     PipelineRunner,
@@ -260,6 +260,9 @@ def _aggregate_step(
             }
             for mname, values in metrics.items()
         }
+    # Phase 4-bis : double-clé legacy/canonique pour rétrocompat.
+    from picarones.domain.artifacts import expand_legacy_keys
+    expand_legacy_keys(agg.junction_metrics)
     return agg
 
 

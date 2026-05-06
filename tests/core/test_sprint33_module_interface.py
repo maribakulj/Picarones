@@ -147,7 +147,9 @@ class TestBaseModuleContract:
         m = UpperCaseTextModule()
         r = repr(m)
         assert "uppercase" in r
-        assert "text→text" in r
+        # Phase 4-bis : ``ArtifactType.TEXT.value`` est désormais
+        # ``"raw_text"`` (alias canonique vers ``RAW_TEXT``).
+        assert "raw_text→raw_text" in r
 
     def test_default_execution_mode(self) -> None:
         # UpperCaseTextModule a forcé "cpu" ; un module qui ne déclare

@@ -94,7 +94,9 @@ def _make_comparison(
 class TestRankingSpec:
     def test_display_label_default(self) -> None:
         spec = RankingSpec(ArtifactType.TEXT, "cer")
-        assert spec.display_label == "text.cer"
+        # Phase 4-bis : ``ArtifactType.TEXT.value`` est désormais
+        # ``"raw_text"`` (alias canonique vers ``RAW_TEXT``).
+        assert spec.display_label == "raw_text.cer"
 
     def test_display_label_explicit(self) -> None:
         spec = RankingSpec(ArtifactType.TEXT, "cer", label="CER global")

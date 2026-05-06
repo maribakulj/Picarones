@@ -25,7 +25,7 @@ modules tiers).
 
 Exemple d'usage
 ---------------
->>> from picarones.core.modules import ArtifactType
+>>> from picarones.domain.artifacts import ArtifactType
 >>> from picarones.core.metric_registry import (
 ...     register_metric, select_metrics, compute_at_junction,
 ... )
@@ -50,7 +50,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 logger = logging.getLogger(__name__)
 

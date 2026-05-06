@@ -52,7 +52,7 @@ from difflib import SequenceMatcher
 from typing import Optional
 
 from picarones.core.metric_registry import register_metric
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 logger = logging.getLogger(__name__)
 

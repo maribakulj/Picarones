@@ -47,7 +47,7 @@ from dataclasses import dataclass
 from html import escape as _e
 from typing import Optional
 
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.pipeline_benchmark import PipelineBenchmarkResult
 from picarones.measurements.pipeline_comparison import PipelineComparisonResult
 from picarones.report.render_helpers import color_traffic_light

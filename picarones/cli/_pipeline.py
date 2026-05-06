@@ -162,7 +162,7 @@ def pipeline_compare_cmd(
 ) -> None:
     """Compare N pipelines décrites dans SPECS_PATH sur le même corpus."""
     from picarones.core.corpus import load_corpus_from_directory
-    from picarones.core.modules import ArtifactType
+    from picarones.domain.artifacts import ArtifactType
     from picarones.measurements.pipeline_comparison import compare_pipelines
     from picarones.measurements.pipeline_spec_loader import (
         load_comparison_specs_from_yaml,

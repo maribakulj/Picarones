@@ -117,8 +117,25 @@ class TestModulesApi:
         from picarones.core.modules import ArtifactType
 
         names = {member.value for member in ArtifactType}
-        # ``IMAGE`` + 5 niveaux GT
-        assert names == {"image", "text", "alto", "page", "entities", "reading_order"}
+        # Phase 4-bis : ``ArtifactType`` canonique (``domain.artifacts``)
+        # — 10 valeurs.  L'ancien set legacy (``image, text, alto, page,
+        # entities, reading_order``) reste accessible via les aliases
+        # ``TEXT``/``ALTO``/``PAGE`` qui pointent vers les valeurs
+        # canoniques ``raw_text``/``alto_xml``/``page_xml``.  Les
+        # aliases n'apparaissent pas dans cette itération (Python
+        # masque les membres aliasés dans ``__members__`` itérable).
+        assert names == {
+            "image",
+            "raw_text",
+            "corrected_text",
+            "alto_xml",
+            "page_xml",
+            "canonical_document",
+            "entities",
+            "reading_order",
+            "alignment",
+            "confidences",
+        }
 
     def test_basemodule_is_abstract(self):
         cls = _assert_class("picarones.core.modules", "BaseModule")

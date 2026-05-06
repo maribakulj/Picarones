@@ -85,7 +85,7 @@ import re
 from typing import Optional
 
 from picarones.core.metric_registry import register_metric
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.roman_numerals import (
     detect_roman_numerals,
     roman_to_int,

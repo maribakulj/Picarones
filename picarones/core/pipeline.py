@@ -55,7 +55,8 @@ from typing import Any, Optional
 
 from picarones.core.corpus import Document, GTLevel
 from picarones.core.metric_registry import compute_at_junction
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 
 # Sprint A3 (renforce la règle Cercle 1 → Cercle 1 uniquement) — la
 # cérémonie d'eager-load des métriques typées (Sprint 34) qui vivait
@@ -73,18 +74,33 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────────────────
 
 
+#: Map ``ArtifactType`` canonique → ``GTLevel`` legacy.  Phase 4-bis :
+#: ``ArtifactType`` a été migré vers ``domain/artifacts.py`` qui
+#: distingue ``RAW_TEXT``/``CORRECTED_TEXT`` (vs ``TEXT`` legacy) et
+#: ``ALTO_XML``/``PAGE_XML`` (vs ``ALTO``/``PAGE`` legacy).  Les
+#: valeurs canoniques ne matchent donc plus celles de ``GTLevel``.
+#: Ce mapping explicite fait le pont — sera retiré en 2.0 quand
+#: ``GTLevel`` aura aussi été retiré au profit de la projection
+#: ``ArtifactType → niveau d'évaluation`` du rewrite.
+_ARTIFACT_TO_GT_LEVEL: dict[ArtifactType, GTLevel] = {
+    ArtifactType.RAW_TEXT: GTLevel.TEXT,
+    ArtifactType.CORRECTED_TEXT: GTLevel.TEXT,
+    ArtifactType.ALTO_XML: GTLevel.ALTO,
+    ArtifactType.PAGE_XML: GTLevel.PAGE,
+    ArtifactType.ENTITIES: GTLevel.ENTITIES,
+    ArtifactType.READING_ORDER: GTLevel.READING_ORDER,
+}
+
+
 def _artifact_type_to_gt_level(at: ArtifactType) -> Optional[GTLevel]:
     """Retourne le ``GTLevel`` correspondant à un ``ArtifactType``.
 
     ``IMAGE`` n'a pas de correspondance GT (on n'évalue pas une
     image en sortie d'un module — c'est typiquement une entrée).
+    Les types ``CONFIDENCES``, ``ALIGNMENT``, ``CANONICAL_DOCUMENT``
+    n'ont pas non plus de niveau de GT direct dans le legacy.
     """
-    if at == ArtifactType.IMAGE:
-        return None
-    try:
-        return GTLevel(at.value)
-    except ValueError:
-        return None
+    return _ARTIFACT_TO_GT_LEVEL.get(at)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -325,10 +341,21 @@ class PipelineResult:
         fine le même type (ex. deux DAG aboutissant à du texte
         corrigé).
         """
+        from picarones.domain.artifacts import LEGACY_VALUE_ALIASES
+        legacy_alias = LEGACY_VALUE_ALIASES.get(artifact_type.value)
         for step in reversed(self.steps):
             if step.error is not None:
                 continue
             metrics = step.junction_metrics.get(artifact_type.value)
+            if metrics is None and legacy_alias is not None:
+                # Phase 4-bis : un caller legacy peut avoir construit
+                # le dict avec la clé pré-rewrite ("text" au lieu de
+                # "raw_text").  expand_legacy_keys synchronise les deux
+                # côtés sur les sites d'écriture du runner, mais des
+                # StepResult construits à la main par les tests ou par
+                # un caller externe peuvent encore avoir une seule
+                # clé — on tolère.
+                metrics = step.junction_metrics.get(legacy_alias)
             if metrics is not None:
                 return metrics
         return None
@@ -530,6 +557,15 @@ class PipelineRunner:
                 continue
             if metrics:
                 junction_metrics[at.value] = metrics
+
+        # Phase 4-bis : double-clé pour rétrocompat.  Les tests
+        # legacy cherchent junction_metrics["text"] mais le runner
+        # peut produire junction_metrics["raw_text"] si l'enum est
+        # migré (ArtifactType.TEXT alias de RAW_TEXT, valeur
+        # "raw_text").  expand_legacy_keys ajoute la clé legacy
+        # ("text") à côté de la canonique ("raw_text") sans écraser.
+        from picarones.domain.artifacts import expand_legacy_keys
+        expand_legacy_keys(junction_metrics)
 
         return StepResult(
             step_name=step.name,
