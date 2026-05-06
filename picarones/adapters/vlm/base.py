@@ -113,8 +113,13 @@ class BaseVLMAdapter(BaseLLMAdapter):
                 f"{self.name} : VLM a échoué ({result.error}).",
             )
 
-        out_path = (
-            image_path.parent / f"{image_path.stem}.{self.name}.txt"
+        # Sprint S51 : workspace_uri respecté quand fourni.
+        from picarones.adapters.ocr.output_paths import resolve_output_path
+        out_path = resolve_output_path(
+            input_path=image_path,
+            adapter_name=self.name,
+            suffix="txt",
+            context=context,
         )
         out_path.write_text(result.text, encoding="utf-8")
 

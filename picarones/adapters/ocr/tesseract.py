@@ -67,6 +67,7 @@ from pathlib import Path
 from typing import Any
 
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
+from picarones.adapters.ocr.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
 
 
@@ -244,8 +245,15 @@ class TesseractAdapter(BaseOCRAdapter):
         # Écriture du résultat à côté de l'image.  Cohérent avec le
         # pattern ``PrecomputedTextAdapter`` — un caller peut relire
         # la sortie via cet adapter pour la comparer dans un second run.
-        text_path = (
-            image_path.parent / f"{image_path.stem}.{self.name}.txt"
+        # Sprint S51 : résolution du chemin via le helper qui respecte
+        # ``context.workspace_uri`` quand fourni (sandbox par doc sous
+        # le workspace).  Sinon fallback à côté de l'image
+        # (comportement S30 — rétrocompat CLI).
+        text_path = resolve_output_path(
+            input_path=image_path,
+            adapter_name=self.name,
+            suffix="txt",
+            context=context,
         )
         text_path.write_text(text, encoding="utf-8")
 

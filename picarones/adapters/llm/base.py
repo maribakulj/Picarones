@@ -383,8 +383,15 @@ class BaseLLMAdapter(ABC):
                 f"{self.name} : LLM a échoué ({result.error}).",
             )
 
-        out_path = (
-            text_path.parent / f"{text_path.stem}.{self.name}.corrected.txt"
+        # Sprint S51 : résolution du chemin via le helper qui respecte
+        # ``context.workspace_uri`` quand fourni.  Sinon fallback
+        # à côté de l'input (comportement S44 — rétrocompat).
+        from picarones.adapters.ocr.output_paths import resolve_output_path
+        out_path = resolve_output_path(
+            input_path=text_path,
+            adapter_name=self.name,
+            suffix="corrected.txt",
+            context=context,
         )
         out_path.write_text(result.text, encoding="utf-8")
 
