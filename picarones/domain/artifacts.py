@@ -103,6 +103,36 @@ class ArtifactType(str, Enum):
     #: reliability diagram).
     CONFIDENCES = "confidences"
 
+    #: Aliases legacy pour rétrocompat avec ``picarones.core.modules``
+    #: (Phase 4-bis du retrait du legacy).  Le mécanisme natif d'Enum
+    #: Python rend ces noms équivalents aux canoniques :
+    #:
+    #: >>> ArtifactType.TEXT is ArtifactType.RAW_TEXT
+    #: True
+    #:
+    #: Le mapping sémantique TEXT → RAW_TEXT est documenté dans
+    #: ``docs/migration/regression-tolerances.md``.  À supprimer en 2.0
+    #: une fois tous les callers legacy retirés.
+    TEXT = "raw_text"
+    ALTO = "alto_xml"
+    PAGE = "page_xml"
+
+    @classmethod
+    def _missing_(cls, value):
+        """Accepte les valeurs string legacy (``"text"``, ``"alto"``,
+        ``"page"``) en plus des valeurs canoniques.
+
+        Ce hook est invoqué par ``ArtifactType("text")`` (lecture YAML
+        legacy par exemple) — sans lui, ``ValueError``.  À supprimer
+        en 2.0 avec les aliases legacy ci-dessus.
+        """
+        legacy_map = {
+            "text": cls.RAW_TEXT,
+            "alto": cls.ALTO_XML,
+            "page": cls.PAGE_XML,
+        }
+        return legacy_map.get(value)
+
 
 def compute_content_hash(payload: bytes) -> str:
     """SHA-256 hex (64 chars) d'un payload binaire.

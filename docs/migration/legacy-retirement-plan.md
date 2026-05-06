@@ -278,6 +278,59 @@ legacy reste vert.  Les 13 modules réels + 6 modules `core/`
 restants sont documentés comme dépendant d'une migration
 ArtifactType.
 
+#### Tentative Phase 4-bis (avortée — diagnostic posé)
+
+Une tentative de migration coordonnée de l'``ArtifactType`` a été
+explorée puis revertée :
+
+**Stratégie testée** : exploiter le mécanisme natif d'aliases
+d'``Enum`` Python (un membre avec la même valeur qu'un autre devient
+un alias).  Ajout de ``TEXT = "raw_text"``, ``ALTO = "alto_xml"``,
+``PAGE = "page_xml"`` à ``domain.artifacts.ArtifactType`` + hook
+``_missing_`` pour accepter les valeurs string legacy.  Puis
+transformation de ``core/modules.py`` en shim qui ré-exporte
+``ArtifactType`` et ``BaseModule`` depuis le canonique.
+
+**Conservé en place** : les aliases + ``_missing_`` dans
+``domain.artifacts.ArtifactType``.  Inoffensif — aucun code legacy
+ne les voit puisqu'aucun module legacy n'importe encore depuis le
+canonique.
+
+**Reverté** : le shim ``core/modules.py``.  Cause : passer le
+``core.modules.ArtifactType`` du legacy enum 6 valeurs au superset
+canonique change silencieusement ``ArtifactType.TEXT.value`` de
+``"text"`` à ``"raw_text"``.  Or 27 tests legacy
+(``test_sprint63_pipeline_runner``, ``test_sprint65_pipeline_comparison``,
+``test_sprint68_pipeline_comparison_html`` etc.) reposent sur le
+fait que les clés des dicts ``junction_metrics`` produites par le
+runner legacy sont les valeurs string legacy.  Quand le runner
+utilise ``at.value`` pour stocker, il stocke maintenant ``"raw_text"``,
+et les tests qui cherchaient ``junction_metrics["text"]`` cassent.
+
+Le diagnostic est plus profond qu'un simple rename : le legacy
+``BenchmarkResult.junction_metrics`` est un ``dict[str, dict]``
+indexé par valeur string ; sa stabilité de format est implicitement
+testée.  Migrer ``core.modules.ArtifactType`` exige un travail
+**par module** d'identification des dicts indexés par valeur
+string, et soit (a) double-clé pour rétrocompat, (b) migration
+ordonnée tests-en-même-temps.
+
+**Plan rectifié pour Phase 4-bis** :
+
+1. Lister exhaustivement les dicts indexés par ``ArtifactType.value``
+   dans le legacy (``core/results.py``, ``core/pipeline.py``,
+   ``measurements/runner/``, ``measurements/pipeline_*``).
+2. Décider la stratégie par module : double-clé pendant la
+   migration vs migration coordonnée tests + code.
+3. Migrer un cluster à la fois en validant la suite après chaque.
+
+**Effort rectifié** : 25-30 jours (vs 18-22 estimés initialement —
+le couplage implicite des dicts indexés par valeur string n'avait
+pas été vu à l'audit).
+
+**Statut Phase 4-bis** : analyse posée, exécution reportée à un
+sprint dédié de plusieurs sessions.
+
 ### Phase 5 — Reports HTML (`report/`)
 
 **Modules** :
@@ -465,7 +518,13 @@ mais le CER a glissé de 0,002 par doc »*.
 | 2 | ✅ Terminée (8/8 modules statistics migrés) |
 | 3 | ✅ Terminée (11 modules narrative + 2 templates + 18 détecteurs migrés) |
 | 4 | ✅ Partielle (9 modules autonomes/cascade ; 13 modules + 6 modules `core/` + 1 sous-package → Phase 4-bis) |
-| 4-bis | ⚪ À démarrer (migration ArtifactType + débloqueur des bloqués) |
+| 4-bis | 🟡 Diagnostic posé, exécution reportée (couplage dicts-string plus complexe que prévu — voir détail Phase 4) |
 | 5-11 | ⚪ À démarrer |
 
-**Dernière mise à jour** : 2026-05 (Phase 4 partielle livrée).
+**Dernière mise à jour** : 2026-05 (Phase 4-bis tentative + revert + diagnostic).
+
+**Reste en place suite à la tentative Phase 4-bis** : aliases
+``TEXT``/``ALTO``/``PAGE`` dans ``domain.artifacts.ArtifactType``
+(inoffensif) + hook ``_missing_`` pour accepter les valeurs string
+legacy.  Préparation pour la session future qui complétera Phase
+4-bis.
