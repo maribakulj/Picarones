@@ -84,6 +84,10 @@ FILE_BUDGETS: dict[str, int] = {
     # plan immuable (validation + bindings + jonctions de métriques).
     "picarones/pipeline/executor.py": 475,                # actuel 413
     "picarones/pipeline/planner.py": 465,                 # actuel 403
+    # Sprint A14-S29 — ArtifactStore (ABC + 2 implémentations) avec
+    # hash multi-paramètres pour adresser la critique d'audit n° 14
+    # « hash multi-paramètres + reprise par hash ».
+    "picarones/adapters/storage/artifact_store.py": 580,  # actuel 504
     "picarones/core/corpus.py": 600,                      # actuel 511
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484
