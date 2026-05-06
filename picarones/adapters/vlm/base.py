@@ -61,7 +61,61 @@ class BaseVLMAdapter(BaseLLMAdapter):
         Config dict ; supporte
         ``config["transcription_prompt"]`` pour personnaliser le
         prompt de transcription.
+
+    Sprint S54 — garde-fou MRO (audit #6)
+    -------------------------------------
+    Les VLM concrets utilisent l'héritage multiple :
+
+    ::
+
+        class AnthropicVLMAdapter(BaseVLMAdapter, AnthropicAdapter)
+
+    L'ordre est critique : ``BaseVLMAdapter`` doit venir d'ABORD
+    pour que ``input_types``, ``output_types``, ``execute``, et
+    ``DEFAULT_TRANSCRIPTION_PROMPT`` soient résolus depuis lui (et
+    pas depuis le LLM sibling qui aurait des output_types =
+    {CORRECTED_TEXT}).
+
+    ``__init_subclass__`` valide cet ordre à la définition de la
+    classe.  Si le développeur swap accidentellement les parents
+    par habitude alphabétique, la définition de classe lève une
+    ``TypeError`` immédiate au lieu d'un comportement silencieusement
+    différent (output_types incorrect au runtime).
     """
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        # Garde-fou : BaseVLMAdapter doit être le premier parent
+        # *non-trivial* dans l'ordre de la déclaration (pour gagner
+        # le MRO sur les attributs surchargés).
+        bases = cls.__bases__
+        if len(bases) <= 1:
+            # Sous-classe directe simple — pas de MRO multiple, OK.
+            return
+        # On parcourt les bases dans l'ordre déclaré.
+        try:
+            vlm_idx = next(
+                i for i, b in enumerate(bases)
+                if issubclass(b, BaseVLMAdapter)
+            )
+        except StopIteration:
+            return  # ne devrait pas arriver, vlm subclass DOIT inclure VLM
+        # Toutes les bases AVANT BaseVLMAdapter doivent être
+        # neutres (mixins sans surcharge des output_types).
+        for prev in bases[:vlm_idx]:
+            if issubclass(prev, BaseLLMAdapter) and not issubclass(
+                prev, BaseVLMAdapter,
+            ):
+                raise TypeError(
+                    f"{cls.__name__} : ordre MRO incorrect — "
+                    f"BaseVLMAdapter doit précéder {prev.__name__} "
+                    "dans la liste des parents pour que les "
+                    "output_types VLM ({IMAGE} → {RAW_TEXT}) "
+                    "soient résolus correctement (et pas écrasés "
+                    "par les output_types LLM = {CORRECTED_TEXT}). "
+                    f"Corrigez : `class {cls.__name__}(BaseVLMAdapter, "
+                    f"{prev.__name__})`.",
+                )
 
     @property
     def input_types(self) -> "frozenset":
