@@ -71,29 +71,45 @@ tests de régression de chaque phase suivante (`test_phase1_*.py`,
 avoir son test de régression ajouté ici en même temps que le
 code.
 
-### Phase 1 — Foundation conceptuelle (`core/`, `domain/`)
+### Phase 1 — Foundation conceptuelle (`core/`, `domain/`) — partielle ✅
 
-**Modules à migrer** :
+**Audit de migrabilité réelle** : 5 modules `core/` sur 9 dépendent
+de `core/modules.py` (legacy `BaseModule` + `ArtifactType` 6 valeurs,
+incompatible avec le superset `domain/artifacts.ArtifactType` 10
+valeurs).  Les migrer ferait dériver le comportement des callers
+legacy — à reporter en **Phase 4** quand le runner et les métriques
+seront rewrités.
 
-| Legacy | Cible rewrite | Note |
-|--------|---------------|------|
-| `core/results.py` (677 LOC, `BenchmarkResult`/`EngineReport`/`DocumentResult` + 30 champs agrégés) | `domain/run_result.py` + champs agrégés en `Artifact` typés | Le plus critique |
-| `core/facts.py` | déjà dans `domain/facts.py` | Vérifier parité |
-| `core/pipeline.py` (legacy `PipelineSpec` + `BaseModule`) | `domain/pipeline_spec.py` + `domain/module_protocol.py` | Migration des callers |
-| `core/modules.py` (`BaseModule`, `ArtifactType` 6 valeurs) | `domain/artifacts.py` (déjà 10 valeurs) + `domain/module_protocol.py` | Le superset |
-| `core/metric_registry.py` + `metric_hooks.py` | `evaluation/registry/` (déjà migré) | Vérifier callers |
-| `core/corpus.py` (`Document`, `Corpus`, `GTLevel`) | `domain/corpus.py` + `domain/documents.py` (déjà migré) | Modèle différent — convertisseur |
-| `core/diff_utils.py` | `evaluation/utils/diff.py` (à créer) | Pure utility |
-| `core/xml_utils.py` | `formats/xml_utils.py` (à créer) | Pure utility |
-| `core/metrics.py` | `evaluation/metrics/_base.py` (à créer) | API helpers |
+**Migrés en Phase 1 — 3 modules** (sans dépendance à `core/modules`) :
 
-**Effort** : 5-8 jours-personnes.
+| Legacy | Canonique rewrite | Statut |
+|--------|-------------------|--------|
+| `core/xml_utils.py` (44 LOC) | `formats/_xml_utils.py` + re-export `picarones.formats.safe_parse_xml` | ✅ shim posé |
+| `core/diff_utils.py` (89 LOC) | `evaluation/_diff_utils.py` + re-export `picarones.evaluation.{compute_word_diff,compute_char_diff,diff_stats}` | ✅ shim posé |
+| `core/facts.py` (229 LOC) | `domain/facts.py` + re-export `picarones.domain.{Fact,FactType,FactImportance,DetectorRegistry,detect_all}` | ✅ shim posé |
 
-**Acceptance** : aucun fichier `picarones.{adapters,evaluation,pipeline,
-app,reports_v2,interfaces}` n'importe plus `picarones.core`.  Le
-package `core/` peut être vidé en gardant uniquement des shims
-`DeprecationWarning` (ou directement supprimé si aucun caller
-externe ne le lit).
+**Reportés en Phase 4** (couplage à `core/modules.ArtifactType` legacy
+ou au modèle du runner legacy) :
+
+| Legacy | Bloqueur |
+|--------|----------|
+| `core/results.py` (677 LOC, `BenchmarkResult` + 30 champs agrégés) | Modèle central du runner legacy ; convergence avec `app.results.RunResult` en Phase 4 (rewrite de `measurements/runner/`) |
+| `core/pipeline.py` (571 LOC, legacy `PipelineSpec` + `BaseModule`) | Concept différent du `domain.pipeline_spec.PipelineSpec` ; convergence en Phase 6 (`pipelines/` legacy) |
+| `core/corpus.py` (511 LOC, `Document` avec payloads typés) | Modèle data legacy ≠ `DocumentRef` du rewrite ; convergence en Phase 4 |
+| `core/modules.py` (173 LOC, `BaseModule` + `ArtifactType` 6 valeurs) | Type legacy partagé par 50+ modules ; déprécation en Phase 4 |
+| `core/metric_registry.py` + `metric_hooks.py` (686 LOC) | Importe `core.modules.ArtifactType` ; convergence en Phase 4 |
+| `core/metrics.py` (144 LOC, `MetricsResult`) | Schéma legacy ≠ `ViewResult.metric_values` du rewrite ; convergence en Phase 4 |
+
+**Effort consommé Phase 1** : ~1 jour (3 modules + audit + tests).
+**Effort restant — reporté en Phase 4** : ~5-7 jours.
+
+**Acceptance Phase 1 partielle** : 3 modules `core/` sont des shims
+re-export propres avec `DeprecationWarning`.  Le test architectural
+`test_no_legacy_imports_in_rewrite.py` reste vert.  `picarones/__init__.py`
+top-level pointe désormais vers le canonique pour les modules
+migrés (pas de spam de warning à `import picarones`).  Les 6 autres
+modules `core/` fonctionnent inchangés ; ils seront migrés au
+moment de la migration de leurs callers.
 
 ### Phase 2 — Statistics (`measurements/statistics/`)
 
@@ -357,7 +373,8 @@ mais le CER a glissé de 0,002 par doc »*.
 | Phase | Statut |
 |-------|--------|
 | 0 | ✅ Terminée |
-| 1 | ⚪ À démarrer |
-| 2-11 | ⚪ À démarrer |
+| 1 | ✅ Partielle (3/9 modules ; les 6 autres reportés en Phase 4) |
+| 2 | ⚪ À démarrer |
+| 3-11 | ⚪ À démarrer |
 
-**Dernière mise à jour** : 2026-05 (Phase 0 livrée).
+**Dernière mise à jour** : 2026-05 (Phase 1 partielle livrée).

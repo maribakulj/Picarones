@@ -31,6 +31,11 @@ rewrite ciblé (Sprints S13-S18).
 
 from __future__ import annotations
 
+from picarones.evaluation._diff_utils import (
+    compute_char_diff,
+    compute_word_diff,
+    diff_stats,
+)
 from picarones.evaluation.evaluation_engine import (
     EvaluationEngine,
     EvaluationResult,
@@ -45,4 +50,7 @@ __all__ = [
     "EvaluationResult",
     "ProjectionEngine",
     "ProjectionResult",
+    "compute_char_diff",
+    "compute_word_diff",
+    "diff_stats",
 ]

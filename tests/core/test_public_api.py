@@ -404,14 +404,15 @@ class TestCercle1IsLean:
     # appartient au Cercle 2 (``measurements/``) ou au Cercle 3
     # (``extras/``, ``report/``).
     EXPECTED_CERCLE1 = {
-        "corpus.py", "facts.py", "metric_hooks.py", "metric_registry.py",
+        "corpus.py", "metric_hooks.py", "metric_registry.py",
         "metrics.py", "modules.py", "pipeline.py", "results.py",
-        "xml_utils.py",
-        # Sprint A3 (B-1) — déplacé depuis report/diff_utils.py pour
-        # respecter la règle Cercle 2 → Cercle 1. Pure logique de
-        # comparaison de séquences (difflib), zéro I/O, sans dépendance
-        # vers Cercles 2/3 — qualifié pour Cercle 1.
-        "diff_utils.py",
+        # Phase 1 du retrait du legacy a déplacé `facts.py`,
+        # `diff_utils.py` et `xml_utils.py` vers leurs canoniques
+        # (`domain/facts.py`, `evaluation/_diff_utils.py`,
+        # `formats/_xml_utils.py`).  Les fichiers `core/X.py`
+        # restent comme shims re-export avec DeprecationWarning
+        # (< 30 lignes), donc ne comptent plus comme "real_modules"
+        # au sens de ce test.
     }
 
     def test_cercle1_files_lean(self):

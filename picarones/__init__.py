@@ -62,7 +62,7 @@ from picarones.core.results import (
     EngineReport,
 )
 from picarones.core.metrics import MetricsResult, aggregate_metrics
-from picarones.core.facts import (
+from picarones.domain.facts import (
     DetectorRegistry,
     Fact,
     FactImportance,
