@@ -301,12 +301,21 @@ class MistralOCRAdapter(BaseOCRAdapter):
                 f"{type(exc).__name__}: {exc}",
             ) from exc
 
+        # Sprint S53 — fix audit #8 : Mistral peut retourner
+        # ``content`` sous forme de ``list[ContentChunk]`` au lieu
+        # de ``str`` (cf. legacy commentaires sur les chunks).
+        # On délègue à ``normalize_llm_content`` qui gère les deux
+        # formats.
+        from picarones.adapters.llm.base import normalize_llm_content
+
         try:
-            return response.choices[0].message.content or ""
+            raw_content = response.choices[0].message.content
         except (AttributeError, IndexError) as exc:
             raise OCRAdapterError(
                 f"{self.name} : réponse Mistral chat malformée : {exc}",
             ) from exc
+
+        return normalize_llm_content(raw_content) or ""
 
 
 __all__ = ["MistralOCRAdapter"]
