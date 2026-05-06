@@ -1,0 +1,97 @@
+# Codecov configuration — Picarones
+#
+# Cible : release institutionnelle (BnF, LoC, BL).
+# - Plancher couverture projet : 85 % (cohérent avec
+#   ``--cov-fail-under=85`` dans la CI).
+# - Patch coverage : 80 % (toute PR doit couvrir au moins 80 %
+#   des lignes qu'elle ajoute/modifie).
+# - Seuil de tolérance ``threshold`` : 0.5 pt — on n'accepte pas
+#   une dégradation > 0.5 pt sans qu'elle soit explicite dans la
+#   PR description.
+#
+# Référence : https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  require_ci_to_pass: false  # Le report doit remonter même si pytest a failed.
+  notify:
+    after_n_builds: 1  # Premier upload suffit (pas d'attente d'autres OS).
+
+coverage:
+  precision: 2
+  round: down
+  range: "85...95"  # Heatmap : rouge en dessous de 85, vert au-dessus de 95.
+
+  status:
+    project:
+      default:
+        target: 85%
+        threshold: 0.5%
+        if_ci_failed: error  # CI cassée → status Codecov en error.
+        only_pulls: false
+    patch:
+      default:
+        target: 80%
+        threshold: 0.5%
+        if_ci_failed: error
+        only_pulls: false
+
+# ────────────────────────────────────────────────────────────────────
+# Annotations dans les PR.
+# ────────────────────────────────────────────────────────────────────
+comment:
+  layout: "header, diff, flags, components, files"
+  behavior: default  # Mise à jour du commentaire existant à chaque push.
+  require_changes: true  # Pas de commentaire si la PR ne touche pas la couverture.
+
+# ────────────────────────────────────────────────────────────────────
+# Exclusions : modules sans contenu testable ou auto-générés.
+# ────────────────────────────────────────────────────────────────────
+ignore:
+  - "tests/"
+  - "scripts/"
+  - "docs/"
+  - "**/__init__.py"  # Re-exports pur ; couverts indirectement.
+  - "picarones/_version.py"  # Géré par setuptools_scm.
+
+# ────────────────────────────────────────────────────────────────────
+# Composants logiques (lisibilité du dashboard Codecov).
+# ────────────────────────────────────────────────────────────────────
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 1%
+  individual_components:
+    - component_id: domain
+      name: Domain (cercle 1)
+      paths:
+        - picarones/domain/**
+    - component_id: formats
+      name: Formats
+      paths:
+        - picarones/formats/**
+    - component_id: evaluation
+      name: Evaluation
+      paths:
+        - picarones/evaluation/**
+    - component_id: pipeline
+      name: Pipeline
+      paths:
+        - picarones/pipeline/**
+    - component_id: adapters
+      name: Adapters
+      paths:
+        - picarones/adapters/**
+    - component_id: app
+      name: App services
+      paths:
+        - picarones/app/**
+    - component_id: reports_v2
+      name: Reports v2
+      paths:
+        - picarones/reports_v2/**
+    - component_id: interfaces
+      name: Interfaces (CLI, web)
+      paths:
+        - picarones/interfaces/**

@@ -631,7 +631,7 @@ un corpus de référence ».
 **Correctif** : créer un mini-corpus de référence (10 documents libres
 de droits couvrant les 3 strates principales : médiéval, imprimé
 ancien, moderne) dans `tests/fixtures/reference_corpus/`. Ajouter un
-job CI `--fail-if-cer-above 15.0` sur Tesseract+Pero. Exécuter
+job CI `--fail-if-cer-above 0.15` (fraction = 15 %) sur Tesseract+Pero. Exécuter
 hebdomadairement (cron), pas à chaque PR (coût).
 
 **Effort** : 2 PJ + sélection corpus.

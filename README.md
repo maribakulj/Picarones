@@ -9,11 +9,19 @@ pinned: false
 
 # Picarones
 
-> **Heritage OCR / HTR / VLM and post-correction benchmarking platform**
+> **Heritage OCR / HTR / VLM and post-correction benchmarking tool**
 >
-> **Banc d'essai d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux**
+> **Outil de comparaison d'OCR / HTR / VLM et de post-correction pour documents patrimoniaux**
 
-[![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml)
+**Status (May 2026)** — version 1.x, scientific prototype under
+consolidation.  The core (corpus, runner, metrics, HTML report) is
+usable to compare transcription pipelines on a ground-truth corpus.
+A targeted rewrite (see
+[`docs/roadmap/rewrite-2026.md`](docs/roadmap/rewrite-2026.md))
+rebuilds the orchestration layer and evaluation views for a stable
+2.0 release by the end of 2026.
+
+[![CI](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml/badge.svg)](https://github.com/maribakulj/Picarones/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/maribakulj/Picarones/graph/badge.svg)](https://codecov.io/gh/maribakulj/Picarones)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/lint-ruff-46aef7.svg)](https://github.com/astral-sh/ruff)
@@ -23,21 +31,24 @@ pinned: false
 
 ## What is Picarones?
 
-**Picarones** is an open-source benchmarking platform for OCR, HTR, VLM
-and post-correction pipelines on **heritage documents** (manuscripts,
+**Picarones** is an open-source comparison tool for OCR, HTR, VLM and
+post-correction pipelines on **heritage documents** (manuscripts,
 early printed books, archives).
 
 The input is a folder of `(image, ground truth)` pairs — ground truth
 in plain text, ALTO XML, or PAGE XML. Picarones runs the AIs you plug
 in (OCR engines, VLMs, OCR+LLM pipelines, ALTO mappers, ensembles…) on
-every page, compares each output to the ground truth at every relevant
-level (text, ALTO, PAGE, entities, reading order), and produces a
-**self-contained HTML report** with factual numbers, statistical tests
-and a reproducibility snapshot.
+every page, compares each output to the ground truth, and produces an
+HTML report with the numerical results.
 
 **Without ground truth, no benchmark** — Picarones measures how well
 an AI matches a known reference, not how it transcribes an arbitrary
 document.
+
+> **Limits to keep in mind.** Picarones is a tool, not a verdict
+> machine. CER/WER and the philological metrics measure agreement with
+> a single reference; the choice of reference, normalization profile
+> and metric is an editorial decision the user must own.
 
 > *Version française ci-dessous.*
 
@@ -385,9 +396,12 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~3871 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~5030 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
-requiring live HTTP.
+requiring live HTTP. A handful of tests depend on optional engines
+(`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when
+those binaries are not installed in the local environment — the CI
+matrix runs them in a fully provisioned image.
 
 For end-to-end developer guides, see
 [`docs/developer/index.md`](docs/developer/index.md) (FR) /
@@ -415,19 +429,26 @@ Detailed history and current direction live in:
   one entry per sprint up to the latest release.
 - [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md) —
   technical evolution roadmap (axes A and B for 2026+).
-- [`docs/audits/`](docs/audits/) — institutional readiness audit
-  and remediation plan (sprints A1–A15).
+- [`docs/roadmap/rewrite-2026.md`](docs/roadmap/rewrite-2026.md) —
+  targeted rewrite plan (S1–S26) restructuring orchestration around
+  `Pipeline → Artifacts → Projection → EvaluationView`. Target: end of 2026.
+- [`docs/audits/`](docs/audits/) — internal audit notes ; [`BACKLOG_POST_LIVRAISON.md`](BACKLOG_POST_LIVRAISON.md) — promises **not** in scope.
 
-The **Phase 1 of the institutional readiness plan** (sprints A1–A11)
-is complete as of May 2026: CI hardening, doc consistency gates,
-3-circle refactor, web hardening, perf+concurrency tests, WCAG 2.1
-AA accessibility, reproducibility ops (lock files, Docker pinning),
-PyPI/ghcr.io release pipeline, governance & COI policies,
-institutional deployment guide & RGPD documentation.
+**Honest status (May 2026).** Several items historically presented as
+"institutional readiness complete" are not at the level the README
+previously claimed and remain on the post-delivery backlog:
 
-Remaining: scientific publication track (CITATION + JOSS, sprint
-A12), README/SPECS final polish (this sprint and A14), external
-audits (RGAA + security pentest, A15).
+- RGPD documentation is a draft, not a validated policy.
+- Governance / COI policies are documented but not exercised by an
+  external review.
+- `CITATION.cff` + Zenodo DOI + JOSS submission are planned, not done.
+- Accessibility (WCAG 2.1 AA) and security pentest are scoped but
+  not externally audited.
+
+The **rewrite-2026** plan (S1–S26) prioritises stabilising the
+benchmark core and the security boundary of the web layer over
+adding new features. Until S26 ships, treat the web app as an
+experimental demonstrator and the CLI as the supported interface.
 
 ---
 
@@ -451,11 +472,13 @@ The complete functional specification is in
 
 ## Citation
 
-A `CITATION.cff` file and a Zenodo DOI will land in Sprint A12
-(scientific publication track). Until then, cite the GitHub repo
-with the commit SHA used in your benchmark — every Picarones report
-embeds the commit and full snapshot for reproducibility (cf.
-[`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md)).
+A `CITATION.cff` file and a Zenodo DOI are **planned**, not yet
+shipped (see [`BACKLOG_POST_LIVRAISON.md`](BACKLOG_POST_LIVRAISON.md)).
+Cite the GitHub repository with the commit SHA used in your benchmark.
+Every Picarones report embeds the commit hash and a snapshot of the
+parameters used (cf.
+[`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md))
+so the cited commit is sufficient to attribute the result.
 
 ---
 

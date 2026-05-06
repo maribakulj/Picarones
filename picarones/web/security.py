@@ -97,6 +97,24 @@ def assert_llm_provider_allowed(llm_provider: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Validation des chemins utilisateur (Sprint A14-S1, A.I.0 P0)
+#
+# Ré-importé depuis le foyer définitif ``picarones.app.services.path_security``
+# (Sprint A14-S19).  Pas de duplication — le code vit en un seul
+# endroit dans la couche app, accessible aussi par la CLI et les jobs
+# background.
+# ---------------------------------------------------------------------------
+
+from picarones.app.services.path_security import (  # noqa: F401
+    PathValidationError,
+    safe_report_name,
+    validated_path,
+    validated_prompt_filename,
+)
+from picarones.app.services.path_security import _is_within  # noqa: F401
+
+
+# ---------------------------------------------------------------------------
 # Browse roots
 # ---------------------------------------------------------------------------
 
@@ -124,6 +142,43 @@ def compute_browse_roots(uploads_dir: Path) -> list[Path]:
         Path("/workspaces").resolve(),
         Path(tempfile.gettempdir()).resolve(),
     ]
+
+
+def compute_workspace_roots(uploads_dir: Path) -> list[Path]:
+    """Retourne les racines autorisées pour les opérations de benchmark.
+
+    Sprint A14-S1 — A.I.0 P0 : utilisé par les endpoints
+    ``/api/benchmark/start`` et ``/api/benchmark/run`` pour valider
+    ``corpus_path`` et ``output_dir`` via :func:`validated_path`.
+
+    Sémantique :
+
+    - Si ``PICARONES_WORKSPACE_ROOTS`` est défini, prend précédence
+      absolue (admin sait ce qu'il fait).
+    - Sinon, en mode public : uniquement ``uploads_dir`` (lecture)
+      et ``./rapports`` (écriture des rapports générés).
+    - Sinon, mode dev : ``compute_browse_roots`` + ``./rapports`` +
+      ``./corpus`` (corpus locaux des développeurs).
+
+    En production institutionnelle, exporter ``PICARONES_WORKSPACE_ROOTS``
+    pour épingler explicitement les répertoires autorisés.
+    """
+    raw = os.environ.get("PICARONES_WORKSPACE_ROOTS")
+    if raw:
+        return [Path(p).expanduser().resolve() for p in raw.split(os.pathsep) if p.strip()]
+
+    base = compute_browse_roots(uploads_dir)
+    extras = [
+        Path("./rapports").resolve(),
+        Path("./corpus").resolve(),
+    ]
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for p in base + extras:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
 
 
 # ---------------------------------------------------------------------------

@@ -1,23 +1,42 @@
 """Configuration pytest globale.
 
-Ce conftest racine ne fait **qu'une seule chose** : positionner les
-variables d'environnement test-friendly **avant** tout import de
-``picarones.web.*``. Sans ça, les singletons web (``JOBS_SEMAPHORE``,
-``RATE_LIMITER``) seraient instanciés avec les valeurs de production
-(2 jobs concurrents max, rate limit selon mode public) au moment du
-premier import, et chaque test web verrait le bocal saturé.
+Deux responsabilités, dans cet ordre :
+
+1. **Ajouter le repo root à ``sys.path``** — garantit que
+   ``tests.fixtures.*`` (mock adapters utilisés par les tests CLI
+   E2E via dotted-path resolution ``importlib.import_module()``)
+   sont importables de manière déterministe sur **tous les OS et
+   versions Python**, indépendamment de la config ``pythonpath`` de
+   pytest (qui peut diverger entre runners macOS/Windows/Linux et
+   versions 3.11/3.12/3.13).
+
+2. **Positionner les variables d'environnement test-friendly avant
+   tout import de ``picarones.web.*``** — sinon les singletons web
+   (``JOBS_SEMAPHORE``, ``RATE_LIMITER``) seraient instanciés avec
+   les valeurs de production au premier import, et chaque test web
+   verrait le bocal saturé.
 
 L'isolation par-test des états globaux web (sémaphore, rate limiter,
 browse roots) vit dans ``tests/web/conftest.py`` — fixture
-``autouse=True`` qui ne s'applique qu'aux tests sous ``tests/web/``,
-pour éviter qu'un test cercle 1 (``tests/core/``) ne paie le coût
-de l'import de ``picarones.web.*`` à chaque exécution.
+``autouse=True`` qui ne s'applique qu'aux tests sous ``tests/web/``.
 """
 
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
+# (1) sys.path déterministe.  Le repo root contient le package
+# ``picarones`` (déjà installable via ``pip install -e .``) ET le
+# package ``tests`` (importable via ``tests.fixtures.X``).  On ajoute
+# le repo root en tête pour garantir l'import déterministe sur tous
+# les OS / versions Python.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+# (2) Variables d'environnement.
 # Plafond très large pour ne jamais bloquer une suite de tests qui
 # démarre rapidement plusieurs benchmarks daemon en parallèle.
 os.environ.setdefault("PICARONES_MAX_CONCURRENT_JOBS", "32")

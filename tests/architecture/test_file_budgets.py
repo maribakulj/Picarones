@@ -61,24 +61,80 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/core/pipeline.py": 675,                    # actuel 571
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
-    "picarones/measurements/levers.py": 675,              # actuel 561
+    "picarones/measurements/levers.py": 675,              # actuel 561 (re-export S10)
+    # Sprint A14-S10 — déplacés depuis measurements/, l'ancien
+    # emplacement est désormais un re-export.  Le contenu canonique
+    # vit dans evaluation/metrics/.
+    "picarones/evaluation/metrics/levers.py": 675,        # actuel 561
+    "picarones/evaluation/metrics/inter_engine.py": 575,  # actuel 484
     "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
-    "picarones/web/security.py": 625,                     # actuel 532
+    # Sprint A14-S1 — A.I.0 P0 : ajout de validated_path,
+    # validated_prompt_filename, safe_report_name et compute_workspace_roots.
+    # Ces helpers seront extraits dans ``picarones/web/path_security.py``
+    # lors du Sprint S20 du rewrite ciblé (création couche app/services/).
+    "picarones/web/security.py": 800,                     # actuel 751
+    # Sprint A14-S8 — CorpusRunner introduit pour orchestrer les
+    # pipelines composées sur un corpus avec backpressure / timeout
+    # réel / annulation propre.  Budget stable, l'extension
+    # ProcessPoolExecutor (S11) restera dans cette enveloppe.
+    "picarones/pipeline/runner.py": 550,                  # actuel 462
+    # Sprint A14-S28 — PipelineExecutor refondu pour consommer un
+    # ExecutionPlan (run_plan) tout en gardant run(spec) comme sucre.
+    # PipelinePlanner introduit pour transformer une PipelineSpec en
+    # plan immuable (validation + bindings + jonctions de métriques).
+    # Sprint A14-S47 — branchement ArtifactStore : +60 lignes (lookup
+    # cache avant exec, persistance après succès, helpers privés).
+    "picarones/pipeline/executor.py": 600,                # actuel 541
+    "picarones/pipeline/planner.py": 465,                 # actuel 403
+    # Sprint A14-S29 — ArtifactStore (ABC + 2 implémentations) avec
+    # hash multi-paramètres pour adresser la critique d'audit n° 14
+    # « hash multi-paramètres + reprise par hash ».
+    "picarones/adapters/storage/artifact_store.py": 580,  # actuel 504
+    # Sprint A14-S37 + S52 + S56 — JobStore SQLite : POST/GET/DELETE,
+    # JobStoreError, schema_version table (S56) + busy_timeout 30s +
+    # WAL mode pour les jobs concurrents.
+    "picarones/adapters/storage/job_store.py": 500,       # actuel 421
+    # Sprint A14-S41 — artifacts_index.jsonl séparé.
+    "picarones/app/services/benchmark_service.py": 470,   # actuel 400
+    # Sprint A14-S44 — BaseLLMAdapter implémente le contrat StepExecutor
+    # (input_types, output_types, execute) en plus de complete().
+    # S59 ajout du descripteur ``_DeprecatedAttribute`` + alias rétrocompat
+    # ``DEFAULT_CORRECTION_PROMPT`` + warning lang fallback (M6).
+    "picarones/adapters/llm/base.py": 560,                # actuel 486
     "picarones/core/corpus.py": 600,                      # actuel 511
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484
     "picarones/measurements/roman_numerals.py": 575,      # actuel 478
-    "picarones/extras/importers/htr_united.py": 575,      # actuel 473
+    "picarones/extras/importers/htr_united.py": 575,      # actuel 473 (re-export S11)
+    # Sprint A14-S11 — d\xc3\xa9plac\xc3\xa9s depuis extras/importers/, l'ancien
+    # emplacement est d\xc3\xa9sormais un re-export.
+    "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
+    "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     "picarones/cli/_workflows.py": 550,                   # actuel 469
     "picarones/extras/importers/huggingface.py": 550,     # actuel 464
     "picarones/core/metric_hooks.py": 500,                # actuel 423
     "picarones/measurements/numerical_sequences.py": 500, # actuel 422
-    "picarones/measurements/normalization.py": 500,       # actuel 420
+    "picarones/measurements/normalization.py": 500,       # actuel 420 (re-export S9)
+    # Sprint A14-S9 — déplacé depuis measurements/normalization.py.
+    # L'ancien emplacement est désormais un re-export ; le contenu
+    # canonique vit ici.
+    "picarones/formats/text/normalization.py": 500,       # actuel 420
     "picarones/report/comparison.py": 500,                # actuel 409
     # --- Module mutualisé créé par le sprint des render helpers
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
     # calibré sur la taille post-documentation des conventions.
     "picarones/report/render_helpers.py": 480,            # actuel 415
+    # --- Services applicatifs et orchestration du rewrite ciblé.
+    # Budgets calibrés à current + 15 % de marge.  La CLI elle-même
+    # reste mince (~110 lignes) — toute logique métier vit dans
+    # ``app/services/``.
+    "picarones/app/services/corpus_service.py": 625,      # actuel 541
+    "picarones/app/services/path_security.py": 470,       # actuel 410
+    "picarones/app/services/run_orchestrator.py": 500,    # actuel 432
+    # Le rendu HTML vit en couche ``reports_v2/`` (cible documentée
+    # du rewrite — un rapport est un format de sortie, pas un
+    # service métier).
+    "picarones/reports_v2/html/render.py": 700,           # actuel 615
 }
 
 

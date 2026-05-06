@@ -1,420 +1,58 @@
-"""Profils de normalisation unicode pour le calcul du CER diplomatique.
+"""Re-export depuis ``picarones.formats.text.normalization`` — Sprint A14-S9.
 
-La normalisation diplomatique permet de calculer un CER tenant compte des
-équivalences graphiques propres aux documents historiques : ſ=s, u=v, i=j, etc.
+Le contenu canonique de ce module a été déplacé vers
+``picarones/formats/text/normalization.py`` au Sprint S9 du
+rewrite ciblé (cf. ``docs/roadmap/rewrite-2026.md``).
 
-En appliquant la même table aux deux textes (GT et OCR), on mesure les erreurs
-"substantielles" (transcription erronée) en ignorant les variations graphiques
-codifiées connues.
+Ce fichier est conservé comme re-export pour ne **rien casser**
+chez les ~50 consommateurs qui font ``from
+picarones.measurements.normalization import X``.  Les symboles
+publics ET privés utilisés downstream (``_parse_exclude_chars``,
+``_apply_diplomatic_table``) sont ré-exposés explicitement.
 
-Trois niveaux de normalisation sont disponibles :
+Plan de migration
+-----------------
+Au S22, les consommateurs qui importent encore depuis cet
+emplacement seront migrés vers ``picarones.formats.text.normalization``
+et ce re-export disparaîtra.
 
-1. NFC       : normalisation Unicode canonique (décomposition+recomposition)
-2. caseless  : NFC + pliage de casse (casefold)
-3. diplomatic: NFC + table de correspondances historiques configurables
-
-Les profils préconfigurés couvrent les cas d'usage patrimoniaux courants.
-Ils sont également chargeables depuis un fichier YAML.
-
-Exemple YAML
-------------
-name: medieval_custom
-caseless: false
-diplomatic:
-  ſ: s
-  u: v
-  i: j
-  y: i
-  æ: ae
-  œ: oe
+Règle architecturale
+--------------------
+``measurements/`` (ancien code legacy) est autorisé à importer
+``formats/`` (nouveau code) pendant la phase de migration.
+L'inverse est interdit (vérifié par ``test_layer_dependencies``).
 """
 
 from __future__ import annotations
 
-import unicodedata
-from dataclasses import dataclass, field
-from pathlib import Path
+from picarones.formats.text.normalization import (
+    DEFAULT_DIPLOMATIC_PROFILE,
+    DIPLOMATIC_EN_EARLY_MODERN,
+    DIPLOMATIC_EN_MEDIEVAL,
+    DIPLOMATIC_EN_SECRETARY,
+    DIPLOMATIC_FR_EARLY_MODERN,
+    DIPLOMATIC_FR_MEDIEVAL,
+    DIPLOMATIC_LATIN_MEDIEVAL,
+    DIPLOMATIC_MINIMAL,
+    NORMALIZATION_PROFILES,
+    NormalizationProfile,
+    _apply_diplomatic_table,
+    _parse_exclude_chars,
+    get_builtin_profile,
+)
 
-
-# ---------------------------------------------------------------------------
-# Tables de correspondances diplomatiques préconfigurées
-# ---------------------------------------------------------------------------
-
-#: Français médiéval (XIIe–XVe siècle)
-DIPLOMATIC_FR_MEDIEVAL: dict[str, str] = {
-    "ſ": "s",    # s long → s
-    "u": "v",    # u/v interchangeables en position initiale
-    "i": "j",    # i/j interchangeables
-    "y": "i",    # y vocalique → i
-    "æ": "ae",   # ligature æ
-    "œ": "oe",   # ligature œ
-    "ꝑ": "per",  # abréviation per/par
-    "ꝓ": "pro",  # abréviation pro
-    "\u0026": "et",  # & → et
-}
-
-#: Français moderne / imprimés anciens (XVIe–XVIIIe siècle)
-DIPLOMATIC_FR_EARLY_MODERN: dict[str, str] = {
-    "ſ": "s",    # s long
-    "æ": "ae",
-    "œ": "oe",
-    "\u0026": "et",
-    "ỹ": "yn",   # y tilde
-}
-
-#: Latin médiéval
-DIPLOMATIC_LATIN_MEDIEVAL: dict[str, str] = {
-    "ſ": "s",
-    "u": "v",
-    "i": "j",
-    "y": "i",
-    "æ": "ae",
-    "œ": "oe",
-    "ꝑ": "per",
-    "ꝓ": "pro",
-    "ꝗ": "que",   # q barré → que
-    "\u0026": "et",
-}
-
-#: Profil minimal — uniquement NFC + s long
-DIPLOMATIC_MINIMAL: dict[str, str] = {
-    "ſ": "s",
-}
-
-#: Anglais moderne / imprimés anciens (XVIe–XVIIIe siècle)
-#: Orthographe «early modern»  : ſ=s, u/v, i/j, vv=w, þ=th, ð=th, ȝ=y
-DIPLOMATIC_EN_EARLY_MODERN: dict[str, str] = {
-    "ſ": "s",     # s long → s
-    "u": "v",     # u/v interchangeables (vpon → upon)
-    "i": "j",     # i/j interchangeables (ioy → joy)
-    "vv": "w",    # vv → w (vvhich → which)
-    "þ": "th",    # thorn → th
-    "ð": "th",    # eth → th
-    "ȝ": "y",     # yogh → y
-    "æ": "ae",    # ligature æ
-    "œ": "oe",    # ligature œ
-    "\u0026": "and",  # & → and
-}
-
-#: Anglais médiéval (XIIe–XVe siècle) — abréviations manuscrites incluses
-DIPLOMATIC_EN_MEDIEVAL: dict[str, str] = {
-    "ſ": "s",
-    "u": "v",
-    "i": "j",
-    "vv": "w",
-    "þ": "th",
-    "ð": "th",
-    "ȝ": "y",
-    "æ": "ae",
-    "œ": "oe",
-    "\u0026": "and",
-    # Abréviations courantes dans les manuscrits anglais médiévaux
-    "ꝑ": "per",   # p barré → per/par
-    "ꝓ": "pro",   # p crocheté → pro
-    "ꝗ": "que",   # q barré → que
-    "\ua75b": "r", # lettre r rotunda → r
-}
-
-#: Écriture secrétaire (XVIe–XVIIe siècle) — secretary hand
-#: Confusions visuelles propres à l'écriture cursive anglaise
-DIPLOMATIC_EN_SECRETARY: dict[str, str] = {
-    "ſ": "s",
-    "u": "v",
-    "i": "j",
-    "vv": "w",
-    "þ": "th",
-    "ð": "th",
-    "ȝ": "y",
-    "\u0026": "and",
-    # Confusions visuelles typiques : e/c, n/u, m/w en secrétaire
-    # Note : ne pas normaliser e/c automatiquement (trop agressif) ;
-    # on se limite aux substituts graphiques historiquement documentés
-}
-
-
-# ---------------------------------------------------------------------------
-# Profil de normalisation
-# ---------------------------------------------------------------------------
-
-@dataclass
-class NormalizationProfile:
-    """Décrit une stratégie de normalisation pour le calcul du CER diplomatique.
-
-    Parameters
-    ----------
-    name:
-        Identifiant lisible du profil (ex : ``"medieval_french"``).
-    nfc:
-        Applique la normalisation Unicode NFC (recommandé, activé par défaut).
-    caseless:
-        Pliage de casse (casefold) après NFC.
-    diplomatic_table:
-        Table de correspondances graphiques historiques appliquée caractère
-        par caractère sur les deux textes avant calcul du CER.
-    exclude_chars:
-        Ensemble de caractères supprimés des deux textes (GT et OCR) avant
-        tout calcul de métriques (CER, WER, MER, WIL et CER diplomatique).
-        Utile pour ignorer la ponctuation ou les apostrophes.
-    description:
-        Description courte du profil (affichée dans le rapport HTML).
-    """
-
-    name: str
-    nfc: bool = True
-    caseless: bool = False
-    diplomatic_table: dict[str, str] = field(default_factory=dict)
-    exclude_chars: frozenset = field(default_factory=frozenset)
-    description: str = ""
-
-    def normalize(self, text: str) -> str:
-        """Applique le profil de normalisation à un texte."""
-        if self.exclude_chars:
-            text = "".join(c for c in text if c not in self.exclude_chars)
-        if self.nfc:
-            text = unicodedata.normalize("NFC", text)
-        if self.caseless:
-            text = text.casefold()
-        if self.diplomatic_table:
-            text = _apply_diplomatic_table(text, self.diplomatic_table)
-        return text
-
-    def as_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "nfc": self.nfc,
-            "caseless": self.caseless,
-            "diplomatic_table": self.diplomatic_table,
-            "exclude_chars": sorted(self.exclude_chars),
-            "description": self.description,
-        }
-
-    @classmethod
-    def from_yaml(cls, path: str | Path) -> "NormalizationProfile":
-        """Charge un profil depuis un fichier YAML.
-
-        Le fichier YAML doit contenir les clés ``name``, optionnellement
-        ``caseless``, ``description``, ``diplomatic`` (dict str→str) et
-        ``exclude_chars`` (liste ou chaîne de caractères à ignorer).
-
-        Example
-        -------
-        .. code-block:: yaml
-
-            name: medieval_custom
-            caseless: false
-            description: Français médiéval personnalisé
-            exclude_chars: ".,;:!?"
-            diplomatic:
-              ſ: s
-              u: v
-        """
-        try:
-            import yaml
-        except ImportError as exc:
-            raise RuntimeError(
-                "Le package 'pyyaml' est requis pour charger les profils YAML. "
-                "Installez-le avec : pip install pyyaml"
-            ) from exc
-
-        data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-        return cls(
-            name=data.get("name", Path(path).stem),
-            nfc=bool(data.get("nfc", True)),
-            caseless=bool(data.get("caseless", False)),
-            diplomatic_table=data.get("diplomatic", {}),
-            exclude_chars=_parse_exclude_chars(data.get("exclude_chars", "")),
-            description=data.get("description", ""),
-        )
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "NormalizationProfile":
-        """Charge un profil depuis un dictionnaire (ex : section YAML inline)."""
-        return cls(
-            name=data.get("name", "custom"),
-            nfc=bool(data.get("nfc", True)),
-            caseless=bool(data.get("caseless", False)),
-            diplomatic_table=data.get("diplomatic", {}),
-            exclude_chars=_parse_exclude_chars(data.get("exclude_chars", "")),
-            description=data.get("description", ""),
-        )
-
-
-# ---------------------------------------------------------------------------
-# Profils préconfigurés
-# ---------------------------------------------------------------------------
-
-NORMALIZATION_PROFILES: dict[str, NormalizationProfile] = {
-    "nfc": NormalizationProfile(
-        name="nfc",
-        nfc=True,
-        caseless=False,
-        diplomatic_table={},
-        description="Normalisation NFC uniquement",
-    ),
-    "caseless": NormalizationProfile(
-        name="caseless",
-        nfc=True,
-        caseless=True,
-        diplomatic_table={},
-        description="NFC + insensible à la casse",
-    ),
-    "minimal": NormalizationProfile(
-        name="minimal",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_MINIMAL,
-        description="Minimal : NFC + s long seulement",
-    ),
-    "medieval_french": NormalizationProfile(
-        name="medieval_french",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_FR_MEDIEVAL,
-        description="Français médiéval (XIIe–XVe) : ſ=s, u=v, i=j, æ=ae, œ=oe",
-    ),
-    "early_modern_french": NormalizationProfile(
-        name="early_modern_french",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_FR_EARLY_MODERN,
-        description="Imprimés anciens (XVIe–XVIIIe) : ſ=s, æ=ae, œ=oe",
-    ),
-    "medieval_latin": NormalizationProfile(
-        name="medieval_latin",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_LATIN_MEDIEVAL,
-        description="Latin médiéval : ſ=s, u=v, i=j, ꝑ=per, ꝓ=pro",
-    ),
-    "early_modern_english": NormalizationProfile(
-        name="early_modern_english",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_EN_EARLY_MODERN,
-        description="Early Modern English (XVIth–XVIIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
-    ),
-    "medieval_english": NormalizationProfile(
-        name="medieval_english",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_EN_MEDIEVAL,
-        description="Medieval English (XIIth–XVth c.): ſ=s, u=v, i=j, þ=th, ȝ=y, ꝑ=per, ꝓ=pro",
-    ),
-    "secretary_hand": NormalizationProfile(
-        name="secretary_hand",
-        nfc=True,
-        caseless=False,
-        diplomatic_table=DIPLOMATIC_EN_SECRETARY,
-        description="Secretary hand (XVIth–XVIIth c.): ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y",
-    ),
-    # ── Profils d'exclusion de caractères ────────────────────────────────
-    "sans_ponctuation": NormalizationProfile(
-        name="sans_ponctuation",
-        nfc=True,
-        caseless=False,
-        diplomatic_table={},
-        exclude_chars=frozenset(". , ; : ! ? ' \u2019 \" - \u2013 \u2014 ( ) [ ]".split()),
-        description="NFC + suppression de la ponctuation courante : . , ; : ! ? ' \" - – — ( ) [ ]",
-    ),
-    "sans_apostrophes": NormalizationProfile(
-        name="sans_apostrophes",
-        nfc=True,
-        caseless=False,
-        diplomatic_table={},
-        exclude_chars=frozenset(["'", "\u2019"]),  # apostrophe droite + apostrophe typographique
-        description="NFC + suppression des apostrophes droite (') et typographique (\u2019)",
-    ),
-}
-
-
-def get_builtin_profile(name: str) -> NormalizationProfile:
-    """Retourne un profil préconfigurée par son identifiant.
-
-    Identifiants disponibles
-    ------------------------
-    - ``"medieval_french"``      : français médiéval XIIe–XVe (ſ=s, u=v, i=j, æ=ae, œ=oe…)
-    - ``"early_modern_french"``  : imprimés anciens XVIe–XVIIIe (ſ=s, œ=oe, æ=ae…)
-    - ``"medieval_latin"``       : latin médiéval (ſ=s, u=v, i=j, ꝑ=per, ꝓ=pro…)
-    - ``"early_modern_english"`` : anglais imprimé XVIe–XVIIIe (ſ=s, u=v, i=j, vv=w, þ=th, ð=th, ȝ=y)
-    - ``"medieval_english"``     : anglais manuscrit XIIe–XVe (+ abréviations ꝑ, ꝓ…)
-    - ``"secretary_hand"``       : écriture secrétaire anglaise XVIe–XVIIe (cursive administrative)
-    - ``"minimal"``              : uniquement NFC + s long
-    - ``"nfc"``                  : NFC seul (sans table diplomatique)
-    - ``"caseless"``             : NFC + pliage de casse
-
-    Raises
-    ------
-    KeyError
-        Si le nom n'est pas reconnu.
-    """
-    if name not in NORMALIZATION_PROFILES:
-        raise KeyError(
-            f"Profil de normalisation inconnu : '{name}'. "
-            f"Disponibles : {', '.join(NORMALIZATION_PROFILES)}"
-        )
-    return NORMALIZATION_PROFILES[name]
-
-
-# ---------------------------------------------------------------------------
-# Fonctions utilitaires
-# ---------------------------------------------------------------------------
-
-def _parse_exclude_chars(value: "str | list | None") -> frozenset:
-    """Convertit une liste de caractères (str ou list) en frozenset.
-
-    Accepte :
-    - Une chaîne de caractères séparés par une virgule+espace (ex. ``"', -, –"``)
-      ou simplement concaténés sans séparateur (ex. ``".,;:!?"``)
-    - Une liste Python/YAML de chaînes (chacune un caractère)
-    - None ou chaîne vide → frozenset vide
-
-    Règle de désambiguïsation : si la chaîne contient la séquence ``", "``
-    (virgule suivie d'un espace), on découpe par ``", "``. Sinon, chaque
-    caractère Unicode est un item distinct.
-    """
-    if not value:
-        return frozenset()
-    if isinstance(value, (list, tuple)):
-        return frozenset(str(c) for c in value if c)
-    raw = str(value)
-    # Désambiguïsation : séparer par ", " si présent (format lisible)
-    if ", " in raw:
-        return frozenset(c.strip() for c in raw.split(",") if c.strip())
-    # Sinon, chaque caractère Unicode est un item distinct
-    return frozenset(raw)
-
-
-def _apply_diplomatic_table(text: str, table: dict[str, str]) -> str:
-    """Applique une table de correspondances diplomatiques en un seul pass.
-
-    Les clés multi-caractères (ex : ``"ae"`` → ``"æ"``) sont gérées en priorité
-    sur les correspondances simples. Le remplacement est fait en un seul pass
-    via regex pour éviter les remplacements en cascade (ex : ``"ſ"→"s"`` puis
-    ``"s"→"z"`` donnerait ``"z"`` au lieu de ``"s"``).
-    """
-    if not table:
-        return text
-
-    import re
-
-    # Séparer les clés simples (1 char) des clés multi-chars
-    multi_keys = sorted(
-        (k for k in table if len(k) > 1), key=len, reverse=True
-    )
-    simple_table = {k: v for k, v in table.items() if len(k) == 1}
-
-    if multi_keys:
-        # Single-pass : construire un pattern regex avec toutes les clés multi-chars
-        # triées par longueur décroissante pour matcher les plus longues d'abord
-        pattern = re.compile("|".join(re.escape(k) for k in multi_keys))
-        text = pattern.sub(lambda m: table[m.group(0)], text)
-
-    # Remplacements char par char (single-pass via itération)
-    if simple_table:
-        text = "".join(simple_table.get(c, c) for c in text)
-
-    return text
-
-
-# Profil par défaut utilisé pour le CER diplomatique intégré
-DEFAULT_DIPLOMATIC_PROFILE: NormalizationProfile = get_builtin_profile("medieval_french")
+__all__ = [
+    "NormalizationProfile",
+    "DIPLOMATIC_FR_MEDIEVAL",
+    "DIPLOMATIC_FR_EARLY_MODERN",
+    "DIPLOMATIC_LATIN_MEDIEVAL",
+    "DIPLOMATIC_MINIMAL",
+    "DIPLOMATIC_EN_EARLY_MODERN",
+    "DIPLOMATIC_EN_MEDIEVAL",
+    "DIPLOMATIC_EN_SECRETARY",
+    "NORMALIZATION_PROFILES",
+    "DEFAULT_DIPLOMATIC_PROFILE",
+    "get_builtin_profile",
+    "_parse_exclude_chars",
+    "_apply_diplomatic_table",
+]

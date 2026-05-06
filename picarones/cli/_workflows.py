@@ -16,6 +16,38 @@ import click
 
 from picarones.cli import cli, _engine_from_name, _setup_logging
 
+
+def _validate_cer_threshold(
+    ctx: click.Context, param: click.Parameter, value: float | None,
+) -> float | None:
+    """Callback Click qui valide ``--fail-if-cer-above`` à l'analyse.
+
+    Sémantique : fraction ∈ [0, 1] (ex : 0.15 = 15 %), cohérent avec
+    ``BenchmarkResult.ranking()[i]["mean_cer"]`` qui est aussi en
+    fraction.
+
+    Garde-fou migration : avant le fix de sémantique, le seuil était
+    interprété comme un pourcentage (15.0 = 15 %).  Tout caller qui
+    passe encore une valeur > 1 vient de l'ancienne sémantique — on
+    échoue bruyamment plutôt que de muter silencieusement le
+    comportement (un seuil de 1500 % ne se déclencherait jamais et
+    l'utilisateur croirait que son CI est sain).
+    """
+    if value is None:
+        return None
+    if value < 0:
+        raise click.BadParameter(
+            f"doit être ≥ 0, reçu {value}.",
+        )
+    if value > 1.0:
+        raise click.BadParameter(
+            f"doit être une fraction ∈ [0, 1] (ex : 0.15 = 15 %), "
+            f"reçu {value}. Si vous utilisiez l'ancienne sémantique "
+            "pourcentage, divisez par 100 (ex : 15.0 → 0.15).",
+        )
+    return value
+
+
 # ---------------------------------------------------------------------------
 # picarones run
 # ---------------------------------------------------------------------------
@@ -54,7 +86,11 @@ from picarones.cli import cli, _engine_from_name, _setup_logging
     default=None,
     type=float,
     metavar="THRESHOLD",
-    help="Quitte avec code 1 si CER moyen > THRESHOLD (usage CI/CD)",
+    callback=_validate_cer_threshold,
+    help=(
+        "Quitte avec code 1 si CER moyen > THRESHOLD (usage CI/CD). "
+        "THRESHOLD est une fraction ∈ [0, 1] (ex : 0.15 = 15 %)."
+    ),
 )
 @click.option(
     "--profile",
@@ -86,6 +122,10 @@ def run_cmd(
 
     Le corpus doit être un dossier contenant des paires
     <image>.<ext> + <image>.gt.txt (vérité terrain).
+
+    ``--fail-if-cer-above`` est validé à l'analyse Click (cf.
+    ``_validate_cer_threshold``) — une valeur invalide est rejetée
+    avant toute opération coûteuse.
     """
     _setup_logging(verbose)
 
@@ -139,13 +179,18 @@ def run_cmd(
 
     click.echo(f"\nRésultats écrits dans : {output}")
 
-    # Mode CI/CD : exit code non-zero si CER > seuil
+    # Mode CI/CD : exit code non-zero si CER > seuil.
+    # ``fail_if_cer_above`` est déjà validé en tête de fonction (∈ [0, 1]).
     if fail_if_cer_above is not None:
         for entry in result.ranking():
-            if entry["mean_cer"] is not None and entry["mean_cer"] * 100 > fail_if_cer_above:
+            if (
+                entry["mean_cer"] is not None
+                and entry["mean_cer"] > fail_if_cer_above
+            ):
                 click.echo(
-                    f"\nECHEC : {entry['engine']} CER={entry['mean_cer']*100:.2f}% "
-                    f"> seuil {fail_if_cer_above:.2f}%",
+                    f"\nECHEC : {entry['engine']} "
+                    f"CER={entry['mean_cer']*100:.2f}% "
+                    f"> seuil {fail_if_cer_above*100:.2f}%",
                     err=True,
                 )
                 sys.exit(1)

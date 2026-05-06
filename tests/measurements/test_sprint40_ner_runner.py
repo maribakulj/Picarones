@@ -126,9 +126,19 @@ class TestModelSerialization:
         assert d["ner_metrics"] == {"global": {"f1": 0.8}}
 
     def test_compact_clears_ner_metrics(self) -> None:
+        # Sprint A14-S1 — A.I.0 P0 : ``compact()`` est désormais no-op
+        # par défaut (cf. core/results.py).  Le comportement
+        # "efface les analyses" est explicitement opt-in via
+        # ``drop_analyses=True``.
+        dr = _make_document_result(ner_metrics={"global": {"f1": 0.8}})
+        dr.compact(drop_analyses=True)
+        assert dr.ner_metrics is None
+
+    def test_compact_default_is_noop(self) -> None:
+        """Sprint A14-S1 — défaut sans argument ne touche à rien."""
         dr = _make_document_result(ner_metrics={"global": {"f1": 0.8}})
         dr.compact()
-        assert dr.ner_metrics is None
+        assert dr.ner_metrics == {"global": {"f1": 0.8}}
 
     def test_engine_report_aggregated_ner_omitted_when_none(self) -> None:
         rep = EngineReport(

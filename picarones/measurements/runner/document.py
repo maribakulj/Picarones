@@ -42,6 +42,7 @@ def _compute_document_result(
     char_exclude: Optional[frozenset],
     corpus_lang: str = "fr",
     profile: str = "standard",
+    normalization_profile: Optional[object] = None,
 ) -> DocumentResult:
     """Calcule toutes les métriques pour un document et retourne un DocumentResult.
 
@@ -69,7 +70,15 @@ def _compute_document_result(
     from picarones.core.metric_hooks import run_document_hooks
 
     if ocr_result.success:
-        metrics = compute_metrics(ground_truth, ocr_result.text, char_exclude=char_exclude)
+        # Sprint A14-S1 — A.I.0 P0 : propagation du profil de
+        # normalisation depuis le runner.  ``normalization_profile``
+        # est un ``NormalizationProfile`` résolu en main process par
+        # ``run_benchmark`` (cf. orchestration.py).
+        metrics = compute_metrics(
+            ground_truth, ocr_result.text,
+            normalization_profile=normalization_profile,  # type: ignore[arg-type]
+            char_exclude=char_exclude,
+        )
     else:
         metrics = MetricsResult(
             cer=1.0, cer_nfc=1.0, cer_caseless=1.0,

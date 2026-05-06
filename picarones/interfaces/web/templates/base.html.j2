@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t('app_title') }} — {% block page_title %}{{ t('nav_home') }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/main.css">
+</head>
+<body>
+  <header>
+    <h1>{{ t('app_title') }}</h1>
+    <p class="subtitle">{{ t('app_subtitle') }}</p>
+    <nav>
+      <a href="/">{{ t('nav_home') }}</a>
+      <a href="/api/runs">{{ t('nav_runs') }}</a>
+      <a href="/api/jobs">{{ t('nav_jobs') }}</a>
+      <a href="/api/docs">{{ t('nav_docs') }}</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    <small>{{ t('footer_version') }} {{ version }}</small>
+  </footer>
+</body>
+</html>

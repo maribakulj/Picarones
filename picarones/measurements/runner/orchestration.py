@@ -64,6 +64,7 @@ def run_benchmark(
     cancel_event: Optional[threading.Event] = None,
     entity_extractor: Optional[callable] = None,
     profile: str = "standard",
+    normalization_profile: Optional[str] = None,
 ) -> BenchmarkResult:
     """Exécute le benchmark d'un ou plusieurs moteurs/pipelines sur un corpus.
 
@@ -119,6 +120,15 @@ def run_benchmark(
         ``"diagnostics"``, ``"economics"``, ``"pipeline"``, ``"full"``.
         Le profil ``"standard"`` est strictement rétrocompatible avec
         le runner pré-chantier-2.
+    normalization_profile:
+        Identifiant d'un profil de normalisation diplomatique
+        (cf. ``measurements.normalization.NORMALIZATION_PROFILES``).
+        Sprint A14-S1 — A.I.0 P0 : auparavant l'API web exposait ce
+        paramètre mais il était silencieusement perdu avant
+        d'atteindre ``compute_metrics``, ce qui rendait
+        scientifiquement faux tout benchmark lancé via la web app.
+        Désormais propagé end-to-end : web → run_benchmark → workers
+        → compute_metrics.  ``None`` = profil par défaut (medieval_french).
 
     Returns
     -------
@@ -134,6 +144,15 @@ def run_benchmark(
         run_corpus_aggregators, validate_profile,
     )
     validate_profile(profile)
+
+    # Sprint A14-S1 — résolution one-shot du profil de normalisation.
+    # On le fait ici (main process) pour échouer rapidement sur un ID
+    # invalide avant de soumettre des futures aux pools, et pour
+    # éviter de re-résoudre N fois côté workers.
+    norm_profile_obj = None
+    if normalization_profile is not None:
+        from picarones.measurements.normalization import get_builtin_profile
+        norm_profile_obj = get_builtin_profile(normalization_profile)
 
     def _is_cancelled() -> bool:
         return cancel_event is not None and cancel_event.is_set()
@@ -225,12 +244,13 @@ def run_benchmark(
                         _cpu_doc_worker,
                         (engine_module, engine_class_name, engine.config,
                          doc.doc_id, str(doc.image_path), doc.ground_truth,
-                         char_exclude_tuple, corpus_lang, profile),
+                         char_exclude_tuple, corpus_lang, profile,
+                         norm_profile_obj),
                     )
                 else:
                     future = executor.submit(
                         _io_doc_worker, engine, doc, char_exclude,
-                        corpus_lang, profile,
+                        corpus_lang, profile, norm_profile_obj,
                     )
                 future_to_doc[future] = doc
                 submitted_at[future] = time.monotonic()
@@ -397,9 +417,17 @@ def run_benchmark(
             agg_ner = _aggregate_ner(document_results)
             report.aggregated_ner = agg_ner
 
-        # Libérer la mémoire des analyses per-document après agrégation
-        for dr in document_results:
-            dr.compact()
+        # Sprint A14-S1 — A.I.0 P0 : la compaction inconditionnelle qui
+        # vivait ici amputait silencieusement le JSON exporté (et donc
+        # le rapport HTML qui le consomme) en supprimant 13 dicts
+        # d'analyse per-document et en tronquant les textes à 200 chars.
+        # ``DocumentResult.compact()`` est désormais opt-in (paramètres
+        # ``text_limit`` et ``drop_analyses``) ; le runner ne compacte
+        # plus par défaut afin que ``output_json`` contienne réellement
+        # toutes les analyses détaillées promises par le README.
+        # Un caller qui veut un JSON léger peut appeler
+        # ``dr.compact(text_limit=200, drop_analyses=True)`` lui-même
+        # après ``run_benchmark`` et avant la sérialisation finale.
 
     # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
     # complémentarité / oracle).  N'est calculée qu'à partir de 2

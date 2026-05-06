@@ -124,8 +124,9 @@ class TestSerialization:
 
 class TestCompact:
     def test_compact_clears_philological(self) -> None:
+        # Sprint A14-S1 — opt-in via drop_analyses=True.
         dr = _make_doc(philological={"mufi": {"coverage": 1.0}})
-        dr.compact()
+        dr.compact(drop_analyses=True)
         assert dr.philological_metrics is None
 
 

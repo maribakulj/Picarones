@@ -57,8 +57,15 @@ NormalizationProfileId = Literal[
     "medieval_french", "early_modern_french",
     "medieval_latin",
     "early_modern_english", "medieval_english",
+    "secretary_hand",
+    "sans_ponctuation", "sans_apostrophes",
 ]
-"""Identifiants des profils de normalisation Unicode disponibles."""
+"""Identifiants des profils de normalisation Unicode disponibles.
+
+Liste alignée sur ``measurements.normalization.NORMALIZATION_PROFILES``
+(11 profils). Toute addition côté ``normalization.py`` doit être
+répercutée ici sous peine de rejet Pydantic au niveau API web.
+Sprint A14-S1 — alignement README ↔ web models ↔ runtime."""
 
 
 class BenchmarkRequest(BaseModel):
