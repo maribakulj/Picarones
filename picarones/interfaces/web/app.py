@@ -63,6 +63,13 @@ from picarones.interfaces.web.i18n import (
     SUPPORTED_LANGUAGES,
     translate,
 )
+from picarones.interfaces.web.security import (
+    AuthenticationBackend,
+    AuthenticationMiddleware,
+    BodySizeLimitMiddleware,
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -122,18 +129,46 @@ class VersionResponse(BaseModel):
     n_projectors: int
 
 
-def create_app(state: WebAppState) -> FastAPI:
+def create_app(
+    state: WebAppState,
+    *,
+    enable_security_headers: bool = True,
+    max_body_bytes: int | None = 100 * 1024 * 1024,
+    rate_limit_per_minute: int | None = 60,
+    rate_limit_trust_proxy: bool = False,
+    auth_backend: AuthenticationBackend | None = None,
+) -> FastAPI:
     """Construit une instance FastAPI consommant l'``WebAppState``.
 
     Pas de singleton global : chaque appel produit une nouvelle app
-    indépendante.  Permet aux tests d'instancier des apps avec des
-    services mockés sans interférence avec d'autres tests.
+    indépendante.
 
     Parameters
     ----------
     state:
-        ``WebAppState`` immuable injectée dans tous les endpoints
-        via ``Request.app.state.picarones``.
+        ``WebAppState`` immuable injectée dans tous les endpoints.
+    enable_security_headers:
+        Si ``True`` (défaut), monte ``SecurityHeadersMiddleware``
+        avec CSP strict + X-Frame-Options + nosniff + Referrer-Policy
+        + Permissions-Policy.  Mettre à ``False`` uniquement si un
+        reverse proxy en amont applique déjà ces en-têtes.
+    max_body_bytes:
+        Si non ``None`` (défaut 100 MiB), monte ``BodySizeLimitMiddleware``
+        pour rejeter les uploads dépassant la taille.  ``None`` désactive
+        le check (mode dev / tests).
+    rate_limit_per_minute:
+        Si non ``None`` (défaut 60), monte ``RateLimitMiddleware`` avec
+        cette limite par IP par minute.  ``None`` désactive (mode
+        public sans rate limit).
+    rate_limit_trust_proxy:
+        Si ``True``, le rate limit lit l'IP depuis ``X-Forwarded-For``
+        — à activer **uniquement** si un reverse proxy de confiance
+        est en amont (sinon n'importe quel client peut mentir).
+    auth_backend:
+        Backend d'authentification optionnel.  Si ``None`` (défaut),
+        mode public total (cohérent avec HuggingFace Space).  Sinon,
+        ``AuthenticationMiddleware`` valide chaque requête sauf
+        ``/health`` et ``/version`` (sondes infra).
 
     Returns
     -------
@@ -186,6 +221,29 @@ def create_app(state: WebAppState) -> FastAPI:
     # — namespace explicite pour ne pas collisionner avec d'autres
     # extensions FastAPI.
     app.state.picarones = state
+
+    # ──────────────────────────────────────────────────────────────
+    # Sécurité (S49) — middlewares opt-out via paramètres explicites.
+    # L'ordre d'enregistrement compte : Starlette exécute les
+    # middlewares dans l'ordre inverse de l'ajout (LIFO).  On veut
+    # que les premiers ajoutés (rate limit, body size) tournent en
+    # PREMIER sur la requête entrante — donc on les ajoute APRÈS
+    # les headers de réponse.  Pratique : ajouter dans l'ordre
+    # « réponse → requête » de l'extérieur vers l'intérieur.
+    # ──────────────────────────────────────────────────────────────
+    if enable_security_headers:
+        app.add_middleware(SecurityHeadersMiddleware)
+    if rate_limit_per_minute is not None:
+        app.add_middleware(
+            RateLimitMiddleware,
+            max_requests=rate_limit_per_minute,
+            window_seconds=60.0,
+            trust_x_forwarded_for=rate_limit_trust_proxy,
+        )
+    if max_body_bytes is not None:
+        app.add_middleware(BodySizeLimitMiddleware, max_bytes=max_body_bytes)
+    if auth_backend is not None:
+        app.add_middleware(AuthenticationMiddleware, backend=auth_backend)
 
     # ──────────────────────────────────────────────────────────────
     # Templates Jinja2 + static (S38)
