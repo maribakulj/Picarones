@@ -7,6 +7,108 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — audit institutionnel S58-S59 (post-S57) — 2026-05
+
+### ⚠️ BREAKING CHANGES (déprécations en cours, suppression en 2.0)
+
+Trois symboles supprimés au S57 sont **restaurés en S59** comme alias
+dépréciés avec `DeprecationWarning` à l'accès.  Ils seront supprimés
+en version 2.0.  Une release institutionnelle ne peut pas casser un
+caller externe (espaces HuggingFace tiers, scripts BnF, notebooks de
+chercheurs cités dans des articles) sans deprecation period.
+
+| Symbole | Statut | Cible canonique |
+|---------|--------|-----------------|
+| `picarones.pipeline.spec` (module) | déprécié | `picarones.domain.pipeline_spec` |
+| `BaseLLMAdapter.DEFAULT_CORRECTION_PROMPT` (singulier) | déprécié | `DEFAULT_CORRECTION_PROMPTS[lang]` |
+| `BaseVLMAdapter.DEFAULT_TRANSCRIPTION_PROMPT` (singulier) | déprécié | `DEFAULT_TRANSCRIPTION_PROMPTS[lang]` |
+
+L'argument `RateLimitMiddleware.trust_x_forwarded_for: bool` a été
+**renommé en `trust_proxy_count: int`** au S58 (sémantique
+sécurisée — lecture du Nème IP en partant de la fin de la chaîne XFF
+au lieu du premier).  Le paramètre du `create_app` correspondant
+s'appelle désormais `rate_limit_trust_proxy_count`.  Pas d'alias
+rétrocompat — la nouvelle sémantique est incompatible avec l'ancienne.
+
+### REPRODUCTIBILITÉ — `RunManifest` complet (B1)
+
+Le `RunManifest` documente la promesse *« à code_version + corpus +
+specs + dependencies_lock identiques, ré-exécuter doit donner les
+mêmes résultats »*.  Avant S59, deux gaps majeurs :
+
+1. `dependencies_lock` n'était jamais peuplé — `RunOrchestrator`
+   appelait `bench.run(...)` sans le passer.
+2. `pipeline_names: tuple[str, ...]` ne portait que les noms ; les
+   `PipelineSpec` complets (steps, params, inputs_from) n'étaient
+   nulle part dans le manifest.  Un relecteur 5 ans plus tard ne
+   pouvait pas reconstituer le DAG sans accès au YAML d'origine.
+
+S59 :
+
+- Nouveau module `picarones.app.services.dependencies` —
+  `capture_dependencies_lock()` via `importlib.metadata`.
+  `RunOrchestrator` capture systématiquement.
+- `RunManifest.pipeline_specs: tuple[PipelineSpec, ...]` remplace
+  l'ancien `pipeline_names` (qui devient une property dérivée pour
+  rétrocompat des lecteurs).
+- `RunManifest.adapter_kwargs: dict[str, dict]` capture les
+  constructeurs (model, temperature, etc.) — permet de reconstituer
+  `OpenAIAdapter(model="gpt-4o-2024-08-06", temperature=0.0)`.
+- Test architectural `test_manifest_reproducibility.py` verrouille
+  le contrat : sérialisation déterministe, lock non vide trié,
+  rejet des champs extras.
+
+### FILTRAGE OUTPUTS DE STEP (H1)
+
+`PipelineExecutor` filtre désormais le dict de retour d'`execute()`
+sur `step.output_types`.  Sans ça, un adapter qui produit des types
+non déclarés au YAML (ex. Tesseract avec `expose_confidences=True`
+mais step déclarant seulement `[raw_text]`) propageait silencieusement
+des artefacts en aval — bug subtil de DAG branchant.
+
+### RETRY EXPONENTIEL UNIFIÉ (H4)
+
+Nouveau module partagé `picarones.adapters._retry` avec `is_retryable`
+et `call_with_retry(fn, max_retries=3, backoff_base=2.0)`.  Adopté par :
+
+- `BaseLLMAdapter.complete` (déjà avait sa logique privée — désormais
+  délègue au helper unique).
+- `MistralOCRAdapter._call_native_ocr_api` + `_call_chat_vision_api`
+- `GoogleVisionAdapter._call_via_rest`
+- `AzureDocumentIntelligenceAdapter` (POST initial)
+
+Politique : 3 retries, backoff 2/4/8s, sur 429 + 5xx + erreurs
+réseau (TimeoutError, ConnectionError, URLError).
+
+### SÉCURITÉ ET TRAÇABILITÉ
+
+- **Path traversal (M3)** : `DocumentRef._validate_doc_id` rejette
+  désormais tout segment `..` dans l'`id`.  Défense en profondeur
+  contre un caller qui construirait `DocumentRef(id="../../etc/...")`
+  programmatiquement.
+- **Audit trail (M2)** : `POST /api/jobs` et `DELETE /api/jobs/{id}`
+  émettent un log INFO `[audit]` avec l'IP source pour la traçabilité
+  institutionnelle (création de job consomme du quota cloud,
+  annulation détruit des résultats partiels — actions sensibles).
+- **Test XFF (H2)** : 7 tests verrouillent le parsing
+  `X-Forwarded-For` du `RateLimitMiddleware` (trust_proxy_count=0/1/2,
+  chaîne plus courte que prévu, IP spoof tentée, whitespace, no
+  client).
+- **Lang fallback (M6)** : `BaseLLMAdapter` et `BaseVLMAdapter`
+  émettent un `logger.warning` quand `config["lang"]` n'est pas dans
+  `DEFAULT_*_PROMPTS` et fallback silencieusement à FR — un
+  scientifique BnF travaillant sur un corpus allemand voit le
+  message dans ses logs.
+
+### Infrastructure de test
+
+- `tests/api_stability/test_deprecated_aliases.py` : 4 tests sur les
+  alias dépréciés.
+- `tests/architecture/test_manifest_reproducibility.py` : 4 tests.
+- `tests/interfaces/web/test_rate_limit_xff.py` : 7 tests.
+
+---
+
 ## [Unreleased] — rewrite A14 (S27-S46) + audit remediation (S47-S57) — 2026-05
 
 > Cette section couvre la phase **rewrite ciblé** (S27-S46) puis les

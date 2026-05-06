@@ -45,6 +45,7 @@ from typing import Any, Callable
 from picarones.app.results import ReportRenderer, RunResult
 from picarones.app.schemas import RunSpec, resolve_adapter_class
 from picarones.app.services.benchmark_service import BenchmarkService
+from picarones.app.services.dependencies import capture_dependencies_lock
 from picarones.app.services.corpus_service import (
     CorpusImportError,
     CorpusService,
@@ -167,8 +168,10 @@ class RunOrchestrator:
         # 2. Registres.
         registries = RegistryService.bootstrap_defaults()
 
-        # 3. Pipelines + resolver d'adapters.
-        pipeline_specs, adapter_resolver = self._build_pipelines(spec)
+        # 3. Pipelines + resolver d'adapters + dump des kwargs pour le manifest.
+        pipeline_specs, adapter_resolver, adapter_kwargs = (
+            self._build_pipelines(spec)
+        )
 
         # 4. Vues canoniques.
         views = self._build_views(spec.views)
@@ -180,6 +183,9 @@ class RunOrchestrator:
             code_version=spec.code_version,
         )
 
+        # 6. Capture du verrou de dépendances pour la reproductibilité.
+        deps_lock = capture_dependencies_lock()
+
         result = bench.run(
             corpus=corpus_spec,
             pipelines=pipeline_specs,
@@ -187,6 +193,8 @@ class RunOrchestrator:
             ground_truth_factory=_default_gt_factory,
             pipeline_inputs_factory=_default_inputs_factory,
             context_factory=_make_context_factory(spec.code_version),
+            adapter_kwargs=adapter_kwargs,
+            dependencies_lock=deps_lock,
             metadata={"orchestrator": "picarones.app.services.run_orchestrator"},
         )
 
@@ -257,7 +265,11 @@ class RunOrchestrator:
     @staticmethod
     def _build_pipelines(
         spec: RunSpec,
-    ) -> tuple[list[PipelineSpec], Callable[[str], Any]]:
+    ) -> tuple[
+        list[PipelineSpec],
+        Callable[[str], Any],
+        dict[str, dict[str, Any]],
+    ]:
         """Construit les ``PipelineSpec`` + un resolver d'adapters.
 
         Disambiguation des steps :
@@ -316,7 +328,12 @@ class RunOrchestrator:
                 instance_cache[name] = cls(**kwargs)
             return instance_cache[name]
 
-        return pipeline_specs, resolver
+        # Copie défensive — le manifest doit recevoir un snapshot
+        # immuable, pas la map vivante du resolver.
+        adapter_kwargs_dump = {
+            name: dict(kwargs) for name, kwargs in name_to_kwargs.items()
+        }
+        return pipeline_specs, resolver, adapter_kwargs_dump
 
     @staticmethod
     def _build_views(view_names: tuple[str, ...]) -> list[Any]:

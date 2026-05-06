@@ -51,6 +51,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from picarones.adapters._retry import call_with_retry
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
@@ -264,9 +265,12 @@ class GoogleVisionAdapter(BaseOCRAdapter):
                 "X-Goog-Api-Key": api_key,
             },
         )
-        try:
+        def _do_call() -> dict:
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                result = json.loads(resp.read().decode("utf-8"))
+                return json.loads(resp.read().decode("utf-8"))
+
+        try:
+            result = call_with_retry(_do_call, label=self.name)
         except urllib.error.HTTPError as exc:
             body = ""
             try:

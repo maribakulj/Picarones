@@ -90,6 +90,18 @@ class DocumentRef(BaseModel):
                 f"document id invalide : {v!r}.  "
                 f"Doit matcher {_DOC_ID_RE.pattern!r}."
             )
+        # Défense en profondeur path-traversal : ``..`` comme segment
+        # de chemin permet d'écrire hors workspace via
+        # ``resolve_output_path``.  Le seul rempart au niveau supérieur
+        # est l'extraction ZIP (zip-slip protection) — un caller qui
+        # construit ``DocumentRef(id="../../etc/passwd")``
+        # programmatiquement contournait tout.
+        if ".." in v.split("/"):
+            from picarones.domain.errors import CorpusSpecError
+            raise CorpusSpecError(
+                f"document id contient un segment '..' : {v!r}. "
+                "Path traversal rejeté."
+            )
         return v
 
     @field_validator("ground_truths")

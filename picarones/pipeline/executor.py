@@ -421,10 +421,19 @@ class PipelineExecutor:
                 outputs,
             )
 
-        # 5. Succès.
-        # S47 — persiste les outputs dans le store si fourni.  La
-        # méthode interne sait gérer le cas content_hash manquant
-        # (skip silencieux) — on lui passe la responsabilité.
+        # 5. Filtrage sur ``step.output_types``.
+        # Un adapter peut produire plus de types que le YAML n'en
+        # déclare (ex: Tesseract avec ``expose_confidences=True``
+        # mais le step ne déclare que ``[raw_text]``).  Le contrat
+        # est que seuls les outputs déclarés en sortie de step
+        # passent en aval — sinon un DAG branchant pourrait recevoir
+        # des artefacts qui ne devaient pas exister à cette jonction.
+        declared = set(step.output_types)
+        outputs = {t: a for t, a in outputs.items() if t in declared}
+
+        # 6. Succès — persiste dans le store si fourni.  La méthode
+        # interne sait gérer le cas content_hash manquant (skip
+        # silencieux) — on lui passe la responsabilité.
         if self._artifact_store is not None:
             self._persist_to_cache(
                 step=step, inputs=inputs, context=context, outputs=outputs,

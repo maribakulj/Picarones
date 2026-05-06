@@ -62,7 +62,7 @@ def test_orchestrator_propagates_inputs_from_to_pipeline_step(
         "picarones.app.services.run_orchestrator.resolve_adapter_class",
         return_value=MagicMock,
     ):
-        pipeline_specs, _resolver = orch._build_pipelines(spec)
+        pipeline_specs, _resolver, _kwargs = orch._build_pipelines(spec)
 
     assert len(pipeline_specs) == 1
     ps = pipeline_specs[0]
@@ -98,5 +98,5 @@ def test_step_without_inputs_from_yields_empty_dict(tmp_path) -> None:
         "picarones.app.services.run_orchestrator.resolve_adapter_class",
         return_value=MagicMock,
     ):
-        pipeline_specs, _ = orch._build_pipelines(spec)
+        pipeline_specs, _, _ = orch._build_pipelines(spec)
     assert pipeline_specs[0].steps[0].inputs_from == {}

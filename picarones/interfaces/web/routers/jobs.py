@@ -239,6 +239,17 @@ async def submit_job(
             detail=f"Échec de soumission du job : {type(exc).__name__}",
         ) from exc
 
+    # Audit trail — création de job est une action sensible (peut
+    # consommer du quota cloud, démarrer un long calcul).  Log INFO
+    # avec l'IP source pour la traçabilité institutionnelle.
+    client = request.client
+    client_host = client.host if client is not None else "unknown"
+    logger.info(
+        "[audit] job_submitted job_id=%s corpus=%s from=%s",
+        job_id,
+        run_spec.corpus_name or "",
+        client_host,
+    )
     return JobSubmitResponse(job_id=job_id, status="pending")
 
 
@@ -287,6 +298,14 @@ async def cancel_job(request: Request, job_id: str) -> JobCancelResponse:
 
     store.mark_cancelled(job_id)
     updated = store.get(job_id)
+    # Audit trail — annulation peut détruire des résultats partiels
+    # et libérer du quota cloud non remboursable.
+    client = request.client
+    client_host = client.host if client is not None else "unknown"
+    logger.info(
+        "[audit] job_cancelled job_id=%s from=%s",
+        job_id, client_host,
+    )
     return JobCancelResponse(
         job_id=updated.job_id, status=updated.status,
     )

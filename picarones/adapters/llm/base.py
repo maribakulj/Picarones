@@ -4,39 +4,50 @@ from __future__ import annotations
 
 import logging
 import time
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Generic, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
-# Paramètres de retry par défaut
-_DEFAULT_MAX_RETRIES = 3
-_DEFAULT_BACKOFF_BASE = 2.0  # secondes : 2, 4, 8
+
+T = TypeVar("T")
 
 
-def _is_retryable(exc: Exception) -> bool:
-    """Détermine si une exception est retryable (429, 5xx, timeout réseau)."""
-    # HTTP status codes retryables
-    status = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
-    if status is not None:
-        return status == 429 or status >= 500
+class _DeprecatedAttribute(Generic[T]):
+    """Descripteur class-level qui émet ``DeprecationWarning`` à l'accès.
 
-    # Erreurs réseau / timeout
-    exc_name = type(exc).__name__
-    if exc_name in ("TimeoutError", "ConnectionError", "URLError"):
-        return True
+    Permet de retirer en deux temps une constante de classe sans
+    casser les callers externes : phase 1, le descripteur retourne
+    l'ancienne valeur avec un warning ; phase 2 (version majeure
+    suivante), le descripteur est supprimé.
+    """
 
-    # Messages d'erreur courants
-    msg = str(exc).lower()
-    if "rate" in msg and "limit" in msg:
-        return True
-    if "timeout" in msg or "connection" in msg:
-        return True
-    if "429" in msg or "503" in msg or "502" in msg:
-        return True
+    def __init__(
+        self,
+        value: T,
+        message: str,
+    ) -> None:
+        self._value = value
+        self._message = message
 
-    return False
+    def __set_name__(self, owner: type, name: str) -> None:
+        self._name = name
+
+    def __get__(self, instance: Any, owner: type | None = None) -> T:
+        warnings.warn(self._message, DeprecationWarning, stacklevel=2)
+        return self._value
+
+from picarones.adapters._retry import (
+    DEFAULT_BACKOFF_BASE as _DEFAULT_BACKOFF_BASE,
+)
+from picarones.adapters._retry import (
+    DEFAULT_MAX_RETRIES as _DEFAULT_MAX_RETRIES,
+)
+from picarones.adapters._retry import (
+    is_retryable as _is_retryable,
+)
 
 
 def normalize_llm_content(raw: Any) -> str:
@@ -245,6 +256,10 @@ class BaseLLMAdapter(ABC):
     #: Prompts de post-correction par défaut, indexés par code langue
     #: ISO-639-1 (``fr``, ``en``, ``la``).  Sélection via
     #: ``config["lang"]`` ; fallback FR si la langue est absente.
+    #:
+    #: ``DEFAULT_CORRECTION_PROMPT`` (singulier, FR) reste exposé en
+    #: ``_DeprecatedAttribute`` pour les sous-classes externes qui
+    #: lisaient l'ancienne API ; suppression prévue en 2.0.
     DEFAULT_CORRECTION_PROMPTS: dict[str, str] = {
         "fr": (
             "Corrige les erreurs OCR dans le texte suivant en "
@@ -265,6 +280,16 @@ class BaseLLMAdapter(ABC):
             "ulla glossa:\n\n{text}"
         ),
     }
+
+    #: Alias rétrocompat (FR uniquement) pour les sous-classes
+    #: externes qui lisaient l'ancienne API singulière.  L'accès
+    #: déclenche un ``DeprecationWarning``.  Sera supprimé en 2.0.
+    DEFAULT_CORRECTION_PROMPT = _DeprecatedAttribute(
+        DEFAULT_CORRECTION_PROMPTS["fr"],
+        "BaseLLMAdapter.DEFAULT_CORRECTION_PROMPT is deprecated and "
+        "will be removed in 2.0.  Use "
+        "DEFAULT_CORRECTION_PROMPTS[lang] (lang ∈ {fr, en, la}).",
+    )
 
     def __init__(
         self,
@@ -409,6 +434,15 @@ class BaseLLMAdapter(ABC):
             prompt_template = custom_prompt
         else:
             lang = (self.config.get("lang") or "fr").lower()
+            if lang not in self.DEFAULT_CORRECTION_PROMPTS:
+                logger.warning(
+                    "[%s] lang=%r non supportée par "
+                    "DEFAULT_CORRECTION_PROMPTS (%s) — fallback FR. "
+                    "Pour un corpus dans cette langue, fournir "
+                    "config['correction_prompt'] explicite.",
+                    self.name, lang,
+                    sorted(self.DEFAULT_CORRECTION_PROMPTS.keys()),
+                )
             prompt_template = self.DEFAULT_CORRECTION_PROMPTS.get(
                 lang, self.DEFAULT_CORRECTION_PROMPTS["fr"],
             )

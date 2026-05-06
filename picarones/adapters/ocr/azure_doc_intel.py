@@ -67,6 +67,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from picarones.adapters._retry import call_with_retry
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
@@ -296,9 +297,12 @@ class AzureDocIntelAdapter(BaseOCRAdapter):
                 "Content-Type": "application/octet-stream",
             },
         )
-        try:
+        def _do_post() -> str:
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                operation_url = resp.headers.get("Operation-Location", "")
+                return resp.headers.get("Operation-Location", "")
+
+        try:
+            operation_url = call_with_retry(_do_post, label=self.name)
         except urllib.error.HTTPError as exc:
             body = ""
             try:

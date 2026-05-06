@@ -63,6 +63,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from picarones.adapters._retry import call_with_retry
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
@@ -264,9 +265,12 @@ class MistralOCRAdapter(BaseOCRAdapter):
             },
             method="POST",
         )
-        try:
+        def _do_call() -> dict:
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                data = json.loads(resp.read().decode())
+                return json.loads(resp.read().decode())
+
+        try:
+            data = call_with_retry(_do_call, label=self.name)
         except Exception as exc:
             raise OCRAdapterError(
                 f"{self.name} : erreur API Mistral /v1/ocr : "
@@ -290,8 +294,9 @@ class MistralOCRAdapter(BaseOCRAdapter):
             ) from exc
 
         client = Mistral(api_key=api_key)
-        try:
-            response = client.chat.complete(
+
+        def _do_chat() -> Any:
+            return client.chat.complete(
                 model=self._model,
                 messages=[
                     {
@@ -304,6 +309,9 @@ class MistralOCRAdapter(BaseOCRAdapter):
                 ],
                 max_tokens=self._max_tokens,
             )
+
+        try:
+            response = call_with_retry(_do_chat, label=self.name)
         except Exception as exc:
             raise OCRAdapterError(
                 f"{self.name} : erreur API Mistral chat : "

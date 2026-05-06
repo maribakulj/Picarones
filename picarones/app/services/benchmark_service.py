@@ -42,7 +42,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.corpus import CorpusSpec
@@ -121,6 +121,7 @@ class BenchmarkService:
         context_factory: ContextFactory,
         run_id: str | None = None,
         dependencies_lock: dict[str, str] | None = None,
+        adapter_kwargs: dict[str, dict[str, Any]] | None = None,
         metadata: dict[str, str] | None = None,
     ) -> RunResult:
         """Exécute un benchmark complet et retourne le ``RunResult``.
@@ -189,7 +190,8 @@ class BenchmarkService:
             run_id=run_id or _default_run_id(corpus.name, started_at),
             corpus_name=corpus.name,
             n_documents=len(documents),
-            pipeline_names=tuple(spec.name for spec in pipelines_list),
+            pipeline_specs=tuple(pipelines_list),
+            adapter_kwargs=dict(adapter_kwargs or {}),
             view_specs=tuple(views_list),
             code_version=self._code_version,
             started_at=started_at,

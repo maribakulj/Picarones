@@ -98,7 +98,9 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/app/services/benchmark_service.py": 470,   # actuel 400
     # Sprint A14-S44 — BaseLLMAdapter implémente le contrat StepExecutor
     # (input_types, output_types, execute) en plus de complete().
-    "picarones/adapters/llm/base.py": 475,                # actuel 410
+    # S59 ajout du descripteur ``_DeprecatedAttribute`` + alias rétrocompat
+    # ``DEFAULT_CORRECTION_PROMPT`` + warning lang fallback (M6).
+    "picarones/adapters/llm/base.py": 560,                # actuel 486
     "picarones/core/corpus.py": 600,                      # actuel 511
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484

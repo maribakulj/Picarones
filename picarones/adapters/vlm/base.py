@@ -32,7 +32,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from picarones.adapters.llm.base import BaseLLMAdapter
+from picarones.adapters.llm.base import BaseLLMAdapter, _DeprecatedAttribute
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.errors import AdapterStepError
 
@@ -149,6 +149,16 @@ class BaseVLMAdapter(BaseLLMAdapter):
         ),
     }
 
+    #: Alias rétrocompat (FR uniquement) pour les sous-classes
+    #: externes qui lisaient l'ancienne API singulière.  L'accès
+    #: déclenche un ``DeprecationWarning``.  Sera supprimé en 2.0.
+    DEFAULT_TRANSCRIPTION_PROMPT = _DeprecatedAttribute(
+        DEFAULT_TRANSCRIPTION_PROMPTS["fr"],
+        "BaseVLMAdapter.DEFAULT_TRANSCRIPTION_PROMPT is deprecated "
+        "and will be removed in 2.0.  Use "
+        "DEFAULT_TRANSCRIPTION_PROMPTS[lang] (lang ∈ {fr, en, la}).",
+    )
+
     def execute(
         self,
         inputs: dict,
@@ -188,6 +198,15 @@ class BaseVLMAdapter(BaseLLMAdapter):
             prompt = custom
         else:
             lang = (self.config.get("lang") or "fr").lower()
+            if lang not in self.DEFAULT_TRANSCRIPTION_PROMPTS:
+                logger.warning(
+                    "[%s] lang=%r non supportée par "
+                    "DEFAULT_TRANSCRIPTION_PROMPTS (%s) — fallback FR. "
+                    "Pour un corpus dans cette langue, fournir "
+                    "config['transcription_prompt'] explicite.",
+                    self.name, lang,
+                    sorted(self.DEFAULT_TRANSCRIPTION_PROMPTS.keys()),
+                )
             prompt = self.DEFAULT_TRANSCRIPTION_PROMPTS.get(
                 lang, self.DEFAULT_TRANSCRIPTION_PROMPTS["fr"],
             )
