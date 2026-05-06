@@ -222,13 +222,33 @@ class BenchmarkService:
         result: RunResult,
         output_dir: Path | str,
     ) -> dict[str, Path]:
-        """Persiste un ``RunResult`` en 3 fichiers dans ``output_dir``.
+        """Persiste un ``RunResult`` en 4 fichiers dans ``output_dir``.
 
         Returns
         -------
         dict[str, Path]
             Map ``{kind: path}`` des fichiers écrits.  Kinds :
-            ``"manifest"``, ``"pipeline_results"``, ``"view_results"``.
+            ``"manifest"``, ``"pipeline_results"``,
+            ``"artifacts_index"``, ``"view_results"``.
+
+        Sprint S41 — séparation ``artifacts_index.jsonl``
+        -------------------------------------------------
+        L'index d'artefacts est désormais persisté **séparément** des
+        ``pipeline_results.jsonl`` qui ne portait que les step_results.
+        Cohérent avec la cible documentée du rewrite : un
+        consommateur (rapport HTML, vue d'évaluation, audit de
+        reproductibilité) peut streamer l'index pour reconstruire la
+        provenance sans avoir à charger les pipeline_results entiers.
+
+        Format ``artifacts_index.jsonl`` (une ligne par artefact) :
+
+        ::
+
+            {"document_id": "d1", "pipeline_name": "tess",
+             "id": "d1:tess:raw_text", "type": "raw_text",
+             "uri": "/tmp/.../d1.txt",
+             "content_hash": "...", "produced_by_step": "ocr",
+             "provenance": {"code_version": "...", ...}}
 
         Notes
         -----
@@ -246,15 +266,38 @@ class BenchmarkService:
             encoding="utf-8",
         )
 
+        # S41 — On extrait l'index d'artefacts des pipeline_results
+        # avant de sérialiser ces derniers, pour que pipeline_results
+        # ne porte que les step_results et metadata d'exécution.
         pipeline_path = out_dir / "pipeline_results.jsonl"
-        with pipeline_path.open("w", encoding="utf-8") as f:
+        artifacts_index_path = out_dir / "artifacts_index.jsonl"
+        with (
+            pipeline_path.open("w", encoding="utf-8") as f_pipe,
+            artifacts_index_path.open("w", encoding="utf-8") as f_idx,
+        ):
             for doc_result in result.document_results:
                 for pr in doc_result.pipeline_results:
-                    payload = {
+                    pr_payload = pr.model_dump(mode="json")
+                    # Extraire les artefacts dans l'index séparé.
+                    artifacts = pr_payload.pop("artifacts", []) or []
+                    for art in artifacts:
+                        idx_record = {
+                            "document_id": doc_result.document_id,
+                            "pipeline_name": pr.pipeline_name,
+                            **art,
+                        }
+                        f_idx.write(
+                            json.dumps(idx_record, ensure_ascii=False) + "\n",
+                        )
+                    pipeline_record = {
                         "document_id": doc_result.document_id,
-                        **pr.model_dump(mode="json"),
+                        **pr_payload,
                     }
-                    f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                    f_pipe.write(
+                        json.dumps(
+                            pipeline_record, ensure_ascii=False,
+                        ) + "\n",
+                    )
 
         view_path = out_dir / "view_results.jsonl"
         with view_path.open("w", encoding="utf-8") as f:
@@ -269,6 +312,7 @@ class BenchmarkService:
         return {
             "manifest": manifest_path,
             "pipeline_results": pipeline_path,
+            "artifacts_index": artifacts_index_path,
             "view_results": view_path,
         }
 

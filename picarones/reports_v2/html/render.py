@@ -239,17 +239,21 @@ class HtmlReportRenderer:
 
     @staticmethod
     def load_run_result(run_dir: Path | str) -> RunResult:
-        """Reconstruit un ``RunResult`` depuis les 3 fichiers persistés
-        par ``BenchmarkService.persist``.
+        """Reconstruit un ``RunResult`` depuis les 4 fichiers persistés
+        par ``BenchmarkService.persist`` (S41).
 
         Raises
         ------
         FileNotFoundError
-            Si l'un des 3 fichiers attendus est manquant.
+            Si l'un des fichiers obligatoires (manifest,
+            pipeline_results, view_results) est manquant.
+            ``artifacts_index.jsonl`` est optionnel pour rester
+            compatible avec d'anciens runs persistés avant S41.
         """
         d = Path(run_dir)
         manifest_path = d / "run_manifest.json"
         pipelines_path = d / "pipeline_results.jsonl"
+        artifacts_index_path = d / "artifacts_index.jsonl"
         views_path = d / "view_results.jsonl"
         if not manifest_path.exists():
             raise FileNotFoundError(
@@ -267,10 +271,31 @@ class HtmlReportRenderer:
             manifest_path.read_text(encoding="utf-8"),
         )
 
+        # S41 — l'index d'artefacts est désormais séparé des
+        # pipeline_results.jsonl.  On le lit AVANT pour pouvoir
+        # ré-attacher les artefacts à chaque pipeline_result lors de
+        # la reconstruction.
+        artifacts_by_pipeline: dict[
+            tuple[str, str], list[dict],
+        ] = {}
+        if artifacts_index_path.exists():
+            with artifacts_index_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    rec = json.loads(line)
+                    # `pipeline_name` est uniquement un champ d'index
+                    # (groupement) — on le retire avant de re-valider
+                    # un Artifact (qui a `extra="forbid"`).  En revanche
+                    # `document_id` fait partie de l'Artifact lui-même
+                    # et doit être préservé pour la validation pydantic.
+                    pipe_name = rec.pop("pipeline_name")
+                    doc_id = rec["document_id"]
+                    artifacts_by_pipeline.setdefault(
+                        (doc_id, pipe_name), [],
+                    ).append(rec)
+
         # Reconstruire les pipeline_results et view_results par doc.
-        # ``PipelineResult`` porte déjà ``document_id`` dans son schéma
-        # (pas de pop) ; ``ViewResult`` ne le porte pas (pop nécessaire,
-        # ``extra="forbid"`` rejetterait sinon).
         pipeline_results_by_doc: dict[str, list[PipelineResult]] = {}
         with pipelines_path.open("r", encoding="utf-8") as f:
             for line in f:
@@ -278,6 +303,10 @@ class HtmlReportRenderer:
                     continue
                 payload = json.loads(line)
                 doc_id = payload["document_id"]
+                # Ré-attache les artefacts depuis l'index S41 si présent.
+                key = (doc_id, payload.get("pipeline_name", ""))
+                if key in artifacts_by_pipeline and "artifacts" not in payload:
+                    payload["artifacts"] = artifacts_by_pipeline[key]
                 pipeline_results_by_doc.setdefault(doc_id, []).append(
                     PipelineResult.model_validate(payload),
                 )
