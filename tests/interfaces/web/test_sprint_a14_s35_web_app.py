@@ -222,10 +222,11 @@ class TestSkeletonScope:
         # 503 — l'endpoint existe mais le store n'est pas configuré.
         assert response.status_code == 503
 
-    def test_no_static_mount_yet(self, tmp_path: Path) -> None:
-        """S35-S37 ne servent pas encore de fichiers statiques (S38)."""
+    def test_static_mount_serves_main_css(self, tmp_path: Path) -> None:
+        """S38 monte /static/main.css (CSS minimaliste)."""
         state = _make_state(tmp_path)
         app = create_app(state)
         client = TestClient(app)
-        response = client.get("/static/css/main.css")
-        assert response.status_code == 404
+        response = client.get("/static/main.css")
+        assert response.status_code == 200
+        assert "color-bg" in response.text  # marqueur du CSS

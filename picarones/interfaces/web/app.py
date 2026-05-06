@@ -37,8 +37,12 @@ mount des fichiers statiques.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from picarones.adapters.storage import JobStore
@@ -49,6 +53,14 @@ from picarones.app.services import (
     RunOrchestrator,
     WorkspaceManager,
 )
+from picarones.interfaces.web.i18n import (
+    DEFAULT_LANGUAGE,
+    SUPPORTED_LANGUAGES,
+    translate,
+)
+
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 @dataclass(frozen=True)
@@ -147,6 +159,18 @@ def create_app(state: WebAppState) -> FastAPI:
     app.state.picarones = state
 
     # ──────────────────────────────────────────────────────────────
+    # Templates Jinja2 + static (S38)
+    # ──────────────────────────────────────────────────────────────
+    templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+    app.state.templates = templates
+    if _STATIC_DIR.is_dir():
+        app.mount(
+            "/static",
+            StaticFiles(directory=str(_STATIC_DIR)),
+            name="static",
+        )
+
+    # ──────────────────────────────────────────────────────────────
     # Routers métier (S36+)
     # ──────────────────────────────────────────────────────────────
     # Import paresseux pour éviter les cycles : `routers/__init__.py`
@@ -165,6 +189,66 @@ def create_app(state: WebAppState) -> FastAPI:
     # ──────────────────────────────────────────────────────────────
     # Endpoints squelette (sondes santé/version)
     # ──────────────────────────────────────────────────────────────
+
+    @app.get("/", response_class=HTMLResponse)
+    async def home_page(
+        request: Request, lang: str = DEFAULT_LANGUAGE,
+    ) -> HTMLResponse:
+        """Page d'accueil HTML — résume le workspace + runs + jobs.
+
+        Le paramètre ``lang`` accepte ``"fr"`` ou ``"en"`` (cf.
+        ``interfaces/web/i18n``).  Toute autre valeur retombe sur le
+        défaut avec warning loggé par ``i18n.translate``.
+        """
+        if lang not in SUPPORTED_LANGUAGES:
+            lang = DEFAULT_LANGUAGE
+
+        # Lit les runs et les jobs *via* les services injectés — pas
+        # de logique métier ici, juste de l'agrégation pour la vue.
+        from picarones.interfaces.web.routers.benchmark import (
+            _read_manifest,
+            _runs_dir,
+            _summarize,
+        )
+        runs_dir = _runs_dir(state)
+        runs: list[dict] = []
+        if runs_dir.exists():
+            for entry in sorted(runs_dir.iterdir()):
+                if not entry.is_dir():
+                    continue
+                manifest_path = entry / "run_manifest.json"
+                if not manifest_path.exists():
+                    continue
+                manifest = _read_manifest(manifest_path)
+                if manifest is None:
+                    continue
+                runs.append(_summarize(manifest, run_id=entry.name).model_dump())
+
+        jobs: list[dict] = []
+        if state.job_store is not None:
+            jobs = [
+                {
+                    "job_id": j.job_id,
+                    "status": j.status,
+                    "progress": j.progress,
+                }
+                for j in state.job_store.list(limit=10)
+            ]
+
+        return templates.TemplateResponse(
+            request=request,
+            name="home.html.j2",
+            context={
+                "lang": lang,
+                "version": state.version,
+                "n_metrics": len(state.registry.metrics),
+                "n_projectors": len(state.registry.projectors),
+                "workspace_root": str(state.workspace.root),
+                "runs": runs,
+                "jobs": jobs,
+                "t": lambda key: translate(key, lang),
+            },
+        )
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
