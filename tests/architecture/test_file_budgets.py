@@ -82,7 +82,9 @@ FILE_BUDGETS: dict[str, int] = {
     # ExecutionPlan (run_plan) tout en gardant run(spec) comme sucre.
     # PipelinePlanner introduit pour transformer une PipelineSpec en
     # plan immuable (validation + bindings + jonctions de métriques).
-    "picarones/pipeline/executor.py": 475,                # actuel 413
+    # Sprint A14-S47 — branchement ArtifactStore : +60 lignes (lookup
+    # cache avant exec, persistance après succès, helpers privés).
+    "picarones/pipeline/executor.py": 600,                # actuel 541
     "picarones/pipeline/planner.py": 465,                 # actuel 403
     # Sprint A14-S29 — ArtifactStore (ABC + 2 implémentations) avec
     # hash multi-paramètres pour adresser la critique d'audit n° 14

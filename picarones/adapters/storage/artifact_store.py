@@ -42,120 +42,23 @@ Anti-sur-ingénierie
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import threading
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
+from picarones.domain.artifact_key import ArtifactKey
 from picarones.domain.artifacts import Artifact
 
 logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────────────────────────────
-# Clé canonique multi-paramètres
-# ──────────────────────────────────────────────────────────────────────
-
-
-@dataclass(frozen=True)
-class ArtifactKey:
-    """Composition immuable de tous les paramètres qui déterminent
-    l'identité d'un artefact dans le store.
-
-    Sérialisable JSON déterministe via ``to_canonical_json``.
-
-    Attributes
-    ----------
-    input_hashes:
-        Tuple ``((type, content_hash), ...)`` des inputs, trié par
-        type.  ``None`` ou vide → la clé n'est pas calculable
-        (cas d'un input sans content_hash).
-    adapter_name:
-        ``step.adapter_name`` (ex : ``"tesseract"``,
-        ``"openai:gpt-4o"``).
-    adapter_version:
-        Version du modèle / binaire de l'adapter.  ``None`` si
-        l'adapter ne sait pas la fournir (warning loggé une fois).
-    step_params:
-        Dict ``{name: scalar}`` du step, sérialisé en JSON canonique
-        (clés triées).
-    code_version:
-        Version du code Picarones (cf. ``RunContext.code_version``).
-    normalization_profile:
-        Profil de normalisation appliqué en aval (le cas échéant).
-        Pour les jonctions textuelles avec normalisation.
-    projection_name:
-        Nom du projecteur appliqué (le cas échéant).
-    projection_params:
-        Params du projecteur (le cas échéant).
-    metric_version:
-        Version du module de métriques (rare ; reporté à la phase
-        où on aura un versioning explicite des métriques).
-
-    Notes
-    -----
-    Frozen dataclass : aucune mutation possible.  Le hash canonique
-    est calculé à la demande via ``hash_hex()``.
-    """
-
-    input_hashes: tuple[tuple[str, str], ...] = field(default_factory=tuple)
-    adapter_name: str = ""
-    adapter_version: str | None = None
-    step_params: dict[str, str | int | float | bool] = field(default_factory=dict)
-    code_version: str = ""
-    normalization_profile: str | None = None
-    projection_name: str | None = None
-    projection_params: dict[str, str | int | float | bool] = field(
-        default_factory=dict,
-    )
-    metric_version: str | None = None
-
-    def to_canonical_json(self) -> str:
-        """Sérialise la clé en JSON déterministe.
-
-        - Clés du dict triées (``sort_keys=True``).
-        - ``ensure_ascii=False`` pour préserver l'Unicode brut.
-        - Séparateurs compacts pour minimiser les variations de
-          whitespace entre OS.
-        """
-        # Trier les input_hashes par type pour déterminisme
-        # cross-platform (les Python du même version trient les
-        # tuples par leur premier élément, mais on l'explicite).
-        sorted_inputs = sorted(self.input_hashes)
-        payload = {
-            "inputs": sorted_inputs,
-            "adapter": self.adapter_name,
-            "adapter_version": self.adapter_version,
-            "step_params": self.step_params,
-            "code_version": self.code_version,
-            "normalization_profile": self.normalization_profile,
-            "projection_name": self.projection_name,
-            "projection_params": self.projection_params,
-            "metric_version": self.metric_version,
-        }
-        return json.dumps(
-            payload,
-            sort_keys=True,
-            ensure_ascii=False,
-            separators=(",", ":"),
-        )
-
-    def hash_hex(self) -> str | None:
-        """Calcule la clé hex SHA-256 (64 chars).
-
-        Retourne ``None`` si **un seul** ``input_hash`` est ``None``
-        ou vide — convention « ne pas servir un résultat douteux ».
-        Les autres champs peuvent être ``None`` (ils sont sérialisés
-        comme ``null`` dans le JSON canonique → entrent dans le hash).
-        """
-        for _, h in self.input_hashes:
-            if h is None or h == "":
-                return None
-        canonical = self.to_canonical_json()
-        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+# Sprint A14-S47 — ``ArtifactKey`` (type pur) a migré dans
+# ``picarones/domain/artifact_key.py``.  Re-import ici pour ne pas
+# casser les callers (``from picarones.adapters.storage import
+# ArtifactKey`` reste valide).
 
 
 # ──────────────────────────────────────────────────────────────────────

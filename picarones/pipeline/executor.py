@@ -68,6 +68,12 @@ from typing import Callable
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.documents import DocumentRef
 from picarones.domain.errors import PicaronesError
+from picarones.pipeline.cache_helpers import (
+    compute_step_artifact_key,
+    read_cached_outputs,
+    write_outputs_to_cache,
+)
+from picarones.pipeline.cache_protocol import ArtifactCachePort
 from picarones.pipeline.planner import (
     ExecutionPlan,
     PipelinePlanner,
@@ -113,12 +119,30 @@ class PipelineExecutor:
         ``StepExecutor``.  Typiquement
         ``lambda name: registry[name]`` en test, ou un service
         applicatif qui injecte les bonnes dépendances en prod.
+    planner:
+        ``PipelinePlanner`` injecté (S28).  Si ``None``, un planner
+        par défaut sans ``MetricRegistry`` est instancié.
+    artifact_store:
+        ``ArtifactStore`` optionnel (S29 + S47) pour la **reprise par
+        hash**.  Si fourni, l'executor :
+
+        - **avant** chaque step, calcule la clé du step via
+          ``compute_step_artifact_key`` et interroge le store ; si
+          toutes les sorties attendues sont présentes ET valides
+          (URIs accessibles), saute l'exécution et retourne les
+          artefacts cachés (``StepResult.duration_seconds=0.0``) ;
+        - **après** chaque step réussi, persiste les outputs dans
+          le store sous la clé dérivée.
+
+        Si ``None`` (défaut), aucun cache n'est consulté ni écrit.
+        Le comportement est strictement identique à l'avant-S47.
     """
 
     def __init__(
         self,
         adapter_resolver: AdapterResolver,
         planner: PipelinePlanner | None = None,
+        artifact_store: ArtifactCachePort | None = None,
     ) -> None:
         if not callable(adapter_resolver):
             raise PicaronesError(
@@ -128,10 +152,24 @@ class PipelineExecutor:
             raise PicaronesError(
                 "PipelineExecutor : planner doit être un PipelinePlanner ou None."
             )
+        # ``isinstance(artifact_store, ArtifactCachePort)`` est un duck
+        # typing check (Protocol @runtime_checkable) — valide get/put/
+        # __contains__ par leur seule présence.  Permet à un caller
+        # tiers (Redis, S3) de fournir un store custom satisfaisant
+        # le protocol sans hériter de la classe ABC ``ArtifactStore``.
+        if artifact_store is not None and not isinstance(
+            artifact_store, ArtifactCachePort,
+        ):
+            raise PicaronesError(
+                "PipelineExecutor : artifact_store doit satisfaire le "
+                "protocole ArtifactCachePort (get / put / __contains__) "
+                "ou être None.",
+            )
         self._resolver = adapter_resolver
         # Si pas de planner injecté, on en fabrique un sans MetricRegistry —
         # les jonctions seront vides mais la planification reste correcte.
         self._planner = planner if planner is not None else PipelinePlanner()
+        self._artifact_store = artifact_store
 
     def plan(self, spec: PipelineSpec) -> ExecutionPlan:
         """Planifie une ``PipelineSpec`` en ``ExecutionPlan``.
@@ -286,6 +324,35 @@ class PipelineExecutor:
                 {},
             )
 
+        # 1bis. S47 — Reprise par hash via ArtifactStore.
+        # Si un store est injecté et que tous les inputs ont un
+        # ``content_hash``, on calcule la clé du step et on interroge
+        # le store.  Hit complet → on saute l'exécution (durée 0,
+        # même artefacts que la dernière exécution réussie).  Miss
+        # ou cache partiel → on tombe dans l'exécution normale.
+        if self._artifact_store is not None:
+            cached_outputs = self._try_resume_from_cache(
+                step=step, inputs=inputs, context=context,
+            )
+            if cached_outputs is not None:
+                logger.info(
+                    "[pipeline:%s] step '%s' : hit cache "
+                    "(reprise par hash, exécution sautée).",
+                    context.pipeline_name, step.id,
+                )
+                return (
+                    StepResult(
+                        step_id=step.id,
+                        succeeded=True,
+                        duration_seconds=0.0,
+                        produced_artifacts={
+                            t.value: a.id
+                            for t, a in cached_outputs.items()
+                        },
+                    ),
+                    cached_outputs,
+                )
+
         # 2. Résoudre l'adapter.
         try:
             adapter = self._resolver(step.adapter_name)
@@ -355,6 +422,13 @@ class PipelineExecutor:
             )
 
         # 5. Succès.
+        # S47 — persiste les outputs dans le store si fourni.  La
+        # méthode interne sait gérer le cas content_hash manquant
+        # (skip silencieux) — on lui passe la responsabilité.
+        if self._artifact_store is not None:
+            self._persist_to_cache(
+                step=step, inputs=inputs, context=context, outputs=outputs,
+            )
         produced_map = {
             t.value: a.id for t, a in outputs.items()
         }
@@ -366,6 +440,66 @@ class PipelineExecutor:
                 produced_artifacts=produced_map,
             ),
             outputs,
+        )
+
+    # ──────────────────────────────────────────────────────────────────
+    # S47 — Reprise par hash via ArtifactStore
+    # ──────────────────────────────────────────────────────────────────
+
+    def _try_resume_from_cache(
+        self,
+        *,
+        step,
+        inputs: dict[ArtifactType, Artifact],
+        context: RunContext,
+    ) -> dict[ArtifactType, Artifact] | None:
+        """Tente de retrouver les outputs cachés du step.
+
+        Retourne ``None`` (cache miss) dans 3 cas :
+
+        1. Un input n'a pas de ``content_hash`` → la clé n'est pas
+           calculable (cf. ``ArtifactKey.hash_hex``).
+        2. Le store ne contient pas TOUS les ``output_types`` du step.
+        3. Une URI cachée pointe vers un fichier qui n'existe plus.
+        """
+        # Nécessairement non-None ici (vérifié par le caller), mais on
+        # défend en profondeur.
+        if self._artifact_store is None:
+            return None
+        key = compute_step_artifact_key(step, inputs, context)
+        step_hash = key.hash_hex()
+        if step_hash is None:
+            return None
+        return read_cached_outputs(
+            store=self._artifact_store,
+            step=step,
+            step_hash=step_hash,
+        )
+
+    def _persist_to_cache(
+        self,
+        *,
+        step,
+        inputs: dict[ArtifactType, Artifact],
+        context: RunContext,
+        outputs: dict[ArtifactType, Artifact],
+    ) -> None:
+        """Persiste les outputs d'un step réussi dans le store.
+
+        Skip silencieux si la clé n'est pas calculable (un input sans
+        ``content_hash``).
+        """
+        if self._artifact_store is None:
+            return
+        key = compute_step_artifact_key(step, inputs, context)
+        step_hash = key.hash_hex()
+        if step_hash is None:
+            return
+        write_outputs_to_cache(
+            store=self._artifact_store,
+            step=step,
+            step_hash=step_hash,
+            outputs=outputs,
         )
 
     def _inputs_from_bindings(

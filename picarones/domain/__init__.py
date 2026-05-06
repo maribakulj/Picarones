@@ -43,6 +43,7 @@ Voir ``docs/roadmap/rewrite-2026.md`` pour le plan complet.
 
 from __future__ import annotations
 
+from picarones.domain.artifact_key import ArtifactKey
 from picarones.domain.artifacts import Artifact, ArtifactType, compute_content_hash
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef, GroundTruthRef
@@ -76,6 +77,8 @@ __all__ = [
     "Artifact",
     "ArtifactType",
     "compute_content_hash",
+    # S29/S47 — ArtifactKey (clé canonique multi-paramètres pour cache)
+    "ArtifactKey",
     # S4 — Corpus + documents
     "CorpusSpec",
     "DocumentRef",
