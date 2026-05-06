@@ -94,6 +94,18 @@ class ArtifactType(str, Enum):
     #: ``error_absorption``.
     ALIGNMENT = "alignment"
 
+    #: Confidences OCR au niveau token (Sprint S50).  Sidecar JSON
+    #: produit par les adapters OCR qui exposent des scores natifs
+    #: (Tesseract image_to_data, Pero transcription_confidence,
+    #: Mistral OCR API confidences, Google Vision Word.confidence,
+    #: Azure DI Word.confidence).
+    #:
+    #: Schéma JSON : ``{"tokens": [{"text": str, "confidence":
+    #: float ∈ [0, 1]}], "extractor": str, "model_version": str |
+    #: null}``.  Consommé par les vues de calibration (ECE/MCE,
+    #: reliability diagram).
+    CONFIDENCES = "confidences"
+
 
 def compute_content_hash(payload: bytes) -> str:
     """SHA-256 hex (64 chars) d'un payload binaire.

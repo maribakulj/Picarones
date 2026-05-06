@@ -128,7 +128,14 @@ class TestTesseractAdapterContract:
         assert TesseractAdapter.input_types == frozenset({ArtifactType.IMAGE})
 
     def test_output_types(self) -> None:
-        assert TesseractAdapter.output_types == frozenset({ArtifactType.RAW_TEXT})
+        # Sprint S50 : output_types est une property d'instance qui
+        # dépend de ``expose_confidences``.
+        assert TesseractAdapter().output_types == frozenset(
+            {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
+        )
+        assert TesseractAdapter(
+            expose_confidences=False,
+        ).output_types == frozenset({ArtifactType.RAW_TEXT})
 
     def test_execution_mode_is_cpu(self) -> None:
         """Tesseract est CPU-bound — utilise un ProcessPool dans le runner."""

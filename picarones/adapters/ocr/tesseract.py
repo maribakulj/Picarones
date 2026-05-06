@@ -98,7 +98,12 @@ class TesseractAdapter(BaseOCRAdapter):
     """
 
     input_types = frozenset({ArtifactType.IMAGE})
-    output_types = frozenset({ArtifactType.RAW_TEXT})
+    # Sprint S50 : ``output_types`` est désormais une property
+    # d'instance qui inclut CONFIDENCES si et seulement si
+    # ``expose_confidences=True`` (défaut).  Permet de désactiver
+    # la production du sidecar en mode opt-out sans déclarer un
+    # output que l'adapter ne produit pas (l'executor validerait
+    # alors un manque).
     execution_mode = "cpu"
 
     def __init__(
@@ -109,6 +114,7 @@ class TesseractAdapter(BaseOCRAdapter):
         psm: int = 6,
         oem: int = 3,
         tesseract_cmd: str | None = None,
+        expose_confidences: bool = True,
     ) -> None:
         if not name or not name.strip():
             raise OCRAdapterError(
@@ -132,10 +138,30 @@ class TesseractAdapter(BaseOCRAdapter):
         self._psm = psm
         self._oem = oem
         self._tesseract_cmd = tesseract_cmd
+        self._expose_confidences = expose_confidences
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def output_types(self) -> frozenset:  # type: ignore[override]
+        """Output_types dynamique selon ``expose_confidences``.
+
+        Sprint S50 : si l'instance expose les confidences, déclare
+        ``{RAW_TEXT, CONFIDENCES}`` ; sinon ``{RAW_TEXT}`` seul.
+        Le ``PipelinePlanner`` lit cette propriété pour valider
+        que les types s'enchaînent.
+        """
+        if self._expose_confidences:
+            return frozenset(
+                {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
+            )
+        return frozenset({ArtifactType.RAW_TEXT})
+
+    @property
+    def expose_confidences(self) -> bool:
+        return self._expose_confidences
 
     @property
     def lang(self) -> str:
@@ -223,7 +249,7 @@ class TesseractAdapter(BaseOCRAdapter):
         )
         text_path.write_text(text, encoding="utf-8")
 
-        return {
+        outputs: dict = {
             ArtifactType.RAW_TEXT: Artifact(
                 id=f"{context.document_id}:{self.name}:raw_text",
                 document_id=context.document_id,
@@ -232,6 +258,81 @@ class TesseractAdapter(BaseOCRAdapter):
                 uri=str(text_path),
             ),
         }
+
+        # Sprint S50 : extraction des confidences via image_to_data
+        # (best-effort).  Si l'extraction échoue, on log et on saute
+        # — l'OCR reste valide, seule la calibration est indisponible
+        # pour ce document.
+        if self._expose_confidences:
+            confidences_artifact = self._extract_and_persist_confidences(
+                image_path=image_path,
+                text_path=text_path,
+                pytesseract_module=pytesseract,
+                pil_image_class=Image,
+                custom_config=custom_config,
+                document_id=context.document_id,
+            )
+            if confidences_artifact is not None:
+                outputs[ArtifactType.CONFIDENCES] = confidences_artifact
+
+        return outputs
+
+    def _extract_and_persist_confidences(
+        self,
+        *,
+        image_path: Path,
+        text_path: Path,
+        pytesseract_module,
+        pil_image_class,
+        custom_config: str,
+        document_id: str,
+    ) -> Artifact | None:
+        """Appelle ``image_to_data`` puis écrit le sidecar JSON.
+
+        Retourne l'``Artifact CONFIDENCES`` ou ``None`` si l'extraction
+        a échoué (warning loggé, OCR reste valide).
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        from picarones.adapters.ocr.confidences import (
+            filter_valid_tokens,
+            write_confidences_sidecar,
+        )
+
+        try:
+            with pil_image_class.open(image_path) as image:
+                data = pytesseract_module.image_to_data(
+                    image,
+                    lang=self._lang,
+                    config=custom_config,
+                    output_type=pytesseract_module.Output.DICT,
+                )
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            logger.warning(
+                "[%s] image_to_data indisponible (%s) — calibration "
+                "sautée pour ce document.", self._name, exc,
+            )
+            return None
+
+        # Format Tesseract : dict {"text": [...], "conf": [...]}.
+        texts = data.get("text") or []
+        confs = data.get("conf") or []
+        raw = [
+            {"text": t, "confidence": c}
+            for t, c in zip(texts, confs)
+        ]
+        tokens = filter_valid_tokens(raw)
+        return write_confidences_sidecar(
+            text_path=text_path,
+            adapter_name=self._name,
+            tokens=tokens,
+            document_id=document_id,
+            extractor="tesseract",
+        )
+
+
+__all__ = ["TesseractAdapter"]
 
 
 __all__ = ["TesseractAdapter"]
