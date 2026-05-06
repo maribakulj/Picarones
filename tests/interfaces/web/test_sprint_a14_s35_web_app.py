@@ -209,20 +209,21 @@ class TestVersionEndpoint:
 
 
 class TestSkeletonScope:
-    def test_no_jobs_endpoint_yet(self, tmp_path: Path) -> None:
-        """Les endpoints jobs (queue + persistence SQLite) viendront
-        en S37."""
+    def test_jobs_endpoints_exist_but_503_without_store(
+        self, tmp_path: Path,
+    ) -> None:
+        """Les endpoints jobs sont bien wirés (S37) mais sans
+        ``WebAppState.job_store`` configuré ils retournent 503."""
         state = _make_state(tmp_path)
+        # state.job_store est None par défaut en S35-S36.
         app = create_app(state)
         client = TestClient(app)
-        for path in ("/api/jobs", "/api/jobs/123"):
-            response = client.get(path)
-            assert response.status_code == 404, (
-                f"Endpoint {path!r} ne devrait pas exister avant S37."
-            )
+        response = client.get("/api/jobs")
+        # 503 — l'endpoint existe mais le store n'est pas configuré.
+        assert response.status_code == 503
 
     def test_no_static_mount_yet(self, tmp_path: Path) -> None:
-        """S35-S36 ne servent pas encore de fichiers statiques (S38)."""
+        """S35-S37 ne servent pas encore de fichiers statiques (S38)."""
         state = _make_state(tmp_path)
         app = create_app(state)
         client = TestClient(app)

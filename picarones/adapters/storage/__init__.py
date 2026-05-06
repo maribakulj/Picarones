@@ -38,6 +38,11 @@ from picarones.adapters.storage.artifact_store import (
     InMemoryArtifactStore,
     StoredArtifact,
 )
+from picarones.adapters.storage.job_store import (
+    JobRecord,
+    JobStore,
+    JobStoreError,
+)
 
 __all__ = [
     "ArtifactKey",
@@ -45,4 +50,7 @@ __all__ = [
     "FilesystemArtifactStore",
     "InMemoryArtifactStore",
     "StoredArtifact",
+    "JobStore",
+    "JobRecord",
+    "JobStoreError",
 ]

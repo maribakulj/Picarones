@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from picarones.adapters.storage import JobStore
 from picarones.app.services import (
     BenchmarkService,
     CorpusService,
@@ -84,6 +85,7 @@ class WebAppState:
     corpus: CorpusService
     benchmark: BenchmarkService
     orchestrator: RunOrchestrator
+    job_store: JobStore | None = None
     version: str = "1.0.0"
 
 
@@ -154,9 +156,11 @@ def create_app(state: WebAppState) -> FastAPI:
     from picarones.interfaces.web.routers import (
         benchmark_router,
         corpus_router,
+        jobs_router,
     )
     app.include_router(corpus_router)
     app.include_router(benchmark_router)
+    app.include_router(jobs_router)
 
     # ──────────────────────────────────────────────────────────────
     # Endpoints squelette (sondes santé/version)

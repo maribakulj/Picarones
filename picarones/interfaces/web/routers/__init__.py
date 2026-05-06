@@ -16,8 +16,10 @@ from __future__ import annotations
 
 from picarones.interfaces.web.routers.benchmark import router as benchmark_router
 from picarones.interfaces.web.routers.corpus import router as corpus_router
+from picarones.interfaces.web.routers.jobs import router as jobs_router
 
 __all__ = [
     "benchmark_router",
     "corpus_router",
+    "jobs_router",
 ]
