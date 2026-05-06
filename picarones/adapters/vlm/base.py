@@ -33,10 +33,18 @@ from pathlib import Path
 from typing import Any
 
 from picarones.adapters.llm.base import BaseLLMAdapter
-from picarones.adapters.ocr.base import OCRAdapterError
 from picarones.domain.artifacts import Artifact, ArtifactType
+from picarones.domain.errors import AdapterStepError
 
 logger = logging.getLogger(__name__)
+
+
+class VLMAdapterError(AdapterStepError):
+    """Erreur typée pour un échec d'adapter VLM (Sprint S52).
+
+    Hérite de ``AdapterStepError`` (commune avec OCR et LLM).
+    Avant S52, les VLM levaient ``OCRAdapterError`` par confusion.
+    """
 
 
 class BaseVLMAdapter(BaseLLMAdapter):
@@ -84,18 +92,18 @@ class BaseVLMAdapter(BaseLLMAdapter):
         ``{RAW_TEXT: Artifact}``.
         """
         if ArtifactType.IMAGE not in inputs:
-            raise OCRAdapterError(
+            raise VLMAdapterError(
                 f"{self.name} : input IMAGE manquant.",
             )
         image_artifact = inputs[ArtifactType.IMAGE]
         if image_artifact.uri is None:
-            raise OCRAdapterError(
+            raise VLMAdapterError(
                 f"{self.name} : artefact image "
                 f"{image_artifact.id!r} sans URI.",
             )
         image_path = Path(image_artifact.uri)
         if not image_path.exists():
-            raise OCRAdapterError(
+            raise VLMAdapterError(
                 f"{self.name} : image introuvable {image_path!r}.",
             )
 
@@ -109,7 +117,7 @@ class BaseVLMAdapter(BaseLLMAdapter):
 
         result = self.complete(prompt, image_b64=image_b64)
         if not result.success:
-            raise OCRAdapterError(
+            raise VLMAdapterError(
                 f"{self.name} : VLM a échoué ({result.error}).",
             )
 
@@ -134,4 +142,4 @@ class BaseVLMAdapter(BaseLLMAdapter):
         }
 
 
-__all__ = ["BaseVLMAdapter"]
+__all__ = ["BaseVLMAdapter", "VLMAdapterError"]

@@ -126,8 +126,17 @@ class JobRecord:
         return self.status in _LIVE_STATUSES
 
 
-class JobStoreError(Exception):
-    """Erreur de persistance SQLite côté JobStore."""
+from picarones.domain.errors import PicaronesError
+
+
+class JobStoreError(PicaronesError):
+    """Erreur de persistance SQLite côté JobStore.
+
+    Sprint S52 : hérite désormais de ``PicaronesError`` (avant
+    héritait directement d'``Exception`` — un caller qui faisait
+    ``except PicaronesError`` ratait silencieusement les erreurs
+    JobStore).
+    """
 
 
 class JobStore:

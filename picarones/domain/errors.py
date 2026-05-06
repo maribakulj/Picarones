@@ -57,9 +57,21 @@ class CorpusSpecError(PicaronesError):
     """
 
 
+class AdapterStepError(PicaronesError):
+    """Racine commune des erreurs d'adapter (OCR / LLM / VLM) — Sprint S52.
+
+    Permet à un caller (typiquement le ``PipelineExecutor``) de
+    catcher *« toute erreur d'adapter »* sans avoir à connaître la
+    sous-classe spécifique.  Les sous-classes ``OCRAdapterError``,
+    ``LLMAdapterError``, ``VLMAdapterError`` héritent toutes de
+    ``AdapterStepError``.
+    """
+
+
 __all__ = [
     "PicaronesError",
     "ArtifactValidationError",
     "ProjectionError",
     "CorpusSpecError",
+    "AdapterStepError",
 ]

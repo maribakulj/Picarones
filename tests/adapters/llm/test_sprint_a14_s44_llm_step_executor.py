@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 from picarones.adapters.llm.base import BaseLLMAdapter
-from picarones.adapters.ocr.base import OCRAdapterError
+from picarones.adapters.llm.base import LLMAdapterError
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.pipeline.types import RunContext
 
@@ -184,7 +184,7 @@ class TestLLMExecuteNominal:
 class TestLLMExecuteErrors:
     def test_missing_raw_text_raises(self) -> None:
         adapter = _StubLLMAdapter()
-        with pytest.raises(OCRAdapterError, match="RAW_TEXT manquant"):
+        with pytest.raises(LLMAdapterError, match="RAW_TEXT manquant"):
             adapter.execute(
                 inputs={},
                 params={},
@@ -199,7 +199,7 @@ class TestLLMExecuteErrors:
             type=ArtifactType.RAW_TEXT,
             uri=None,
         )
-        with pytest.raises(OCRAdapterError, match="sans URI"):
+        with pytest.raises(LLMAdapterError, match="sans URI"):
             adapter.execute(
                 inputs={ArtifactType.RAW_TEXT: artifact},
                 params={},
@@ -208,7 +208,7 @@ class TestLLMExecuteErrors:
 
     def test_text_path_not_existing_raises(self) -> None:
         adapter = _StubLLMAdapter()
-        with pytest.raises(OCRAdapterError, match="introuvable"):
+        with pytest.raises(LLMAdapterError, match="introuvable"):
             adapter.execute(
                 inputs={ArtifactType.RAW_TEXT: _make_text_artifact(
                     "/nonexistent/x.txt",
@@ -223,7 +223,7 @@ class TestLLMExecuteErrors:
         adapter = _StubLLMAdapter(raise_on_call=True, config={
             "max_retries": 0,  # pas de retry pour accélérer le test
         })
-        with pytest.raises(OCRAdapterError, match="LLM a échoué"):
+        with pytest.raises(LLMAdapterError, match="LLM a échoué"):
             adapter.execute(
                 inputs={ArtifactType.RAW_TEXT: _make_text_artifact(str(text_path))},
                 params={},

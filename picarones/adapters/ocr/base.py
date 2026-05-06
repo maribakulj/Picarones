@@ -57,11 +57,16 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from picarones.domain.artifacts import Artifact, ArtifactType
-from picarones.domain.errors import PicaronesError
+from picarones.domain.errors import AdapterStepError
 
 
-class OCRAdapterError(PicaronesError):
+class OCRAdapterError(AdapterStepError):
     """Erreur typée pour un échec d'adapter OCR du nouveau monde.
+
+    Hérite de ``AdapterStepError`` (Sprint S52) qui hérite de
+    ``PicaronesError``.  Un caller peut catcher
+    ``AdapterStepError`` pour toute erreur d'adapter (OCR/LLM/VLM)
+    sans connaître la sous-classe.
 
     Le ``PipelineExecutor`` capture cette exception (et toute autre)
     et marque le step correspondant comme failed avec

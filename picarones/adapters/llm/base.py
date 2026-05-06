@@ -138,6 +138,22 @@ def log_http_error(
         )
 
 
+from picarones.domain.errors import AdapterStepError
+
+
+class LLMAdapterError(AdapterStepError):
+    """Erreur typée pour un échec d'adapter LLM (Sprint S52).
+
+    Hérite de ``AdapterStepError`` (commune avec OCR et VLM) → un
+    caller peut catcher ``AdapterStepError`` pour toute erreur
+    d'adapter sans connaître la sous-classe.
+
+    Avant S52, ``BaseLLMAdapter.execute`` levait ``OCRAdapterError``
+    par confusion sémantique — c'était noté dans l'audit comme issue
+    #11 (hiérarchie incohérente).
+    """
+
+
 @dataclass
 class LLMResult:
     """Résultat produit par un appel LLM."""
@@ -341,22 +357,21 @@ class BaseLLMAdapter(ABC):
         from pathlib import Path
         import base64
 
-        from picarones.adapters.ocr.base import OCRAdapterError
         from picarones.domain.artifacts import Artifact, ArtifactType
 
         if ArtifactType.RAW_TEXT not in inputs:
-            raise OCRAdapterError(
+            raise LLMAdapterError(
                 f"{self.name} : input RAW_TEXT manquant.",
             )
         text_artifact = inputs[ArtifactType.RAW_TEXT]
         if text_artifact.uri is None:
-            raise OCRAdapterError(
+            raise LLMAdapterError(
                 f"{self.name} : artefact RAW_TEXT "
                 f"{text_artifact.id!r} sans URI.",
             )
         text_path = Path(text_artifact.uri)
         if not text_path.exists():
-            raise OCRAdapterError(
+            raise LLMAdapterError(
                 f"{self.name} : fichier texte introuvable {text_path!r}.",
             )
 
@@ -379,7 +394,7 @@ class BaseLLMAdapter(ABC):
 
         result = self.complete(prompt, image_b64=image_b64)
         if not result.success:
-            raise OCRAdapterError(
+            raise LLMAdapterError(
                 f"{self.name} : LLM a échoué ({result.error}).",
             )
 
@@ -411,6 +426,7 @@ class BaseLLMAdapter(ABC):
 
 __all__ = [
     "BaseLLMAdapter",
+    "LLMAdapterError",
     "LLMResult",
     "log_http_error",
     "normalize_llm_content",

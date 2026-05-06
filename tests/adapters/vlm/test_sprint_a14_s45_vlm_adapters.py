@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.adapters.ocr.base import OCRAdapterError
+from picarones.adapters.vlm.base import VLMAdapterError
 from picarones.adapters.vlm import (
     AnthropicVLMAdapter,
     BaseVLMAdapter,
@@ -169,7 +169,7 @@ class TestVLMExecuteNominal:
 class TestVLMExecuteErrors:
     def test_missing_image_raises(self) -> None:
         adapter = _StubVLMAdapter()
-        with pytest.raises(OCRAdapterError, match="IMAGE manquant"):
+        with pytest.raises(VLMAdapterError, match="IMAGE manquant"):
             adapter.execute(inputs={}, params={}, context=_make_context())
 
     def test_image_without_uri_raises(self) -> None:
@@ -180,7 +180,7 @@ class TestVLMExecuteErrors:
             type=ArtifactType.IMAGE,
             uri=None,
         )
-        with pytest.raises(OCRAdapterError, match="sans URI"):
+        with pytest.raises(VLMAdapterError, match="sans URI"):
             adapter.execute(
                 inputs={ArtifactType.IMAGE: artifact},
                 params={},
@@ -189,7 +189,7 @@ class TestVLMExecuteErrors:
 
     def test_image_path_not_existing_raises(self) -> None:
         adapter = _StubVLMAdapter()
-        with pytest.raises(OCRAdapterError, match="introuvable"):
+        with pytest.raises(VLMAdapterError, match="introuvable"):
             adapter.execute(
                 inputs={ArtifactType.IMAGE: _make_image_artifact(
                     "/nonexistent/img.png",
@@ -202,7 +202,7 @@ class TestVLMExecuteErrors:
         image_path = tmp_path / "doc.png"
         image_path.write_bytes(b"x")
         adapter = _StubVLMAdapter(raise_on_call=True)
-        with pytest.raises(OCRAdapterError, match="VLM a échoué"):
+        with pytest.raises(VLMAdapterError, match="VLM a échoué"):
             adapter.execute(
                 inputs={ArtifactType.IMAGE: _make_image_artifact(str(image_path))},
                 params={},
