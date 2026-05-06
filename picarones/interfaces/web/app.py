@@ -36,6 +36,8 @@ mount des fichiers statiques.
 
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -45,10 +47,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+_logger = logging.getLogger(__name__)
+
 from picarones.adapters.storage import JobStore
 from picarones.app.services import (
     BenchmarkService,
     CorpusService,
+    JobRunner,
     RegistryService,
     RunOrchestrator,
     WorkspaceManager,
@@ -98,6 +103,7 @@ class WebAppState:
     benchmark: BenchmarkService
     orchestrator: RunOrchestrator
     job_store: JobStore | None = None
+    job_runner: JobRunner | None = None
     version: str = "1.0.0"
 
 
@@ -141,15 +147,38 @@ def create_app(state: WebAppState) -> FastAPI:
             f"reçu {type(state).__name__}.",
         )
 
+    # Lifespan hook (S48) : nettoyage des jobs zombies au boot.
+    # Tout job en statut ``pending`` ou ``running`` au démarrage du
+    # process est forcément orphelin (le process précédent est mort
+    # sans le finir).  On les bascule en ``interrupted`` pour ne pas
+    # laisser d'état mensonger sur le tableau de bord.
+    @asynccontextmanager
+    async def _lifespan(_app: FastAPI):
+        if state.job_store is not None:
+            try:
+                n = state.job_store.mark_orphaned_jobs_interrupted()
+                if n > 0:
+                    _logger.info(
+                        "[lifespan] %d job(s) orphelin(s) marqué(s) "
+                        "interrupted au boot.", n,
+                    )
+            except Exception as exc:  # noqa: BLE001 — défense en profondeur
+                _logger.error(
+                    "[lifespan] mark_orphaned_jobs_interrupted ÉCHOUÉ "
+                    "— jobs zombies possibles : %s", exc,
+                )
+        yield
+
     app = FastAPI(
         title="Picarones",
         description=(
             "Plateforme de benchmark OCR/HTR pour documents patrimoniaux. "
-            "API du nouveau monde (Sprint A14-S35)."
+            "API du nouveau monde (Sprint A14-S35+)."
         ),
         version=state.version,
         docs_url="/api/docs",
         redoc_url="/api/redoc",
+        lifespan=_lifespan,
     )
 
     # On stocke l'état dans app.state.picarones pour permettre aux

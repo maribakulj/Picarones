@@ -1,19 +1,18 @@
-"""Router jobs — Sprint A14-S37.
+"""Router jobs — Sprints A14-S37 + S48.
 
-Endpoints de listing/lecture/cancellation des jobs de benchmark
-persistés via ``JobStore`` (S37, ``picarones.adapters.storage``).
+Endpoints de gestion des jobs de benchmark, adossés à
+``JobStore`` (S37) + ``JobRunner`` (S48).
 
 Endpoints
 ---------
 - ``GET    /api/jobs``            : liste des jobs (récents en tête).
 - ``GET    /api/jobs/{job_id}``   : détail + progression.
+- ``POST   /api/jobs``            : création + lancement asynchrone.
 - ``DELETE /api/jobs/{job_id}``   : annulation explicite.
 
-L'endpoint **POST /api/jobs** (création + lancement asynchrone) est
-volontairement reporté à un sprint dédié de l'intégration runtime
-— il nécessite un thread d'exécution branché sur ``RunOrchestrator``
-(au-delà du périmètre S37 qui livre la persistance + les endpoints
-de lecture).
+S37 (initial) livrait les 3 premiers (lecture + cancellation).
+S48 ajoute ``POST`` qui était identifié comme **manque critique**
+dans l'audit du rewrite (l'audit #2).
 
 Anti-sur-ingénierie
 -------------------
@@ -28,8 +27,13 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Body, HTTPException, Request, status
 from pydantic import BaseModel, Field
+
+from picarones.app.schemas.run_spec import (
+    RunSpecLoadError,
+    load_run_spec_from_yaml,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +86,19 @@ class JobCancelResponse(BaseModel):
     status: str
 
 
+class JobSubmitResponse(BaseModel):
+    """Réponse JSON pour ``POST /api/jobs`` (202 Accepted)."""
+
+    job_id: str
+    status: str = Field(
+        default="pending",
+        description=(
+            "Statut au moment de la soumission.  Le client poll "
+            "``GET /api/jobs/{job_id}`` pour suivre la progression."
+        ),
+    )
+
+
 # ──────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────
@@ -97,6 +114,19 @@ def _require_job_store(state) -> "object":
             ),
         )
     return state.job_store
+
+
+def _require_job_runner(state) -> "object":
+    if state.job_runner is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Job runner non configuré dans WebAppState — "
+                "l'exécution asynchrone des jobs n'est pas activée. "
+                "Voir picarones.app.services.JobRunner pour le câblage."
+            ),
+        )
+    return state.job_runner
 
 
 def _to_summary(rec) -> JobSummary:
@@ -133,6 +163,88 @@ def _to_detail(rec) -> JobDetailResponse:
 # ──────────────────────────────────────────────────────────────────────
 # Endpoints
 # ──────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "",
+    response_model=JobSubmitResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def submit_job(
+    request: Request,
+    run_spec_yaml: str = Body(
+        ...,
+        media_type="text/plain",
+        description=(
+            "Contenu YAML d'un ``RunSpec`` (cf. picarones.app.schemas."
+            "run_spec).  Le corps de la requête est le YAML brut."
+        ),
+    ),
+) -> JobSubmitResponse:
+    """Crée un job + lance son exécution en arrière-plan (S48).
+
+    Le corps de la requête est le YAML brut d'un ``RunSpec`` (mêmes
+    champs que ce que la CLI ``picarones-rewrite run`` accepte).
+
+    Comportement :
+
+    1. Le YAML est parsé et validé (``load_run_spec_from_yaml``).
+       Erreur de format → 400 avec message du loader.
+    2. Un ``JobRecord`` est créé en statut ``pending`` avec un
+       ``job_id`` UUID4.
+    3. Un thread daemon est lancé pour exécuter le ``RunOrchestrator``
+       avec le ``RunSpec``.
+    4. Réponse immédiate ``202 Accepted`` avec ``job_id`` — le
+       client poll ``GET /api/jobs/{job_id}`` pour suivre.
+
+    Concurrence
+    -----------
+    Un thread par job ; pas de queue/backpressure.  Pour 100+ jobs
+    simultanés, ajouter un ``ThreadPoolExecutor`` au niveau de
+    ``JobRunner`` (post-livraison).
+    """
+    state = request.app.state.picarones
+    runner = _require_job_runner(state)
+
+    if not run_spec_yaml or not run_spec_yaml.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Corps de la requête vide — YAML RunSpec attendu.",
+        )
+
+    try:
+        run_spec = load_run_spec_from_yaml(run_spec_yaml)
+    except RunSpecLoadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"RunSpec invalide : {exc}",
+        ) from exc
+
+    # Output dir : sous-dossier dédié au job dans le workspace.  Le
+    # JobRunner s'en sert pour construire un RunOrchestrator isolé.
+    import uuid
+    job_id_candidate = uuid.uuid4().hex
+    output_dir = (
+        state.workspace.root / "runs" / job_id_candidate
+    )
+
+    try:
+        job_id = runner.submit(
+            run_spec=run_spec,
+            output_dir=output_dir,
+            job_id=job_id_candidate,
+            payload={"corpus_name": run_spec.corpus_name or ""},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "[jobs] échec de submit pour run_spec : %s", exc, exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Échec de soumission du job : {type(exc).__name__}",
+        ) from exc
+
+    return JobSubmitResponse(job_id=job_id, status="pending")
 
 
 @router.get("", response_model=JobListResponse)

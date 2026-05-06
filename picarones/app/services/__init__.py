@@ -34,6 +34,7 @@ from picarones.app.services.corpus_service import (
     CorpusImportReport,
     CorpusService,
 )
+from picarones.app.services.job_runner import JobRunner
 from picarones.app.services.path_security import (
     PathValidationError,
     WorkspaceManager,
@@ -63,6 +64,7 @@ __all__ = [
     "CorpusImportReport",
     "CorpusService",
     "GroundTruthFactory",
+    "JobRunner",
     "OrchestrationResult",
     "PathValidationError",
     "PipelineInputsFactory",
