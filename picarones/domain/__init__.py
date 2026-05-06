@@ -57,6 +57,11 @@ from picarones.domain.evaluation_spec import (
     EvaluationView,
     MetricSpec,
 )
+from picarones.domain.pipeline_spec import (
+    INITIAL_STEP_ID,
+    PipelineSpec,
+    PipelineStep,
+)
 from picarones.domain.projection_spec import ProjectionSpec
 from picarones.domain.provenance import ProvenanceRecord
 from picarones.domain.run_manifest import RunManifest, utcnow
@@ -87,6 +92,10 @@ __all__ = [
     "EvaluationView",
     "EvaluationSpec",
     "ProjectionSpec",
+    # S6 + S40 — Pipeline spec (canonique en domain/ depuis S40)
+    "PipelineSpec",
+    "PipelineStep",
+    "INITIAL_STEP_ID",
     # S17 — Run manifest (pure domain ; RunResult vit dans app/)
     "RunManifest",
     "utcnow",
