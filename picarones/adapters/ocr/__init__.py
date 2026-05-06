@@ -19,6 +19,7 @@ dédiés, **natifs** au nouveau contrat (pas de shim sur le legacy
 
 from __future__ import annotations
 
+from picarones.adapters.ocr.azure_doc_intel import AzureDocIntelAdapter
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.ocr.google_vision import GoogleVisionAdapter
 from picarones.adapters.ocr.mistral_ocr import MistralOCRAdapter
@@ -29,6 +30,7 @@ from picarones.adapters.ocr.tesseract import TesseractAdapter
 __all__ = [
     "BaseOCRAdapter",
     "OCRAdapterError",
+    "AzureDocIntelAdapter",
     "GoogleVisionAdapter",
     "MistralOCRAdapter",
     "PeroOCRAdapter",
