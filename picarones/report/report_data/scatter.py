@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from picarones.report.report_data._helpers import safe_round
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 
 def build_gini_vs_cer(benchmark: "BenchmarkResult") -> list[dict]:

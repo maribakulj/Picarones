@@ -57,12 +57,12 @@ from picarones.core.corpus import (
 )
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
-from picarones.core.results import (
+from picarones.evaluation.benchmark_result import (
     BenchmarkResult,
     DocumentResult,
     EngineReport,
 )
-from picarones.core.metrics import MetricsResult, aggregate_metrics
+from picarones.evaluation.metric_result import MetricsResult, aggregate_metrics
 from picarones.domain.facts import (
     DetectorRegistry,
     Fact,
@@ -76,7 +76,7 @@ from picarones.core.pipeline import (
     PipelineStep,
     StepResult,
 )
-from picarones.core.metric_registry import (
+from picarones.evaluation.metric_registry import (
     MetricSpec,
     compute_at_junction,
     register_metric,

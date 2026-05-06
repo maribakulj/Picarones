@@ -29,7 +29,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 from picarones.report.report_data.documents import (
     annotate_documents_with_difficulty,

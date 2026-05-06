@@ -84,7 +84,7 @@ import logging
 import re
 from typing import Optional
 
-from picarones.core.metric_registry import register_metric
+from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.roman_numerals import (
     detect_roman_numerals,

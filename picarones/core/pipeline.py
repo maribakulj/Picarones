@@ -54,7 +54,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from picarones.core.corpus import Document, GTLevel
-from picarones.core.metric_registry import compute_at_junction
+from picarones.evaluation.metric_registry import compute_at_junction
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
 

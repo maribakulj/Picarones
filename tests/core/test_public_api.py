@@ -421,8 +421,7 @@ class TestCercle1IsLean:
     # appartient au Cercle 2 (``measurements/``) ou au Cercle 3
     # (``extras/``, ``report/``).
     EXPECTED_CERCLE1 = {
-        "corpus.py", "metric_hooks.py", "metric_registry.py",
-        "metrics.py", "modules.py", "pipeline.py", "results.py",
+        "corpus.py", "pipeline.py",
         # Phase 1 du retrait du legacy a déplacé `facts.py`,
         # `diff_utils.py` et `xml_utils.py` vers leurs canoniques
         # (`domain/facts.py`, `evaluation/_diff_utils.py`,
@@ -430,6 +429,13 @@ class TestCercle1IsLean:
         # restent comme shims re-export avec DeprecationWarning
         # (< 30 lignes), donc ne comptent plus comme "real_modules"
         # au sens de ce test.
+        # Phase 4-bis a fait pareil pour `modules.py` (canonique :
+        # `domain/module_protocol.py` + `domain/artifacts.py`).
+        # Phase 4-ter a fait pareil pour `metric_registry.py`,
+        # `metric_hooks.py` (canonique : `evaluation/metric_*.py`),
+        # `metrics.py` (canonique : `evaluation/metric_result.py`)
+        # et `results.py` (canonique :
+        # `evaluation/benchmark_result.py`).
     }
 
     def test_cercle1_files_lean(self):

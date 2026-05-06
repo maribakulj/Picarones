@@ -53,7 +53,7 @@ import logging
 from collections import Counter
 from typing import Optional
 
-from picarones.core.metric_hooks import (
+from picarones.evaluation.metric_hooks import (
     PROFILE_DIAGNOSTICS,
     PROFILE_FULL,
     PROFILE_PHILOLOGICAL,

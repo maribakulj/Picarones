@@ -57,7 +57,7 @@ warnings.warn(
 from picarones.core.corpus import Corpus, Document
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 logger = logging.getLogger(__name__)
 

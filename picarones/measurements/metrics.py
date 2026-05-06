@@ -27,7 +27,7 @@ import logging
 import unicodedata
 from typing import Optional
 
-from picarones.core.metrics import MetricsResult, aggregate_metrics
+from picarones.evaluation.metric_result import MetricsResult, aggregate_metrics
 
 logger = logging.getLogger(__name__)
 

@@ -37,7 +37,7 @@ from picarones.measurements.pricing import (
 from picarones.measurements.statistics import compute_pareto_front
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 
 def attach_engine_costs(

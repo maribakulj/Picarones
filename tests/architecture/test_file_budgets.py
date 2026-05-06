@@ -53,7 +53,11 @@ FILE_BUDGETS: dict[str, int] = {
     # --- Fichiers métier larges.
     "picarones/measurements/robustness.py": 850,          # actuel 731
     "picarones/report/pipeline_render.py": 815,           # actuel 707 (rétréci)
-    "picarones/core/results.py": 750,                     # actuel 636
+    # Phase 4-ter : ``core/results.py`` est désormais un shim
+    # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
+    # même budget pour la même raison historique (modèles
+    # BenchmarkResult/EngineReport/DocumentResult).
+    "picarones/evaluation/benchmark_result.py": 750,      # actuel 702
     "picarones/report/philological_render.py": 700,       # actuel 595 (rétréci)
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
@@ -112,7 +116,11 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     "picarones/cli/_workflows.py": 550,                   # actuel 469
     "picarones/extras/importers/huggingface.py": 550,     # actuel 464
-    "picarones/core/metric_hooks.py": 500,                # actuel 423
+    # Phase 4-ter : ``core/metric_hooks.py`` est désormais un shim
+    # (≤ 80 l).  Le contenu canonique vit dans ``evaluation/`` ;
+    # même budget pour la même raison historique (centralise les
+    # hooks document/corpus, croissance maîtrisée).
+    "picarones/evaluation/metric_hooks.py": 500,          # actuel 427
     "picarones/measurements/numerical_sequences.py": 500, # actuel 422
     "picarones/measurements/normalization.py": 500,       # actuel 420 (re-export S9)
     # Sprint A14-S9 — déplacé depuis measurements/normalization.py.

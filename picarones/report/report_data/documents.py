@@ -21,7 +21,7 @@ from picarones.measurements.difficulty import (
 from picarones.report.report_data._helpers import safe_round
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 
 def build_documents(

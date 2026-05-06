@@ -38,7 +38,7 @@ from picarones.measurements.taxonomy_intra_doc import (
 )
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 
 # ──────────────────────────────────────────────────────────────────

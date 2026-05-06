@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 
-from picarones.core.metric_registry import register_metric
+from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
 
 logger = logging.getLogger(__name__)

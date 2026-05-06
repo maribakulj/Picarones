@@ -421,6 +421,65 @@ en 2.0.
   de la fin de migration des callers qui parsent les types de GT
   par leur valeur string.
 
+#### Phase 4-ter — Relocalisation Cercle 1 → Cercle 2 (2026-05)
+
+Stratégie « relocaliser sans redessiner » : on déplace
+verbatim les modules legacy de ``core/`` (Cercle 1) vers
+``evaluation/`` (Cercle 2) où ils appartiennent sémantiquement,
+sans toucher à leur API publique.  Le pattern module-level
+décorateur (``@register_metric``, ``@register_document_metric``,
+``@register_corpus_aggregator``) est **conservé** — sa
+convergence avec l'instance-based ``evaluation.registry.MetricRegistry``
+(Sprint A14-S5) est laissée à un futur sprint dédié quand un
+caller institutionnel le demandera.
+
+**Migrations effectuées (A-D)** :
+
+| Source legacy | Destination canonique | Lignes |
+|---|---|---|
+| ``core/metric_registry.py`` | ``evaluation/metric_registry.py`` | 264 |
+| ``core/metric_hooks.py``    | ``evaluation/metric_hooks.py``    | 427 |
+| ``core/metrics.py``         | ``evaluation/metric_result.py``   | 145 |
+| ``core/results.py``         | ``evaluation/benchmark_result.py``| 702 |
+
+Total : **1538 lignes** déplacées du Cercle 1 vers le Cercle 2.
+Les chemins ``core/X.py`` deviennent des shims minimaux
+(< 30 lignes chacun) avec ``DeprecationWarning`` à l'import.
+
+**Adaptations transverses** :
+
+- ``evaluation/benchmark_result.py`` ne peut pas importer
+  ``picarones.__version__`` (cycle d'import via
+  ``measurements/``).  La résolution de version utilise
+  désormais ``importlib.metadata`` directement avec fallback
+  ``"1.0.0"``.
+- ``tests/architecture/test_file_budgets.py`` mis à jour
+  pour pointer vers les nouveaux chemins canoniques.
+- ``tests/core/test_public_api.py::TestCercle1IsLean.EXPECTED_CERCLE1``
+  ne contient plus que ``corpus.py`` et ``pipeline.py``
+  (les seuls modules ``core/`` réels qui restent).
+
+**Reporté à Phase 4-quater** :
+
+``core/corpus.py`` (511 l, ``Document``/``Corpus``/``GTLevel`` +
+payloads + ``load_corpus_from_directory``) reste en place.
+Raison : il y a déjà ``domain.corpus.CorpusSpec`` (Pydantic,
+immutable, structural) et ``domain.documents.DocumentRef``
+en parallèle.  La convergence des deux modèles
+(``Document``/``Corpus`` historiques riches en behavior vs
+``CorpusSpec``/``DocumentRef`` purement déclaratifs) est un
+choix de design (fondre, garder les deux, marquer l'un comme
+view-de-l'autre…) qui dépasse Phase 4-ter.  L'objectif Phase
+4-quater est de produire un RFC qui tranche cette question
+puis migre les 14 callers en une fois.
+
+**Acceptance Phase 4-ter (A-D)** : 5019 tests passent, lint
+vert, architecture vérifiée (anti-cycles, file budgets,
+EXPECTED_CERCLE1 mis à jour).  Les 24+ fichiers de tests qui
+importent encore via les chemins ``core/`` continuent à
+fonctionner via les shims — déprécation visible mais
+non-bloquante.
+
 ### Phase 5 — Reports HTML (`report/`)
 
 **Modules** :

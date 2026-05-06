@@ -28,7 +28,7 @@ from typing import Optional
 from tqdm import tqdm
 
 from picarones.core.corpus import Corpus
-from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
+from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
 from picarones.engines.base import BaseOCREngine
 from picarones.measurements.runner.document import (
     _make_error_doc_result,
@@ -140,7 +140,7 @@ def run_benchmark(
     # dans le main process (les sous-processus du pool feront leur
     # propre import dans ``_compute_document_result``).
     import picarones.measurements.builtin_hooks  # noqa: F401
-    from picarones.core.metric_hooks import (
+    from picarones.evaluation.metric_hooks import (
         run_corpus_aggregators, validate_profile,
     )
     validate_profile(profile)

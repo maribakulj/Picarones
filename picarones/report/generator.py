@@ -46,7 +46,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.core.results import BenchmarkResult
+from picarones.evaluation.benchmark_result import BenchmarkResult
 from picarones.measurements.statistics import build_critical_difference_svg
 from picarones.report.assets import (
     encode_images_b64_from_result as _encode_images_b64_from_result,
@@ -420,7 +420,7 @@ class ReportGenerator:
 
         # Reconstruction minimale d'un BenchmarkResult depuis le dict
         from picarones.measurements.metrics import MetricsResult
-        from picarones.core.results import DocumentResult, EngineReport
+        from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
 
         engine_reports = []
         for er_data in data.get("engine_reports", []):

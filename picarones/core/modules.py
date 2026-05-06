@@ -2,25 +2,7 @@
 
 Canonique : :mod:`picarones.domain.module_protocol` pour ``BaseModule``
 et ``ExecutionMode`` ; :mod:`picarones.domain.artifacts` pour
-``ArtifactType``.
-
-Migration ::
-
-    # Avant
-    from picarones.core.modules import ArtifactType, BaseModule
-
-    # Après
-    from picarones.domain import ArtifactType
-    from picarones.domain.module_protocol import BaseModule
-
-L'``ArtifactType`` canonique a 10 valeurs (vs 6 legacy).  Les noms
-legacy ``TEXT``/``ALTO``/``PAGE`` restent disponibles comme aliases
-de ``RAW_TEXT``/``ALTO_XML``/``PAGE_XML`` ; le hook ``_missing_``
-accepte aussi les valeurs string legacy (``"text"``, ``"alto"``,
-``"page"``).  Les dicts indexés par ``ArtifactType.value``
-(junction_metrics) sont enrichis automatiquement par
-``expand_legacy_keys`` au moment de leur production pour conserver
-les clés legacy en parallèle.
+``ArtifactType``.  Phase 4-bis du retrait du legacy.
 """
 
 from __future__ import annotations

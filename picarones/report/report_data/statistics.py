@@ -29,7 +29,7 @@ from picarones.measurements.statistics import (
 from picarones.report.report_data._helpers import safe_round
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 
 def _engine_cer_values(benchmark: "BenchmarkResult") -> dict[str, list[float]]:

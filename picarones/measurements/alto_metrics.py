@@ -54,7 +54,7 @@ from typing import Any
 
 from picarones.core.xml_utils import safe_parse_xml
 
-from picarones.core.metric_registry import register_metric
+from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
 
 logger = logging.getLogger(__name__)
