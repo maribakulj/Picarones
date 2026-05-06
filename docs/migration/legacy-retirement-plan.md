@@ -151,25 +151,60 @@ détectée — les algorithmes scipy/numpy sont déterministes par
 construction (seed=42 partout) ; le rendu SVG est strictement
 identique parce que c'est le même fichier.
 
-### Phase 3 — Narrative engine (`measurements/narrative/`)
+### Phase 3 — Narrative engine (`measurements/narrative/`) — ✅ terminée
 
-**Modules** : `arbiter.py`, `renderer.py`, `registry.py` + 18
-détecteurs en 6 familles (`ranking/`, `pareto/`, `stratum/`,
-`quality/`, `history/`, `ensemble/`) + 36 templates YAML FR/EN +
-`core/facts.py`.
+**Modules migrés** : 11 modules + 2 templates YAML.
 
-**Cible** : `picarones/reports_v2/narrative/` (le narratif est de
-la **présentation**, pas du domaine — il vit du côté rapport, pas
-de l'évaluation).
+| Legacy | Canonique |
+|--------|-----------|
+| `measurements/narrative/__init__.py` | `reports_v2/narrative/__init__.py` |
+| `measurements/narrative/arbiter.py` | `reports_v2/narrative/arbiter.py` |
+| `measurements/narrative/registry.py` | `reports_v2/narrative/registry.py` |
+| `measurements/narrative/renderer.py` | `reports_v2/narrative/renderer.py` |
+| `measurements/narrative/detectors/__init__.py` | `reports_v2/narrative/detectors/__init__.py` |
+| `measurements/narrative/detectors/_helpers.py` | `reports_v2/narrative/detectors/_helpers.py` |
+| `measurements/narrative/detectors/ensemble.py` | `reports_v2/narrative/detectors/ensemble.py` (1 détecteur) |
+| `measurements/narrative/detectors/history.py` | `reports_v2/narrative/detectors/history.py` (3 détecteurs) |
+| `measurements/narrative/detectors/pareto.py` | `reports_v2/narrative/detectors/pareto.py` (2 détecteurs) |
+| `measurements/narrative/detectors/quality.py` | `reports_v2/narrative/detectors/quality.py` (4 détecteurs) |
+| `measurements/narrative/detectors/ranking.py` | `reports_v2/narrative/detectors/ranking.py` (5 détecteurs) |
+| `measurements/narrative/detectors/stratum.py` | `reports_v2/narrative/detectors/stratum.py` (3 détecteurs) |
+| `measurements/narrative/templates/fr.yaml` | `reports_v2/narrative/templates/fr.yaml` |
+| `measurements/narrative/templates/en.yaml` | `reports_v2/narrative/templates/en.yaml` |
 
-**Effort** : 8-12 jours.  Le bloc le plus délicat — 18 détecteurs
-chacun avec garde-fous anti-hallucination, arbitre de cohérence
-inter-détecteurs, renderer Jinja par templates YAML.
+Total : **18 détecteurs en 6 familles + arbitre + renderer + 36
+templates YAML FR/EN** migrés.
 
-**Acceptance** : régression bit-for-bit sur la synthèse rendue
-pour chaque cas-test legacy `test_sprint{16,19,29,36,39,42,44,46,
-51,56,73,81,90,92}_*.py` (les sprints qui ont introduit chaque
-détecteur).
+**Cible architecturale** : `picarones/reports_v2/narrative/` (le
+narratif est de la **présentation**, pas du domaine — il vit du
+côté rapport, pas de l'évaluation).
+
+**Travaux** :
+
+- 14 fichiers (11 .py + 1 _helpers.py + 2 .yaml) copiés depuis le
+  legacy vers le canonique.
+- Tous les imports `picarones.core.facts` (11 occurrences) migrés
+  vers `picarones.domain.facts` (Phase 1 a déjà migré ce module).
+- Tous les imports auto-référencés `picarones.measurements.narrative`
+  réécrits en `picarones.reports_v2.narrative`.
+- Path des templates YAML auto-ajusté (relatif à `__file__`).
+- 12 shims `measurements/narrative/*.py` + `_helpers.py` shim
+  manuel (privé, pas d'`__all__`).
+- `_DEFAULT_REGISTRY` (singleton du registre des détecteurs)
+  ré-exporté explicitement par le shim `__init__.py` pour la
+  rétrocompat des tests S19.
+
+**Effort réel** : ~1 jour (vs estimation 8-12 j — script de
+génération de shims a fortement accéléré ; pas d'aléatoire ni
+d'I/O dans les détecteurs, donc régression triviale par
+construction).
+
+**Acceptance** : tous les tests narratifs passent — Sprints 16,
+19, 23, 29, 36, 44, 46, 73, 90, 92, baseline_comparison, chantier
+5, reproducibility_ops.  322 tests ciblés passed.  Test architectural
+anti-imports legacy : 3 passed (le rewrite reste autonome).
+Garde-fou anti-hallucination préservé (les détecteurs lisent
+toujours le dict JSON d'entrée, pas une source externe).
 
 ### Phase 4 — 35 mesures legacy (`measurements/*.py`)
 
@@ -401,7 +436,8 @@ mais le CER a glissé de 0,002 par doc »*.
 | 0 | ✅ Terminée |
 | 1 | ✅ Partielle (3/9 modules ; les 6 autres reportés en Phase 4) |
 | 2 | ✅ Terminée (8/8 modules statistics migrés) |
-| 3 | ⚪ À démarrer |
-| 4-11 | ⚪ À démarrer |
+| 3 | ✅ Terminée (11 modules narrative + 2 templates + 18 détecteurs migrés) |
+| 4 | ⚪ À démarrer |
+| 5-11 | ⚪ À démarrer |
 
-**Dernière mise à jour** : 2026-05 (Phase 2 livrée).
+**Dernière mise à jour** : 2026-05 (Phase 3 livrée).
