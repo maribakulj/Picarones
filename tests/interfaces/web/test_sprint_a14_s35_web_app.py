@@ -204,26 +204,25 @@ class TestVersionEndpoint:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Pas de routers métier en S35
+# Pas de routers jobs/UI en S35-S36
 # ──────────────────────────────────────────────────────────────────────
 
 
 class TestSkeletonScope:
-    def test_no_corpus_endpoint_yet(self, tmp_path: Path) -> None:
-        """S35 ne contient pas encore les endpoints métier (S36+)."""
+    def test_no_jobs_endpoint_yet(self, tmp_path: Path) -> None:
+        """Les endpoints jobs (queue + persistence SQLite) viendront
+        en S37."""
         state = _make_state(tmp_path)
         app = create_app(state)
         client = TestClient(app)
-        # Aucun endpoint corpus / benchmark / jobs n'est attendu en S35.
-        for path in ("/api/corpus", "/api/benchmark", "/api/jobs"):
+        for path in ("/api/jobs", "/api/jobs/123"):
             response = client.get(path)
             assert response.status_code == 404, (
-                f"Endpoint {path!r} ne devrait pas exister en S35 — "
-                "viendra en S36-S37."
+                f"Endpoint {path!r} ne devrait pas exister avant S37."
             )
 
     def test_no_static_mount_yet(self, tmp_path: Path) -> None:
-        """S35 ne sert pas encore de fichiers statiques (S38)."""
+        """S35-S36 ne servent pas encore de fichiers statiques (S38)."""
         state = _make_state(tmp_path)
         app = create_app(state)
         client = TestClient(app)

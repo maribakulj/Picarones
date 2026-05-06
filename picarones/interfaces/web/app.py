@@ -145,6 +145,20 @@ def create_app(state: WebAppState) -> FastAPI:
     app.state.picarones = state
 
     # ──────────────────────────────────────────────────────────────
+    # Routers métier (S36+)
+    # ──────────────────────────────────────────────────────────────
+    # Import paresseux pour éviter les cycles : `routers/__init__.py`
+    # importe les routers individuels, qui n'ont pas besoin de
+    # `WebAppState` au moment de leur définition (ils consomment via
+    # `request.app.state.picarones` à chaque appel).
+    from picarones.interfaces.web.routers import (
+        benchmark_router,
+        corpus_router,
+    )
+    app.include_router(corpus_router)
+    app.include_router(benchmark_router)
+
+    # ──────────────────────────────────────────────────────────────
     # Endpoints squelette (sondes santé/version)
     # ──────────────────────────────────────────────────────────────
 
