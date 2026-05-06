@@ -1,28 +1,41 @@
-# État du rewrite — Sprint A14-S46 (clôture phase rewrite ciblé)
+# État du rewrite — Sprints A14-S46 puis S47-S57 (audit + remédiation)
 
 Ce document synthétise l'état du rewrite du Picarones après les 20 sprints
 S27-S46 réalisés sur la directive *« rewrite tout, le plus solide, sans
-dette technique »*.
+dette technique »*, puis les 11 sprints S47-S57 d'audit/remédiation des
+30 dettes identifiées en revue de fin de rewrite (audit 2026-05).
 
-## Phase 7 (S46) : retraite progressive du legacy
+## Statut réel — partial rewrite, pas full rewrite (S57, audit #21 + #24)
 
-Le rewrite est **fonctionnellement complet** côté contrats et architecture
-(circles propres, services applicatifs, adapters natifs OCR/LLM/VLM,
-pipeline planner, artifact store, web UI native). Le legacy
-(`picarones/{cli,web,engines,llm,pipelines,report}/`) reste néanmoins en
-place pour deux raisons :
+Le rewrite est **fonctionnellement complet sur le périmètre des contrats
+et de l'architecture cible** (circles propres `domain → formats →
+evaluation → pipeline → adapters → app → reports_v2 → interfaces`,
+services applicatifs, adapters natifs OCR/LLM/VLM, pipeline planner,
+artifact store, web UI native).  La formulation initiale *« rewrite
+fonctionnellement complet »* était trop forte sur deux dimensions
+relevées par l'audit :
 
-1. **Parité fonctionnelle non encore atteinte** : le legacy `report/`
-   contient ~22 vues HTML thématiques (Pareto, narrative, glossary,
-   case-studies, etc.) que `reports_v2/html/` ne reproduit pas
-   intégralement. Les vues canoniques (TextView, AltoView, SearchView)
-   sont en place ; les vues additionnelles arriveront post-livraison
-   selon les besoins BnF.
+1. **Parité fonctionnelle non encore atteinte côté rendu rapport** : le
+   legacy `picarones/report/` contient ~22 vues HTML thématiques
+   (Pareto, narrative, glossary, case-studies, etc.) que `reports_v2/`
+   ne reproduit pas intégralement.  Les vues canoniques (TextView,
+   AltoView, SearchView) sont en place ; les vues additionnelles seront
+   portées une à une selon les besoins BnF, pas en bloc.
 
-2. **Tests legacy** : ~200+ tests legacy valident le comportement
-   historique (`tests/web/`, `tests/measurements/`, `tests/cli/_workflows/`,
-   `tests/integration/test_chantier*.py`, etc.). Les supprimer
-   prématurément perdrait la couverture.
+2. **Coexistence legacy + new world** : `picarones/{cli,web,engines,
+   llm,pipelines,report}/` reste en place et exécutable.  Un caller
+   externe peut encore importer depuis n'importe lequel.  Cette
+   coexistence est volontaire (cf. *Critères pour la suppression future
+   du legacy* plus bas) mais doit être tenue pour ce qu'elle est : un
+   **rewrite parallèle**, pas un *full rewrite*.  Les usages production
+   sont à migrer caller par caller.
+
+3. **Tests legacy non migrés** : ~200+ tests legacy valident le
+   comportement historique (`tests/web/`, `tests/measurements/`,
+   `tests/cli/_workflows/`, `tests/integration/test_chantier*.py`,
+   etc.).  Ils protègent le legacy contre les régressions le temps
+   que la migration des callers s'achève ; les supprimer prématurément
+   perdrait la couverture.
 
 ## Inventaire des modules legacy
 
@@ -87,17 +100,71 @@ Pour chaque module legacy à supprimer, il faut :
 4. **Autorisation utilisateur explicite** : un commit qui supprime
    ~4000 lignes de code en production exige une revue formelle.
 
-## Statistiques globales du rewrite (S1-S45)
+## Statistiques globales du rewrite (S1-S57)
 
-- **Tests** : ~4910 tests, 11 skipped, 0 failed (vs 4504 au début du
-  rewrite, S26).
-- **+406 nouveaux tests** sur S27-S45 (rewrite ciblé).
+- **Tests** : ~4910 tests, 11 skipped, 0 failed au S46 (vs 4504 au
+  début du rewrite, S26).  Sprint S57 (audit #23) : la formulation
+  *« +406 nouveaux tests »* concernait spécifiquement les **nouveaux
+  tests écrits pour le new world** sur S27-S45 (`tests/{adapters,
+  pipeline,evaluation,reports_v2,app,interfaces}/`) ; elle ne dit
+  rien d'une supposée hausse de la couverture totale du repo.  Les
+  tests legacy (`tests/{web,cli,engines,measurements,...}/`) ont été
+  conservés intacts — la couverture nette du rewrite est donc
+  **additive**, pas substitutive.
 - **Lint** : `ruff check picarones/ tests/` clean.
-- **File budgets** : tous les fichiers ≥ 400 lignes surveillés et
-  budgétés.
+- **File budgets** (audit #25) : la règle interne *« tout fichier
+  ≥ 400 lignes est budgété »* est un garde-fou pragmatique, pas une
+  doctrine ; elle force à expliciter la justification lorsqu'un
+  module dépasse ce seuil (ex. `interfaces/web/app.py` ~480 lignes
+  — composé de routes/handlers/middlewares groupés par cohérence
+  fonctionnelle).  Aucun fichier ne dépasse 800 lignes après S46.
 - **Layer dependencies** : domain → formats → evaluation → pipeline
   → adapters → app → reports_v2 → interfaces, vérifié par test
   d'architecture.
+
+## Sprints d'audit/remédiation S47-S57 (audit institutional readiness)
+
+L'audit *institutional readiness 2026-05* a identifié 30 dettes
+techniques résiduelles après le rewrite ciblé.  Elles ont été
+adressées en 6 vagues (S47-S57) :
+
+| Vague | Sprint | Issues | Thème |
+|-------|--------|--------|-------|
+| pré-audit | S47-S48 | #1, #2 | ArtifactStore wired, JobRunner threading |
+| A | S49-S51 | #3-#7 | Web security middlewares, confidences sidecar, output paths |
+| B | S52-S53 | #8-#11 | AdapterStepError hierarchy, Mistral routing strict, normalize_llm_content path |
+| C | S54 | #6 | MRO guard `__init_subclass__` BaseVLMAdapter |
+| D | S55 | #14 | Live integration tests `tests/integration/live/` |
+| E | S56 | #12, #13, #17, #18, #19, #20, #22, #27, #28, #29 | JobStore schema_version, busy_timeout, model_dump(mode="json"), `_infer_pipeline_name`, etc. |
+| F | S57 | #15, #16, #21, #23, #24, #25, #26, #30 | i18n prompts FR/EN/LA, DeprecationWarning legacy spec.py, doc rectifications |
+
+**Tous les 30 issues sont adressés au S57**.  Les détails sont dans
+`docs/audits/remediation-plan-2026-05.md`.
+
+### Notes spécifiques (S57)
+
+- **#15 Lazy imports SDK tiers** : les imports `mistralai`, `anthropic`,
+  `openai`, `ollama` sont **intentionnellement à l'intérieur des
+  méthodes** (`MistralOCRAdapter._call_chat_vision_api`, etc.) plutôt
+  qu'au top du module.  Raison : ces SDK sont des dépendances
+  optionnelles (extras `[mistral]`, `[anthropic]`…) — un import top-level
+  ferait planter `import picarones` sur un environnement minimal.
+  Le coût (re-exécution de l'import à chaque appel) est négligé par
+  le cache d'imports Python.
+- **#16 i18n prompts FR/EN/LA** : `BaseLLMAdapter.DEFAULT_CORRECTION_PROMPTS`
+  et `BaseVLMAdapter.DEFAULT_TRANSCRIPTION_PROMPTS` sont des
+  `dict[str, str]` indexés par code langue.  Sélection : override
+  explicite via `config["correction_prompt"]`/`["transcription_prompt"]`
+  > `config["lang"]` (fr/en/la) > fallback FR.
+- **#26 DeprecationWarning legacy spec.py** : import depuis
+  `picarones.pipeline.spec` émet désormais un `DeprecationWarning`
+  pointant vers `picarones.domain`.  Suppression effective prévue S60.
+- **#30 Commit hygiene CER fix** : la modification du seuil de
+  régression CER en CI (de 0.10 à 0.20) est documentée dans le
+  CHANGELOG sous *« CER regression check threshold rationale »*
+  avec justification métier (corpus patrimoniaux ont des CER bruts
+  qui peuvent légitimement varier de 5-15 points selon le tirage de
+  validation).
 
 ## Prochaines étapes possibles (post-rewrite)
 

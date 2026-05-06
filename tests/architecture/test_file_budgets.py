@@ -90,6 +90,10 @@ FILE_BUDGETS: dict[str, int] = {
     # hash multi-paramètres pour adresser la critique d'audit n° 14
     # « hash multi-paramètres + reprise par hash ».
     "picarones/adapters/storage/artifact_store.py": 580,  # actuel 504
+    # Sprint A14-S37 + S52 + S56 — JobStore SQLite : POST/GET/DELETE,
+    # JobStoreError, schema_version table (S56) + busy_timeout 30s +
+    # WAL mode pour les jobs concurrents.
+    "picarones/adapters/storage/job_store.py": 500,       # actuel 421
     # Sprint A14-S41 — artifacts_index.jsonl séparé.
     "picarones/app/services/benchmark_service.py": 470,   # actuel 400
     # Sprint A14-S44 — BaseLLMAdapter implémente le contrat StepExecutor

@@ -36,7 +36,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from picarones.domain.artifacts import ArtifactType
-from picarones.pipeline.spec import INITIAL_STEP_ID, PipelineSpec, PipelineStep
+from picarones.domain.pipeline_spec import INITIAL_STEP_ID, PipelineSpec, PipelineStep
 
 
 class ValidationError(BaseModel):

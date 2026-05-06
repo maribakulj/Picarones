@@ -34,7 +34,7 @@ from picarones.adapters.storage import (
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.documents import DocumentRef
 from picarones.pipeline.executor import PipelineExecutor
-from picarones.pipeline.spec import PipelineSpec, PipelineStep
+from picarones.domain.pipeline_spec import PipelineSpec, PipelineStep
 from picarones.pipeline.types import RunContext
 
 

@@ -39,7 +39,11 @@ def test_domain_top_level_reexports() -> None:
 
 
 def test_legacy_pipeline_path_aliased() -> None:
-    """``picarones.pipeline.spec`` reste un alias de chemin."""
+    """``picarones.pipeline.spec`` reste un alias de chemin.
+
+    Sprint S57 (audit #26) : émet désormais un ``DeprecationWarning``
+    à l'import — vérifié dans ``test_legacy_pipeline_path_emits_warning``.
+    """
     from picarones.pipeline.spec import (
         INITIAL_STEP_ID,
         PipelineSpec,
@@ -48,6 +52,24 @@ def test_legacy_pipeline_path_aliased() -> None:
     assert PipelineSpec is not None
     assert PipelineStep is not None
     assert INITIAL_STEP_ID == "__initial__"
+
+
+def test_legacy_pipeline_path_emits_warning() -> None:
+    """Sprint S57 (audit #26) : l'import via ``picarones.pipeline.spec``
+    émet un ``DeprecationWarning``.
+    """
+    import importlib
+    import sys
+    import warnings
+
+    # Force le re-import pour déclencher le warning module-level.
+    sys.modules.pop("picarones.pipeline.spec", None)
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        importlib.import_module("picarones.pipeline.spec")
+    deprecation = [w for w in captured if issubclass(w.category, DeprecationWarning)]
+    assert deprecation, "DeprecationWarning attendu sur l'import legacy."
+    assert "picarones.domain" in str(deprecation[0].message)
 
 
 def test_all_paths_resolve_to_same_classes() -> None:

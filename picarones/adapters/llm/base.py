@@ -242,14 +242,36 @@ class BaseLLMAdapter(ABC):
     #: surcharger en ``"cpu"``.
     execution_mode: str = "io"
 
-    #: Prompt de post-correction par défaut.  Surchargeable via
-    #: ``config["correction_prompt"]`` au constructeur.
-    DEFAULT_CORRECTION_PROMPT: str = (
-        "Corrige les erreurs OCR dans le texte suivant en conservant "
-        "fidèlement la langue, l'orthographe historique et la "
-        "ponctuation. Retourne uniquement le texte corrigé, sans "
-        "commentaire :\n\n{text}"
-    )
+    #: Prompts de post-correction par défaut, indexés par code langue
+    #: ISO-639-1.  Sprint S57 (audit #16) : avant ce sprint, seul le
+    #: prompt FR existait — un corpus EN/LA était sous-optimal.
+    #: Le prompt est sélectionné selon ``config["lang"]``,
+    #: défaut FR.
+    DEFAULT_CORRECTION_PROMPTS: dict[str, str] = {
+        "fr": (
+            "Corrige les erreurs OCR dans le texte suivant en "
+            "conservant fidèlement la langue, l'orthographe "
+            "historique et la ponctuation. Retourne uniquement le "
+            "texte corrigé, sans commentaire :\n\n{text}"
+        ),
+        "en": (
+            "Fix OCR errors in the following text while preserving "
+            "the original language, historical spelling, and "
+            "punctuation. Return only the corrected text, with no "
+            "commentary:\n\n{text}"
+        ),
+        "la": (
+            "Corrige errores OCR in textu sequenti, fideliter "
+            "servans linguam, orthographiam historicam et "
+            "interpunctionem. Redde solum textum correctum, sine "
+            "ulla glossa:\n\n{text}"
+        ),
+    }
+
+    #: Alias rétrocompat — Sprint S44 utilisait
+    #: ``DEFAULT_CORRECTION_PROMPT`` (FR uniquement).  Toujours exposé
+    #: pour ne pas casser les tests S44 ; pointe vers le prompt FR.
+    DEFAULT_CORRECTION_PROMPT: str = DEFAULT_CORRECTION_PROMPTS["fr"]
 
     def __init__(
         self,
@@ -387,9 +409,17 @@ class BaseLLMAdapter(ABC):
                     image_path.read_bytes(),
                 ).decode("ascii")
 
-        prompt_template = self.config.get(
-            "correction_prompt", self.DEFAULT_CORRECTION_PROMPT,
-        )
+        # Sprint S57 (audit #16) : sélection du prompt par langue.
+        # Priorité : config["correction_prompt"] (override explicite)
+        # > prompt par langue selon config["lang"] > FR par défaut.
+        custom_prompt = self.config.get("correction_prompt")
+        if custom_prompt is not None:
+            prompt_template = custom_prompt
+        else:
+            lang = (self.config.get("lang") or "fr").lower()
+            prompt_template = self.DEFAULT_CORRECTION_PROMPTS.get(
+                lang, self.DEFAULT_CORRECTION_PROMPTS["fr"],
+            )
         prompt = prompt_template.format(text=original_text)
 
         result = self.complete(prompt, image_b64=image_b64)

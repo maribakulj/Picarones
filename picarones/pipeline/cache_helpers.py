@@ -64,7 +64,7 @@ from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.pipeline.cache_protocol import ArtifactCachePort
 
 if TYPE_CHECKING:
-    from picarones.pipeline.spec import PipelineStep
+    from picarones.domain.pipeline_spec import PipelineStep
     from picarones.pipeline.types import RunContext
 
 logger = logging.getLogger(__name__)

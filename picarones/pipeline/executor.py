@@ -81,7 +81,7 @@ from picarones.pipeline.planner import (
     ResolvedStep,
 )
 from picarones.pipeline.protocols import StepExecutor
-from picarones.pipeline.spec import INITIAL_STEP_ID, PipelineSpec
+from picarones.domain.pipeline_spec import INITIAL_STEP_ID, PipelineSpec
 from picarones.pipeline.types import PipelineResult, RunContext, StepResult
 
 logger = logging.getLogger(__name__)

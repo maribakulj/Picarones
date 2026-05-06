@@ -199,7 +199,7 @@ class PipelineSpecYaml(BaseModel):
     def _validate_inputs_from(self) -> "PipelineSpecYaml":
         """Vérifie que chaque ``inputs_from[type] = ref`` désigne soit
         ``__initial__``, soit un step antérieur qui produit le type."""
-        from picarones.pipeline.spec import INITIAL_STEP_ID
+        from picarones.domain.pipeline_spec import INITIAL_STEP_ID
 
         # Set des steps déjà vus pour vérifier l'antériorité.
         seen_step_ids: set[str] = set()

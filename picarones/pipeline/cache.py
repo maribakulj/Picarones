@@ -31,7 +31,7 @@ import json
 from typing import Iterable
 
 from picarones.domain.artifacts import Artifact, ArtifactType
-from picarones.pipeline.spec import PipelineStep
+from picarones.domain.pipeline_spec import PipelineStep
 
 
 class ArtifactCache:

@@ -72,7 +72,7 @@ from picarones.pipeline.runner import (
     DocumentOutcome,
     InitialInputsFactory,
 )
-from picarones.pipeline.spec import INITIAL_STEP_ID, PipelineSpec, PipelineStep
+from picarones.domain.pipeline_spec import INITIAL_STEP_ID, PipelineSpec, PipelineStep
 from picarones.pipeline.types import PipelineResult, RunContext, StepResult
 from picarones.pipeline.validation import ValidationError, validate_spec
 from picarones.pipeline.yaml_io import dump_spec_to_yaml, load_spec_from_yaml

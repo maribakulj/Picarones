@@ -33,12 +33,15 @@ def _prov() -> ProvenanceRecord:
 
 
 class TestArtifactType:
-    def test_nine_canonical_values(self) -> None:
-        """Sprint A14-S4 — 9 valeurs canoniques."""
+    def test_canonical_values(self) -> None:
+        """Sprint A14-S4 — valeurs canoniques (9 jusqu'au S49 ;
+        +``confidences`` ajouté au S50 pour le sidecar JSON OCR).
+        """
         expected = {
             "image", "raw_text", "corrected_text",
             "alto_xml", "page_xml", "canonical_document",
             "entities", "reading_order", "alignment",
+            "confidences",
         }
         assert {t.value for t in ArtifactType} == expected
 

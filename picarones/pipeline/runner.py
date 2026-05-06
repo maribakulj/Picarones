@@ -58,7 +58,7 @@ from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.documents import DocumentRef
 from picarones.domain.errors import PicaronesError
 from picarones.pipeline.executor import PipelineExecutor
-from picarones.pipeline.spec import PipelineSpec
+from picarones.domain.pipeline_spec import PipelineSpec
 from picarones.pipeline.types import PipelineResult, RunContext
 
 logger = logging.getLogger(__name__)

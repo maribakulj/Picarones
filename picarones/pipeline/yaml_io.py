@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import yaml
 
-from picarones.pipeline.spec import PipelineSpec
+from picarones.domain.pipeline_spec import PipelineSpec
 
 
 def dump_spec_to_yaml(spec: PipelineSpec) -> str:

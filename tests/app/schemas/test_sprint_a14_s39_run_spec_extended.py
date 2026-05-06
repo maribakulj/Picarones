@@ -23,7 +23,7 @@ from picarones.app.schemas.run_spec import (
     load_run_spec_from_yaml,
 )
 from picarones.domain.artifacts import ArtifactType
-from picarones.pipeline.spec import INITIAL_STEP_ID
+from picarones.domain.pipeline_spec import INITIAL_STEP_ID
 
 
 # ──────────────────────────────────────────────────────────────────────

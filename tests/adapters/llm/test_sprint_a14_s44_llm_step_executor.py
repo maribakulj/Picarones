@@ -304,7 +304,7 @@ class TestPipelineIntegration:
     def test_used_as_pipeline_step(self, tmp_path: Path) -> None:
         """Un adapter LLM se branche directement comme step de pipeline."""
         from picarones.pipeline.executor import PipelineExecutor
-        from picarones.pipeline.spec import PipelineSpec, PipelineStep
+        from picarones.domain.pipeline_spec import PipelineSpec, PipelineStep
         from picarones.domain.documents import DocumentRef
 
         text_path = tmp_path / "doc01.txt"

@@ -51,7 +51,7 @@ from dataclasses import dataclass, field
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.errors import PicaronesError
 from picarones.evaluation.registry import MetricRegistry
-from picarones.pipeline.spec import (
+from picarones.domain.pipeline_spec import (
     INITIAL_STEP_ID,
     PipelineSpec,
     PipelineStep,

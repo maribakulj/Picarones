@@ -53,7 +53,7 @@ from picarones.app.results import RunDocumentResult, RunResult
 from picarones.evaluation.views.base import ViewResult
 from picarones.evaluation.views.executor import DefaultEvaluationViewExecutor
 from picarones.pipeline.runner import CorpusRunner
-from picarones.pipeline.spec import PipelineSpec
+from picarones.domain.pipeline_spec import PipelineSpec
 from picarones.pipeline.types import PipelineResult, RunContext
 
 logger = logging.getLogger(__name__)

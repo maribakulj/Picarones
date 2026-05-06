@@ -46,7 +46,7 @@ from picarones.pipeline.planner import (
     PlanningError,
     StepInputBinding,
 )
-from picarones.pipeline.spec import (
+from picarones.domain.pipeline_spec import (
     INITIAL_STEP_ID,
     PipelineSpec,
     PipelineStep,

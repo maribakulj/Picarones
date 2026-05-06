@@ -125,6 +125,30 @@ class BaseVLMAdapter(BaseLLMAdapter):
     def output_types(self) -> "frozenset":
         return frozenset({ArtifactType.RAW_TEXT})
 
+    #: Prompts de transcription VLM par défaut, indexés par code
+    #: langue (Sprint S57 / audit #16).
+    DEFAULT_TRANSCRIPTION_PROMPTS: dict[str, str] = {
+        "fr": (
+            "Transcris fidèlement le texte visible sur cette image "
+            "de document historique. Conserve l'orthographe "
+            "historique, les abréviations, et la ponctuation. "
+            "Retourne uniquement le texte transcrit, sans commentaire."
+        ),
+        "en": (
+            "Faithfully transcribe the text visible in this image of "
+            "a historical document. Preserve the historical "
+            "spelling, abbreviations, and punctuation. Return only "
+            "the transcribed text, with no commentary."
+        ),
+        "la": (
+            "Fideliter transcribe textum in hac imagine documenti "
+            "historici visibilem. Serva orthographiam historicam, "
+            "abbreviationes, et interpunctionem. Redde solum textum "
+            "transcriptum, sine ulla glossa."
+        ),
+    }
+
+    #: Alias rétrocompat (Sprint S45 utilisait cette constante).
     DEFAULT_TRANSCRIPTION_PROMPT: str = (
         "Transcris fidèlement le texte visible sur cette image de "
         "document historique. Conserve l'orthographe historique, les "
@@ -165,9 +189,16 @@ class BaseVLMAdapter(BaseLLMAdapter):
             image_path.read_bytes(),
         ).decode("ascii")
 
-        prompt = self.config.get(
-            "transcription_prompt", self.DEFAULT_TRANSCRIPTION_PROMPT,
-        )
+        # Sprint S57 (audit #16) : sélection du prompt par langue.
+        # Override explicite > prompt par langue > FR.
+        custom = self.config.get("transcription_prompt")
+        if custom is not None:
+            prompt = custom
+        else:
+            lang = (self.config.get("lang") or "fr").lower()
+            prompt = self.DEFAULT_TRANSCRIPTION_PROMPTS.get(
+                lang, self.DEFAULT_TRANSCRIPTION_PROMPTS["fr"],
+            )
 
         result = self.complete(prompt, image_b64=image_b64)
         if not result.success:
