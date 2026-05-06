@@ -92,22 +92,55 @@ jobs:
       # ── Tests ───────────────────────────────────────────────────
       # Sprint A1 : --cov-fail-under=85 (baseline mesuré 87 %, marge 2 pts).
       # pytest-timeout est configuré dans pyproject.toml [tool.pytest.ini_options].
-      # ``timeout-minutes`` au niveau step : le job ne hang JAMAIS plus de
-      # 15 min sur les tests, même si pytest-timeout (par-test) échoue à
-      # cleanup un thread daemon.
+      #
+      # Garde-fous anti-hang :
+      #
+      # 1. ``timeout-minutes: 12`` au niveau step : cap dur GitHub si
+      #    tout le reste échoue.
+      # 2. ``timeout`` GNU autour de pytest : SIGTERM à 9 minutes,
+      #    SIGKILL 30s après si Python n'a pas obéi.  Couvre
+      #    spécifiquement le cas d'un hang de SHUTDOWN de
+      #    l'interpréteur Python 3.12+ (threads non-daemon, connexions
+      #    sqlite non fermées, ResourceWarnings — observé sur ubuntu
+      #    3.12 où pytest finit en 3:21 et l'interpréteur reste 12 min
+      #    avant de rendre la main).
+      # 3. ``-X faulthandler`` : si le hang revient, on aura les stack
+      #    traces de tous les threads dans le log avant le SIGKILL.
+      # 4. ``PYTHONFAULTHANDLER=1`` redondance ceinture-bretelles.
+      #
+      # Le code de retour 124 (SIGTERM par GNU timeout) ou 137 (SIGKILL)
+      # est traité comme un échec normal — on perd l'info pytest mais
+      # on préserve la latence de la CI.
       - name: Run tests
         # Sur Python 3.13, on continue malgré une erreur pour ne pas bloquer
         # le merge pendant la fenêtre informationnelle de 6 mois (m-8).
         continue-on-error: ${{ matrix.python-version == '3.13' }}
-        timeout-minutes: 15
+        timeout-minutes: 12
         shell: bash
         run: |
-          pytest tests/ -q --tb=short --no-header \
-            --cov=picarones --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under=85
+          # ``timeout`` n'est pas standard sur macOS (BSD vs GNU) — on
+          # détecte et on adapte.  Sur Windows, le shell bash de
+          # Git-Bash n'a pas timeout : on retombe sur python direct.
+          if command -v timeout >/dev/null 2>&1; then
+            timeout --signal=SIGTERM --kill-after=30 540 \
+              python -X faulthandler -m pytest tests/ -q --tb=short --no-header \
+                --cov=picarones --cov-report=xml --cov-report=term-missing \
+                --cov-fail-under=85
+          elif command -v gtimeout >/dev/null 2>&1; then
+            # macOS Homebrew coreutils.
+            gtimeout --signal=SIGTERM --kill-after=30 540 \
+              python -X faulthandler -m pytest tests/ -q --tb=short --no-header \
+                --cov=picarones --cov-report=xml --cov-report=term-missing \
+                --cov-fail-under=85
+          else
+            python -X faulthandler -m pytest tests/ -q --tb=short --no-header \
+              --cov=picarones --cov-report=xml --cov-report=term-missing \
+              --cov-fail-under=85
+          fi
         env:
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: "1"
+          PYTHONFAULTHANDLER: "1"
 
       # ── Couverture ──────────────────────────────────────────────
       # Conditions :

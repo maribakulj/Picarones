@@ -47,3 +47,51 @@ os.environ.pop("PICARONES_PUBLIC_MODE", None)
 
 # Rate limit désactivé en dev (déjà le défaut, explicité ici).
 os.environ.setdefault("PICARONES_RATE_LIMIT_PER_HOUR", "0")
+
+
+def pytest_sessionfinish(session, exitstatus) -> None:  # noqa: ARG001
+    """Diagnostic du shutdown de l'interpréteur.
+
+    Sur Python 3.12 ubuntu-latest, l'interpréteur restait jusqu'à 12
+    minutes en hang après ``=== passed ===`` à cause de threads
+    non-daemon ou de connexions sqlite non fermées que les tests
+    avaient laissés.
+
+    Ce hook :
+
+    1. Liste les threads vivants à la fin de la session — si la
+       liste contient autre chose que ``MainThread``, le développeur
+       voit immédiatement quelle ressource fuit.
+    2. Force le flush stdout/stderr pour que le diagnostic apparaisse
+       même si l'interpréteur hang ensuite.
+    3. Programme un ``faulthandler.dump_traceback_later(60)`` qui
+       dumpera les stack traces de TOUS les threads après 60s
+       d'inactivité — ce qu'on a besoin pour identifier la fuite si
+       le hang persiste.
+    """
+    import faulthandler
+    import sys
+    import threading
+
+    alive = [
+        t for t in threading.enumerate()
+        if t is not threading.main_thread() and t.is_alive()
+    ]
+    if alive:
+        sys.stderr.write(
+            "\n[conftest] threads encore vivants au sessionfinish "
+            f"({len(alive)}) :\n",
+        )
+        for t in alive:
+            sys.stderr.write(
+                f"  - name={t.name!r} daemon={t.daemon} "
+                f"alive={t.is_alive()}\n",
+            )
+        sys.stderr.flush()
+
+    # Si le shutdown hang plus de 60s, on aura les stack traces.
+    faulthandler.dump_traceback_later(
+        timeout=60,
+        repeat=False,
+        file=sys.stderr,
+    )

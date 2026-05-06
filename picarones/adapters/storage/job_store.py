@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import json
 import logging
+import contextlib
 import sqlite3
 import time
 from collections.abc import Callable
@@ -248,23 +249,37 @@ class JobStore:
     def db_path(self) -> Path:
         return self._path
 
-    def _connect(self) -> sqlite3.Connection:
-        """Ouvre une nouvelle connexion.
+    @contextlib.contextmanager
+    def _connect(self):
+        """Ouvre puis ferme une connexion SQLite.
 
         ``timeout=30s`` côté driver Python + ``PRAGMA busy_timeout``
         côté SQLite absorbent les contentions courtes.  Le mode
         autocommit combiné au journal WAL garantit que les lectures
         n'attendent pas les écritures (cf. https://sqlite.org/wal.html).
+
+        Pourquoi un contextmanager dédié plutôt que ``with
+        sqlite3.connect(...)`` directement : le ``__exit__`` de
+        ``sqlite3.Connection`` fait UN COMMIT, pas un ``close()``.
+        Sur Python 3.12+, les connexions non fermées s'accumulent et
+        leur libération via GC au shutdown de l'interpréteur peut
+        bloquer le process plusieurs minutes (observé sur ubuntu
+        3.12 — pytest finit en 3:21, l'interpréteur reste 12 min en
+        hang avant SIGKILL du runner CI).  ``yield + close()`` dans
+        ``finally`` garantit la libération immédiate.
         """
         conn = sqlite3.connect(
             str(self._path),
             isolation_level=None,  # autocommit pour simplicité
             timeout=30.0,
         )
-        # busy_timeout (ms) — backup au timeout Python.
-        conn.execute("PRAGMA busy_timeout = 30000;")
-        conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            # busy_timeout (ms) — backup au timeout Python.
+            conn.execute("PRAGMA busy_timeout = 30000;")
+            conn.row_factory = sqlite3.Row
+            yield conn
+        finally:
+            conn.close()
 
     # ──────────────────────────────────────────────────────────────
     # Création / lecture
