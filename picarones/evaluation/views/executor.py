@@ -1,36 +1,47 @@
-"""``DefaultEvaluationViewExecutor`` — Sprint A14-S13.
+"""``DefaultEvaluationViewExecutor`` — Sprint A14-S13, refactoré au S27.
 
 Implémentation concrète du protocole ``EvaluationViewExecutor`` (S5).
-Orchestration d'une vue d'évaluation sur une paire (candidat, GT) :
+Orchestre une vue d'évaluation sur une paire (candidat, GT) en
+**déléguant** la projection et l'évaluation à deux moteurs spécialisés
+introduits au S27 :
 
+- ``ProjectionEngine`` (cf. ``picarones/evaluation/projection_engine.py``)
+  transforme l'artefact candidat selon la ``ProjectionSpec``.
+- ``EvaluationEngine`` (cf. ``picarones/evaluation/evaluation_engine.py``)
+  calcule les métriques sur les payloads.
+
+Séquence d'orchestration
+------------------------
 1. Vérifie que ``candidate.type`` est dans ``view.candidate_types``.
-2. Si ``view.projection`` est défini, récupère le projecteur depuis
-   ``ProjectorRegistry`` et applique la projection.  Capture le
-   ``ProjectionReport``.
+2. ``ProjectionEngine.project(candidate, view.projection_for(candidate.type))``
+   → retourne un ``ProjectionResult`` qui peut contenir un payload
+   pré-calculé.
 3. Charge les payloads (texte, ALTO parsé, etc.) via le
-   ``payload_loader`` injecté au constructeur.
+   ``payload_loader`` injecté.  Si la projection a produit un payload,
+   l'utilise directement sans repasser par le loader.
 4. Applique optionnellement un profil de normalisation texte
-   (``view.normalization_profile``) sur les payloads texte.
-5. Calcule chaque métrique listée dans ``view.metric_names`` via
-   ``MetricRegistry``.  Une métrique qui lève est enregistrée dans
-   ``failed_metrics`` au lieu de planter le ViewResult complet.
-6. Retourne un ``ViewResult`` agrégeant tout (metric_values,
-   failed_metrics, projection_report, warnings,
-   ignored_dimensions).
+   (``view.normalization_profile``).
+5. ``EvaluationEngine.evaluate(view.metric_names, gt_payload, cand_payload)``
+   → retourne un ``EvaluationResult`` avec metric_values + failed_metrics.
+6. Construit le ``ViewResult`` agrégeant tout (projection_report,
+   metric_values, failed_metrics, warnings, ignored_dimensions).
 
-Le ``payload_loader`` est injecté pour découpler l'executor de la
-manière dont les artefacts sont stockés (filesystem, in-memory,
-remote).  Le service applicatif (S19) injectera un loader qui sait
-gérer les workspaces sandboxés.
+Construction
+------------
+- ``__init__`` canonique prend ``(projection_engine, evaluation_engine,
+  payload_loader)``.
+- ``from_registries(metric_registry, projector_registry, payload_loader)``
+  reste exposé comme classmethod ergonomique pour les callers qui
+  n'ont pas envie de fabriquer eux-mêmes les deux moteurs (tests,
+  scripts ad-hoc).  Aucune logique nouvelle — uniquement un appel
+  composé ; l'API canonique reste l'injection des deux engines.
 
 Anti-sur-ingénierie
 -------------------
-Pas de cache de payload chargé entre métriques (chaque métrique
-relit l'artefact via le loader).  Si un caller veut éviter le coût
-de re-lecture, il instancie un loader qui memo-ize lui-même.
-
-Pas de gestion de batch (évaluer N paires en une seule passe).  À
-ajouter quand un caller en a concrètement besoin.
+Pas de cache de payload chargé entre métriques (chaque appel à
+``evaluate`` est indépendant).  Pas de batch (évaluer N paires en
+une passe).  Pas de validation cross-métrique.  La complexité vit
+dans les engines, pas dans l'executor.
 """
 
 from __future__ import annotations
@@ -39,22 +50,14 @@ import logging
 from typing import Any, Callable
 
 from picarones.domain.artifacts import Artifact
-from picarones.domain.errors import ProjectionError
 from picarones.domain.evaluation_spec import EvaluationView
-from picarones.evaluation.projectors.registry import (
-    ProjectorNotFoundError,
-    ProjectorRegistry,
-)
-from picarones.evaluation.registry import MetricRegistry, MetricNotFoundError
+from picarones.evaluation.evaluation_engine import EvaluationEngine
+from picarones.evaluation.projection_engine import ProjectionEngine
+from picarones.evaluation.projectors.registry import ProjectorRegistry
+from picarones.evaluation.registry import MetricRegistry
 from picarones.evaluation.views.base import ViewResult
 
 logger = logging.getLogger(__name__)
-
-
-#: Sentinelle interne pour distinguer "pas de projection" de "projection
-#: a retourné None comme payload" (cas pathologique mais théoriquement
-#: possible).  Ne jamais comparer avec ``==`` — toujours ``is``.
-_UNSET = object()
 
 
 #: Type alias : un payload loader prend un Artifact et retourne le
@@ -63,42 +66,69 @@ PayloadLoader = Callable[[Artifact], Any]
 
 
 class DefaultEvaluationViewExecutor:
-    """Implémentation par défaut de ``EvaluationViewExecutor``.
+    """Orchestrateur de vue d'évaluation.
 
     Parameters
     ----------
-    metric_registry:
-        ``MetricRegistry`` contenant les métriques référencées par
-        ``view.metric_names``.
-    projector_registry:
-        ``ProjectorRegistry`` contenant les projecteurs référencés
-        par ``view.projection.projector_name``.
+    projection_engine:
+        ``ProjectionEngine`` injecté.  Responsable de la
+        transformation d'artefacts entre types via le registre de
+        projecteurs.
+    evaluation_engine:
+        ``EvaluationEngine`` injecté.  Responsable du calcul des
+        métriques nommées sur des payloads.
     payload_loader:
         Callable ``(Artifact) -> Any`` qui charge le contenu d'un
-        artefact.  Pour les tests, typiquement un dict in-memory.
-        En production (S19), un service applicatif qui sait gérer
-        les workspaces.
+        artefact non encore résolu (typiquement la GT et le candidat
+        s'il n'est pas projeté).  Pour les tests, un dict in-memory
+        ; en production, un service applicatif qui sait gérer les
+        workspaces sandboxés.
     """
 
     def __init__(
         self,
-        metric_registry: MetricRegistry,
-        projector_registry: ProjectorRegistry,
+        projection_engine: ProjectionEngine,
+        evaluation_engine: EvaluationEngine,
         payload_loader: PayloadLoader,
     ) -> None:
-        if not isinstance(metric_registry, MetricRegistry):
+        if not isinstance(projection_engine, ProjectionEngine):
             raise TypeError(
-                "metric_registry doit être un MetricRegistry."
+                "projection_engine doit être un ProjectionEngine."
             )
-        if not isinstance(projector_registry, ProjectorRegistry):
+        if not isinstance(evaluation_engine, EvaluationEngine):
             raise TypeError(
-                "projector_registry doit être un ProjectorRegistry."
+                "evaluation_engine doit être un EvaluationEngine."
             )
         if not callable(payload_loader):
             raise TypeError("payload_loader doit être callable.")
-        self._metrics = metric_registry
-        self._projectors = projector_registry
+        self._projection = projection_engine
+        self._evaluation = evaluation_engine
         self._loader = payload_loader
+
+    # ──────────────────────────────────────────────────────────────────
+    # Constructeur ergonomique
+    # ──────────────────────────────────────────────────────────────────
+
+    @classmethod
+    def from_registries(
+        cls,
+        metric_registry: MetricRegistry,
+        projector_registry: ProjectorRegistry,
+        payload_loader: PayloadLoader,
+    ) -> "DefaultEvaluationViewExecutor":
+        """Construit l'executor à partir des registres bruts.
+
+        Sucre syntaxique sur l'API canonique : un caller qui a déjà
+        un ``MetricRegistry`` + ``ProjectorRegistry`` (cas typique :
+        un test, ou un service qui n'a qu'un seul executor) gagne
+        deux lignes.  Aucune logique nouvelle — instancie
+        ``ProjectionEngine`` et ``EvaluationEngine`` puis délègue.
+        """
+        return cls(
+            projection_engine=ProjectionEngine(projector_registry),
+            evaluation_engine=EvaluationEngine(metric_registry),
+            payload_loader=payload_loader,
+        )
 
     # ──────────────────────────────────────────────────────────────────
     # API publique
@@ -115,21 +145,20 @@ class DefaultEvaluationViewExecutor:
         Returns
         -------
         ViewResult
-            Toujours retourné, jamais d'exception en sortie normale —
-            les erreurs vont dans ``failed_metrics`` ou
-            (pour les erreurs de projection) lèvent ``ProjectionError``
-            qui est cohérente avec le contrat du S5.
+            Toujours retourné en sortie normale — les erreurs de
+            métriques individuelles vont dans ``failed_metrics``,
+            les erreurs de chargement de payload se traduisent en
+            ``failed_metrics`` global.
 
         Raises
         ------
         ProjectionError
-            Si la vue exige une projection que le projecteur ne peut
-            pas réaliser (ex : type d'entrée incompatible avec le
-            projecteur trouvé).
+            Si la vue exige une projection que le projecteur ne
+            peut pas réaliser (cohérent avec le contrat du S5).
         ValueError
             Si ``candidate.type`` n'est pas dans
             ``view.candidate_types``.  Le caller (typiquement le
-            service applicatif) doit filtrer les pipelines qui ne
+            ``BenchmarkService``) doit filtrer les pipelines qui ne
             produisent pas le bon type avant d'appeler ``evaluate``.
         """
         # 1. Vérification du type d'entrée.
@@ -141,64 +170,32 @@ class DefaultEvaluationViewExecutor:
                 f"{sorted(t.value for t in view.candidate_types)}."
             )
 
-        # 2. Projection (optionnelle).  Résolution par
-        #    ``view.projection_for(candidate.type)`` qui supporte
-        #    soit une projection unique (champ ``projection``), soit
-        #    un mapping par type source (``projections_by_source_type``).
-        # Le projecteur retourne ``(Artifact, payload, report)`` —
-        # on conserve le payload pour le passer aux métriques sans
-        # repasser par le loader (l'artefact projeté est intermédiaire
-        # et n'a typiquement pas d'URI).
-        effective_candidate = candidate
-        projection_report = None
-        projected_payload: Any = _UNSET
+        # 2. Projection (déléguée).  Lève ``ProjectionError`` si la
+        #    projection est invalide — on laisse remonter (cohérence
+        #    avec le contrat S5).
         projection_spec = view.projection_for(candidate.type)
-        if projection_spec is not None and not projection_spec.is_identity:
-            try:
-                projector = self._projectors.get(
-                    projection_spec.projector_name,
-                )
-            except ProjectorNotFoundError as exc:
-                raise ProjectionError(
-                    f"View {view.name!r} référence le projecteur "
-                    f"{projection_spec.projector_name!r} introuvable "
-                    "dans le ProjectorRegistry."
-                ) from exc
-            try:
-                (
-                    effective_candidate,
-                    projected_payload,
-                    projection_report,
-                ) = projector.project(
-                    candidate, dict(projection_spec.params),
-                )
-            except ProjectionError:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                raise ProjectionError(
-                    f"Projecteur {projection_spec.projector_name!r} a "
-                    f"levé sur l'artefact {candidate.id!r} : {exc}"
-                ) from exc
+        projection_result = self._projection.project(
+            candidate, projection_spec,
+        )
 
         # 3. Chargement des payloads.
-        # Échec de chargement = ViewResult avec une erreur globale
-        # (pas de failed_metric par métrique — l'erreur est en amont).
-        if projected_payload is not _UNSET:
-            # Payload déjà calculé par le projecteur — on l'utilise
-            # tel quel sans repasser par le loader.
-            cand_payload = projected_payload
+        # Si la projection a fourni un payload, on l'utilise sans
+        # repasser par le loader (typique S25 — l'artefact projeté
+        # n'a pas d'URI).  Sinon, on charge le candidat via le loader.
+        if projection_result.payload is not None:
+            cand_payload = projection_result.payload
         else:
             try:
-                cand_payload = self._loader(effective_candidate)
+                cand_payload = self._loader(projection_result.artifact)
             except Exception as exc:  # noqa: BLE001
                 return self._failed_view_result(
                     view=view,
                     candidate=candidate,
                     ground_truth=ground_truth,
-                    projection_report=projection_report,
+                    projection_report=projection_result.report,
                     global_error=(
                         f"payload_loader a échoué sur le candidat "
-                        f"{effective_candidate.id!r} : {exc}"
+                        f"{projection_result.artifact.id!r} : {exc}"
                     ),
                 )
         try:
@@ -208,7 +205,7 @@ class DefaultEvaluationViewExecutor:
                 view=view,
                 candidate=candidate,
                 ground_truth=ground_truth,
-                projection_report=projection_report,
+                projection_report=projection_result.report,
                 global_error=(
                     f"payload_loader a échoué sur la GT "
                     f"{ground_truth.id!r} : {exc}"
@@ -221,34 +218,19 @@ class DefaultEvaluationViewExecutor:
                 view.normalization_profile, cand_payload, gt_payload,
             )
 
-        # 5. Calcul des métriques.  Une métrique qui lève va dans
-        #    failed_metrics.  Une métrique non enregistrée va dans
-        #    failed_metrics avec un message explicite.
-        metric_values: dict[str, Any] = {}
-        failed_metrics: dict[str, str] = {}
-        for name in view.metric_names:
-            try:
-                value = self._metrics.compute(name, gt_payload, cand_payload)
-                metric_values[name] = value
-            except MetricNotFoundError as exc:
-                failed_metrics[name] = (
-                    f"métrique non enregistrée dans le MetricRegistry : "
-                    f"{exc}"
-                )
-            except Exception as exc:  # noqa: BLE001
-                failed_metrics[name] = (
-                    f"{type(exc).__name__}: {exc}"
-                )
+        # 5. Évaluation déléguée.  Une métrique cassée → failed_metrics.
+        evaluation_result = self._evaluation.evaluate(
+            view.metric_names, gt_payload, cand_payload,
+        )
 
-        # 6. Construction du ViewResult.
+        # 6. Agrégation finale dans le ViewResult.
         warnings = tuple(view.warnings)
         ignored = tuple(view.ignored_dimensions)
-        if projection_report is not None:
-            warnings = warnings + tuple(projection_report.warnings)
-            # Déduplique les ignored_dimensions tout en préservant l'ordre.
+        if projection_result.report is not None:
+            warnings = warnings + tuple(projection_result.report.warnings)
             seen: set[str] = set(ignored)
             extra = tuple(
-                d for d in projection_report.ignored_dimensions
+                d for d in projection_result.report.ignored_dimensions
                 if d not in seen
             )
             ignored = ignored + extra
@@ -257,9 +239,9 @@ class DefaultEvaluationViewExecutor:
             view_name=view.name,
             candidate_artifact_id=candidate.id,
             ground_truth_artifact_id=ground_truth.id,
-            metric_values=metric_values,
-            failed_metrics=failed_metrics,
-            projection_report=projection_report,
+            metric_values=evaluation_result.metric_values,
+            failed_metrics=evaluation_result.failed_metrics,
+            projection_report=projection_result.report,
             warnings=warnings,
             ignored_dimensions=ignored,
         )

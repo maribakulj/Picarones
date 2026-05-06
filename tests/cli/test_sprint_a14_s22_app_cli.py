@@ -83,7 +83,7 @@ def _build_minimal_run_dir(out_dir: Path, *, corpus_name: str = "test") -> None:
     from picarones.evaluation.views import DefaultEvaluationViewExecutor
     from picarones.pipeline import CorpusRunner, PipelineExecutor
     loader = lambda art: ""  # noqa: E731
-    view_executor = DefaultEvaluationViewExecutor(
+    view_executor = DefaultEvaluationViewExecutor.from_registries(
         MetricRegistry(), ProjectorRegistry(), loader,
     )
     runner_internal = CorpusRunner(

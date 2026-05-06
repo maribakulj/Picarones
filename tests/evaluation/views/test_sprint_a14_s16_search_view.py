@@ -188,7 +188,7 @@ def _build_search_executor(payloads: dict[str, str]) -> DefaultEvaluationViewExe
             raise KeyError(art.id)
         return payloads[art.id]
 
-    return DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    return DefaultEvaluationViewExecutor.from_registries(metrics, projectors, loader)
 
 
 class TestSearchViewWithExecutor:

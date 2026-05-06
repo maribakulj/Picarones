@@ -275,7 +275,9 @@ def _build_service(tmp_path: Path) -> tuple[BenchmarkService, dict[str, Path]]:
             return parse_alto(Path(art.uri).read_bytes())
         raise KeyError(f"loader ne sait pas charger {art.id} (type {art.type})")
 
-    view_executor = DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    view_executor = DefaultEvaluationViewExecutor.from_registries(
+        metrics, projectors, loader,
+    )
 
     # Pipeline executor + corpus runner.
     registry_adapters = {

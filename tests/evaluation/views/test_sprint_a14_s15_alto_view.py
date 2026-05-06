@@ -187,7 +187,7 @@ def _build_alto_executor(payloads: dict[str, AltoDocument]) -> DefaultEvaluation
             raise KeyError(f"missing payload {art.id}")
         return payloads[art.id]
 
-    return DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    return DefaultEvaluationViewExecutor.from_registries(metrics, projectors, loader)
 
 
 class TestAltoViewWithExecutor:

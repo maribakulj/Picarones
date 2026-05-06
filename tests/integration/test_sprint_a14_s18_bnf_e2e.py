@@ -368,7 +368,9 @@ def _build_service(tmp_path: Path) -> tuple[BenchmarkService, dict[str, Path]]:
             return _CORRECTED_TEXTS[art.document_id]
         raise KeyError(f"loader: type non géré pour {art.id} ({art.type})")
 
-    view_executor = DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    view_executor = DefaultEvaluationViewExecutor.from_registries(
+        metrics, projectors, loader,
+    )
 
     registry_adapters = {
         "simple_ocr": _SimpleOCRStub(),

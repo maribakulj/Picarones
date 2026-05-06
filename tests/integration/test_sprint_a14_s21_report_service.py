@@ -266,7 +266,7 @@ class TestPersistenceRoundTrip:
         from picarones.evaluation.views import DefaultEvaluationViewExecutor
         from picarones.pipeline import CorpusRunner, PipelineExecutor
         loader = lambda art: ""  # noqa: E731 — non appelé par persist
-        view_executor = DefaultEvaluationViewExecutor(
+        view_executor = DefaultEvaluationViewExecutor.from_registries(
             MetricRegistry(), ProjectorRegistry(), loader,
         )
         runner = CorpusRunner(
@@ -296,7 +296,7 @@ class TestPersistenceRoundTrip:
         from picarones.evaluation.views import DefaultEvaluationViewExecutor
         from picarones.pipeline import CorpusRunner, PipelineExecutor
         loader = lambda art: ""  # noqa: E731
-        view_executor = DefaultEvaluationViewExecutor(
+        view_executor = DefaultEvaluationViewExecutor.from_registries(
             MetricRegistry(), ProjectorRegistry(), loader,
         )
         runner = CorpusRunner(

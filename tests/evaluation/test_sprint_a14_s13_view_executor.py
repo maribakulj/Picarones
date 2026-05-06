@@ -105,7 +105,7 @@ def _build_executor(
             raise KeyError(f"payload manquant : {artifact.id}")
         return payloads[artifact.id]
 
-    return DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    return DefaultEvaluationViewExecutor.from_registries(metrics, projectors, loader)
 
 
 def _text_view(
@@ -226,7 +226,7 @@ class TestEvaluator:
         metrics = MetricRegistry()
         projectors = ProjectorRegistry()
         projectors.register(_CrashingProjector())
-        executor = DefaultEvaluationViewExecutor(
+        executor = DefaultEvaluationViewExecutor.from_registries(
             metrics, projectors, lambda a: None,
         )
         view = _text_view(
@@ -304,7 +304,9 @@ class TestEvaluator:
         def _bad_loader(artifact):
             raise FileNotFoundError(f"missing file for {artifact.id}")
 
-        executor = DefaultEvaluationViewExecutor(metrics, projectors, _bad_loader)
+        executor = DefaultEvaluationViewExecutor.from_registries(
+            metrics, projectors, _bad_loader,
+        )
         view = _text_view(metric_names=("cer",))
         cand = Artifact(id="cand", document_id="d", type=ArtifactType.RAW_TEXT)
         gt = Artifact(id="gt", document_id="d", type=ArtifactType.RAW_TEXT)
@@ -320,21 +322,51 @@ class TestEvaluator:
 
 
 class TestConstructor:
-    def test_rejects_non_metric_registry(self) -> None:
-        with pytest.raises(TypeError, match="metric_registry"):
+    """Le constructeur canonique (S27) attend deux engines + un loader."""
+
+    def test_rejects_non_projection_engine(self) -> None:
+        from picarones.evaluation.evaluation_engine import EvaluationEngine
+        with pytest.raises(TypeError, match="projection_engine"):
             DefaultEvaluationViewExecutor(
-                "not a registry", ProjectorRegistry(), lambda a: None,  # type: ignore[arg-type]
+                "not an engine",  # type: ignore[arg-type]
+                EvaluationEngine(MetricRegistry()),
+                lambda a: None,
             )
 
-    def test_rejects_non_projector_registry(self) -> None:
-        with pytest.raises(TypeError, match="projector_registry"):
+    def test_rejects_non_evaluation_engine(self) -> None:
+        from picarones.evaluation.projection_engine import ProjectionEngine
+        with pytest.raises(TypeError, match="evaluation_engine"):
             DefaultEvaluationViewExecutor(
-                MetricRegistry(), "nope", lambda a: None,  # type: ignore[arg-type]
+                ProjectionEngine(ProjectorRegistry()),
+                "nope",  # type: ignore[arg-type]
+                lambda a: None,
             )
 
     def test_rejects_non_callable_loader(self) -> None:
+        from picarones.evaluation.evaluation_engine import EvaluationEngine
+        from picarones.evaluation.projection_engine import ProjectionEngine
         with pytest.raises(TypeError, match="callable"):
             DefaultEvaluationViewExecutor(
+                ProjectionEngine(ProjectorRegistry()),
+                EvaluationEngine(MetricRegistry()),
+                "not_callable",  # type: ignore[arg-type]
+            )
+
+    def test_from_registries_rejects_non_metric_registry(self) -> None:
+        with pytest.raises(TypeError, match="metric_registry"):
+            DefaultEvaluationViewExecutor.from_registries(
+                "not a registry", ProjectorRegistry(), lambda a: None,  # type: ignore[arg-type]
+            )
+
+    def test_from_registries_rejects_non_projector_registry(self) -> None:
+        with pytest.raises(TypeError, match="projector_registry"):
+            DefaultEvaluationViewExecutor.from_registries(
+                MetricRegistry(), "nope", lambda a: None,  # type: ignore[arg-type]
+            )
+
+    def test_from_registries_rejects_non_callable_loader(self) -> None:
+        with pytest.raises(TypeError, match="callable"):
+            DefaultEvaluationViewExecutor.from_registries(
                 MetricRegistry(), ProjectorRegistry(), "not_callable",  # type: ignore[arg-type]
             )
 

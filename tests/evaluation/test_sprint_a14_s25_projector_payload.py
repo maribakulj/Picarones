@@ -113,7 +113,7 @@ class TestProjectionWithoutLoaderHack:
 
         # Loader strict qui ASSERTE qu'il n'est pas appelé sur l'artefact
         # projeté.
-        executor = DefaultEvaluationViewExecutor(
+        executor = DefaultEvaluationViewExecutor.from_registries(
             registries.metrics,
             registries.projectors,
             _strict_loader,
@@ -160,7 +160,7 @@ class TestProjectionWithoutLoaderHack:
         gt_path.write_text("Titre Bonjour le monde", encoding="utf-8")
 
         registries = RegistryService.bootstrap_defaults()
-        executor = DefaultEvaluationViewExecutor(
+        executor = DefaultEvaluationViewExecutor.from_registries(
             registries.metrics,
             registries.projectors,
             _strict_loader,
@@ -201,7 +201,7 @@ class TestProjectionWithoutLoaderHack:
         gt_path.write_text(gt_text, encoding="utf-8")
 
         registries = RegistryService.bootstrap_defaults()
-        executor = DefaultEvaluationViewExecutor(
+        executor = DefaultEvaluationViewExecutor.from_registries(
             registries.metrics,
             registries.projectors,
             _strict_loader,
@@ -287,7 +287,7 @@ class TestPayloadFromProjectorIsAuthoritative:
             metric_names=("capture",),
         )
 
-        executor = DefaultEvaluationViewExecutor(
+        executor = DefaultEvaluationViewExecutor.from_registries(
             metrics, projectors, _strict_loader,
         )
         cand = Artifact(

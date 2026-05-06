@@ -346,7 +346,7 @@ class RunOrchestrator:
             timeout_seconds_per_doc=300.0,
             poll_interval_seconds=0.05,
         )
-        view_executor = DefaultEvaluationViewExecutor(
+        view_executor = DefaultEvaluationViewExecutor.from_registries(
             registries.metrics,
             registries.projectors,
             _filesystem_payload_loader,

@@ -127,7 +127,7 @@ def _build_unified_executor(payloads: dict) -> DefaultEvaluationViewExecutor:
             raise KeyError(art.id)
         return payloads[art.id]
 
-    return DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    return DefaultEvaluationViewExecutor.from_registries(metrics, projectors, loader)
 
 
 # ──────────────────────────────────────────────────────────────────

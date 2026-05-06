@@ -101,7 +101,7 @@ def _build_executor(payloads: dict[str, object]) -> DefaultEvaluationViewExecuto
             raise KeyError(f"payload manquant : {artifact.id}")
         return payloads[artifact.id]
 
-    return DefaultEvaluationViewExecutor(metrics, projectors, loader)
+    return DefaultEvaluationViewExecutor.from_registries(metrics, projectors, loader)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -285,7 +285,9 @@ class TestBnFCentralUseCase:
         projectors.register(AltoToText())
         projectors.register(PageToText())
         projectors.register(CanonicalToText())
-        executor = DefaultEvaluationViewExecutor(metrics, projectors, loader)
+        executor = DefaultEvaluationViewExecutor.from_registries(
+            metrics, projectors, loader,
+        )
         view = build_text_view()
 
         gt = Artifact(id="gt_text", document_id="bnf_doc",

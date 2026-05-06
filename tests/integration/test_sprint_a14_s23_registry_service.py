@@ -280,7 +280,7 @@ class TestSmokeIntegration:
         svc = RegistryService.bootstrap_defaults()
 
         loader = lambda art: ""  # noqa: E731 — non appelé ici
-        executor = DefaultEvaluationViewExecutor(
+        executor = DefaultEvaluationViewExecutor.from_registries(
             svc.metrics, svc.projectors, loader,
         )
         assert executor is not None  # si le constructeur passe, c'est OK

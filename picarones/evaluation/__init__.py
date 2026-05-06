@@ -31,4 +31,18 @@ rewrite ciblé (Sprints S13-S18).
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.evaluation.evaluation_engine import (
+    EvaluationEngine,
+    EvaluationResult,
+)
+from picarones.evaluation.projection_engine import (
+    ProjectionEngine,
+    ProjectionResult,
+)
+
+__all__ = [
+    "EvaluationEngine",
+    "EvaluationResult",
+    "ProjectionEngine",
+    "ProjectionResult",
+]
