@@ -88,6 +88,11 @@ FILE_BUDGETS: dict[str, int] = {
     # hash multi-paramètres pour adresser la critique d'audit n° 14
     # « hash multi-paramètres + reprise par hash ».
     "picarones/adapters/storage/artifact_store.py": 580,  # actuel 504
+    # Sprint A14-S41 — artifacts_index.jsonl séparé.
+    "picarones/app/services/benchmark_service.py": 470,   # actuel 400
+    # Sprint A14-S44 — BaseLLMAdapter implémente le contrat StepExecutor
+    # (input_types, output_types, execute) en plus de complete().
+    "picarones/adapters/llm/base.py": 475,                # actuel 410
     "picarones/core/corpus.py": 600,                      # actuel 511
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484

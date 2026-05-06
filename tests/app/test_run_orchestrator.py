@@ -156,9 +156,9 @@ class TestExecuteHappyPath:
         assert result.extracted_corpus_dir.resolve().is_relative_to(
             out_dir.resolve(),
         )
-        # 3 fichiers persistés.
+        # S41 — 4 fichiers persistés (artifacts_index séparé).
         assert set(result.persisted_files) == {
-            "manifest", "pipeline_results", "view_results",
+            "manifest", "pipeline_results", "artifacts_index", "view_results",
         }
         for path in result.persisted_files.values():
             assert path.exists()

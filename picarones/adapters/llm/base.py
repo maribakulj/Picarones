@@ -182,6 +182,20 @@ class BaseLLMAdapter(ABC):
     un log discriminant par ``status_code`` (401 → clé invalide,
     429 → rate limit, 5xx → serveur).  Auparavant ce log était
     dupliqué chez Mistral/OpenAI et absent chez Anthropic.
+
+    Sprint A14-S44 — intégration pipeline native
+    ---------------------------------------------
+    ``BaseLLMAdapter`` implémente désormais le contrat ``StepExecutor``
+    du pipeline (``input_types``, ``output_types``, ``execution_mode``,
+    ``execute(inputs, params, context)``) — un adapter LLM est
+    directement utilisable comme step de pipeline pour la post-correction
+    de texte OCR.  Pas de wrapper / shim : la méthode ``execute`` vit
+    dans la base et est partagée par les 4 adapters concrets.
+
+    Convention par défaut : un LLM consomme ``RAW_TEXT`` (depuis l'OCR
+    en amont) et produit ``CORRECTED_TEXT``.  Une sous-classe peut
+    surcharger ``input_types`` / ``output_types`` si elle implémente un
+    autre contrat (ex : ALTO → ALTO pour un module de remappage).
     """
 
     # Variable d'environnement portant la clé API.  Sous-classes
@@ -189,6 +203,37 @@ class BaseLLMAdapter(ABC):
     # :func:`log_http_error` quand un 401 est rencontré.  ``None``
     # pour les providers sans clé (Ollama).
     api_key_env_var: Optional[str] = None
+
+    # ──────────────────────────────────────────────────────────────────
+    # Sprint A14-S44 — contrat StepExecutor du pipeline
+    # ──────────────────────────────────────────────────────────────────
+
+    #: Types d'artefacts consommés par défaut.  Surchargeable par
+    #: une sous-classe qui consommerait des artefacts différents
+    #: (ex : ALTO_XML pour un remappeur ALTO LLM).
+    @property
+    def input_types(self) -> "frozenset":
+        from picarones.domain.artifacts import ArtifactType
+        return frozenset({ArtifactType.RAW_TEXT})
+
+    @property
+    def output_types(self) -> "frozenset":
+        from picarones.domain.artifacts import ArtifactType
+        return frozenset({ArtifactType.CORRECTED_TEXT})
+
+    #: Mode d'exécution : LLM via API → IO-bound → ThreadPool dans le
+    #: runner.  Une sous-classe locale (Ollama CPU-bound) peut
+    #: surcharger en ``"cpu"``.
+    execution_mode: str = "io"
+
+    #: Prompt de post-correction par défaut.  Surchargeable via
+    #: ``config["correction_prompt"]`` au constructeur.
+    DEFAULT_CORRECTION_PROMPT: str = (
+        "Corrige les erreurs OCR dans le texte suivant en conservant "
+        "fidèlement la langue, l'orthographe historique et la "
+        "ponctuation. Retourne uniquement le texte corrigé, sans "
+        "commentaire :\n\n{text}"
+    )
 
     def __init__(
         self,
@@ -266,6 +311,92 @@ class BaseLLMAdapter(ABC):
             duration_seconds=round(duration, 4),
             error=str(last_exc),
         )
+
+    # ──────────────────────────────────────────────────────────────────
+    # Sprint A14-S44 — execute() pour le pipeline
+    # ──────────────────────────────────────────────────────────────────
+
+    def execute(
+        self,
+        inputs: dict,
+        params: dict,
+        context: Any,
+    ) -> dict:
+        """Exécute la post-correction LLM en tant que step de pipeline.
+
+        Convention par défaut : lit ``inputs[RAW_TEXT]`` (Artifact),
+        charge son contenu UTF-8 depuis l'URI, appelle ``self.complete``
+        avec le ``correction_prompt`` formaté, écrit le résultat dans
+        un fichier ``<input_stem>.<adapter_name>.corrected.txt``, et
+        retourne ``{CORRECTED_TEXT: Artifact}``.
+
+        Le caller (``PipelineExecutor``) catch les exceptions ; on les
+        propage telles quelles.
+
+        Optionnel : si ``inputs[IMAGE]`` est présent, l'image est
+        encodée en base64 et passée au LLM (mode VLM).  Les sous-classes
+        qui ne supportent pas la vision (ex. ollama texte) ignorent
+        silencieusement.
+        """
+        from pathlib import Path
+        import base64
+
+        from picarones.adapters.ocr.base import OCRAdapterError
+        from picarones.domain.artifacts import Artifact, ArtifactType
+
+        if ArtifactType.RAW_TEXT not in inputs:
+            raise OCRAdapterError(
+                f"{self.name} : input RAW_TEXT manquant.",
+            )
+        text_artifact = inputs[ArtifactType.RAW_TEXT]
+        if text_artifact.uri is None:
+            raise OCRAdapterError(
+                f"{self.name} : artefact RAW_TEXT "
+                f"{text_artifact.id!r} sans URI.",
+            )
+        text_path = Path(text_artifact.uri)
+        if not text_path.exists():
+            raise OCRAdapterError(
+                f"{self.name} : fichier texte introuvable {text_path!r}.",
+            )
+
+        original_text = text_path.read_text(encoding="utf-8")
+
+        # Image optionnelle (VLM-style si supporté).
+        image_b64: Optional[str] = None
+        image_artifact = inputs.get(ArtifactType.IMAGE)
+        if image_artifact is not None and image_artifact.uri is not None:
+            image_path = Path(image_artifact.uri)
+            if image_path.exists():
+                image_b64 = base64.b64encode(
+                    image_path.read_bytes(),
+                ).decode("ascii")
+
+        prompt_template = self.config.get(
+            "correction_prompt", self.DEFAULT_CORRECTION_PROMPT,
+        )
+        prompt = prompt_template.format(text=original_text)
+
+        result = self.complete(prompt, image_b64=image_b64)
+        if not result.success:
+            raise OCRAdapterError(
+                f"{self.name} : LLM a échoué ({result.error}).",
+            )
+
+        out_path = (
+            text_path.parent / f"{text_path.stem}.{self.name}.corrected.txt"
+        )
+        out_path.write_text(result.text, encoding="utf-8")
+
+        return {
+            ArtifactType.CORRECTED_TEXT: Artifact(
+                id=f"{context.document_id}:{self.name}:corrected_text",
+                document_id=context.document_id,
+                type=ArtifactType.CORRECTED_TEXT,
+                produced_by_step="post_correction",
+                uri=str(out_path),
+            ),
+        }
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(model={self.model!r})"
