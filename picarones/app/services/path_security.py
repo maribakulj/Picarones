@@ -386,9 +386,28 @@ class WorkspaceManager:
         Après ``cleanup()``, toute opération sur ce manager est
         non définie (créer un nouveau manager pour une nouvelle
         session).
+
+        Cross-OS robustesse
+        ~~~~~~~~~~~~~~~~~~~
+        Sur Windows, ``shutil.rmtree`` peut lever ``PermissionError``
+        si un fichier porte l'attribut ``read-only`` (cas typique :
+        ``__pycache__/*.pyc`` extraits depuis un ZIP).  Le handler
+        ``_on_rmtree_error`` retire l'attribut puis retry.
+
+        Sur certains filesystems (NFS, Windows avec
+        anti-virus / indexeur), un fichier peut rester verrouillé
+        quelques ms après sa fermeture.  Le handler propose un seul
+        retry — au-delà, on laisse remonter l'erreur (signal d'un
+        problème environnemental réel, pas un cas dégénéré du
+        rewrite).
         """
-        if self._root.exists():
-            shutil.rmtree(self._root)
+        if not self._root.exists():
+            return
+        # Python 3.12+ utilise ``onexc`` (signature plus propre que
+        # l'ancien ``onerror``).  On utilise ``onerror`` pour rester
+        # compatible 3.11+ ; ``shutil`` continuera de l'accepter
+        # jusqu'à la 3.14.
+        shutil.rmtree(self._root, onerror=_on_rmtree_error)
 
     # ──────────────────────────────────────────────────────────────────
     # Context manager (sucre RAII)
@@ -399,6 +418,25 @@ class WorkspaceManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.cleanup()
+
+
+def _on_rmtree_error(func, path, exc_info):
+    """Handler pour ``shutil.rmtree`` Windows-safe.
+
+    Cas typique : un fichier en read-only refuse d'être supprimé
+    sur Windows (``PermissionError``).  On retire l'attribut puis
+    on retry une fois.  Si ça échoue encore, on propage — c'est un
+    vrai problème environnemental.
+    """
+    import os
+    import stat
+    try:
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+    except OSError:
+        # Le chmod lui-même a échoué — on laisse la prochaine
+        # tentative remonter l'erreur originale.
+        pass
+    func(path)
 
 
 __all__ = [

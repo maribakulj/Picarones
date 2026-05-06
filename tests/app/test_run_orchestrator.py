@@ -149,16 +149,20 @@ class TestExecuteHappyPath:
         assert isinstance(result.run_result, RunResult)
         assert result.run_result.n_documents == 2
         assert result.run_result.manifest.corpus_name == "orchestrator_test"
-        # Corpus extrait sous le workspace.
+        # Corpus extrait sous le workspace.  ``.resolve()`` normalise
+        # cross-OS (macOS résout ``/var/folders/...`` →
+        # ``/private/var/folders/...``).
         assert result.extracted_corpus_dir.exists()
-        assert result.extracted_corpus_dir.is_relative_to(out_dir)
+        assert result.extracted_corpus_dir.resolve().is_relative_to(
+            out_dir.resolve(),
+        )
         # 3 fichiers persistés.
         assert set(result.persisted_files) == {
             "manifest", "pipeline_results", "view_results",
         }
         for path in result.persisted_files.values():
             assert path.exists()
-            assert path.is_relative_to(out_dir)
+            assert path.resolve().is_relative_to(out_dir.resolve())
         # Pas de rapport car aucun renderer fourni.
         assert result.report_path is None
 
@@ -172,8 +176,9 @@ class TestExecuteHappyPath:
             _build_spec_yaml(corpus_zip=corpus_zip, output_dir=out_dir),
         )
         result = RunOrchestrator(out_dir).execute(spec)
+        expected_parent = (out_dir / "results").resolve()
         for path in result.persisted_files.values():
-            assert path.parent == out_dir / "results"
+            assert path.parent.resolve() == expected_parent
 
 
 class TestReportRendererInjection:
