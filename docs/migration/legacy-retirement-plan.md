@@ -693,9 +693,7 @@ architecture vérifiée.
 
 - Batch 2 ✅ (cf. ci-dessous) — 5 renderers (45-165 LOC).
 - Batch 3 ✅ (cf. ci-dessous) — 5 renderers (173-222 LOC).
-- Batch 4 (~5 renderers gros) : ``error_absorption``,
-  ``baseline``, ``inter_engine``, ``robustness_projection``,
-  ``stratification``.
+- Batch 4 ✅ (cf. ci-dessous) — 5 renderers (188-321 LOC).
 - Batch 5 (les 2 restants + plus gros) : ``calibration``,
   ``worst_lines``, ``levers``, ``taxonomy_*`` (3 fichiers),
   ``pipeline_dag``.
@@ -776,6 +774,43 @@ architecture vérifiée.
 
 **Cumul Phase 5.C** (batches 1+2+3) : 15 / 22 renderers migrés
 (~2211 lignes).  7 renderers restants.
+
+#### Phase 5.C.batch4 — Lot 4 : 5 renderers moyens-gros (2026-05)
+
+Quatrième vague.  Tous les renderers sélectionnés sont **purs sur
+le contrat externe** (import depuis ``_helpers/`` uniquement).
+``robustness_projection`` avait un import lazy interne vers
+``picarones.measurements.robustness_projection`` qui a été redirigé
+vers le canonique ``picarones.evaluation.metrics.robustness_projection``.
+
+**Migrations effectuées** :
+
+| Source legacy                                  | Destination canonique                                  |
+|------------------------------------------------|--------------------------------------------------------|
+| ``report/stratification_render.py`` (188)      | ``reports_v2/html/renderers/stratification.py``        |
+| ``report/baseline_render.py`` (238)            | ``reports_v2/html/renderers/baseline.py``              |
+| ``report/inter_engine_render.py`` (245)        | ``reports_v2/html/renderers/inter_engine.py``          |
+| ``report/robustness_projection_render.py`` (252) | ``reports_v2/html/renderers/robustness_projection.py``|
+| ``report/calibration_render.py`` (321)         | ``reports_v2/html/renderers/calibration.py``           |
+
+Total : ~1244 lignes relocalisées.  5 nouveaux shims minimaux
+(< 20 lignes) avec ``DeprecationWarning``.
+
+**Adaptations transverses** :
+
+- ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à
+  ``"robustness_projection"`` (même rationale que les batches
+  précédents).
+- Tests + ``picarones/report/generator.py`` mis à jour pour les
+  5 chemins canoniques.
+
+**Acceptance batch 4** : 5019 tests passent, lint vert,
+architecture vérifiée.
+
+**Cumul Phase 5.C** (batches 1+2+3+4) : 20 / 22 renderers migrés
+(~3455 lignes).  2 renderers restants : ``pipeline_render`` (707 l)
+et ``philological_render`` (595 l) — les XXL — auront leur propre
+batch dédié.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

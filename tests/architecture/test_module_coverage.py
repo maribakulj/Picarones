@@ -72,6 +72,7 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     # tard à la version 2.0 quand les shims disparaîtront.
     "specialization",
     "lexical_modernization",
+    "robustness_projection",
 })
 
 

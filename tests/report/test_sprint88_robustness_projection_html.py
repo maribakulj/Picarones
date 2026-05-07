@@ -24,7 +24,7 @@ from picarones.measurements.robustness_projection import (
     aggregate_projection_per_engine,
     project_robustness_on_corpus,
 )
-from picarones.report.robustness_projection_render import (
+from picarones.reports_v2.html.renderers.robustness_projection import (
     build_robustness_projection_html,
 )
 

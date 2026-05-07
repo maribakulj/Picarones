@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.calibration_render import (
+from picarones.reports_v2.html.renderers.calibration import (
     build_calibration_summary_html,
     build_reliability_diagram_svg,
     build_reliability_diagrams_grid_html,

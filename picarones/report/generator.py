@@ -263,7 +263,7 @@ class ReportGenerator:
         engines = report_data.get("engines", [])
 
         # Sprint 37 — section inter-moteurs (matrice de divergence + oracle).
-        from picarones.report.inter_engine_render import (
+        from picarones.reports_v2.html.renderers.inter_engine import (
             build_divergence_matrix_html,
             build_oracle_gap_html,
         )
@@ -274,12 +274,12 @@ class ReportGenerator:
         )
         # Sprint 43 — section calibration (tableau ECE/MCE + grille de
         # reliability diagrams par moteur).
-        from picarones.report.calibration_render import (
+        from picarones.reports_v2.html.renderers.calibration import (
             build_calibration_summary_html,
             build_reliability_diagrams_grid_html,
         )
         # Sprint 46 — section stratifiée (tableau par strate).
-        from picarones.report.stratification_render import (
+        from picarones.reports_v2.html.renderers.stratification import (
             build_stratified_ranking_html,
         )
         # Sprint 62 — profil philologique (6 sections adaptive).

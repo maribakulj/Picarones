@@ -119,7 +119,7 @@ def build_diagnostics_view_html(
     # Sous-section 2 : encart baseline (opt-in via historique)
     if baseline_data:
         try:
-            from picarones.report.baseline_render import (
+            from picarones.reports_v2.html.renderers.baseline import (
                 build_corpus_difficulty_baseline_html,
             )
             html = build_corpus_difficulty_baseline_html(

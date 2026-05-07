@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.report.baseline_render import (
+from picarones.reports_v2.html.renderers.baseline import (
     _build_difficulty_boxplot_svg,
     _quantiles,
     build_corpus_difficulty_baseline_html,

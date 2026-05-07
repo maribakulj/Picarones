@@ -60,7 +60,7 @@ def build_robustness_view_html(
     blocks: list[tuple[str, str]] = []
 
     try:
-        from picarones.report.robustness_projection_render import (
+        from picarones.reports_v2.html.renderers.robustness_projection import (
             build_robustness_projection_html,
         )
         html = build_robustness_projection_html(
