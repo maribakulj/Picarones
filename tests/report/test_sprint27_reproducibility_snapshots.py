@@ -28,7 +28,7 @@ import pytest
 
 class TestPricingSnapshot:
     def test_default_pricing_yaml_is_loaded(self):
-        from picarones.report.snapshot import pricing_snapshot
+        from picarones.reports_v2.html.snapshot import pricing_snapshot
         s = pricing_snapshot()
         assert s["available"] is True
         assert s["filename"] == "pricing.yaml"
@@ -38,19 +38,19 @@ class TestPricingSnapshot:
         assert isinstance(s["data"], dict)
 
     def test_data_contains_meta_and_engines(self):
-        from picarones.report.snapshot import pricing_snapshot
+        from picarones.reports_v2.html.snapshot import pricing_snapshot
         s = pricing_snapshot()
         assert "meta" in s["data"], "le snapshot doit exposer la section meta"
         assert "engines" in s["data"], "le snapshot doit exposer engines"
 
     def test_missing_path_returns_unavailable(self, tmp_path):
-        from picarones.report.snapshot import pricing_snapshot
+        from picarones.reports_v2.html.snapshot import pricing_snapshot
         s = pricing_snapshot(pricing_path=tmp_path / "ne-pas-exister.yaml")
         assert s["available"] is False
         assert "introuvable" in s["reason"].lower()
 
     def test_custom_yaml_round_trips(self, tmp_path):
-        from picarones.report.snapshot import pricing_snapshot
+        from picarones.reports_v2.html.snapshot import pricing_snapshot
         custom = tmp_path / "custom.yaml"
         custom.write_text(
             "meta:\n  currency: USD\n  last_updated: 2026-01-01\nengines:\n  fake: {type: local}\n",
@@ -66,7 +66,7 @@ class TestPricingSnapshot:
 
 class TestGlossarySnapshot:
     def test_default_lang_returns_entries(self):
-        from picarones.report.snapshot import glossary_snapshot
+        from picarones.reports_v2.html.snapshot import glossary_snapshot
         s = glossary_snapshot(lang="fr")
         assert s["available"] is True
         assert s["entry_count"] > 10
@@ -75,7 +75,7 @@ class TestGlossarySnapshot:
             assert k in s["entries"]
 
     def test_used_keys_filter(self):
-        from picarones.report.snapshot import glossary_snapshot
+        from picarones.reports_v2.html.snapshot import glossary_snapshot
         s = glossary_snapshot(lang="fr", used_keys=["cer"])
         assert s["entry_count"] == 1
         assert list(s["entries"]) == ["cer"]
@@ -84,13 +84,13 @@ class TestGlossarySnapshot:
         # `load_glossary` retombe sur fr si la langue est absente — donc
         # le snapshot doit être disponible avec lang='fr' ou la langue
         # demandée selon ce qu'on retourne. On vérifie qu'on ne crashe pas.
-        from picarones.report.snapshot import glossary_snapshot
+        from picarones.reports_v2.html.snapshot import glossary_snapshot
         s = glossary_snapshot(lang="xx-pas-existante")
         # Soit on retombe sur fr (available=True), soit on signale unavailable.
         assert "available" in s
 
     def test_entries_sorted_for_determinism(self):
-        from picarones.report.snapshot import glossary_snapshot
+        from picarones.reports_v2.html.snapshot import glossary_snapshot
         s = glossary_snapshot(lang="fr")
         keys = list(s["entries"])
         assert keys == sorted(keys), (
@@ -102,7 +102,7 @@ class TestGlossarySnapshot:
 class TestNormalizationSnapshot:
     def test_builtin_profile_serializes(self):
         from picarones.measurements.normalization import get_builtin_profile
-        from picarones.report.snapshot import normalization_snapshot
+        from picarones.reports_v2.html.snapshot import normalization_snapshot
         p = get_builtin_profile("medieval_french")
         s = normalization_snapshot(p)
         assert s["available"] is True
@@ -112,13 +112,13 @@ class TestNormalizationSnapshot:
         assert s["diplomatic_table"].get("ſ") == "s"
 
     def test_none_profile_returns_unavailable(self):
-        from picarones.report.snapshot import normalization_snapshot
+        from picarones.reports_v2.html.snapshot import normalization_snapshot
         s = normalization_snapshot(None)
         assert s["available"] is False
 
     def test_exclude_chars_sorted(self):
         from picarones.measurements.normalization import get_builtin_profile
-        from picarones.report.snapshot import normalization_snapshot
+        from picarones.reports_v2.html.snapshot import normalization_snapshot
         p = get_builtin_profile("sans_ponctuation")
         s = normalization_snapshot(p)
         # Liste triée pour reproductibilité
@@ -128,20 +128,20 @@ class TestNormalizationSnapshot:
 class TestEnvironmentSnapshot:
     def test_returns_picarones_version(self):
         from picarones import __version__
-        from picarones.report.snapshot import environment_snapshot
+        from picarones.reports_v2.html.snapshot import environment_snapshot
         s = environment_snapshot()
         assert s["available"] is True
         assert s["picarones_version"] == __version__
 
     def test_python_and_platform_present(self):
-        from picarones.report.snapshot import environment_snapshot
+        from picarones.reports_v2.html.snapshot import environment_snapshot
         s = environment_snapshot()
         assert s["python_version"]
         assert s["python_implementation"]
         assert s["platform"]
 
     def test_installed_packages_sorted_unique(self):
-        from picarones.report.snapshot import environment_snapshot
+        from picarones.reports_v2.html.snapshot import environment_snapshot
         s = environment_snapshot()
         pkgs = s["installed_packages"]
         assert isinstance(pkgs, list)
@@ -152,7 +152,7 @@ class TestEnvironmentSnapshot:
         assert len(names) == len(set(names))
 
     def test_git_commit_is_str_or_none(self):
-        from picarones.report.snapshot import environment_snapshot
+        from picarones.reports_v2.html.snapshot import environment_snapshot
         s = environment_snapshot()
         commit = s.get("git_commit")
         assert commit is None or (isinstance(commit, str) and 0 < len(commit) <= 12)
@@ -164,7 +164,7 @@ class TestEnvironmentSnapshot:
 
 class TestSnapshotAll:
     def test_contains_all_four_blocks(self):
-        from picarones.report.snapshot import snapshot_all
+        from picarones.reports_v2.html.snapshot import snapshot_all
         s = snapshot_all()
         for k in ("pricing", "glossary", "normalization", "environment"):
             assert k in s, f"snapshot_all doit exposer la clé '{k}'"
@@ -172,7 +172,7 @@ class TestSnapshotAll:
 
     def test_deterministic_for_same_inputs(self):
         from picarones.measurements.normalization import get_builtin_profile
-        from picarones.report.snapshot import snapshot_all
+        from picarones.reports_v2.html.snapshot import snapshot_all
         profile = get_builtin_profile("nfc")
 
         a = snapshot_all(lang="fr", normalization_profile=profile)
@@ -193,7 +193,7 @@ def generated_report_html(tmp_path_factory) -> str:
     """Génère un rapport démo et retourne son contenu HTML."""
     from picarones import fixtures
     from picarones.measurements.normalization import get_builtin_profile
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     b = fixtures.generate_sample_benchmark(n_docs=6)
     out_dir = tmp_path_factory.mktemp("rep27")

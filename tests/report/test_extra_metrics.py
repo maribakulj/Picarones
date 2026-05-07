@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.report_data import build_report_data
-from picarones.report.report_data.extra_metrics import (
+from picarones.reports_v2.html.data import build_report_data
+from picarones.reports_v2.html.data.extra_metrics import (
     compute_marginal_cost_section,
     compute_rare_token_recall_per_engine,
     compute_taxonomy_cooccurrence_section,

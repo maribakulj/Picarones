@@ -31,7 +31,7 @@ from picarones.reports_v2.html.renderers.calibration import (
     build_reliability_diagram_svg,
     build_reliability_diagrams_grid_html,
 )
-from picarones.report.generator import ReportGenerator
+from picarones.reports_v2.html.generator import ReportGenerator
 
 
 # ──────────────────────────────────────────────────────────────────────────

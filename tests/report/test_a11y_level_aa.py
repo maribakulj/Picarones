@@ -20,7 +20,7 @@ import re
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.generator import ReportGenerator
+from picarones.reports_v2.html.generator import ReportGenerator
 
 
 @pytest.fixture(scope="module")

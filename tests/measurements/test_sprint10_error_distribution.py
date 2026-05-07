@@ -397,7 +397,7 @@ class TestReportSprint10:
     def html_report(self, tmp_path_factory):
         """Génère un rapport HTML de démonstration."""
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         tmp = tmp_path_factory.mktemp("report")
         out = tmp / "sprint10_test.html"

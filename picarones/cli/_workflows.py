@@ -479,7 +479,7 @@ def compare_cmd(
     """
     _setup_logging(verbose)
 
-    from picarones.report.comparison import (
+    from picarones.reports_v2.html.comparison import (
         compare_benchmarks,
         detect_regressions,
         render_comparison_html,

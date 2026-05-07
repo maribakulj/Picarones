@@ -223,7 +223,7 @@ def report_cmd(results: str, output: str, lazy_images: bool, verbose: bool) -> N
     """
     _setup_logging(verbose)
 
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     click.echo(f"Chargement des résultats : {results}")
     try:
@@ -303,7 +303,7 @@ def demo_cmd(
         picarones demo --with-history --with-robustness --docs 8
     """
     from picarones.fixtures import generate_sample_benchmark
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     click.echo(f"Génération des données fictives ({docs} documents, 3 moteurs)…")
     benchmark = generate_sample_benchmark(n_docs=docs)

@@ -131,7 +131,7 @@ def benchmark_result():
 
 class TestReportIntegration:
     def test_report_embeds_glossary_json(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -142,7 +142,7 @@ class TestReportIntegration:
         assert "definition" in glossary["cer"]
 
     def test_report_contains_side_panels(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -151,7 +151,7 @@ class TestReportIntegration:
         assert 'class="side-panel-close"' in html
 
     def test_report_has_advanced_button_in_nav(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -159,7 +159,7 @@ class TestReportIntegration:
         assert 'openCustomize()' in html
 
     def test_ranking_columns_have_glossary_keys(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -167,7 +167,7 @@ class TestReportIntegration:
             assert f'data-glossary-key="{k}"' in html, f"Header pour {k} sans data-glossary-key"
 
     def test_app_js_has_glossary_and_customize_functions(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -182,7 +182,7 @@ class TestReportIntegration:
             assert fn in html, f"Fonction {fn} manquante"
 
     def test_english_glossary_for_en_locale(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report_en.html"
         ReportGenerator(benchmark_result, lang="en").generate(out)
         html = out.read_text(encoding="utf-8")
@@ -198,7 +198,7 @@ class TestReportIntegration:
 
 class TestI18nKeysForCustomize:
     def test_required_customize_keys_present(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         required = {
             "btn_customize", "customize_title",
             "customize_columns", "customize_filters",
@@ -223,7 +223,7 @@ class TestNoPrescriptionGuards:
     et que les poids de score composite sont à 0 par défaut côté JS."""
 
     def test_warning_message_is_visible(self, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         from picarones import fixtures
         bench = fixtures.generate_sample_benchmark(n_docs=3)
         out = tmp_path / "r.html"
@@ -234,7 +234,7 @@ class TestNoPrescriptionGuards:
                "universally valid weighting" in html
 
     def test_default_weights_are_empty_in_js_state(self, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         from picarones import fixtures
         bench = fixtures.generate_sample_benchmark(n_docs=3)
         out = tmp_path / "r.html"

@@ -193,7 +193,7 @@ class TestChartJsInline:
 @pytest.fixture
 def sample_generator():
     """Fixture partagée : crée un ReportGenerator avec des données fictives."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
     from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
     from picarones.measurements.metrics import MetricsResult
 

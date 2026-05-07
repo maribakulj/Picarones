@@ -701,11 +701,12 @@ architecture vérifiée.
   ``pipeline_benchmark``, ``pipeline_comparison``,
   ``core/pipeline``) puis 2 renderers
   (``numerical_sequences``, ``pipeline``).
-- Phase 5.D : 5 vues (``views/*.py``).
-- Phase 5.E : ``generator.py``, ``comparison.py``,
-  ``snapshot.py``, ``report_data/``, templates Jinja2.
+- Phase 5.D ✅ — 5 vues (``views/*.py``).
+- Phase 5.E ✅ — ``generator.py``, ``comparison.py``,
+  ``snapshot.py``, ``report_data/`` (8 fichiers), templates
+  Jinja2 (13 fichiers), ``picarones/i18n.py``.
 
-Effort restant estimé : 8-12 jours.
+Phase 5 est **terminée**.
 
 #### Phase 5.C.batch2 — Lot 2 : 5 renderers moyens (2026-05)
 
@@ -988,6 +989,79 @@ Total : ~1114 lignes relocalisées.  6 nouveaux shims minimaux
 
 **Acceptance Phase 5.D** : 5019 tests passent, lint vert,
 architecture vérifiée.
+
+#### Phase 5.E — Migration generator + comparison + snapshot + report_data + templates + i18n (2026-05)
+
+Phase 5.E finalise Phase 5 en migrant les derniers composants
+``report/`` :
+
+**Migrations effectuées** :
+
+| Source legacy                                  | Destination canonique                              |
+|------------------------------------------------|----------------------------------------------------|
+| ``report/generator.py`` (466)                  | ``reports_v2/html/generator.py``                   |
+| ``report/comparison.py`` (409)                 | ``reports_v2/html/comparison.py``                  |
+| ``report/snapshot.py`` (266)                   | ``reports_v2/html/snapshot.py``                    |
+| ``report/report_data/__init__.py`` (132)       | ``reports_v2/html/data/__init__.py``               |
+| ``report/report_data/_helpers.py`` (30)        | ``reports_v2/html/data/_helpers.py``               |
+| ``report/report_data/documents.py`` (167)      | ``reports_v2/html/data/documents.py``              |
+| ``report/report_data/engines.py`` (103)        | ``reports_v2/html/data/engines.py``                |
+| ``report/report_data/extra_metrics.py`` (272)  | ``reports_v2/html/data/extra_metrics.py``          |
+| ``report/report_data/pareto.py`` (159)         | ``reports_v2/html/data/pareto.py``                 |
+| ``report/report_data/scatter.py`` (56)         | ``reports_v2/html/data/scatter.py``                |
+| ``report/report_data/statistics.py`` (216)     | ``reports_v2/html/data/statistics.py``             |
+| ``report/templates/`` (13 fichiers)            | ``reports_v2/html/templates/`` (13 fichiers)       |
+| ``picarones/i18n.py`` (124)                    | ``picarones/reports_v2/i18n/__init__.py``          |
+| ``report/__init__.py`` (3)                     | shim re-export                                     |
+
+Total : ~2400 lignes relocalisées + 13 templates Jinja2 + le
+loader i18n.  Au total **12 nouveaux shims minimaux** (< 25
+lignes) avec ``DeprecationWarning``.
+
+**Adaptations transverses** :
+
+- ``reports_v2/html/snapshot.py`` ne peut pas importer
+  ``picarones.__version__`` (interdit par layer-deps) : utilise
+  ``importlib.metadata`` avec fallback (idem qu'au Phase 4-ter).
+- ``reports_v2/html/snapshot.py`` import ``pricing`` redirigé
+  vers le canonique ``evaluation/metrics/pricing``.
+- ``reports_v2/html/generator.py`` toutes les ~30 imports
+  internes redirigés vers ``reports_v2/html/{data,renderers,
+  views,snapshot}`` et ``evaluation/{statistics,metric_result,
+  benchmark_result}``.
+- ``reports_v2/html/data/`` : 7 imports vers
+  ``measurements/{statistics,difficulty,pricing,marginal_cost,
+  rare_tokens,taxonomy_cooccurrence,taxonomy_intra_doc}``
+  redirigés vers ``evaluation/{statistics,metrics/...}``.
+- ``reports_v2/html/views/`` : 6 imports vers
+  ``measurements/{taxonomy_comparison,incremental_comparison,
+  levers,image_predictive,worst_lines,throughput}`` redirigés
+  vers ``evaluation/metrics/...``.
+- ``picarones/reports_v2/__init__.py`` : nouveau loader
+  ``from picarones.reports_v2.html.generator import ReportGenerator``.
+- ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à 3
+  modules : ``statistics``, ``pricing``, ``difficulty``.
+- ``test_file_budgets.py`` : 2 entrées legacy retirées,
+  remplacées par les chemins canoniques ; templates dir
+  référencé via ``reports_v2/html/templates/``.
+- 28+ chemins de templates dans les tests redirigés vers
+  ``reports_v2/html/templates/``.
+- Tests qui faisaient ``from picarones import i18n`` redirigés
+  vers ``from picarones.reports_v2 import i18n`` (le shim ne
+  ré-exporte pas ``_get_labels_cached`` — privé).
+
+État final de ``picarones/report/``
+-----------------------------------
+
+Le répertoire ``picarones/report/`` ne contient désormais
+**que des shims** (~30 fichiers).  Aucun module avec du
+contenu réel ne subsiste.  Le canonique vit intégralement
+dans ``picarones/reports_v2/html/`` (générateur + renderers
++ vues + données + templates + comparaison + snapshot).
+
+**Acceptance Phase 5.E + Phase 5 entière** : 5019 tests
+passent, lint vert, architecture vérifiée (anti-cycles,
+file budgets, module coverage).
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

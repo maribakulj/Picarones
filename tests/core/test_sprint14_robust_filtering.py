@@ -62,7 +62,7 @@ def _make_fake_benchmark():
 
 def _generate_html(bm=None) -> str:
     """Génère le HTML complet du rapport pour un BenchmarkResult minimal."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
     import tempfile
     import os
     if bm is None:

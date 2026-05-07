@@ -31,7 +31,7 @@ from picarones.measurements.narrative.detectors import detect_stratification_rec
 from picarones.core.facts import FactImportance, FactType
 from picarones.measurements.narrative.renderer import extract_numbers, render_fact
 from picarones.core.results import DocumentResult
-from picarones.report.generator import ReportGenerator
+from picarones.reports_v2.html.generator import ReportGenerator
 from picarones.reports_v2.html.renderers.stratification import build_stratified_ranking_html
 
 

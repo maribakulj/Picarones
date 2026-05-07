@@ -21,6 +21,7 @@ Usage
 
 from __future__ import annotations
 
+from picarones.reports_v2.html.generator import ReportGenerator
 from picarones.reports_v2.html.render import HtmlReportRenderer
 
-__all__ = ["HtmlReportRenderer"]
+__all__ = ["HtmlReportRenderer", "ReportGenerator"]

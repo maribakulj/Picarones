@@ -226,7 +226,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
             return
 
         job.add_event("log", {"message": "Génération du rapport HTML…"})
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         gen = ReportGenerator(result, lang=req.report_lang)
         gen.generate(output_html)
 
@@ -334,7 +334,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             return
 
         job.add_event("log", {"message": "Génération du rapport HTML…"})
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         report_lang = getattr(req, "report_lang", "fr")
         gen = ReportGenerator(result, lang=report_lang)
         gen.generate(output_html)

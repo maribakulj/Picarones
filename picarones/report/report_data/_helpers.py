@@ -1,30 +1,18 @@
-"""Helpers numériques internes au sous-package report_data.
+"""``picarones.report.report_data._helpers`` — shim re-export (déprécié, suppression 2.0).
 
-Petites fonctions utilitaires partagées par tous les builders de
-sections (engines, documents, statistics, scatter, pareto). Ne pas
-importer depuis l'extérieur du sous-package — ces helpers sont
-spécifiques aux conventions du dict JSON consommé par le template.
+Canonique : :mod:`picarones.reports_v2.html.data._helpers`.  Phase 5.E
+du retrait du legacy.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+import warnings
 
+from picarones.reports_v2.html.data._helpers import *  # noqa: F401, F403
 
-def safe_round(v: Optional[float], decimals: int = 4) -> float:
-    """Arrondit un float optionnel ; ``None`` devient ``0.0``."""
-    return round(v or 0.0, decimals)
-
-
-def percent_string(v: Optional[float], decimals: int = 2) -> str:
-    """Formate un ratio ∈ [0, 1] en chaîne pourcentage : ``0.4723 → "47.23 %"``.
-
-    ``None`` → ``"—"``. Conservé pour rétrocompat avec d'éventuels
-    callers externes (Sprint 7 historique).
-    """
-    if v is None:
-        return "—"
-    return f"{v * 100:.{decimals}f} %"
-
-
-__all__ = ["safe_round", "percent_string"]
+warnings.warn(
+    "picarones.report.report_data._helpers is deprecated and will be removed in 2.0.  "
+    "Import from picarones.reports_v2.html.data._helpers instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

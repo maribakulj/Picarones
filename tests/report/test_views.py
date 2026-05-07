@@ -345,11 +345,11 @@ class TestGeneratorWiring:
         une docstring) et trop liée à la forme du code.
         """
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         bench = generate_sample_benchmark()
         gen = ReportGenerator(bench, lang="fr")
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
 
         report_data = {
             "engines": [],
@@ -381,7 +381,7 @@ class TestGeneratorWiring:
 
         tpl_src = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "templates" / "view_analyses.html"
+            / "picarones" / "reports_v2" / "html" / "templates" / "view_analyses.html"
         ).read_text(encoding="utf-8")
         assert "{% if economics_view_html %}" in tpl_src
         assert "{% if advanced_taxonomy_view_html %}" in tpl_src

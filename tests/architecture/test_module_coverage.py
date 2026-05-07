@@ -94,6 +94,13 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     "image_predictive",
     "worst_lines",
     "throughput",
+    # Phase 5.E : 3 modules supplémentaires consommés uniquement
+    # par les renderers/views/data migrés vers
+    # ``reports_v2/html/`` qui importent désormais le canonique
+    # directement.
+    "statistics",
+    "pricing",
+    "difficulty",
 })
 
 

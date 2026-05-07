@@ -49,7 +49,9 @@ FILE_BUDGETS: dict[str, int] = {
     # et le sous-package picarones/report/report_data/. Budget serré
     # à 500 pour verrouiller le gain ; toute croissance > 500 sera
     # un signal pour redécouper.
-    "picarones/report/generator.py": 500,                 # actuel 431
+    # Phase 5.E : ``report/generator.py`` est désormais un shim ;
+    # canonique dans ``reports_v2/html/generator.py``.
+    "picarones/reports_v2/html/generator.py": 550,        # actuel 471
     # --- Fichiers métier larges.
     "picarones/measurements/robustness.py": 850,          # actuel 731
     # Phase 5.C.batch7 : ``report/pipeline_render.py`` est désormais
@@ -144,7 +146,9 @@ FILE_BUDGETS: dict[str, int] = {
     # L'ancien emplacement est désormais un re-export ; le contenu
     # canonique vit ici.
     "picarones/formats/text/normalization.py": 500,       # actuel 420
-    "picarones/report/comparison.py": 500,                # actuel 409
+    # Phase 5.E : ``report/comparison.py`` est désormais un shim ;
+    # canonique dans ``reports_v2/html/comparison.py``.
+    "picarones/reports_v2/html/comparison.py": 500,       # actuel 414
     # --- Module mutualisé créé par le sprint des render helpers
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
     # calibré sur la taille post-documentation des conventions.
