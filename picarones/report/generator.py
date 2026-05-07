@@ -302,7 +302,7 @@ class ReportGenerator:
             build_specialization_html,
         )
         # Chantier 3 (post-Sprint 97) — 3 vues thématiques composées.
-        from picarones.report.views import (
+        from picarones.reports_v2.html.views import (
             build_advanced_taxonomy_view_html,
             build_diagnostics_view_html,
             build_economics_view_html,

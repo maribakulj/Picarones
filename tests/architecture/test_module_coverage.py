@@ -84,6 +84,16 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     "numerical_sequences_hooks",
     "pipeline_benchmark",
     "pipeline_comparison",
+    # Phase 5.D : 6 modules supplémentaires consommés uniquement
+    # par les 5 vues thématiques migrées vers
+    # ``reports_v2/html/views/``, qui importent désormais le
+    # canonique directement.
+    "taxonomy_comparison",
+    "incremental_comparison",
+    "levers",
+    "image_predictive",
+    "worst_lines",
+    "throughput",
 })
 
 

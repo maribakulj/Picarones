@@ -948,9 +948,46 @@ EXPECTED_CERCLE1 vide).
 Restantes pour Phase 5
 ----------------------
 
-- Phase 5.D : 5 vues (``views/*.py``).
+- Phase 5.D ✅ — 5 vues (``views/*.py``) migrées vers
+  ``reports_v2/html/views/``.
 - Phase 5.E : ``generator.py``, ``comparison.py``,
   ``snapshot.py``, ``report_data/``, templates Jinja2.
+
+#### Phase 5.D — Migration des 5 vues thématiques (2026-05)
+
+Phase 5.D migre les 5 vues thématiques (orchestrateurs des
+renderers) vers ``reports_v2/html/views/``.  Ces vues prennent un
+``report_data`` dict et composent plusieurs renderers en blocs
+``<details>`` collapsibles, avec adaptive masking.
+
+**Migrations effectuées** :
+
+| Source legacy                                  | Destination canonique                              |
+|------------------------------------------------|----------------------------------------------------|
+| ``report/views/__init__.py`` (65)              | ``reports_v2/html/views/__init__.py``              |
+| ``report/views/advanced_taxonomy.py`` (245)    | ``reports_v2/html/views/advanced_taxonomy.py``     |
+| ``report/views/diagnostics.py`` (247)          | ``reports_v2/html/views/diagnostics.py``           |
+| ``report/views/economics.py`` (219)            | ``reports_v2/html/views/economics.py``             |
+| ``report/views/pipeline.py`` (237)             | ``reports_v2/html/views/pipeline.py``              |
+| ``report/views/robustness.py`` (101)           | ``reports_v2/html/views/robustness.py``            |
+
+Total : ~1114 lignes relocalisées.  6 nouveaux shims minimaux
+(< 25 lignes) avec ``DeprecationWarning``.
+
+**Adaptations transverses** :
+
+- 6 imports de modules de mesure dans les vues redirigés vers
+  leurs canoniques ``evaluation/metrics/`` :
+  ``taxonomy_comparison``, ``incremental_comparison``,
+  ``levers``, ``image_predictive``, ``worst_lines``,
+  ``throughput``.
+- ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu de 6
+  modules supplémentaires (mêmes raisons que les renderers).
+- Renderers ``reports_v2/html/renderers/`` cross-référencés
+  par les vues — toujours au canonique.
+
+**Acceptance Phase 5.D** : 5019 tests passent, lint vert,
+architecture vérifiée.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 
