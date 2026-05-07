@@ -119,7 +119,12 @@ def run_benchmark(
 ) -> BenchmarkResult
 ```
 
-### `picarones.evaluation.pipeline`
+### `picarones.pipeline.legacy_runner`
+
+> Phase 7.B.2 (2026-05-07) — module relocalisé depuis
+> ``picarones.evaluation.pipeline`` vers ``picarones.pipeline.legacy_runner``.
+> La délégation au ``PipelineExecutor`` canonique impose à ce module
+> d'importer la couche ``pipeline/`` — interdit à ``evaluation/``.
 
 ```python
 class PipelineStep:
@@ -129,7 +134,10 @@ class PipelineResult:
 class PipelineRunner:
 ```
 
-### `picarones.measurements.pipeline_benchmark`
+### `picarones.pipeline.legacy_pipeline_benchmark`
+
+> Phase 7.B.2 — relocalisé depuis ``picarones.evaluation.pipeline_benchmark``
+> (mêmes raisons que ``legacy_runner``).
 
 ```python
 class StepAggregate:
@@ -139,7 +147,9 @@ def default_initial_inputs(doc) -> dict
 def run_pipeline_benchmark(spec, corpus, factory=...) -> PipelineBenchmarkResult
 ```
 
-### `picarones.measurements.pipeline_comparison`
+### `picarones.pipeline.legacy_pipeline_comparison`
+
+> Phase 7.B.2 — relocalisé depuis ``picarones.evaluation.pipeline_comparison``.
 
 ```python
 class PipelineComparisonResult:

@@ -29,7 +29,7 @@ from typing import Any
 from picarones.evaluation.corpus import Document, GTLevel, TextGT
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
-from picarones.evaluation.pipeline import (
+from picarones.pipeline.legacy_runner import (
     PipelineResult,
     PipelineRunner,
     PipelineSpec,

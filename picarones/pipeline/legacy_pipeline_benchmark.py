@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 
 from picarones.evaluation.corpus import Corpus, Document
 from picarones.domain.artifacts import ArtifactType
-from picarones.evaluation.pipeline import (
+from picarones.pipeline.legacy_runner import (
     PipelineResult,
     PipelineRunner,
     PipelineSpec,

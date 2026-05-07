@@ -30,7 +30,7 @@ from picarones.evaluation.corpus import AltoGT, Document, GTLevel, TextGT
 from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
-from picarones.evaluation.pipeline import (
+from picarones.pipeline.legacy_runner import (
     PipelineRunner,
     PipelineSpec,
     PipelineStep,

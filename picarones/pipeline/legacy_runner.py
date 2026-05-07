@@ -4,15 +4,39 @@ Phase 5.C.batch7 — module relocalisé depuis
 ``picarones.core.pipeline`` vers ``picarones.evaluation.pipeline``.
 Shim ``picarones.core.pipeline`` retiré au Lot C (2026-05-07).
 
-Coexistence avec ``picarones.pipeline.executor``
+Phase 7.B.2 — module relocalisé une seconde fois
 ------------------------------------------------
-Le présent module porte le ``PipelineRunner`` historique
-(Sprint 63), riche en behavior, qui orchestre l'exécution
-mono-document.  Le module canonique
-``picarones.pipeline.executor`` (Sprint S6) propose un design
-différent (instance-based, immutable specs).  Les deux
-cohabitent volontairement ; un convertisseur explicite viendra
-quand un caller institutionnel l'exigera.
+``picarones.evaluation.pipeline`` → ``picarones.pipeline.legacy_runner``.
+La délégation à :class:`PipelineExecutor` (ci-dessous) exige d'importer
+la couche ``pipeline/``, ce que la règle d'architecture concentrique
+interdit à ``evaluation/`` (whitelist externe restreinte, pas de
+dépendance sortante vers une couche plus externe — cf. CLAUDE.md
+§ "architecture des couches").  Le module bridge legacy ↔ canonique
+vit donc dans la couche ``pipeline/``.  ``picarones.evaluation.pipeline``
+reste exposé en re-export shim le temps que les callers historiques
+migrent.
+
+Phase 7.B.2 — délégation au ``PipelineExecutor`` canonique
+----------------------------------------------------------
+Depuis 2026-05, ``PipelineRunner.run`` ne porte **plus** sa propre
+boucle d'exécution.  Le corps de la méthode délègue intégralement à
+:class:`picarones.pipeline.executor.PipelineExecutor` via le wrapper
+:class:`picarones.pipeline._legacy_module_adapter._BaseModuleAdapter`
+(créé en 7.B.1).  Le runner ne conserve que :
+
+1. La validation amont legacy (préservation des messages d'erreur
+   français du Sprint 63 — ``"étape N (X) demande Y qui n'est ni…"``).
+2. La traduction des résultats canoniques (``pipeline.types.StepResult``
+   Pydantic) vers les types legacy (``StepResult``, ``PipelineResult``
+   dataclass) attendus par les ~440 tests existants.
+3. Le calcul des ``junction_metrics`` aux jonctions GT-vs-sortie —
+   le canonique laisse cette responsabilité au caller (`MetricRegistry`
+   intégré au planner mais évaluation déférée).
+
+Cela élimine la duplication de moteur d'exécution (un seul code
+path) tout en préservant intégralement l'API publique du Sprint 63
+le temps que la sub-phase 7.C migre les tests vers le canonique
+direct, puis 7.D supprime le runner legacy.
 
 Sprint 63 — Étape 4 / axe B du plan d'évolution 2026 : démarrage du
 banc d'essai de pipelines.
@@ -63,14 +87,28 @@ Reporté à des sprints dédiés :
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from picarones.evaluation.corpus import Document, GTLevel
 from picarones.evaluation.metric_registry import compute_at_junction
 from picarones.domain.artifacts import ArtifactType
+from picarones.domain.documents import DocumentRef
 from picarones.domain.module_protocol import BaseModule
+from picarones.domain.pipeline_spec import (
+    PipelineSpec as _DomainPipelineSpec,
+    PipelineStep as _DomainPipelineStep,
+)
+from picarones.pipeline._legacy_module_adapter import (
+    _BaseModuleAdapter,
+    _PayloadRegistry,
+    wrap_initial_inputs,
+)
+from picarones.pipeline.executor import PipelineExecutor
+from picarones.pipeline.types import (
+    RunContext,
+    StepResult as _CanonicalStepResult,
+)
 
 # Sprint A3 (renforce la règle Cercle 1 → Cercle 1 uniquement) — la
 # cérémonie d'eager-load des métriques typées (Sprint 34) qui vivait
@@ -387,6 +425,15 @@ class PipelineRunner:
     corpus-wide et l'agrégation par pipeline sont reportées à un
     sprint dédié.
 
+    Phase 7.B.2 — délégation au canonique
+    --------------------------------------
+    L'API publique (``run`` statique, types de retour ``PipelineResult``
+    et ``StepResult`` legacy, format des messages d'erreur en français)
+    est rigoureusement préservée pour rétrocompat.  Le corps de
+    ``run`` délègue à :class:`picarones.pipeline.executor.PipelineExecutor`
+    via :class:`_BaseModuleAdapter` — il n'y a plus de code de
+    boucle d'exécution dupliqué.
+
     Usage typique
     -------------
 
@@ -436,158 +483,225 @@ class PipelineRunner:
             pipeline_name=spec.name, doc_id=document.doc_id,
         )
 
-        # Validation amont : si la pipeline est statiquement
-        # invalide, on n'exécute aucune étape.
+        # Validation amont legacy : si la pipeline est statiquement
+        # invalide, on n'exécute aucune étape.  Cette validation
+        # produit des messages français spécifiques au Sprint 63
+        # (cf. ``PipelineSpec.validate``) que les tests vérifient ;
+        # le canonique a sa propre ``ValidationError`` au format
+        # différent — d'où la double validation tant que les tests
+        # legacy ne sont pas migrés (sub-phase 7.C).
         problems = spec.validate(tuple(initial_inputs.keys()))
         if problems:
             result.error = " ; ".join(problems)
             return result
 
-        # Sprint 66 — bag versionné : ``versioned[(type, src_step)]``
-        # contient l'artefact produit par ``src_step`` pour ``type``.
-        # ``src_step`` vaut ``"__initial__"`` pour les entrées
-        # initiales fournies par l'utilisateur.  ``latest[type]``
-        # désigne le nom de l'étape qui a produit la version la plus
-        # récente du type — utilisé en l'absence d'``inputs_from``
-        # explicite (rétrocompat Sprint 63).
-        versioned: dict[tuple[ArtifactType, str], Any] = {
-            (t, "__initial__"): v for t, v in initial_inputs.items()
-        }
-        latest: dict[ArtifactType, str] = {
-            t: "__initial__" for t in initial_inputs
-        }
+        canonical_result, registry = _delegate_to_canonical_executor(
+            spec, document, initial_inputs,
+        )
 
-        pipeline_t0 = time.monotonic()
-        for step in spec.steps:
-            step_result = PipelineRunner._run_step(
-                step, versioned, latest, document,
-            )
-            result.steps.append(step_result)
-        result.total_duration_seconds = time.monotonic() - pipeline_t0
-        return result
-
-    @staticmethod
-    def _run_step(
-        step: PipelineStep,
-        versioned: dict[tuple[ArtifactType, str], Any],
-        latest: dict[ArtifactType, str],
-        document: Document,
-    ) -> StepResult:
-        # Sprint 66 — résolution des entrées : pour chaque type
-        # demandé, on consulte ``inputs_from`` ; sinon on prend la
-        # dernière version disponible (rétrocompat Sprint 63).
-        resolved: dict[ArtifactType, Any] = {}
-        missing: list[str] = []
-        for t in step.input_types:
-            src = step.inputs_from.get(t, latest.get(t))
-            if src is None:
-                missing.append(t.value)
-                continue
-            key = (t, src)
-            if key not in versioned:
-                # Référence explicite vers une étape qui n'a pas
-                # produit cet artefact (ex. l'étape source a échoué).
-                missing.append(f"{t.value}@{src}")
-                continue
-            resolved[t] = versioned[key]
-        if missing:
-            miss_str = ",".join(missing)
-            return StepResult(
-                step_name=step.name,
-                duration_seconds=0.0,
-                output_types=(),
-                error=f"entrée manquante : {miss_str}",
-            )
-        inputs_for_module = resolved
-        # Exécution chronométrée
-        t0 = time.monotonic()
-        try:
-            outputs = step.module.process(inputs_for_module)
-        except Exception as exc:  # noqa: BLE001
-            duration = time.monotonic() - t0
-            logger.warning(
-                "[pipeline_runner] étape '%s' a levé : %s",
-                step.name, exc,
-            )
-            return StepResult(
-                step_name=step.name,
-                duration_seconds=duration,
-                output_types=(),
-                error=f"{type(exc).__name__}: {exc}",
-            )
-        duration = time.monotonic() - t0
-
-        # Validation des sorties : le module est censé déclarer ses
-        # output_types, on vérifie qu'il les a tous produits.  Si
-        # ce n'est pas le cas, on remonte une erreur explicite mais
-        # on conserve les sorties effectivement présentes (utile
-        # pour le diagnostic).
-        if not isinstance(outputs, dict):
-            return StepResult(
-                step_name=step.name,
-                duration_seconds=duration,
-                output_types=(),
-                error=(
-                    f"le module a retourné {type(outputs).__name__}, "
-                    f"un dict[ArtifactType, Any] est attendu"
+        for legacy_step, canonical_sr in zip(
+            spec.steps, canonical_result.step_results,
+        ):
+            result.steps.append(
+                _build_legacy_step_result(
+                    legacy_step, canonical_sr, registry, document,
                 ),
             )
-        produced = tuple(t for t in step.output_types if t in outputs)
-        missing_outputs = [t for t in step.output_types if t not in outputs]
-        error: Optional[str] = None
-        if missing_outputs:
-            miss_str = ",".join(t.value for t in missing_outputs)
-            error = f"sortie manquante : {miss_str}"
+        result.total_duration_seconds = canonical_result.duration_seconds
+        return result
 
-        # Mise à jour du bag versionné : on stocke la sortie sous
-        # une clé (type, step.name) ET on met à jour ``latest`` pour
-        # que les étapes suivantes la récupèrent par défaut.
-        for t in produced:
-            versioned[(t, step.name)] = outputs[t]
-            latest[t] = step.name
 
-        # Évaluation aux jonctions : pour chaque type produit, si
-        # la GT du même niveau existe, on calcule les métriques.
-        junction_metrics: dict[str, dict[str, Any]] = {}
-        for at in produced:
-            gt_level = _artifact_type_to_gt_level(at)
-            if gt_level is None:
-                continue
-            gt_payload = document.get_gt(gt_level)
-            if gt_payload is None:
-                continue
-            try:
-                metrics = compute_at_junction(
-                    _gt_payload_to_value(gt_payload),
-                    outputs[at],
-                    (at, at),
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "[pipeline_runner] évaluation à la jonction %s "
-                    "a levé : %s",
-                    at.value, exc,
-                )
-                continue
-            if metrics:
-                junction_metrics[at.value] = metrics
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 7.B.2 — délégation au PipelineExecutor canonique
+# ──────────────────────────────────────────────────────────────────────────
 
-        # Phase 4-bis : double-clé pour rétrocompat.  Les tests
-        # legacy cherchent junction_metrics["text"] mais le runner
-        # peut produire junction_metrics["raw_text"] si l'enum est
-        # migré (ArtifactType.TEXT alias de RAW_TEXT, valeur
-        # "raw_text").  expand_legacy_keys ajoute la clé legacy
-        # ("text") à côté de la canonique ("raw_text") sans écraser.
-        from picarones.domain.artifacts import expand_legacy_keys
-        expand_legacy_keys(junction_metrics)
 
-        return StepResult(
-            step_name=step.name,
-            duration_seconds=duration,
-            output_types=produced,
-            junction_metrics=junction_metrics,
-            error=error,
+def _delegate_to_canonical_executor(
+    legacy_spec: PipelineSpec,
+    legacy_doc: Document,
+    initial_inputs: dict[ArtifactType, Any],
+) -> tuple[Any, _PayloadRegistry]:
+    """Exécute ``legacy_spec`` via :class:`PipelineExecutor`.
+
+    Construit la ``_DomainPipelineSpec`` canonique équivalente, un
+    ``adapter_resolver`` ad-hoc qui mappe ``step.name → _BaseModuleAdapter``,
+    et délègue à l'executor.  Retourne le ``PipelineResult`` canonique
+    + le registre de payloads (dont le caller a besoin pour reconstruire
+    les ``junction_metrics`` du contrat legacy).
+    """
+    registry = _PayloadRegistry()
+    canonical_inputs = wrap_initial_inputs(
+        initial_inputs, registry, legacy_doc.doc_id,
+    )
+
+    adapter_map: dict[str, _BaseModuleAdapter] = {}
+    canonical_steps: list[_DomainPipelineStep] = []
+    for step in legacy_spec.steps:
+        adapter_map[step.name] = _BaseModuleAdapter(step.module, registry)
+        canonical_steps.append(
+            _DomainPipelineStep(
+                id=step.name,
+                kind="legacy_module",
+                adapter_name=step.name,
+                input_types=tuple(step.input_types),
+                output_types=tuple(step.output_types),
+                inputs_from=dict(step.inputs_from),
+            ),
         )
+    canonical_spec = _DomainPipelineSpec(
+        name=legacy_spec.name,
+        initial_inputs=tuple(initial_inputs.keys()),
+        steps=tuple(canonical_steps),
+    )
+
+    document_ref = DocumentRef(id=legacy_doc.doc_id)
+    # ``code_version`` est libre (str non vide).  Le wrapper
+    # ``_BaseModuleAdapter`` ne produit pas de ``ProvenanceRecord``
+    # détaillée — la couche pipeline ne peut pas importer
+    # ``picarones.__version__`` (whitelist externe restreinte).
+    # On étiquette les runs legacy avec un sentinel constant ; la
+    # traçabilité fine reviendra avec le canonique pur en 7.D.
+    context = RunContext(
+        document_id=legacy_doc.doc_id,
+        code_version="legacy_runner",
+        pipeline_name=legacy_spec.name,
+    )
+    executor = PipelineExecutor(adapter_resolver=adapter_map.__getitem__)
+    canonical_result = executor.run(
+        canonical_spec, document_ref, canonical_inputs, context,
+    )
+    return canonical_result, registry
+
+
+def _build_legacy_step_result(
+    legacy_step: PipelineStep,
+    canonical_sr: _CanonicalStepResult,
+    registry: _PayloadRegistry,
+    document: Document,
+) -> StepResult:
+    """Reconstruit un ``StepResult`` legacy depuis le canonique.
+
+    Trois responsabilités :
+
+    1. Traduire le format des messages d'erreur (``adapter_raised:``,
+       ``missing_input:``, ``missing_output:``) vers le format français
+       attendu par les tests legacy (``"Type: msg"``,
+       ``"entrée manquante : ..."``, ``"sortie manquante : ..."``).
+    2. Reconstruire le tuple ``output_types`` à partir de
+       ``produced_artifacts`` du canonique.
+    3. Calculer les ``junction_metrics`` en lisant les payloads
+       depuis ``registry`` et en appelant ``compute_at_junction``
+       contre la GT du document — comportement automatique du
+       Sprint 63 que le canonique laisse au caller.
+    """
+    error = _translate_canonical_error(canonical_sr.error)
+
+    produced_at: list[ArtifactType] = []
+    for type_value in canonical_sr.produced_artifacts:
+        try:
+            produced_at.append(ArtifactType(type_value))
+        except ValueError:
+            continue
+
+    junction_metrics = _compute_junction_metrics_for_step(
+        produced_at, canonical_sr, registry, document,
+    )
+
+    return StepResult(
+        step_name=legacy_step.name,
+        duration_seconds=canonical_sr.duration_seconds,
+        output_types=tuple(produced_at),
+        junction_metrics=junction_metrics,
+        error=error,
+    )
+
+
+def _compute_junction_metrics_for_step(
+    produced_at: list[ArtifactType],
+    canonical_sr: _CanonicalStepResult,
+    registry: _PayloadRegistry,
+    document: Document,
+) -> dict[str, dict[str, Any]]:
+    """Calcule ``junction_metrics`` en post-traitant les outputs.
+
+    Pour chaque ``ArtifactType`` produit, retrouve le payload via
+    ``registry`` (les ``Artifact`` du canonique ne portent pas de
+    ``content`` direct — voir ``_BaseModuleAdapter``) puis appelle
+    ``compute_at_junction(gt, payload, (T, T))`` exactement comme le
+    Sprint 63.  Les exceptions par jonction sont logguées et la
+    jonction est silencieusement ignorée — comportement historique.
+    """
+    junction_metrics: dict[str, dict[str, Any]] = {}
+    for at in produced_at:
+        gt_level = _artifact_type_to_gt_level(at)
+        if gt_level is None:
+            continue
+        gt_payload = document.get_gt(gt_level)
+        if gt_payload is None:
+            continue
+        artifact_id = canonical_sr.produced_artifacts.get(at.value)
+        if artifact_id is None or artifact_id not in registry:
+            continue
+        payload = registry.get(artifact_id)
+        try:
+            metrics = compute_at_junction(
+                _gt_payload_to_value(gt_payload),
+                payload,
+                (at, at),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[pipeline_runner] évaluation à la jonction %s "
+                "a levé : %s",
+                at.value, exc,
+            )
+            continue
+        if metrics:
+            junction_metrics[at.value] = metrics
+
+    # Phase 4-bis : double-clé pour rétrocompat.  Les tests
+    # legacy cherchent junction_metrics["text"] mais le runner
+    # peut produire junction_metrics["raw_text"] si l'enum est
+    # migré (ArtifactType.TEXT alias de RAW_TEXT, valeur
+    # "raw_text").  expand_legacy_keys ajoute la clé legacy
+    # ("text") à côté de la canonique ("raw_text") sans écraser.
+    from picarones.domain.artifacts import expand_legacy_keys
+    expand_legacy_keys(junction_metrics)
+    return junction_metrics
+
+
+def _translate_canonical_error(canonical_error: str | None) -> Optional[str]:
+    """Traduit un message d'erreur canonique vers le format legacy.
+
+    Le ``PipelineExecutor`` produit des messages structurés avec un
+    préfixe (``adapter_raised:``, ``missing_input:``, ``missing_output:``,
+    ``adapter_not_found:``).  Les tests legacy s'attendent à des
+    messages français du Sprint 63 — on convertit pour préserver
+    rétrocompat strict tant que la sub-phase 7.C n'a pas migré les
+    tests.
+    """
+    if canonical_error is None:
+        return None
+    if canonical_error.startswith("adapter_raised: "):
+        # "adapter_raised: TypeError: bla" → "TypeError: bla"
+        return canonical_error[len("adapter_raised: "):]
+    if canonical_error.startswith("missing_input: "):
+        miss = canonical_error[len("missing_input: "):]
+        return f"entrée manquante : {miss}"
+    if canonical_error.startswith("missing_output: "):
+        # Format canonique : "missing_output: ['raw_text', 'alto_xml']"
+        # On parse cette repr de liste pour produire le format legacy
+        # "sortie manquante : raw_text,alto_xml".
+        miss_repr = canonical_error[len("missing_output: "):]
+        miss = miss_repr.strip("[]").replace("'", "").replace(" ", "")
+        return f"sortie manquante : {miss}"
+    if canonical_error.startswith("adapter_not_found: "):
+        adapter = canonical_error[len("adapter_not_found: "):]
+        return f"adapter introuvable : {adapter}"
+    if canonical_error.startswith("adapter_resolver_failed: "):
+        msg = canonical_error[len("adapter_resolver_failed: "):]
+        return f"résolution adapter échouée : {msg}"
+    return canonical_error
 
 
 def _gt_payload_to_value(payload: Any) -> Any:

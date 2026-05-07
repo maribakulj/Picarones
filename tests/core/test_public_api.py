@@ -235,8 +235,12 @@ class TestRunnerApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 6. picarones.evaluation.pipeline — banc d'essai pipelines (canonique)
+# 6. picarones.pipeline.legacy_runner — banc d'essai pipelines (legacy)
 # ──────────────────────────────────────────────────────────────────────────
+# Phase 7.B.2 : ce module a migré depuis ``picarones.evaluation.pipeline``
+# vers ``picarones.pipeline.legacy_runner`` parce que sa délégation au
+# ``PipelineExecutor`` canonique l'oblige à importer la couche
+# ``pipeline/`` — interdit à ``evaluation/``.
 
 
 class TestPipelineRunnerApi:
@@ -245,7 +249,7 @@ class TestPipelineRunnerApi:
         "StepResult", "PipelineResult", "PipelineRunner",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.evaluation.pipeline", name)
+        _assert_class("picarones.pipeline.legacy_runner", name)
 
 
 class TestPipelineBenchmarkApi:
@@ -498,9 +502,9 @@ class TestApiStableDoc:
             "picarones.evaluation.benchmark_result",
             "picarones.measurements.metrics",
             "picarones.measurements.runner",
-            "picarones.evaluation.pipeline",
-            "picarones.measurements.pipeline_benchmark",
-            "picarones.measurements.pipeline_comparison",
+            "picarones.pipeline.legacy_runner",
+            "picarones.pipeline.legacy_pipeline_benchmark",
+            "picarones.pipeline.legacy_pipeline_comparison",
             "picarones.measurements.pipeline_spec_loader",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",

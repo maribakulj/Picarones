@@ -69,9 +69,16 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
-    # Phase 5.C.batch7 : ``core/pipeline.py`` est désormais un shim ;
-    # canonique dans ``evaluation/pipeline.py``.
-    "picarones/evaluation/pipeline.py": 700,              # actuel 622
+    # Phase 7.B.2 : le runner legacy a migré vers
+    # ``pipeline/legacy_runner.py`` parce qu'il importe désormais le
+    # ``PipelineExecutor`` canonique (couche pipeline) — interdit à
+    # ``evaluation/`` par la règle d'architecture concentrique.
+    # Le module a gagné ~100 LOC pour les helpers de délégation
+    # (_delegate_to_canonical_executor, _build_legacy_step_result,
+    # _translate_canonical_error) en remplacement de la boucle
+    # _run_step supprimée.  Sera divisé en 7.D quand le runner
+    # legacy disparaît au profit du canonique direct.
+    "picarones/pipeline/legacy_runner.py": 825,           # actuel 735
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
     # Sprint A14-S10 + Lot D — déplacés depuis measurements/.
