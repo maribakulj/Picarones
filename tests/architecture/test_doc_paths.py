@@ -85,15 +85,23 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   avant la migration (ces moteurs n'ont jamais été implémentés).
 #:   ``SPECS.md`` a été corrigé en place vers
 #:   ``picarones/adapters/legacy_engines/base.py``.
+#: - 132 (sprint « Lot F — report/ → reports_v2/ », 2026-05-07) :
+#:   suppression des 37 shims ``picarones/report/`` (29 *_render.py,
+#:   2 helpers, 6 modules + glossary).  38 nouveaux chemins cassés
+#:   héritage : 29 dans ``CHANGELOG.md`` + 8 dans ``docs/audits/*.md``
+#:   et ``docs/migration/legacy-retirement-plan.md`` — tous
+#:   intouchables.  Le doc actif ``docs/reference/views.md`` a été
+#:   corrigé en place vers les chemins ``picarones/reports_v2/html/{views,
+#:   generator, renderers, templates}``.
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
 #: - ``docs/audits/*.md`` : audits historiques, intouchables.
 #: - ``docs/roadmap/evolution-2026.md`` : plan stratégique historique.
-#: - ``docs/migration/executor-equivalence.md`` : audit historique
-#:   d'équivalence executor (cite des chemins legacy à des fins
+#: - ``docs/migration/{executor-equivalence, legacy-retirement-plan}.md`` :
+#:   audits/plans historiques (citent des chemins legacy à des fins
 #:   de comparaison).
-BROKEN_PATHS_BASELINE = 94
+BROKEN_PATHS_BASELINE = 132
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

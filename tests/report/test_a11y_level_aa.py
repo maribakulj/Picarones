@@ -85,7 +85,7 @@ def test_default_palette_is_okabe_ito(demo_html: str) -> None:
 
 def test_classic_palette_still_available_via_module() -> None:
     """``CLASSIC_*`` reste exportable pour rétrocompat."""
-    from picarones.report.colors import (
+    from picarones.reports_v2._helpers.colors import (
         CLASSIC_GREEN,
         CLASSIC_ORANGE,
         CLASSIC_RED,

@@ -203,10 +203,11 @@ fiable.)
 
 ### 4.A Imports legacy dans les tests
 
-**66 fichiers** avec **372 statements** d'import depuis les
-paquets legacy (``core``, ``measurements``, ``engines``,
-``llm``, ``pipelines``, ``report``, ``modules``) — Lots A, B,
-C et D terminés (cf. 4.D ci-dessous).  Le sous-paquet
+**62 fichiers** avec **365 statements** d'import depuis les
+paquets legacy (``core``, ``measurements``, ``llm``,
+``pipelines``) — Lots A, B, C, D, E et F terminés (cf. 4.D
+ci-dessous).  Les paquets ``engines/``, ``modules/`` et
+``report/`` ont été entièrement supprimés.  Le sous-paquet
 ``core/`` ne contient plus que ``diff_utils`` et ``xml_utils``,
 et ``measurements/`` est passé de 50+ shims à ~25 modules
 réellement présents.
@@ -325,10 +326,21 @@ L'ordre recommandé, par lots de symboles cohérents :
    - ``ENGINES_DIR`` dans
      ``tests/docs/test_readme_consistency.py`` redirigé vers
      ``picarones/adapters/legacy_engines/``.
-6. **Lot F — reports_v2** (~80 imports) :
-   - ``report.*_render`` → ``reports_v2.html.renderers.*``
+6. ✅ **Lot F — reports_v2** (37 shims supprimés en bloc, 7
+   imports tests à migrer + ``scripts/gen_readme_tables.py``
+   redirigé) :
+   - ``report.*_render`` → ``reports_v2.html.renderers.*`` (29 shims)
    - ``report.{generator, comparison, snapshot}`` →
-     ``reports_v2.html.*``
+     ``reports_v2.html.*`` (3 shims)
+   - ``report.{assets, colors, render_helpers}`` →
+     ``reports_v2._helpers.*`` (3 shims)
+   - ``report.diff_utils`` → ``evaluation._diff_utils`` (1 shim)
+   - ``report.glossary`` → ``reports_v2.glossary`` (sous-package)
+   - ``scripts/gen_readme_tables.py`` redirigé vers
+     ``picarones/adapters/legacy_engines/`` ;
+     ``docs/reference/views.md`` migré en place vers
+     ``picarones/reports_v2/html/{views, generator, renderers,
+     templates}``.
 7. **Lot G — measurements/runner et co.** (le plus complexe,
    couplé à Phase 6 qui retire ``pipelines/``).
 

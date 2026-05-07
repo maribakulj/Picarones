@@ -200,6 +200,11 @@ For Docker, institutional deployment, or HuggingFace Spaces, see
 
 | Engine | Type | Installation |
 |--------|------|-------------|
+| **Azure Doc Intelligence** | Cloud API | `AZURE_DOC_INTEL_ENDPOINT` + `AZURE_DOC_INTEL_KEY` |
+| **Google Vision** | Cloud API | `GOOGLE_APPLICATION_CREDENTIALS` env var |
+| **Mistral OCR** | Cloud API | `MISTRAL_API_KEY` env var |
+| **Pero OCR** | Local Python | `pip install -e .[pero]` |
+| **Tesseract 5** | Local CLI | `pip install pytesseract` + system binary |
 
 <!-- /generated:engines -->
 
@@ -209,8 +214,8 @@ engines): GPT-4o, Claude, Mistral Large, Ollama (local). See
 
 The `Engine` table is regenerated automatically by
 `scripts/gen_readme_tables.py` — adding a new adapter under
-`picarones/engines/` makes the next CI run update this table or
-fail.
+`picarones/adapters/legacy_engines/` makes the next CI run update
+this table or fail.
 
 ---
 

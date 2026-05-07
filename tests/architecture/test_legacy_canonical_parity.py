@@ -68,7 +68,6 @@ LEGACY_PACKAGES: tuple[str, ...] = (
     "measurements",
     "llm",
     "pipelines",
-    "report",
 )
 
 #: Combien de symboles legacy peuvent être absents de

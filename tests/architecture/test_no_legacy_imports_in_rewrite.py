@@ -49,7 +49,6 @@ LEGACY_PACKAGES: tuple[str, ...] = (
     "measurements",
     "llm",
     "pipelines",
-    "report",
     "web",
     "cli",
     "extras",

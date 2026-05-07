@@ -72,9 +72,14 @@ _ENGINE_DESCRIPTIONS: dict[str, tuple[str, str, str]] = {
 
 
 def _engine_files() -> list[str]:
-    """Retourne la liste triée des modules d'engines (sans base / factory)."""
+    """Retourne la liste triée des modules d'engines (sans base / factory).
+
+    Lot E (2026-05) : ``picarones/engines/`` a été retiré, son canonique
+    est ``picarones/adapters/legacy_engines/``.
+    """
     out: list[str] = []
-    for path in sorted((REPO_ROOT / "picarones" / "engines").glob("*.py")):
+    engines_dir = REPO_ROOT / "picarones" / "adapters" / "legacy_engines"
+    for path in sorted(engines_dir.glob("*.py")):
         name = path.stem
         if name in {"__init__", "base", "factory"}:
             continue

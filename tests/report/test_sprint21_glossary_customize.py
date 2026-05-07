@@ -16,7 +16,7 @@ import re
 
 import pytest
 
-from picarones.report.glossary import SUPPORTED_LANGS, load_glossary
+from picarones.reports_v2.glossary import SUPPORTED_LANGS, load_glossary
 
 
 # ---------------------------------------------------------------------------
