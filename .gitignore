@@ -33,4 +33,7 @@ jobs.db-wal
 # Sprint A14-S3 — sous-package du code (homonyme de corpus/ data ignoré ligne 21)
 !picarones/adapters/corpus/
 !picarones/adapters/corpus/**
+# Phase 4-quater (cleanup) : ré-ignorer __pycache__/ dans ce sous-package
+# (la négation ci-dessus est trop large et casse la règle ligne 1).
+picarones/adapters/corpus/**/__pycache__/
 _version.py
