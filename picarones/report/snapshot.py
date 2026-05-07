@@ -115,7 +115,7 @@ def glossary_snapshot(
     langue (mode conservateur).
     """
     try:
-        from picarones.report.glossary import load_glossary, SUPPORTED_LANGS
+        from picarones.reports_v2.glossary import load_glossary, SUPPORTED_LANGS
     except ImportError:
         return {"available": False, "reason": "module glossary introuvable"}
 

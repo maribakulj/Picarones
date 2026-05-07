@@ -135,7 +135,11 @@ FILE_BUDGETS: dict[str, int] = {
     # --- Module mutualisé créé par le sprint des render helpers
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
     # calibré sur la taille post-documentation des conventions.
-    "picarones/report/render_helpers.py": 480,            # actuel 415
+    # Phase 5 : ``report/render_helpers.py`` est désormais un shim
+    # (≤ 25 l).  Le contenu canonique vit dans
+    # ``reports_v2/_helpers/`` ; même budget pour la même raison
+    # historique (consolidation des 25 helpers de couleur).
+    "picarones/reports_v2/_helpers/render_helpers.py": 480,  # actuel 428
     # --- Services applicatifs et orchestration du rewrite ciblé.
     # Budgets calibrés à current + 15 % de marge.  La CLI elle-même
     # reste mince (~110 lignes) — toute logique métier vit dans

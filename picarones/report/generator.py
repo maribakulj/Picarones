@@ -48,7 +48,7 @@ from typing import Any, Optional
 
 from picarones.evaluation.benchmark_result import BenchmarkResult
 from picarones.measurements.statistics import build_critical_difference_svg
-from picarones.report.assets import (
+from picarones.reports_v2._helpers.assets import (
     encode_images_b64_from_result as _encode_images_b64_from_result,
     externalize_images_to_dir as _externalize_images_to_dir,
     load_vendor_js as _load_vendor_js,
@@ -57,7 +57,7 @@ from picarones.report.assets import (
 # Ré-exports rétrocompat consommés par les tests externes (cf. docstring
 # de module). La directive de fin de ligne documente l'intention de
 # ré-export et empêche ruff de marquer l'import comme inutilisé.
-from picarones.report.render_helpers import cer_step_color as _cer_color  # noqa: F401
+from picarones.reports_v2._helpers.render_helpers import cer_step_color as _cer_color  # noqa: F401
 from picarones.report.report_data import build_report_data as _build_report_data  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -219,7 +219,7 @@ class ReportGenerator:
         synthesis = build_synthesis(report_data, lang=self.lang)
 
         # Sprint 20 — glossaire contextuel chargé depuis YAML
-        from picarones.report.glossary import load_glossary
+        from picarones.reports_v2.glossary import load_glossary
         glossary = load_glossary(self.lang)
         glossary_json = json.dumps(glossary, ensure_ascii=False, separators=(",", ":"))
 

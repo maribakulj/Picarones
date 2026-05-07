@@ -598,6 +598,70 @@ partagés dans `reports_v2/html/_helpers/`.  Glossaire dans
 **Acceptance** : régression bit-for-bit sur le HTML produit pour
 les 3 corpus de référence.  Aucun renderer legacy laissé.
 
+#### Phase 5.A+B — Helpers + glossary + i18n (2026-05)
+
+Première tranche du retrait du legacy ``report/`` : les utilitaires
+purs et les ressources statiques, sans toucher aux 22 renderers
+thématiques (qui consomment ``BenchmarkResult`` legacy et seront
+migrés au fil des phases ultérieures, par lots).
+
+**Migrations effectuées** :
+
+| Source legacy                        | Destination canonique                          |
+|--------------------------------------|------------------------------------------------|
+| ``report/colors.py``                 | ``reports_v2/_helpers/colors.py``              |
+| ``report/render_helpers.py``         | ``reports_v2/_helpers/render_helpers.py``      |
+| ``report/assets.py`` + ``vendor/``   | ``reports_v2/_helpers/assets.py`` + ``vendor/``|
+| ``report/glossary/{fr,en}.yaml``     | ``reports_v2/glossary/{fr,en}.yaml``           |
+| ``report/i18n/{fr,en}.json``         | ``reports_v2/i18n/{fr,en}.json``               |
+
+``report/diff_utils.py`` redirige désormais directement vers
+``picarones.evaluation`` (au lieu du double-shim via
+``core.diff_utils``).
+
+**Shims** : tous les chemins legacy ``report/X`` restent disponibles
+via des shims minimaux (< 25 lignes) avec ``DeprecationWarning``
+à l'import.
+
+**Adaptations transverses** :
+
+- ``picarones/i18n.py`` : ``_I18N_DIR`` pointe désormais vers
+  ``reports_v2/i18n/``.
+- 22 renderers ``report/*_render.py`` migrés sur leurs imports
+  internes vers ``picarones.reports_v2._helpers.*``.
+- 28 fichiers de tests mis à jour (chemins ``picarones/report/i18n/*``
+  remplacés par ``picarones/reports_v2/i18n/*``).
+- ``test_layer_dependencies.py::EXTERNAL_ALLOWED["reports_v2"]``
+  étendu à ``PIL`` (Pillow utilisé par ``_helpers/assets.py``
+  pour le redimensionnement d'images).
+- ``test_file_budgets.py`` : entrée ``report/render_helpers.py``
+  remplacée par ``reports_v2/_helpers/render_helpers.py``
+  (budget 480 inchangé).
+
+**Acceptance Phase 5.A+B** : 5019 tests passent, lint vert,
+architecture vérifiée (anti-cycles, file budgets).  Aucune
+régression sur les renderers thématiques (toujours legacy).
+
+**Reporté à Phase 5.C+** :
+
+- 22 renderers thématiques (``baseline_render.py``,
+  ``calibration_render.py``, ..., ``worst_lines_render.py``).
+- 5 vues (``views/{advanced_taxonomy,diagnostics,economics,
+  pipeline,robustness}.py``).
+- ``generator.py``, ``comparison.py``, ``snapshot.py``.
+- 10 templates Jinja2 (``templates/{base.html.j2,
+  view_*.html,_*.html,_*.css,_*.js}``).
+- Sub-package ``report_data/`` (~9 modules).
+
+Ces composants consomment tous le ``BenchmarkResult`` legacy ;
+leur migration vers ``reports_v2/html/`` (qui consomme un
+``RunResult`` canonique) suppose l'écriture d'un convertisseur
+``BenchmarkResult → RunResult`` ou la duplication des renderers
+le temps de la transition.  Ce travail, qui requiert des
+décisions de design (faut-il plutôt enrichir ``RunResult`` ou
+adapter les renderers ?), est déféré à des sprints dédiés
+(probablement par lots de 5 renderers).
+
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 
 **Modules** : `pipelines/base.OCRLLMPipeline` (3 modes), `pipelines/

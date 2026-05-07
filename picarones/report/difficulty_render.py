@@ -15,7 +15,7 @@ sans dépendance vers ``picarones.report``.
 
 from __future__ import annotations
 
-from picarones.report.colors import (
+from picarones.reports_v2._helpers.colors import (
     COLOR_GREEN,
     COLOR_ORANGE,
     COLOR_RED,

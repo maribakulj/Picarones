@@ -270,7 +270,7 @@ class TestI18NCompleteness:
         path = (
             Path(__file__).parent.parent.parent
             / "picarones"
-            / "report"
+            / "reports_v2"
             / "i18n"
             / f"{lang}.json"
         )

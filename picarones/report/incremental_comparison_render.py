@@ -41,7 +41,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.report.render_helpers import color_traffic_light
+from picarones.reports_v2._helpers.render_helpers import color_traffic_light
 
 
 def _bg_for_relative_score(

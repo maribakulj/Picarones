@@ -19,7 +19,7 @@ from html import escape as _e
 from typing import Optional
 
 from picarones.measurements.lexical_modernization import top_modernized_tokens
-from picarones.report.render_helpers import (
+from picarones.reports_v2._helpers.render_helpers import (
     GRADIENT_TARGET_ORANGE,
     color_single_gradient,
 )

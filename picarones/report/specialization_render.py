@@ -18,7 +18,7 @@ from picarones.measurements.specialization import (
     compute_specialization_matrix,
     top_specialized_pairs,
 )
-from picarones.report.render_helpers import color_single_gradient
+from picarones.reports_v2._helpers.render_helpers import color_single_gradient
 
 #: Bleu profond cible — préservé de l'ancien `_color_for_score` local.
 _SPECIALIZATION_BLUE = (50, 110, 180)

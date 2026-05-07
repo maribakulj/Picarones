@@ -95,7 +95,7 @@ def _classify_metric(
 # A7, les hex étaient hardcodés (rouge/vert classiques, problème
 # pour la deutéranopie) ; maintenant cohérent avec _cer_color et
 # difficulty_color.
-from picarones.report.colors import COLOR_GREEN, COLOR_RED, COLOR_YELLOW
+from picarones.reports_v2._helpers.colors import COLOR_GREEN, COLOR_RED, COLOR_YELLOW
 
 _QUALITY_COLORS = {
     "green":  COLOR_GREEN,    # Okabe-Ito blue (substitut sémantique « bon »)

@@ -50,7 +50,7 @@ from typing import Optional
 from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.pipeline_benchmark import PipelineBenchmarkResult
 from picarones.measurements.pipeline_comparison import PipelineComparisonResult
-from picarones.report.render_helpers import color_traffic_light
+from picarones.reports_v2._helpers.render_helpers import color_traffic_light
 
 
 # ──────────────────────────────────────────────────────────────────────────

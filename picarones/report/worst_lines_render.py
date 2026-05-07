@@ -20,7 +20,7 @@ from typing import Optional
 
 from picarones.measurements.worst_lines import WorstLineEntry
 from picarones.core.diff_utils import compute_char_diff
-from picarones.report.render_helpers import color_traffic_light
+from picarones.reports_v2._helpers.render_helpers import color_traffic_light
 
 
 def _bg_for_cer(cer: float) -> str:

@@ -5,8 +5,13 @@ Langues supportées
 - ``"fr"`` : français (défaut)
 - ``"en"`` : anglais patrimonial (heritage English)
 
-Depuis le Sprint 17, les traductions sont stockées dans
-``picarones/report/i18n/{lang}.json`` et chargées au premier accès.
+Depuis le Sprint 17, les traductions sont stockées dans des fichiers
+JSON et chargées au premier accès.  Phase 5 du retrait du legacy
+(2026-05) : les fichiers ont été déplacés de
+``picarones/report/i18n/{lang}.json`` vers
+``picarones/reports_v2/i18n/{lang}.json``.  Aucun changement
+fonctionnel pour les consommateurs de ``get_labels``.
+
 ``TRANSLATIONS`` reste exposé comme dict pour compatibilité ascendante.
 
 Sprint 30 — durcissement
@@ -30,7 +35,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-_I18N_DIR = Path(__file__).parent / "report" / "i18n"
+_I18N_DIR = Path(__file__).parent / "reports_v2" / "i18n"
 _LOAD_LOCK = threading.Lock()
 _TRANSLATIONS_CACHE: dict[str, dict[str, str]] | None = None
 
@@ -73,7 +78,7 @@ def _get_translations() -> dict[str, dict[str, str]]:
 def reload_translations() -> None:
     """Force la relecture des fichiers JSON au prochain ``get_labels``.
 
-    Utile pour les tests qui modifient ``report/i18n/*.json`` à la volée.
+    Utile pour les tests qui modifient ``reports_v2/i18n/*.json`` à la volée.
     """
     global _TRANSLATIONS_CACHE
     with _LOAD_LOCK:

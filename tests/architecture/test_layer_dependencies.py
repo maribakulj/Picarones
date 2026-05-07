@@ -126,6 +126,12 @@ EXTERNAL_ALLOWED: dict[str, frozenset[str]] = {
     "reports_v2": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
         "jinja2", "markupsafe", "yaml",
+        # Phase 5 : ``_helpers/assets.py`` (relocalisé depuis
+        # ``report/assets.py``) utilise Pillow pour redimensionner
+        # et encoder les images en data-URI dans le rapport HTML
+        # autonome.  Légitime — un rapport « gallery view » sans
+        # PIL aurait des images poids plein navigateur.
+        "PIL",
     }),
 }
 

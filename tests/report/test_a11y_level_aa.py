@@ -191,10 +191,10 @@ def test_i18n_fr_en_have_same_keys() -> None:
 
     repo_root = Path(__file__).resolve().parents[2]
     fr_keys = set(
-        json.loads((repo_root / "picarones/report/i18n/fr.json").read_text(encoding="utf-8")).keys()
+        json.loads((repo_root / "picarones/reports_v2/i18n/fr.json").read_text(encoding="utf-8")).keys()
     )
     en_keys = set(
-        json.loads((repo_root / "picarones/report/i18n/en.json").read_text(encoding="utf-8")).keys()
+        json.loads((repo_root / "picarones/reports_v2/i18n/en.json").read_text(encoding="utf-8")).keys()
     )
     only_fr = fr_keys - en_keys
     only_en = en_keys - fr_keys

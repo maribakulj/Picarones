@@ -33,7 +33,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.report.render_helpers import color_diverging
+from picarones.reports_v2._helpers.render_helpers import color_diverging
 
 
 def _bg_for_cer_delta(delta_pct: float) -> str:

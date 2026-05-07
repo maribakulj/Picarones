@@ -20,7 +20,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.report.render_helpers import (
+from picarones.reports_v2._helpers.render_helpers import (
     GRADIENT_TARGET_BLUE,
     build_grid_svg,
     color_single_gradient,

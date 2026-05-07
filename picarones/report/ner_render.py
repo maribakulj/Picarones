@@ -23,7 +23,7 @@ from __future__ import annotations
 from html import escape as _e
 from typing import Optional
 
-from picarones.report.render_helpers import color_traffic_light
+from picarones.reports_v2._helpers.render_helpers import color_traffic_light
 
 
 def _engines_with_ner(engines_summary: list[dict]) -> list[dict]:

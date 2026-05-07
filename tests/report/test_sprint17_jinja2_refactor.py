@@ -138,14 +138,14 @@ class TestReportGeneration:
 
 class TestI18nFromJSON:
     def test_i18n_directory_exists_and_has_json(self):
-        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "report" / "i18n"
+        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "reports_v2" / "i18n"
         assert i18n_dir.is_dir()
         files = {p.name for p in i18n_dir.glob("*.json")}
         assert "fr.json" in files
         assert "en.json" in files
 
     def test_all_i18n_files_parse_as_json(self):
-        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "report" / "i18n"
+        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "reports_v2" / "i18n"
         for f in i18n_dir.glob("*.json"):
             data = json.loads(f.read_text(encoding="utf-8"))
             assert isinstance(data, dict)
