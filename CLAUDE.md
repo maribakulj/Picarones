@@ -101,7 +101,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **5050 passed, 12 skipped, 8 deselected, 0 failed**
+`pytest tests/` → **5070 passed, 12 skipped, 8 deselected, 0 failed**
 (post-S59).  Les deselected sont les markers `live` (5 tests d'intégration
 contre vraie API/binaire) + `network` (3 tests qui hit le réseau réel),
 opt-in en local via `pytest -m live` ou `pytest -m network`.  Le
@@ -242,7 +242,7 @@ détecte, arbitre, rend.
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces, Python 3.11+
-- **Tests** : `pytest tests/ -q` → ~5050 passed, 2 skipped, 0 failed.
+- **Tests** : `pytest tests/ -q` → ~5070 passed, 2 skipped, 0 failed.
 - **Plan d'évolution actif** : [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md).
 - **Manifeste architecture** : [`docs/explanation/architecture.md`](docs/explanation/architecture.md).
 - **API publique stable** : [`docs/reference/api-stable.md`](docs/reference/api-stable.md).
