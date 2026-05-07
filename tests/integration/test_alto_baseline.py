@@ -34,8 +34,8 @@ from picarones.evaluation.pipeline import (
     PipelineSpec,
     PipelineStep,
 )
-from picarones.modules import TextToAltoMonoRegion
-from picarones.modules.alto_text_to_mono_region import _build_alto_xml
+from picarones.adapters.legacy_modules import TextToAltoMonoRegion
+from picarones.adapters.legacy_modules.alto_text_to_mono_region import _build_alto_xml
 
 
 # ──────────────────────────────────────────────────────────────────────────

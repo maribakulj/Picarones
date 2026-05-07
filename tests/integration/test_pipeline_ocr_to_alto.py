@@ -39,7 +39,7 @@ from picarones.evaluation.pipeline import (
     PipelineSpec,
     PipelineStep,
 )
-from picarones.modules import TextToAltoMonoRegion
+from picarones.adapters.legacy_modules import TextToAltoMonoRegion
 
 
 class _DeterministicOCR(BaseModule):

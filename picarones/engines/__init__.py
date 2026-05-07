@@ -17,7 +17,7 @@ from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngin
 
 warnings.warn(
     "picarones.engines is deprecated and will be removed in 2.0.  "
-    "Import from picarones.adapters.legacy_engines.instead.",
+    "Import from picarones.adapters.legacy_engines instead.",
     DeprecationWarning,
     stacklevel=2,
 )

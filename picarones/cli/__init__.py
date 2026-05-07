@@ -51,8 +51,8 @@ def _setup_logging(verbose: bool) -> None:
 def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCREngine":
     """Instancie un moteur OCR par son nom (wrapper Click).
 
-    Délègue à :func:`picarones.engines.factory.engine_from_name`
-    (cercle 2) puis traduit toute ``ValueError`` en
+    Délègue à :func:`picarones.adapters.legacy_engines.factory.engine_from_name`
+    (couche adapters) puis traduit toute ``ValueError`` en
     ``click.BadParameter`` pour rester compatible avec les sous-modules
     CLI (``_workflows.py``, ``_robustness.py``) qui attrappent ce type
     d'exception. Les commandes CLI continuent donc à fonctionner sans

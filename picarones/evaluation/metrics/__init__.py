@@ -38,7 +38,7 @@ applicatif.
 
 Catégorie C — dépendances vers anciens packages :
   ``robustness`` (importe ``picarones.core.corpus`` +
-  ``picarones.engines.base`` + ``picarones.measurements.metrics``).
+  ``picarones.adapters.legacy_engines.base`` + ``picarones.measurements.metrics``).
   Ne peut être migré qu'après les Sprints S11 (déplacement des
   adapters) et S12 (équivalence numérique).
 
