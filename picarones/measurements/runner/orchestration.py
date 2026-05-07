@@ -27,7 +27,7 @@ from typing import Optional
 
 from tqdm import tqdm
 
-from picarones.core.corpus import Corpus
+from picarones.evaluation.corpus import Corpus
 from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
 from picarones.engines.base import BaseOCREngine
 from picarones.measurements.runner.document import (

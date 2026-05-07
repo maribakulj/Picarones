@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from picarones.core.corpus import Corpus
+from picarones.evaluation.corpus import Corpus
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def _attach_ner_metrics(
     crasher le NER.
     """
     try:
-        from picarones.core.corpus import GTLevel
+        from picarones.evaluation.corpus import GTLevel
         from picarones.measurements.ner import compute_ner_metrics
     except ImportError as exc:
         logger.warning("[ner.attach] imports indisponibles : %s", exc)

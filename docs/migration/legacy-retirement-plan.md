@@ -480,6 +480,88 @@ importent encore via les chemins ``core/`` continuent à
 fonctionner via les shims — déprécation visible mais
 non-bloquante.
 
+#### Phase 4-quater — Relocalisation de ``core/corpus.py`` (2026-05)
+
+Décision RFC : **garder les deux modèles en parallèle**, sans
+fusion.  ``evaluation.corpus`` (riche en behavior, dataclass,
+chargé en mémoire, runner-friendly) et
+``domain.corpus.CorpusSpec`` (Pydantic, immutable, déclaratif,
+pipeline-executor-friendly) sont des projections différentes
+d'un même domaine ; un convertisseur explicite
+``CorpusSpec ↔ Corpus`` viendra quand un caller institutionnel
+l'exigera concrètement.  Tenter une convergence prématurée
+casserait soit le runner historique (qui consomme
+``Document.get_gt(level)`` + ``Corpus.has_ocr_text``), soit le
+pipeline executor canonique (qui consomme l'immutabilité de
+``CorpusSpec`` pour la sérialisation YAML).
+
+Migration effectuée
+-------------------
+
+| Source legacy        | Destination canonique         | Lignes |
+|----------------------|-------------------------------|--------|
+| ``core/corpus.py``   | ``evaluation/corpus.py``      |   533  |
+
+Le chemin ``core/corpus.py`` devient un shim minimal
+(< 30 lignes) avec ``DeprecationWarning`` à l'import.  Les 14
+callers de production (``cli/_pipeline``, ``cli/_robustness``,
+``cli/_workflows``, ``web/benchmark_utils``,
+``measurements/pipeline_benchmark``,
+``measurements/pipeline_comparison``,
+``measurements/robustness``, ``measurements/runner/orchestration``,
+``measurements/runner/ner_attach``,
+``extras/importers/{iiif,gallica,escriptorium}``,
+``core/pipeline``, et ``picarones/__init__.py``) sont migrés
+vers ``picarones.evaluation.corpus``.
+
+Note : ``GTLevel`` reste consommé en parallèle d'``ArtifactType``
+par le runner — la convergence de ces deux énumérations est
+liée au retrait du runner legacy lui-même (Phase 6+ du plan).
+
+Adaptations transverses
+-----------------------
+
+- ``test_file_budgets.py`` : entrée ``core/corpus.py`` retirée,
+  remplacée par ``evaluation/corpus.py`` (budget identique 600).
+- ``test_public_api.py::EXPECTED_CERCLE1`` : ``corpus.py``
+  retiré de la liste — il ne reste plus que ``pipeline.py``
+  comme module Cercle 1 réel.
+
+État final de ``core/`` après Phase 4-quater
+--------------------------------------------
+
+Le répertoire ``picarones/core/`` ne contient désormais qu'**un
+seul module réel** :
+
+- ``pipeline.py`` (~570 l) — ``PipelineRunner`` + ``PipelineSpec``
+  + ``StepResult`` + ``PipelineResult``.
+
+Tous les autres fichiers (``corpus.py``, ``modules.py``,
+``metric_registry.py``, ``metric_hooks.py``, ``metrics.py``,
+``results.py``, ``facts.py``, ``diff_utils.py``,
+``xml_utils.py``) sont des shims < 30 lignes avec
+``DeprecationWarning``.
+
+**Acceptance Phase 4-quater** : 5019 tests passent (inchangé
+depuis Phase 4-ter), lint vert, architecture vérifiée.  Le
+``__init__.py`` racine (``picarones/__init__.py``) importe
+maintenant directement depuis les chemins canoniques (Cercle
+1 ``domain/`` + Cercle 2 ``evaluation/``), seul ``core.pipeline``
+reste référencé pour ses types.
+
+**Reporté à Phase 5** :
+
+- ``core/pipeline.py`` (``PipelineRunner``) — convergence avec
+  le pipeline executor canonique
+  (``picarones/pipeline/executor.py``, ``planner.py``,
+  ``runner.py``).  C'est le dernier module ``core/`` réel ;
+  son retrait suppose que tous les callers passent par le
+  pipeline executor, ce qui implique l'écriture du sucre
+  syntaxique pour les benchmarks OCR mono-étape (typique
+  ``run_benchmark(corpus, [engine_a, engine_b])``).
+- Convergence ``GTLevel`` ↔ ``ArtifactType`` (en attente du
+  retrait du runner legacy).
+
 ### Phase 5 — Reports HTML (`report/`)
 
 **Modules** :

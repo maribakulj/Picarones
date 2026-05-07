@@ -421,7 +421,7 @@ class TestCercle1IsLean:
     # appartient au Cercle 2 (``measurements/``) ou au Cercle 3
     # (``extras/``, ``report/``).
     EXPECTED_CERCLE1 = {
-        "corpus.py", "pipeline.py",
+        "pipeline.py",
         # Phase 1 du retrait du legacy a déplacé `facts.py`,
         # `diff_utils.py` et `xml_utils.py` vers leurs canoniques
         # (`domain/facts.py`, `evaluation/_diff_utils.py`,
@@ -436,6 +436,8 @@ class TestCercle1IsLean:
         # `metrics.py` (canonique : `evaluation/metric_result.py`)
         # et `results.py` (canonique :
         # `evaluation/benchmark_result.py`).
+        # Phase 4-quater a fait pareil pour `corpus.py`
+        # (canonique : `evaluation/corpus.py`).
     }
 
     def test_cercle1_files_lean(self):

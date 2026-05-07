@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from picarones.core.corpus import Corpus, Document
+    from picarones.evaluation.corpus import Corpus, Document
     from picarones.engines.base import BaseOCREngine
 
 logger = logging.getLogger(__name__)

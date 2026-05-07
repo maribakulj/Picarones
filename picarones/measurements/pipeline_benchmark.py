@@ -45,7 +45,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-from picarones.core.corpus import Corpus, Document
+from picarones.evaluation.corpus import Corpus, Document
 from picarones.domain.artifacts import ArtifactType
 from picarones.core.pipeline import (
     PipelineResult,

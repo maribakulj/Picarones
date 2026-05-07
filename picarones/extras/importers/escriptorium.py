@@ -54,7 +54,7 @@ warnings.warn(
 )
 
 
-from picarones.core.corpus import Corpus, Document
+from picarones.evaluation.corpus import Corpus, Document
 
 if TYPE_CHECKING:
     from picarones.evaluation.benchmark_result import BenchmarkResult

@@ -44,7 +44,7 @@ __author__ = "Picarones contributors"
 # API publique — Cercle 1 uniquement
 # ──────────────────────────────────────────────────────────────────────────
 
-from picarones.core.corpus import (
+from picarones.evaluation.corpus import (
     Corpus,
     Document,
     GTLevel,

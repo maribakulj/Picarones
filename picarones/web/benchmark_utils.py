@@ -152,7 +152,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
 
         corpus = load_corpus_from_directory(req.corpus_path)
@@ -254,7 +254,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
 
         # Charger le corpus

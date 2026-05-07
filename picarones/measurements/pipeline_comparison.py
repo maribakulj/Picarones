@@ -50,7 +50,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-from picarones.core.corpus import Corpus
+from picarones.evaluation.corpus import Corpus
 from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.pipeline_benchmark import (
     InitialInputsFactory,

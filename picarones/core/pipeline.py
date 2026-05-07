@@ -53,7 +53,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from picarones.core.corpus import Document, GTLevel
+from picarones.evaluation.corpus import Document, GTLevel
 from picarones.evaluation.metric_registry import compute_at_junction
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
@@ -584,7 +584,7 @@ def _gt_payload_to_value(payload: Any) -> Any:
     en faire selon sa signature de types).
     """
     # Import paresseux pour éviter une dépendance cyclique
-    from picarones.core.corpus import (
+    from picarones.evaluation.corpus import (
         AltoGT, EntitiesGT, PageGT, ReadingOrderGT, TextGT,
     )
     if isinstance(payload, TextGT):

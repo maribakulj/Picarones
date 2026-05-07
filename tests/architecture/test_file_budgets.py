@@ -105,7 +105,11 @@ FILE_BUDGETS: dict[str, int] = {
     # S59 ajout du descripteur ``_DeprecatedAttribute`` + alias rétrocompat
     # ``DEFAULT_CORRECTION_PROMPT`` + warning lang fallback (M6).
     "picarones/adapters/llm/base.py": 560,                # actuel 486
-    "picarones/core/corpus.py": 600,                      # actuel 511
+    # Phase 4-quater : ``core/corpus.py`` est désormais un shim
+    # (≤ 30 l).  Le contenu canonique vit dans ``evaluation/`` ;
+    # même budget pour la même raison historique
+    # (Document/Corpus/GTLevel + 5 payloads + load_corpus_from_directory).
+    "picarones/evaluation/corpus.py": 600,                # actuel 533
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484
     "picarones/measurements/roman_numerals.py": 575,      # actuel 478
