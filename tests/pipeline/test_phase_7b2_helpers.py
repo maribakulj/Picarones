@@ -27,11 +27,12 @@ from picarones.evaluation.corpus import (
     TextGT,
 )
 from picarones.pipeline._legacy_module_adapter import _PayloadRegistry
-from picarones.pipeline.legacy_runner import (
-    _artifact_type_to_gt_level,
-    _compute_junction_metrics_for_step,
-    _gt_payload_to_value,
-    _translate_canonical_error,
+from picarones.pipeline._legacy_translator import (
+    artifact_type_to_gt_level as _artifact_type_to_gt_level,
+    build_legacy_step_result as _build_legacy_step_result,
+    compute_junction_metrics_for_step as _compute_junction_metrics_for_step,
+    gt_payload_to_value as _gt_payload_to_value,
+    translate_canonical_error as _translate_canonical_error,
 )
 from picarones.pipeline.types import StepResult as _CanonicalStepResult
 
@@ -241,7 +242,7 @@ class TestComputeJunctionMetricsForStep:
         registry.store("doc1:ocr:raw_text", "produced text")
 
         with patch(
-            "picarones.pipeline.legacy_runner.compute_at_junction",
+            "picarones.pipeline._legacy_translator.compute_at_junction",
             side_effect=RuntimeError("boom"),
         ):
             with caplog.at_level("WARNING"):
@@ -353,7 +354,7 @@ class TestPipelineResultJunctionMetricsFor:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-from picarones.pipeline.legacy_runner import _build_legacy_step_result
+# _build_legacy_step_result importé en haut depuis _legacy_translator
 
 
 class TestBuildLegacyStepResultDefensive:
