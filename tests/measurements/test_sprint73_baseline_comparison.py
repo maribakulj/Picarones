@@ -36,7 +36,7 @@ from picarones.measurements.baseline_comparison import (
     compute_engine_baseline,
 )
 from picarones.measurements.narrative.detectors import detect_engine_off_baseline
-from picarones.core.facts import FactImportance, FactType
+from picarones.domain.facts import FactImportance, FactType
 from picarones.measurements.narrative.renderer import render_fact
 
 

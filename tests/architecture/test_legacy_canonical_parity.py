@@ -112,41 +112,14 @@ LEGACY_PARITY: dict[str, ParityEntry] = {
     "picarones.core.xml_utils.safe_parse_xml": {
         "canonical": "picarones.formats._xml_utils.safe_parse_xml",
     },
-    "picarones.core.facts.Fact": {
-        "canonical": "picarones.domain.facts.Fact",
-    },
-    "picarones.core.facts.FactType": {
-        "canonical": "picarones.domain.facts.FactType",
-    },
-    "picarones.core.facts.FactImportance": {
-        "canonical": "picarones.domain.facts.FactImportance",
-    },
-    "picarones.core.facts.DetectorRegistry": {
-        "canonical": "picarones.domain.facts.DetectorRegistry",
-    },
-    # ──────────────────────────────────────────────────────────
-    # Phase 4-bis — modules / ArtifactType / BaseModule
-    # ──────────────────────────────────────────────────────────
-    "picarones.core.modules.ArtifactType": {
-        "canonical": "picarones.domain.artifacts.ArtifactType",
-        "behavior_diff": (
-            "Legacy : 6 valeurs (TEXT, ALTO, PAGE, ENTITIES, "
-            "READING_ORDER, IMAGE).  Canonique : 10 valeurs avec "
-            "RAW_TEXT/CORRECTED_TEXT/ALTO_XML/PAGE_XML/CANONICAL_DOCUMENT/"
-            "ALIGNMENT/CONFIDENCES.  Aliases TEXT/ALTO/PAGE conservés "
-            "pour rétrocompat (suppression en 2.0)."
-        ),
-    },
-    "picarones.core.modules.BaseModule": {
-        "canonical": "picarones.domain.module_protocol.BaseModule",
-        "behavior_diff": (
-            "BaseModule sera supprimé en 7.D au profit du Protocol "
-            "StepExecutor.  Cf. docs/migration/pipeline-convergence-plan.md."
-        ),
-    },
-    "picarones.core.modules.ExecutionMode": {
-        "canonical": "picarones.domain.module_protocol.ExecutionMode",
-    },
+    # ``core.facts`` et ``core.modules`` ont été supprimés (Lot A
+    # de la migration core → domain).  Les symboles publics
+    # (Fact, FactType, FactImportance, DetectorRegistry,
+    # ArtifactType, BaseModule, ExecutionMode) sont définitivement
+    # exposés depuis ``picarones.domain.{facts, artifacts,
+    # module_protocol}``.  Les entrées de cette table ont été
+    # retirées en même temps que les shims pour garder la table
+    # alignée avec l'arbre legacy réellement présent sur disque.
     # ──────────────────────────────────────────────────────────
     # Phase 4-ter — metric_registry, metric_hooks, metrics, results
     # ──────────────────────────────────────────────────────────

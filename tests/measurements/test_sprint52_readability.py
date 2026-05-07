@@ -29,7 +29,7 @@ from __future__ import annotations
 import pytest
 
 from picarones.core.metric_registry import select_metrics
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.readability import (
     count_sentences,
     count_syllables,

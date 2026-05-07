@@ -23,7 +23,7 @@ from pathlib import Path
 
 from picarones.measurements.narrative import build_synthesis
 from picarones.measurements.narrative.detectors import detect_engine_unstable
-from picarones.core.facts import FactImportance, FactType
+from picarones.domain.facts import FactImportance, FactType
 from picarones.reports_v2.html.renderers.multirun_stability import (
     build_multirun_stability_html,
 )

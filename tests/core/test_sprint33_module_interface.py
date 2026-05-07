@@ -27,7 +27,8 @@ from typing import Any
 import pytest
 
 from picarones.core.corpus import GTLevel
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
 

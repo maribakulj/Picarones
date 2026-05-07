@@ -17,7 +17,8 @@
 ## TL;DR
 
 ```python
-from picarones.core.modules import BaseModule, ArtifactType
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 from picarones.evaluation.pipeline import (
     PipelineRunner, PipelineSpec, PipelineStep,
 )
@@ -270,7 +271,7 @@ Path("rapport_pipeline.html").write_text(
 ### 4.b Comparaison de N pipelines (Sprint 68)
 
 ```python
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.reports_v2.html.renderers.pipeline import (
     RankingSpec, build_pipeline_comparison_report_html,
 )

@@ -32,7 +32,7 @@ from picarones.measurements.longitudinal import (
 )
 from picarones.measurements.narrative import build_synthesis
 from picarones.measurements.narrative.detectors import detect_regression_in_history
-from picarones.core.facts import FactImportance, FactType
+from picarones.domain.facts import FactImportance, FactType
 from picarones.reports_v2.html.renderers.longitudinal import build_longitudinal_html
 
 

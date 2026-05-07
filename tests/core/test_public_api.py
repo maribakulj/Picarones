@@ -108,13 +108,13 @@ class TestCorpusApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 2. picarones.core.modules — BaseModule + ArtifactType
+# 2. picarones.domain — BaseModule + ArtifactType (canoniques)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestModulesApi:
     def test_artifact_type_values(self):
-        from picarones.core.modules import ArtifactType
+        from picarones.domain.artifacts import ArtifactType
 
         names = {member.value for member in ArtifactType}
         # Phase 4-bis : ``ArtifactType`` canonique (``domain.artifacts``)
@@ -138,12 +138,12 @@ class TestModulesApi:
         }
 
     def test_basemodule_is_abstract(self):
-        cls = _assert_class("picarones.core.modules", "BaseModule")
+        cls = _assert_class("picarones.domain.module_protocol", "BaseModule")
         # Doit avoir `process` abstrait
         assert "process" in cls.__abstractmethods__ or hasattr(cls, "process")
 
     def test_basemodule_class_attributes(self):
-        from picarones.core.modules import BaseModule
+        from picarones.domain.module_protocol import BaseModule
 
         # Contrat : ces attributs de classe sont lisibles depuis la base
         assert hasattr(BaseModule, "input_types")
@@ -493,7 +493,8 @@ class TestApiStableDoc:
         # Présence des 14 sections (1 par module)
         for module in [
             "picarones.core.corpus",
-            "picarones.core.modules",
+            "picarones.domain.artifacts",
+            "picarones.domain.module_protocol",
             "picarones.core.results",
             "picarones.measurements.metrics",
             "picarones.measurements.runner",

@@ -20,7 +20,7 @@ from picarones.measurements.narrative.detectors import (
     detect_cost_outlier,
     detect_pareto_alternative,
 )
-from picarones.core.facts import FactType
+from picarones.domain.facts import FactType
 from picarones.measurements.pricing import (
     build_costs_for_benchmark,
     estimate_cost,

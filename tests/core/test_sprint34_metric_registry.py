@@ -27,7 +27,7 @@ from picarones.core.metric_registry import (
     register_metric,
     select_metrics,
 )
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 
 # Force l'import du module qui enregistre les métriques natives. Les

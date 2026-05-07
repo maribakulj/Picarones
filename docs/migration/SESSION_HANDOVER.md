@@ -203,28 +203,30 @@ fiable.)
 
 ### 4.A Imports legacy dans les tests
 
-**103 fichiers** avec **608 statements** d'import depuis les
+**102 fichiers** avec **569 statements** d'import depuis les
 paquets legacy (``core``, ``measurements``, ``engines``,
-``llm``, ``pipelines``, ``report``, ``modules``).
+``llm``, ``pipelines``, ``report``, ``modules``) — Lot A
+terminé (cf. 4.D ci-dessous).
 
 Top chemins consommés :
 
 | Imports | Chemin legacy                                                 |
 |---------|---------------------------------------------------------------|
-| 11      | ``from picarones.core.modules import ArtifactType``           |
-| 9       | ``from picarones.measurements.metrics import MetricsResult``  |
-| 9       | ``from picarones.core.modules import ArtifactType, BaseModule`` |
-| 9       | ``from picarones.core.metric_registry import …``              |
-| 6       | ``from picarones.core.facts import FactImportance, FactType`` |
+| 29      | ``from picarones.measurements.runner import run_benchmark``   |
+| 18      | ``from picarones.measurements.metrics import MetricsResult``  |
+| 16      | ``from picarones.measurements.statistics import wilcoxon_test`` |
+| 13      | ``from picarones.measurements.metrics import compute_metrics`` |
+| 12      | ``from picarones.core.corpus import load_corpus_from_directory`` |
 
 **Pourquoi c'est important** : ces tests passent par les shims
 au lieu de pointer vers le canonique.  Tant que ces imports
 existent, on **ne peut pas supprimer les shims** (le test casse).
 
 **Stratégie** : sed batch par chemin (ex : tous les
-``picarones.core.modules`` → ``picarones.domain.module_protocol``
-+ ``picarones.domain.artifacts`` selon le symbole), valider
-les tests, commit, avancer.
+``picarones.core.metric_registry`` → ``picarones.evaluation.metric_registry``),
+valider les tests, commit, avancer.  Suppression des shims
+``core.modules.py`` et ``core.facts.py`` faite dans le Lot A
+(commit ``claude/migrate-core-to-domain-8ubIT``).
 
 ### 4.B Imports legacy en production (hors shims eux-mêmes)
 
@@ -250,10 +252,14 @@ autorise temporairement 110 (``BOOTSTRAP_BASELINE = 110``).
 
 L'ordre recommandé, par lots de symboles cohérents :
 
-1. **Lot A — domain** (~30 imports) :
+1. ✅ **Lot A — domain** (~40 imports migrés, shims supprimés) :
    - ``core.modules.{ArtifactType, BaseModule, ExecutionMode}``
      → ``domain.{artifacts, module_protocol}``
    - ``core.facts.*`` → ``domain.facts.*``
+   - Shims ``picarones.core.modules`` + ``picarones.core.facts``
+     supprimés ; doc utilisateur (tutorials/, developer/,
+     reference/api-stable.md, explanation/narrative-engine.en.md)
+     pointe maintenant vers les canoniques.
 2. **Lot B — evaluation/metric_*** (~50 imports) :
    - ``core.metric_registry.*`` → ``evaluation.metric_registry.*``
    - ``core.metric_hooks.*`` → ``evaluation.metric_hooks.*``

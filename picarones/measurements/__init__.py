@@ -111,8 +111,8 @@ Moteur narratif :
 
 - :mod:`narrative` (sous-package) : arbiter, registry, renderer,
   18 détecteurs en 6 familles. Le modèle de données (``Fact``,
-  ``FactType``, ``DetectorRegistry``) vit en cercle 1 dans
-  :mod:`picarones.core.facts`.
+  ``FactType``, ``DetectorRegistry``) vit en couche 1 dans
+  :mod:`picarones.domain.facts`.
 
 Voir :doc:`docs/explanation/architecture.md` pour la cartographie complète et
 la règle de dépendance des 3 cercles.

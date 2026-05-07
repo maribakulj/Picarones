@@ -39,7 +39,7 @@ from picarones.measurements.early_modern_typography import (
     get_category,
 )
 from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 
 # ──────────────────────────────────────────────────────────────────────────

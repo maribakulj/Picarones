@@ -29,7 +29,7 @@ from __future__ import annotations
 import pytest
 
 from picarones.measurements.narrative import build_synthesis
-from picarones.core.facts import (
+from picarones.domain.facts import (
     Fact,
     FactImportance,
     FactType,

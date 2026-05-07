@@ -362,7 +362,7 @@ class TestReportIntegration:
 class TestStatisticalTieDetector:
     def test_detector_emits_fact_when_engines_are_tied(self):
         from picarones.measurements.narrative.detectors import detect_statistical_tie
-        from picarones.core.facts import FactType
+        from picarones.domain.facts import FactType
 
         benchmark_data = {
             "statistics": {
@@ -408,7 +408,7 @@ class TestStatisticalTieDetector:
 
     def test_non_leader_tie_is_high_not_critical(self):
         from picarones.measurements.narrative.detectors import detect_statistical_tie
-        from picarones.core.facts import FactImportance
+        from picarones.domain.facts import FactImportance
 
         benchmark_data = {
             "statistics": {

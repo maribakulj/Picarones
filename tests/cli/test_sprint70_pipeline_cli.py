@@ -26,7 +26,9 @@ from typing import Any
 import pytest
 from click.testing import CliRunner
 
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+
+from picarones.domain.module_protocol import BaseModule
 from picarones.measurements.pipeline_spec_loader import (
     PipelineSpecLoadError,
     _resolve_class,

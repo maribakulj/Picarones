@@ -35,7 +35,8 @@ from picarones.measurements.module_policy import (
     audit_module,
     validate_manifest,
 )
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 from picarones.reports_v2.html.renderers.module_audit import (
     build_module_audit_html,
 )

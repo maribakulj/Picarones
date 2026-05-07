@@ -53,7 +53,7 @@ from picarones.measurements.modern_archives import (
     modern_archives_expansion_score,
     modern_archives_strict_score,
 )
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 
 # ──────────────────────────────────────────────────────────────────────────

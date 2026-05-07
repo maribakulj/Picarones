@@ -32,7 +32,7 @@ from __future__ import annotations
 import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.mufi import (
     compute_mufi_coverage,
     is_mufi_char,

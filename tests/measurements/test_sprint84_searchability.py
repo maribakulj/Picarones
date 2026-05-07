@@ -180,7 +180,7 @@ class TestRealisticCase:
 class TestRegistry:
     def test_metric_registered(self) -> None:
         from picarones.core.metric_registry import select_metrics
-        from picarones.core.modules import ArtifactType
+        from picarones.domain.artifacts import ArtifactType
 
         metrics = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),
@@ -199,7 +199,7 @@ class TestRegistry:
 
     def test_metric_via_compute_at_junction(self) -> None:
         from picarones.core.metric_registry import compute_at_junction
-        from picarones.core.modules import ArtifactType
+        from picarones.domain.artifacts import ArtifactType
 
         results = compute_at_junction(
             "le roi", "le roi",

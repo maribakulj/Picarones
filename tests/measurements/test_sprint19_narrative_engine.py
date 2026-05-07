@@ -546,7 +546,7 @@ class TestReportIntegration:
 
     def test_default_registry_has_all_types_registered(self):
         from picarones.measurements.narrative import _DEFAULT_REGISTRY
-        from picarones.core.facts import FactType
+        from picarones.domain.facts import FactType
 
         registered = set(_DEFAULT_REGISTRY.registered_types())
         # Tous les types de FactType doivent avoir un détecteur enregistré.

@@ -45,11 +45,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   corrigé en place ; un audit historique
 #:   (``docs/audits/institutional-readiness-2026-05.md``) référence
 #:   l'ancien chemin et reste intouché par convention.
+#: - 77 (sprint « Lot A — core.{modules,facts} → domain », 2026-05-07) :
+#:   suppression des shims ``picarones/core/modules.py`` et
+#:   ``picarones/core/facts.py``.  Deux références demeurent dans
+#:   ``CHANGELOG.md`` (journal versionné) et
+#:   ``docs/roadmap/evolution-2026.md`` (plan stratégique historique
+#:   décrivant la création initiale du module).
 #:
-#: Les 73 restants sont **TOUS** dans :
-#: - ``CHANGELOG.md`` (67) : journal historique versionné, intouchable.
-#: - ``docs/audits/*.md`` (6) : audits historiques, intouchables.
-BROKEN_PATHS_BASELINE = 75
+#: Les chemins cassés restants sont **TOUS** dans :
+#: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
+#: - ``docs/audits/*.md`` : audits historiques, intouchables.
+#: - ``docs/roadmap/evolution-2026.md`` : plan stratégique historique.
+BROKEN_PATHS_BASELINE = 77
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

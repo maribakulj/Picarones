@@ -59,12 +59,18 @@ GT_SUFFIXES: dict[GTLevel, str]   # mapping niveau → suffixe fichier
 def load_corpus_from_directory(path) -> Corpus
 ```
 
-### `picarones.core.modules`
+### `picarones.domain.artifacts`
 
 ```python
 class ArtifactType(str, Enum):
-    IMAGE, TEXT, ALTO, PAGE, ENTITIES, READING_ORDER
+    IMAGE, RAW_TEXT, CORRECTED_TEXT, ALTO_XML, PAGE_XML,
+    CANONICAL_DOCUMENT, ENTITIES, READING_ORDER, ALIGNMENT, CONFIDENCES
+    # Aliases legacy pour rétrocompat : TEXT, ALTO, PAGE
+```
 
+### `picarones.domain.module_protocol`
+
+```python
 class BaseModule(ABC):
     input_types: tuple[ArtifactType, ...]
     output_types: tuple[ArtifactType, ...]
@@ -283,7 +289,7 @@ from picarones.measurements.calibration import compute_calibration_metrics
 
 # Moteur narratif (déplacé vers picarones.measurements.narrative/)
 from picarones.measurements.narrative import build_synthesis
-from picarones.core.facts import Fact, FactType, FactImportance
+from picarones.domain.facts import Fact, FactType, FactImportance
 from picarones.measurements.narrative.detectors import detect_global_leader_cer
 
 # Plugins (déplacés vers picarones.extras/)

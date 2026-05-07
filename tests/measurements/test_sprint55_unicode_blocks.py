@@ -24,7 +24,7 @@ from __future__ import annotations
 import pytest
 
 from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.unicode_blocks import (
     compute_unicode_block_accuracy,
     get_block,

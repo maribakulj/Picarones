@@ -13,7 +13,7 @@ contradiction), and renders them through YAML templates with
 
 ## Add a new detector in 5 steps
 
-### 1. Add a `FactType` in `picarones/core/facts.py`
+### 1. Add a `FactType` in `picarones/domain/facts.py`
 
 ```python
 class FactType(str, Enum):

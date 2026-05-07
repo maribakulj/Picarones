@@ -33,7 +33,8 @@ import pytest
 
 from picarones.core.corpus import AltoGT, Document, GTLevel, TextGT
 from picarones.core.metric_registry import select_metrics
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 from picarones.evaluation.pipeline import (
     PipelineRunner,
     PipelineSpec,

@@ -255,7 +255,7 @@ def audit_module(
         passed=inherits_base,
         detail=(
             None if inherits_base
-            else "la classe n'hérite pas de picarones.core.modules.BaseModule"
+            else "la classe n'hérite pas de picarones.domain.module_protocol.BaseModule"
         ),
     ))
 
