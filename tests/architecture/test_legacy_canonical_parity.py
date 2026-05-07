@@ -64,7 +64,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: Paquets legacy (cf. ``test_no_legacy_imports_in_rewrite``).
 LEGACY_PACKAGES: tuple[str, ...] = (
-    "core",
     "measurements",
     "llm",
     "pipelines",
@@ -97,26 +96,15 @@ LEGACY_PARITY: dict[str, ParityEntry] = {
     # ──────────────────────────────────────────────────────────
     # Phase 1 — diff_utils, xml_utils, facts
     # ──────────────────────────────────────────────────────────
-    "picarones.core.diff_utils.compute_word_diff": {
-        "canonical": "picarones.evaluation._diff_utils.compute_word_diff",
-    },
-    "picarones.core.diff_utils.compute_char_diff": {
-        "canonical": "picarones.evaluation._diff_utils.compute_char_diff",
-    },
-    "picarones.core.diff_utils.diff_stats": {
-        "canonical": "picarones.evaluation._diff_utils.diff_stats",
-    },
-    "picarones.core.xml_utils.safe_parse_xml": {
-        "canonical": "picarones.formats._xml_utils.safe_parse_xml",
-    },
-    # ``core.facts`` et ``core.modules`` ont été supprimés (Lot A
-    # de la migration core → domain).  Les symboles publics
-    # (Fact, FactType, FactImportance, DetectorRegistry,
-    # ArtifactType, BaseModule, ExecutionMode) sont définitivement
-    # exposés depuis ``picarones.domain.{facts, artifacts,
-    # module_protocol}``.  Les entrées de cette table ont été
-    # retirées en même temps que les shims pour garder la table
-    # alignée avec l'arbre legacy réellement présent sur disque.
+    # Lot G (mai 2026) : ``picarones.core`` entièrement supprimé.
+    # Les helpers ``compute_word_diff``, ``compute_char_diff``,
+    # ``diff_stats`` vivent désormais uniquement dans
+    # ``picarones.evaluation._diff_utils`` ; ``safe_parse_xml``
+    # uniquement dans ``picarones.formats._xml_utils``.
+    # ``core.facts`` et ``core.modules`` avaient déjà été
+    # supprimés en Lot A.  Les entrées correspondantes ont été
+    # retirées de cette table pour garder l'alignement avec
+    # l'arbre legacy réellement présent sur disque.
     # ──────────────────────────────────────────────────────────
     # Phase 4-ter — metric_registry, metric_hooks, metrics
     # ──────────────────────────────────────────────────────────

@@ -240,9 +240,17 @@ def test_no_circle_2_file_imports_circle_3() -> None:
 
 
 def test_circles_are_not_empty() -> None:
-    """Pré-requis : les listes de fichiers ne doivent pas être vides
-    (sinon les paramétrisations ne couvrent rien)."""
-    assert CIRCLE_1_FILES, "Cercle 1 vide — chemin core/ introuvable."
+    """Pré-requis : Cercle 2 doit rester non vide.
+
+    Lot G (mai 2026) : ``picarones/core/`` a été entièrement
+    supprimé.  Cercle 1 est volontairement vide — toutes les
+    abstractions de domaine vivent désormais dans
+    ``picarones.domain.*`` (couche 1 de l'architecture 8
+    couches).  L'ancienne classification 3-cercles reste
+    utilisée par ``_circle_of`` pour quelques tests
+    d'auto-validation, mais sans fichiers physiques en
+    Cercle 1.
+    """
     assert CIRCLE_2_FILES, "Cercle 2 vide — au moins un sous-package attendu."
 
 

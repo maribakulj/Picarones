@@ -23,11 +23,13 @@ Règle d'import stricte : les dépendances vont uniquement de l'extérieur
 vers l'intérieur.  Vérifié par `tests/architecture/test_layer_dependencies.py`.
 
 **Arbo legacy (pré-rewrite)** — `picarones/{cli,web,llm,pipelines,
-report,measurements,extras,core}/` reste exécutable le temps que
-les callers externes (HuggingFace Space, scripts BnF) migrent.
-Ne pas y ajouter de nouveau code.  Calendrier de retrait documenté
-dans le CHANGELOG.  Sous-paquets ``engines/`` et ``modules/``
-supprimés au Lot E (mai 2026).
+measurements,extras}/` reste exécutable le temps que les callers
+externes (HuggingFace Space, scripts BnF) migrent.  Ne pas y
+ajouter de nouveau code.  Calendrier de retrait documenté dans le
+CHANGELOG.  Sous-paquets retirés en mai 2026 :
+``engines/`` + ``modules/`` (Lot E), ``report/`` (Lot F),
+``core/`` (Lots A-G — entièrement vidé du legacy au profit
+de ``domain/``, ``evaluation/``, ``formats/``).
 
 ---
 
@@ -111,8 +113,9 @@ picarones/
 ├── data/                       Tables indicatives (pricing.yaml)
 │
 # Arborescence legacy en cours de retrait (cf. docs/migration/) :
-# core/, measurements/, llm/, pipelines/, report/, web/, cli/, extras/
-# (engines/ et modules/ retirés au Lot E)
+# measurements/, llm/, pipelines/, web/, cli/, extras/
+# (engines/, modules/ retirés au Lot E ; report/ au Lot F ;
+# core/ entièrement supprimé aux Lots A-G)
 └── fixtures.py                 Corpus de test fictifs
 ```
 

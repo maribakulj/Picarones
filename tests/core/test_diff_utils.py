@@ -1,6 +1,6 @@
-"""Tests pour picarones.core.diff_utils (déplacé depuis report/ en Sprint A3, B-1)."""
+"""Tests pour picarones.evaluation._diff_utils (déplacé depuis core/ en Lot G, mai 2026)."""
 
-from picarones.core.diff_utils import compute_word_diff, compute_char_diff, diff_stats
+from picarones.evaluation._diff_utils import compute_word_diff, compute_char_diff, diff_stats
 
 
 class TestComputeWordDiff:

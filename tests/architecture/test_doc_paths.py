@@ -93,6 +93,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   intouchables.  Le doc actif ``docs/reference/views.md`` a été
 #:   corrigé en place vers les chemins ``picarones/reports_v2/html/{views,
 #:   generator, renderers, templates}``.
+#: - 134 (sprint « Lot G — core/{diff_utils, xml_utils} », 2026-05-07) :
+#:   suppression des 2 derniers shims de ``picarones/core/``.  Le
+#:   sous-paquet ``core/`` n'existe plus du tout.  Deux nouveaux
+#:   chemins cassés héritage dans ``CHANGELOG.md`` (intouchable).
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
@@ -101,7 +105,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: - ``docs/migration/{executor-equivalence, legacy-retirement-plan}.md`` :
 #:   audits/plans historiques (citent des chemins legacy à des fins
 #:   de comparaison).
-BROKEN_PATHS_BASELINE = 132
+BROKEN_PATHS_BASELINE = 134
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

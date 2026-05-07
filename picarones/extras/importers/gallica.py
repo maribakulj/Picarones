@@ -31,7 +31,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-from picarones.core.xml_utils import safe_parse_xml
+from picarones.formats._xml_utils import safe_parse_xml
 from dataclasses import dataclass
 from typing import Optional
 

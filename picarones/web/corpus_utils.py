@@ -3,7 +3,7 @@
 Détection ALTO/PAGE, extraction de texte GT, analyse de la structure
 d'un dossier corpus, extraction de ZIP avec garde-fous (taille
 décompressée, nombre de fichiers). Le parsing XML sécurisé délègue
-à :func:`picarones.core.xml_utils.safe_parse_xml`.
+à :func:`picarones.formats._xml_utils.safe_parse_xml`.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from picarones.core.xml_utils import safe_parse_xml
+from picarones.formats._xml_utils import safe_parse_xml
 from picarones.web.state import IMAGE_EXTS
 
 # Garde-fous ZIP-bomb pour l'upload

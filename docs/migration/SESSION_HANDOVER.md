@@ -203,14 +203,14 @@ fiable.)
 
 ### 4.A Imports legacy dans les tests
 
-**62 fichiers** avec **365 statements** d'import depuis les
-paquets legacy (``core``, ``measurements``, ``llm``,
-``pipelines``) — Lots A, B, C, D, E et F terminés (cf. 4.D
-ci-dessous).  Les paquets ``engines/``, ``modules/`` et
-``report/`` ont été entièrement supprimés.  Le sous-paquet
-``core/`` ne contient plus que ``diff_utils`` et ``xml_utils``,
-et ``measurements/`` est passé de 50+ shims à ~25 modules
-réellement présents.
+**62 fichiers** avec **361 statements** d'import depuis les
+paquets legacy (``measurements``, ``llm``, ``pipelines``) —
+Lots A à G terminés (cf. 4.D ci-dessous).  Les paquets
+``engines/``, ``modules/``, ``report/`` et ``core/`` ont été
+**entièrement supprimés**.  Restent uniquement
+``measurements/`` (~25 modules de catégorie B/C/D),
+``llm/``, ``pipelines/`` et les sous-paquets d'interfaces
+(``cli/``, ``web/``, ``extras/``).
 
 Top chemins consommés :
 
@@ -341,8 +341,20 @@ L'ordre recommandé, par lots de symboles cohérents :
      ``docs/reference/views.md`` migré en place vers
      ``picarones/reports_v2/html/{views, generator, renderers,
      templates}``.
-7. **Lot G — measurements/runner et co.** (le plus complexe,
-   couplé à Phase 6 qui retire ``pipelines/``).
+7. ⏳ **Lot G — measurements/runner et co.** (reporté car
+   canonique absent — phase 6 du plan maître).
+   Réalisé partiellement : suppression des 2 derniers shims
+   de ``picarones/core/`` (``diff_utils``, ``xml_utils``).
+   Le sous-paquet ``core/`` n'existe plus du tout.
+
+   La part majeure du Lot G originel (``measurements/runner``
+   + ``pipelines/``) reste à faire ; elle nécessite **d'abord
+   la création** des canoniques ``app/services/run_orchestrator``
+   et ``adapters/llm/pipeline`` (couvrant ``OCRLLMPipeline``,
+   ``PipelineMode``, ``over_normalization``, ``run_benchmark``,
+   ``_compute_document_result``).  Sans ces canoniques, un
+   simple sed est impossible — il faudrait migrer les 76
+   imports vers des modules qui n'existent pas encore.
 
 À chaque lot : sed → tests → commit.  Les shims devenus
 orphelins après le lot peuvent être **supprimés** dans le même

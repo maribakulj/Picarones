@@ -45,7 +45,6 @@ REWRITE_PACKAGES: tuple[str, ...] = (
 #: legacy lui-même (ou depuis les tests, qui valident la migration
 #: en cours).
 LEGACY_PACKAGES: tuple[str, ...] = (
-    "core",
     "measurements",
     "llm",
     "pipelines",

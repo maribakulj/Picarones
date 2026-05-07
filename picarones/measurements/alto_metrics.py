@@ -52,7 +52,7 @@ import logging
 import re
 from typing import Any
 
-from picarones.core.xml_utils import safe_parse_xml
+from picarones.formats._xml_utils import safe_parse_xml
 
 from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
