@@ -13,7 +13,7 @@ utiliser les sous-packages explicites :
 
 >>> from picarones.measurements.runner import run_benchmark
 >>> from picarones.measurements.metrics import compute_metrics
->>> from picarones.engines.tesseract import TesseractEngine
+>>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
 
 Voir ``docs/explanation/architecture.md`` pour la cartographie complète des
 3 cercles, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.

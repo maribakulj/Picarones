@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from picarones.evaluation.corpus import Corpus, Document
-    from picarones.evaluation.engines.base import BaseOCREngine
+    from picarones.adapters.legacy_engines.base import BaseOCREngine
 
 logger = logging.getLogger(__name__)
 
@@ -419,7 +419,7 @@ class RobustnessAnalyzer:
 
     Examples
     --------
-    >>> from picarones.engines.tesseract import TesseractEngine
+    >>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
     >>> from picarones.measurements.robustness import RobustnessAnalyzer
     >>> engine = TesseractEngine(config={"lang": "fra"})
     >>> analyzer = RobustnessAnalyzer([engine], degradation_types=["noise", "blur"])

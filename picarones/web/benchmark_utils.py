@@ -87,8 +87,8 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
     ocr = None
     if not is_corpus_ocr:
-        from picarones.engines.tesseract import TesseractEngine
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
 
         if engine_id == "tesseract":
             ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
@@ -96,7 +96,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
             ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
         elif engine_id == "google_vision":
             try:
-                from picarones.engines.google_vision import GoogleVisionEngine
+                from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
                 ocr = GoogleVisionEngine(
                     config={"detection_type": comp.ocr_model or "document_text_detection"},
                 )
@@ -104,7 +104,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
                 raise RuntimeError("Google Vision non disponible.") from exc
         elif engine_id == "azure_doc_intel":
             try:
-                from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+                from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
                 ocr = AzureDocIntelEngine(
                     config={"model": comp.ocr_model or "prebuilt-document"},
                 )
@@ -268,7 +268,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
 
         # Instancier les moteurs via la factory cercle 2 (pas de
         # dépendance ``click`` dans le code web).
-        from picarones.engines.factory import engine_from_name
+        from picarones.adapters.legacy_engines.factory import engine_from_name
 
         ocr_engines = []
         for engine_name in req.engines:

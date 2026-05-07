@@ -83,11 +83,11 @@ def test_google_vision_propagates_http_error(
     fake_image_path: Path, code: int, monkeypatch
 ) -> None:
     monkeypatch.setenv("GOOGLE_API_KEY", "fake")
-    from picarones.engines.google_vision import GoogleVisionEngine
+    from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
 
     engine = GoogleVisionEngine()
 
-    with patch("picarones.engines.google_vision.urllib.request.urlopen") as mock_open:
+    with patch("picarones.adapters.legacy_engines.google_vision.urllib.request.urlopen") as mock_open:
         mock_open.side_effect = _http_error(code)
         result = engine.run(fake_image_path)
 
@@ -100,11 +100,11 @@ def test_google_vision_propagates_network_failure(
 ) -> None:
     """``URLError`` (DNS, timeout TCP) doit aussi remplir ``result.error``."""
     monkeypatch.setenv("GOOGLE_API_KEY", "fake")
-    from picarones.engines.google_vision import GoogleVisionEngine
+    from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
 
     engine = GoogleVisionEngine()
 
-    with patch("picarones.engines.google_vision.urllib.request.urlopen") as mock_open:
+    with patch("picarones.adapters.legacy_engines.google_vision.urllib.request.urlopen") as mock_open:
         mock_open.side_effect = URLError("Name or service not known")
         result = engine.run(fake_image_path)
 
@@ -125,11 +125,11 @@ def test_azure_doc_intel_propagates_http_error(
         "AZURE_DOC_INTEL_ENDPOINT", "https://test.cognitiveservices.azure.com"
     )
     monkeypatch.setenv("AZURE_DOC_INTEL_KEY", "fake")
-    from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+    from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
 
     engine = AzureDocIntelEngine()
 
-    with patch("picarones.engines.azure_doc_intel.urllib.request.urlopen") as mock_open:
+    with patch("picarones.adapters.legacy_engines.azure_doc_intel.urllib.request.urlopen") as mock_open:
         mock_open.side_effect = _http_error(code)
         result = engine.run(fake_image_path)
 
@@ -146,7 +146,7 @@ def test_azure_doc_intel_handles_missing_operation_location(
         "AZURE_DOC_INTEL_ENDPOINT", "https://test.cognitiveservices.azure.com"
     )
     monkeypatch.setenv("AZURE_DOC_INTEL_KEY", "fake")
-    from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+    from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
 
     engine = AzureDocIntelEngine()
 
@@ -158,7 +158,7 @@ def test_azure_doc_intel_handles_missing_operation_location(
     fake_response.read = lambda: b""
 
     with patch(
-        "picarones.engines.azure_doc_intel.urllib.request.urlopen",
+        "picarones.adapters.legacy_engines.azure_doc_intel.urllib.request.urlopen",
         return_value=fake_response,
     ):
         result = engine.run(fake_image_path)
@@ -180,7 +180,7 @@ def test_mistral_ocr_propagates_http_error(
     l'intérieur de ``_run_ocr_native_api`` (pas au top-level), donc
     on patch ``urllib.request.urlopen`` global."""
     monkeypatch.setenv("MISTRAL_API_KEY", "fake")
-    from picarones.engines.mistral_ocr import MistralOCREngine
+    from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
 
     engine = MistralOCREngine()
 
@@ -207,20 +207,20 @@ def test_mistral_ocr_propagates_http_error(
     "engine_cls_path,env_vars,patch_target",
     [
         (
-            "picarones.engines.google_vision.GoogleVisionEngine",
+            "picarones.adapters.legacy_engines.google_vision.GoogleVisionEngine",
             {"GOOGLE_API_KEY": "x"},
-            "picarones.engines.google_vision.urllib.request.urlopen",
+            "picarones.adapters.legacy_engines.google_vision.urllib.request.urlopen",
         ),
         (
-            "picarones.engines.azure_doc_intel.AzureDocIntelEngine",
+            "picarones.adapters.legacy_engines.azure_doc_intel.AzureDocIntelEngine",
             {
                 "AZURE_DOC_INTEL_ENDPOINT": "https://test.cognitiveservices.azure.com",
                 "AZURE_DOC_INTEL_KEY": "x",
             },
-            "picarones.engines.azure_doc_intel.urllib.request.urlopen",
+            "picarones.adapters.legacy_engines.azure_doc_intel.urllib.request.urlopen",
         ),
         (
-            "picarones.engines.mistral_ocr.MistralOCREngine",
+            "picarones.adapters.legacy_engines.mistral_ocr.MistralOCREngine",
             {"MISTRAL_API_KEY": "x"},
             "urllib.request.urlopen",
         ),

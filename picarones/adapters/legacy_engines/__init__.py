@@ -1,7 +1,7 @@
 """Engines OCR legacy — Sprint 33+ pré-rewrite.
 
 Phase 7.A — package relocalisé depuis ``picarones.engines`` vers
-``picarones.evaluation.engines``.  Le chemin legacy reste
+``picarones.adapters.legacy_engines``.  Le chemin legacy reste
 disponible via des shims avec ``DeprecationWarning`` ; suppression
 prévue en 2.0.
 
@@ -25,4 +25,26 @@ retiré, les engines legacy gardent leur place.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
+from picarones.adapters.legacy_engines.factory import engine_from_name
+from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
+from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
+from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
+
+__all__ = [
+    "BaseOCREngine",
+    "EngineResult",
+    "engine_from_name",
+    "TesseractEngine",
+    "MistralOCREngine",
+    "GoogleVisionEngine",
+    "AzureDocIntelEngine",
+]
+
+try:
+    from picarones.adapters.legacy_engines.pero_ocr import PeroOCREngine  # noqa: F401
+
+    __all__.append("PeroOCREngine")
+except ImportError:
+    pass

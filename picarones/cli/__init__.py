@@ -33,7 +33,7 @@ import click
 from picarones import __version__
 
 if TYPE_CHECKING:
-    from picarones.evaluation.engines.base import BaseOCREngine
+    from picarones.adapters.legacy_engines.base import BaseOCREngine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -58,7 +58,7 @@ def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCREngine":
     d'exception. Les commandes CLI continuent donc à fonctionner sans
     aucune modification.
     """
-    from picarones.engines.factory import engine_from_name
+    from picarones.adapters.legacy_engines.factory import engine_from_name
 
     try:
         return engine_from_name(engine_name, lang=lang, psm=psm)

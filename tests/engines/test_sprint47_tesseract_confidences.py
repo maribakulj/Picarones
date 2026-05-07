@@ -25,8 +25,8 @@ from pathlib import Path
 
 import pytest
 
-import picarones.engines.tesseract as tesseract_module
-from picarones.engines.tesseract import TesseractEngine
+import picarones.adapters.legacy_engines.tesseract as tesseract_module
+from picarones.adapters.legacy_engines.tesseract import TesseractEngine
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ class TestExtractionFailureFallback:
         img = tmp_path / "p.png"
         img.write_bytes(b"x")
         engine = TesseractEngine()
-        with caplog.at_level("WARNING", logger="picarones.engines.tesseract"):
+        with caplog.at_level("WARNING", logger="picarones.adapters.legacy_engines.tesseract"):
             result = engine.run(img)
 
         # OCR a réussi sur le texte
@@ -250,7 +250,7 @@ class TestEndToEndWithRunner:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     ) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.evaluation.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         # Simulation : on appelle directement _compute_document_result
         # avec un EngineResult mocké qui porte des confidences. On

@@ -101,27 +101,27 @@ class TestEngineExecutionMode:
 
     def test_base_engine_default_mode_is_io(self):
         """BaseOCREngine doit avoir execution_mode = 'io' par défaut."""
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         assert BaseOCREngine.execution_mode == "io"
 
     def test_tesseract_engine_mode_is_cpu(self):
         """TesseractEngine doit avoir execution_mode = 'cpu'."""
-        from picarones.engines.tesseract import TesseractEngine
+        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
         assert TesseractEngine.execution_mode == "cpu"
 
     def test_pero_engine_mode_is_cpu(self):
         """PeroOCREngine doit avoir execution_mode = 'cpu'."""
-        from picarones.engines.pero_ocr import PeroOCREngine
+        from picarones.adapters.legacy_engines.pero_ocr import PeroOCREngine
         assert PeroOCREngine.execution_mode == "cpu"
 
     def test_mistral_engine_default_mode_is_io(self):
         """MistralOCREngine doit hériter execution_mode = 'io'."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         assert MistralOCREngine.execution_mode == "io"
 
     def test_google_vision_default_mode_is_io(self):
         """GoogleVisionEngine doit hériter execution_mode = 'io'."""
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         assert GoogleVisionEngine.execution_mode == "io"
 
 
@@ -173,7 +173,7 @@ class TestRunnerTimeout:
         """Un document ayant dépassé le timeout doit avoir engine_error contenant 'timeout'."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         import time
 
         class SlowEngine(BaseOCREngine):
@@ -202,7 +202,7 @@ class TestRunnerTimeout:
         """Un document timeout doit avoir CER = 1.0."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         import time
 
         class SlowEngine(BaseOCREngine):
@@ -228,7 +228,7 @@ class TestRunnerTimeout:
         """Des documents rapides ne doivent pas être touchés par un timeout généreux."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class FastEngine(BaseOCREngine):
             @property
@@ -259,7 +259,7 @@ class TestRunnerPartialResults:
         """_save_partial_line doit être appelée pour chaque document traité."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         # Sprint « découpage de runner.py » (mai 2026) : ``_save_partial_line``
         # vit désormais dans le sous-module ``runner.partial`` ; le ré-export
         # dans ``runner.__init__`` est une référence figée. Pour patcher
@@ -298,7 +298,7 @@ class TestRunnerPartialResults:
         """Le fichier .partial.json doit être supprimé après un benchmark réussi."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -362,7 +362,7 @@ class TestRunnerSilentExceptions:
         import logging
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -388,7 +388,7 @@ class TestRunnerSilentExceptions:
         import logging
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property

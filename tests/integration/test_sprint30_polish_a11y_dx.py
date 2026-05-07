@@ -69,7 +69,7 @@ class TestI18nCache:
 
 class TestSafeVersionLogsDebug:
     def test_exception_in_version_does_not_propagate(self):
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class BrokenEngine(BaseOCREngine):
             @property
@@ -88,7 +88,7 @@ class TestSafeVersionLogsDebug:
         assert v == "unknown"
 
     def test_stacktrace_emitted_at_debug_level(self, caplog):
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class BrokenEngine(BaseOCREngine):
             @property
@@ -102,7 +102,7 @@ class TestSafeVersionLogsDebug:
                 return ""
 
         eng = BrokenEngine()
-        with caplog.at_level(logging.DEBUG, logger="picarones.evaluation.engines.base"):
+        with caplog.at_level(logging.DEBUG, logger="picarones.adapters.legacy_engines.base"):
             eng._safe_version()
         # Le log debug doit mentionner la classe + l'exception
         assert any(

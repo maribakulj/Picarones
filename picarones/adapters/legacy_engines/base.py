@@ -1,7 +1,7 @@
 """Interface abstraite commune à tous les adaptateurs moteurs OCR (legacy).
 
 Phase 7.A — module relocalisé depuis ``picarones.engines.base``
-vers ``picarones.evaluation.engines.base``.  Le chemin legacy
+vers ``picarones.adapters.legacy_engines.base``.  Le chemin legacy
 reste disponible via un shim avec ``DeprecationWarning`` ;
 suppression prévue en 2.0.
 

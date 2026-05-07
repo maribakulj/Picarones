@@ -240,7 +240,7 @@ class TestOCRLLMPipeline:
 
     def test_auto_name_text_only(self):
         from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
-        from picarones.engines.tesseract import TesseractEngine
+        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
         pipeline = OCRLLMPipeline(
             ocr_engine=TesseractEngine(),
             llm_adapter=self._mock_llm(),
@@ -278,7 +278,7 @@ class TestOCRLLMPipeline:
         assert steps[0]["mode"] == "zero_shot"
 
     def test_pipeline_steps_with_ocr(self):
-        from picarones.engines.tesseract import TesseractEngine
+        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
         from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             ocr_engine=TesseractEngine(),
@@ -310,7 +310,7 @@ class TestOCRLLMPipeline:
 
     def test_is_pipeline_flag(self):
         from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.ZERO_SHOT,

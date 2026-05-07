@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import Optional
 
 from picarones.evaluation.benchmark_result import DocumentResult
-from picarones.evaluation.engines.base import BaseOCREngine
+from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.measurements.runner.document import _compute_document_result
 
 

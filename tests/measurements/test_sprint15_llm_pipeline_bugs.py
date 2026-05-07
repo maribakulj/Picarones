@@ -239,7 +239,7 @@ class TestRunnerDocumentResultCohérence:
     def test_empty_hypothesis_stored_as_cer_one(self):
         """_compute_document_result avec text="" → metrics.cer = 1.0."""
         from picarones.measurements.runner import _compute_document_result
-        from picarones.evaluation.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         ocr_result = EngineResult(
             engine_name="TestEngine",
@@ -267,7 +267,7 @@ class TestRunnerDocumentResultCohérence:
     def test_engine_error_also_gives_cer_one(self):
         """EngineResult avec error → metrics.cer = 1.0 (comportement existant)."""
         from picarones.measurements.runner import _compute_document_result
-        from picarones.evaluation.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         ocr_result = EngineResult(
             engine_name="TestEngine",

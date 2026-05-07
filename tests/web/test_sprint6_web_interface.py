@@ -923,7 +923,7 @@ class TestRunnerProgressCallback:
         """Le callback est appelé pour chaque document."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -944,7 +944,7 @@ class TestRunnerProgressCallback:
         """Le callback reçoit le nom du moteur."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -965,7 +965,7 @@ class TestRunnerProgressCallback:
         """Une exception dans le callback ne plante pas le benchmark."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.evaluation.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -1242,44 +1242,44 @@ class TestFastAPIEnginesExtended:
 class TestMistralOCRNativeAPI:
 
     def test_engine_has_native_api_method(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         assert hasattr(eng, "_run_ocr_native_api")
 
     def test_engine_has_vision_api_method(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "pixtral-12b-2409"})
         assert hasattr(eng, "_run_ocr_vision_api")
 
     def test_model_name_stored(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         assert eng._model == "mistral-ocr-latest"
 
     def test_pixtral_model_stored(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "pixtral-large-latest"})
         assert "pixtral" in eng._model.lower()
 
     def test_engine_name_unchanged(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         assert eng.name == "mistral_ocr"
 
     def test_version_returns_model_name(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         assert eng.version() == "mistral-ocr-latest"
 
     def test_default_model_is_mistral_ocr_latest(self):
         """Sans config explicite, le modèle par défaut doit être mistral-ocr-latest."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         eng = MistralOCREngine()
         assert eng._model == "mistral-ocr-latest"
 
     def test_mistral_ocr_latest_routes_to_native_api(self, tmp_path, monkeypatch):
         """mistral-ocr-latest doit appeler _run_ocr_native_api, pas _run_ocr_vision_api."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         # Créer une fausse image
@@ -1305,7 +1305,7 @@ class TestMistralOCRNativeAPI:
 
     def test_pixtral_model_routes_to_vision_api(self, tmp_path, monkeypatch):
         """pixtral-12b-2409 doit appeler _run_ocr_vision_api, pas _run_ocr_native_api."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
         eng = MistralOCREngine(config={"model": "pixtral-12b-2409"})
         img = tmp_path / "page.png"
@@ -1327,7 +1327,7 @@ class TestMistralOCRNativeAPI:
 
     def test_no_api_key_raises(self, tmp_path, monkeypatch):
         """Sans clé API, _run_ocr doit lever RuntimeError."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
         img = tmp_path / "page.jpg"

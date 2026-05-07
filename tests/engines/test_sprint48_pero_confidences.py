@@ -26,8 +26,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import picarones.engines.pero_ocr as pero_module
-from picarones.engines.pero_ocr import PeroOCREngine
+import picarones.adapters.legacy_engines.pero_ocr as pero_module
+from picarones.adapters.legacy_engines.pero_ocr import PeroOCREngine
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ class TestRunPipeline:
 class TestEndToEndWithRunner:
     def test_runner_picks_up_confidences(self) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.evaluation.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         ocr = EngineResult(
             engine_name="pero",

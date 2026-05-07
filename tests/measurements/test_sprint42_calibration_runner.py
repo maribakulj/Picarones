@@ -34,7 +34,7 @@ from picarones.measurements.runner import (
     _calibration_from_engine_result,
 )
 from picarones.core.results import DocumentResult, EngineReport
-from picarones.evaluation.engines.base import EngineResult
+from picarones.adapters.legacy_engines.base import EngineResult
 
 
 # ──────────────────────────────────────────────────────────────────────────

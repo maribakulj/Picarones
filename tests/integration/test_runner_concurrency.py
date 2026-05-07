@@ -30,7 +30,7 @@ from pathlib import Path
 import pytest
 
 from picarones.core.corpus import Corpus, Document
-from picarones.evaluation.engines.base import BaseOCREngine
+from picarones.adapters.legacy_engines.base import BaseOCREngine
 
 
 # ---------------------------------------------------------------------------

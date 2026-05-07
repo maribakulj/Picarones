@@ -29,7 +29,7 @@ from tqdm import tqdm
 
 from picarones.evaluation.corpus import Corpus
 from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
-from picarones.evaluation.engines.base import BaseOCREngine
+from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.measurements.runner.document import (
     _make_error_doc_result,
     _make_timeout_doc_result,

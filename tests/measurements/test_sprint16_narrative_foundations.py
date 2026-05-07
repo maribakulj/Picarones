@@ -29,7 +29,7 @@ from picarones.measurements.runner import (
     _compute_document_result,
     run_benchmark,
 )
-from picarones.evaluation.engines.base import BaseOCREngine, EngineResult
+from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
 
 class _FakeEngine(BaseOCREngine):

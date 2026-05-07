@@ -61,7 +61,7 @@ def _mock_urlopen_response(json_body: dict, headers: dict | None = None) -> Magi
 
 class TestMistralOCREngine:
     def test_class_metadata(self, monkeypatch):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
         eng = MistralOCREngine()
         assert eng.name == "mistral_ocr"
@@ -70,7 +70,7 @@ class TestMistralOCREngine:
         assert eng.execution_mode == "io"
 
     def test_missing_api_key_raises(self, monkeypatch, fake_image):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
         eng = MistralOCREngine()
         with pytest.raises(RuntimeError, match="MISTRAL_API_KEY"):
@@ -78,7 +78,7 @@ class TestMistralOCREngine:
 
     def test_native_ocr_endpoint_parses_pages(self, monkeypatch, fake_image):
         """``mistral-ocr-latest`` route vers ``/v1/ocr`` et concatène les pages."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.setenv("MISTRAL_API_KEY", "fake-key")
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
 
@@ -96,7 +96,7 @@ class TestMistralOCREngine:
         assert "\n\n" in text
 
     def test_native_endpoint_handles_empty_pages(self, monkeypatch, fake_image):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.setenv("MISTRAL_API_KEY", "fake-key")
         eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
 
@@ -112,7 +112,7 @@ class TestMistralOCREngine:
 
 class TestGoogleVisionEngine:
     def test_class_metadata(self, monkeypatch):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         eng = GoogleVisionEngine()
@@ -121,7 +121,7 @@ class TestGoogleVisionEngine:
         assert eng.execution_mode == "io"
 
     def test_missing_credentials_raises(self, monkeypatch, fake_image):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         eng = GoogleVisionEngine()
@@ -129,7 +129,7 @@ class TestGoogleVisionEngine:
             eng._run_ocr(fake_image)
 
     def test_rest_happy_path_extracts_text(self, monkeypatch, fake_image):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         monkeypatch.setenv("GOOGLE_API_KEY", "fake-key")
         eng = GoogleVisionEngine()
@@ -144,7 +144,7 @@ class TestGoogleVisionEngine:
         assert text == "Texte reconstitué de Gallica"
 
     def test_rest_response_with_error_field_raises(self, monkeypatch, fake_image):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         monkeypatch.setenv("GOOGLE_API_KEY", "fake-key")
         eng = GoogleVisionEngine()
@@ -155,7 +155,7 @@ class TestGoogleVisionEngine:
                 eng._run_ocr(fake_image)
 
     def test_http_error_remontes_lisible(self, monkeypatch, fake_image):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         monkeypatch.setenv("GOOGLE_API_KEY", "fake-key")
         eng = GoogleVisionEngine()
@@ -172,7 +172,7 @@ class TestGoogleVisionEngine:
                 eng._run_ocr(fake_image)
 
     def test_text_detection_extracts_first_annotation(self, monkeypatch, fake_image):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         monkeypatch.setenv("GOOGLE_API_KEY", "fake-key")
         eng = GoogleVisionEngine(config={"feature_type": "TEXT_DETECTION"})
@@ -196,7 +196,7 @@ class TestGoogleVisionEngine:
 
 class TestAzureDocIntelEngine:
     def test_class_metadata(self, monkeypatch):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         monkeypatch.delenv("AZURE_DOC_INTEL_KEY", raising=False)
         monkeypatch.delenv("AZURE_DOC_INTEL_ENDPOINT", raising=False)
         eng = AzureDocIntelEngine()
@@ -205,7 +205,7 @@ class TestAzureDocIntelEngine:
         assert eng.execution_mode == "io"
 
     def test_missing_key_raises(self, monkeypatch, fake_image):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         monkeypatch.delenv("AZURE_DOC_INTEL_KEY", raising=False)
         monkeypatch.setenv("AZURE_DOC_INTEL_ENDPOINT", "https://x.cognitiveservices.azure.com")
         eng = AzureDocIntelEngine()
@@ -213,7 +213,7 @@ class TestAzureDocIntelEngine:
             eng._run_ocr(fake_image)
 
     def test_missing_endpoint_raises(self, monkeypatch, fake_image):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         monkeypatch.setenv("AZURE_DOC_INTEL_KEY", "k")
         monkeypatch.delenv("AZURE_DOC_INTEL_ENDPOINT", raising=False)
         eng = AzureDocIntelEngine()
@@ -222,7 +222,7 @@ class TestAzureDocIntelEngine:
 
     def test_extract_text_pure_function(self):
         # Méthode statique — testable sans réseau ni mocks.
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         result = {
             "analyzeResult": {
                 "pages": [
@@ -241,7 +241,7 @@ class TestAzureDocIntelEngine:
         assert "Page 2 — texte" in text
 
     def test_extract_text_handles_empty_result(self):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         assert AzureDocIntelEngine._extract_text_from_result({}) == ""
         assert AzureDocIntelEngine._extract_text_from_result(
             {"analyzeResult": {"pages": []}}
@@ -265,9 +265,9 @@ class TestCloudEngineExecutionMode:
                   "AZURE_DOC_INTEL_KEY", "AZURE_DOC_INTEL_ENDPOINT"):
             monkeypatch.delenv(v, raising=False)
 
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
-        from picarones.engines.google_vision import GoogleVisionEngine
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
 
         for cls in (MistralOCREngine, GoogleVisionEngine, AzureDocIntelEngine):
             eng = cls()

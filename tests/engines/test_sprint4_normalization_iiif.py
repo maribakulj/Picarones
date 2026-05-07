@@ -614,27 +614,27 @@ class TestSlugify:
 class TestMistralOCREngine:
 
     def test_import(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         assert MistralOCREngine is not None
 
     def test_name(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine()
         assert engine.name == "mistral_ocr"
 
     def test_version_default_model(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine()
         # Le modèle par défaut est désormais mistral-ocr-latest (API OCR native)
         assert "mistral-ocr" in engine.version()
 
     def test_version_custom_model(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine({"model": "pixtral-large-latest"})
         assert engine.version() == "pixtral-large-latest"
 
     def test_missing_api_key_raises(self, monkeypatch, tmp_path):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
         engine = MistralOCREngine()
         # Créer un fichier image factice
@@ -644,28 +644,28 @@ class TestMistralOCREngine:
             engine._run_ocr(img)
 
     def test_exported_from_engines(self):
-        from picarones.engines import MistralOCREngine
+        from picarones.adapters.legacy_engines import MistralOCREngine
         assert MistralOCREngine is not None
 
 
 class TestGoogleVisionEngine:
 
     def test_import(self):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         assert GoogleVisionEngine is not None
 
     def test_name(self):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         engine = GoogleVisionEngine()
         assert engine.name == "google_vision"
 
     def test_version(self):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         engine = GoogleVisionEngine()
         assert engine.version() == "v1"
 
     def test_missing_credentials_raises(self, monkeypatch, tmp_path):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         engine = GoogleVisionEngine()
@@ -675,23 +675,23 @@ class TestGoogleVisionEngine:
             engine._run_ocr(img)
 
     def test_exported_from_engines(self):
-        from picarones.engines import GoogleVisionEngine
+        from picarones.adapters.legacy_engines import GoogleVisionEngine
         assert GoogleVisionEngine is not None
 
 
 class TestAzureDocIntelEngine:
 
     def test_import(self):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         assert AzureDocIntelEngine is not None
 
     def test_name(self):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         engine = AzureDocIntelEngine()
         assert engine.name == "azure_doc_intel"
 
     def test_missing_key_raises(self, monkeypatch, tmp_path):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         monkeypatch.delenv("AZURE_DOC_INTEL_KEY", raising=False)
         monkeypatch.delenv("AZURE_DOC_INTEL_ENDPOINT", raising=False)
         engine = AzureDocIntelEngine()
@@ -701,7 +701,7 @@ class TestAzureDocIntelEngine:
             engine._run_ocr(img)
 
     def test_exported_from_engines(self):
-        from picarones.engines import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines import AzureDocIntelEngine
         assert AzureDocIntelEngine is not None
 
 
