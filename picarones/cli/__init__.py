@@ -378,7 +378,6 @@ from picarones.cli import _imports     # noqa: F401, E402  (import group + impor
 from picarones.cli import _serve       # noqa: F401, E402  (serve)
 from picarones.cli import _history     # noqa: F401, E402  (history)
 from picarones.cli import _robustness  # noqa: F401, E402  (robustness)
-from picarones.cli import _pipeline    # noqa: F401, E402  (pipeline group + run + compare)
 
 
 __all__ = [
