@@ -123,13 +123,12 @@ FILE_BUDGETS: dict[str, int] = {
     # ``measurements/roman_numerals.py`` a été supprimé.  Seul le
     # canonique ``evaluation/metrics/roman_numerals.py`` reste.
     "picarones/evaluation/metrics/roman_numerals.py": 575,  # actuel 484
-    "picarones/extras/importers/htr_united.py": 575,      # actuel 473 (re-export S11)
-    # Sprint A14-S11 — d\xc3\xa9plac\xc3\xa9s depuis extras/importers/, l'ancien
-    # emplacement est d\xc3\xa9sormais un re-export.
+    # Sprint A14-S11 + Lot I — déplacés depuis extras/importers/.
+    # Les shims ``extras/importers/{htr_united, huggingface,
+    # _fallback_log}`` ont été supprimés au Lot I (mai 2026).
     "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     "picarones/cli/_workflows.py": 550,                   # actuel 469
-    "picarones/extras/importers/huggingface.py": 550,     # actuel 464
     # Phase 4-ter : ``core/metric_hooks.py`` est désormais un shim
     # (≤ 80 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (centralise les

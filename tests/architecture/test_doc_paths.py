@@ -97,6 +97,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   suppression des 2 derniers shims de ``picarones/core/``.  Le
 #:   sous-paquet ``core/`` n'existe plus du tout.  Deux nouveaux
 #:   chemins cassés héritage dans ``CHANGELOG.md`` (intouchable).
+#: - 138 (sprints « Lots H + I », 2026-05-07) : suppression du
+#:   sous-paquet ``measurements/statistics/`` (Lot H, 9 shims) et
+#:   des 3 shims ``extras/importers/{htr_united, huggingface,
+#:   _fallback_log}`` (Lot I).  Quatre nouveaux chemins cassés
+#:   héritage répartis dans ``docs/audits/*.md`` (intouchables).
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
@@ -105,7 +110,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: - ``docs/migration/{executor-equivalence, legacy-retirement-plan}.md`` :
 #:   audits/plans historiques (citent des chemins legacy à des fins
 #:   de comparaison).
-BROKEN_PATHS_BASELINE = 134
+BROKEN_PATHS_BASELINE = 138
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

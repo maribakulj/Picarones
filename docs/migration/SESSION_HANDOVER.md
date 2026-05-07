@@ -356,6 +356,33 @@ L'ordre recommandé, par lots de symboles cohérents :
    simple sed est impossible — il faudrait migrer les 76
    imports vers des modules qui n'existent pas encore.
 
+8. ✅ **Lot H — measurements.statistics → evaluation.statistics**
+   (~70 imports migrés, 9 shims supprimés en bloc) :
+   - ``measurements.statistics.{bootstrap, cdd_render,
+     clustering, correlation, distributions, friedman_nemenyi,
+     pareto, wilcoxon}`` → ``evaluation.statistics.{...}``.
+   - ``measurements/statistics/`` (sous-paquet entier)
+     supprimé.
+
+9. ✅ **Lot I — extras.importers → adapters.corpus**
+   (3 shims supprimés, ~15 imports migrés) :
+   - ``extras.importers.htr_united`` →
+     ``adapters.corpus.htr_united``.
+   - ``extras.importers.huggingface`` →
+     ``adapters.corpus.huggingface``.
+   - ``extras.importers._fallback_log`` →
+     ``adapters.corpus._fallback_log``.
+
+10. ✅ **Lot J — measurements.metrics.{MetricsResult,
+   aggregate_metrics} → evaluation.metric_result** (~25
+   imports migrés, 0 shim supprimé) :
+   - Migration partielle uniquement des symboles canoniquement
+     migrés (``MetricsResult``, ``aggregate_metrics``).
+   - ``compute_metrics`` reste dans
+     ``picarones.measurements.metrics`` car aucun canonique
+     n'existe pour cette fonction (sera traité avec le Lot G
+     reporté).
+
 À chaque lot : sed → tests → commit.  Les shims devenus
 orphelins après le lot peuvent être **supprimés** dans le même
 commit (principe « no shim survives its caller »).

@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from picarones.evaluation.benchmark_result import DocumentResult
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 
 logger = logging.getLogger(__name__)
 

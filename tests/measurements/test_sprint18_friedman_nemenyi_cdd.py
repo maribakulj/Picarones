@@ -14,7 +14,7 @@ import re
 
 import pytest
 
-from picarones.measurements.statistics import (
+from picarones.evaluation.statistics import (
     build_critical_difference_svg,
     friedman_test,
     nemenyi_posthoc,

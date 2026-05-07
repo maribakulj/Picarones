@@ -29,7 +29,7 @@ from picarones.measurements.philological_hooks import (
     compute_philological_metrics,
 )
 from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 
 
 def _make_doc(

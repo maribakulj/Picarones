@@ -59,7 +59,7 @@ class TestEngineResultExtension:
 
 
 def _make_dr(calibration_metrics: dict | None = None) -> DocumentResult:
-    from picarones.measurements.metrics import MetricsResult
+    from picarones.evaluation.metric_result import MetricsResult
 
     return DocumentResult(
         doc_id="d1", image_path="/tmp/x.png",

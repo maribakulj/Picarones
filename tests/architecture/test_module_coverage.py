@@ -71,7 +71,6 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     "numerical_sequences_hooks",
     "pipeline_benchmark",
     "pipeline_comparison",
-    "statistics",
 })
 
 

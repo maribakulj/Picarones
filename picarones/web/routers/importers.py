@@ -20,7 +20,7 @@ async def api_htr_united_catalogue(
     script: str = Query(default="", description="Filtre type d'écriture"),
 ) -> dict:
     """Catalogue HTR-United filtrable."""
-    from picarones.extras.importers.htr_united import HTRUnitedCatalogue
+    from picarones.adapters.corpus.htr_united import HTRUnitedCatalogue
 
     cat = HTRUnitedCatalogue.from_demo()
     results = cat.search(
@@ -40,7 +40,7 @@ async def api_htr_united_catalogue(
 @router.post("/api/htr-united/import")
 async def api_htr_united_import(req: HTRUnitedImportRequest) -> dict:
     """Importe une entrée HTR-United dans ``req.output_dir``."""
-    from picarones.extras.importers.htr_united import (
+    from picarones.adapters.corpus.htr_united import (
         HTRUnitedCatalogue,
         import_htr_united_corpus,
     )
@@ -71,7 +71,7 @@ async def api_huggingface_search(
     limit: int = Query(default=20, ge=1, le=50),
 ) -> dict:
     """Recherche de datasets sur HuggingFace Hub."""
-    from picarones.extras.importers.huggingface import HuggingFaceImporter
+    from picarones.adapters.corpus.huggingface import HuggingFaceImporter
 
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else None
     importer = HuggingFaceImporter()
@@ -90,7 +90,7 @@ async def api_huggingface_search(
 @router.post("/api/huggingface/import")
 async def api_huggingface_import(req: HuggingFaceImportRequest) -> dict:
     """Importe un dataset HuggingFace dans ``req.output_dir``."""
-    from picarones.extras.importers.huggingface import HuggingFaceImporter
+    from picarones.adapters.corpus.huggingface import HuggingFaceImporter
 
     importer = HuggingFaceImporter()
     return importer.import_dataset(

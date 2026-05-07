@@ -57,13 +57,13 @@ def client():
 
 @pytest.fixture
 def htr_catalogue():
-    from picarones.extras.importers.htr_united import HTRUnitedCatalogue
+    from picarones.adapters.corpus.htr_united import HTRUnitedCatalogue
     return HTRUnitedCatalogue.from_demo()
 
 
 @pytest.fixture
 def hf_importer():
-    from picarones.extras.importers.huggingface import HuggingFaceImporter
+    from picarones.adapters.corpus.huggingface import HuggingFaceImporter
     return HuggingFaceImporter()
 
 
@@ -74,7 +74,7 @@ def hf_importer():
 class TestHTRUnitedEntry:
 
     def test_from_dict_basic(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         d = {
             "id": "test-corpus", "title": "Test Corpus", "url": "https://github.com/test/corpus",
             "language": ["French"], "script": ["Gothic"], "century": [14, 15],
@@ -88,7 +88,7 @@ class TestHTRUnitedEntry:
         assert e.lines == 5000
 
     def test_as_dict_roundtrip(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         d = {
             "id": "rtrip", "title": "Round Trip", "url": "https://github.com/a/b",
             "language": ["Latin"], "script": ["Caroline"], "century": [9],
@@ -102,19 +102,19 @@ class TestHTRUnitedEntry:
         assert out["format"] == "PAGE"
 
     def test_century_str_roman(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         e = HTRUnitedEntry(id="x", title="x", url="x", century=[12, 14])
         cs = e.century_str
         assert "XIIe" in cs
         assert "XIVe" in cs
 
     def test_century_str_single(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         e = HTRUnitedEntry(id="x", title="x", url="x", century=[19])
         assert "XIXe" in e.century_str
 
     def test_default_fields(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         e = HTRUnitedEntry(id="minimal", title="Min", url="http://x")
         assert e.language == []
         assert e.lines == 0
@@ -122,14 +122,14 @@ class TestHTRUnitedEntry:
         assert e.tags == []
 
     def test_from_dict_missing_fields(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         e = HTRUnitedEntry.from_dict({"id": "sparse", "title": "Sparse"})
         assert e.id == "sparse"
         assert e.institution == ""
         assert e.lines == 0
 
     def test_as_dict_has_all_keys(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         e = HTRUnitedEntry(id="k", title="K", url="http://k")
         d = e.as_dict()
         for key in ["id", "title", "url", "language", "script", "century",
@@ -137,7 +137,7 @@ class TestHTRUnitedEntry:
             assert key in d, f"Missing key: {key}"
 
     def test_url_preserved(self):
-        from picarones.extras.importers.htr_united import HTRUnitedEntry
+        from picarones.adapters.corpus.htr_united import HTRUnitedEntry
         url = "https://github.com/HTR-United/cremma-medieval"
         e = HTRUnitedEntry(id="c", title="CREMMA", url=url)
         assert e.url == url
@@ -250,14 +250,14 @@ class TestHTRUnitedImport:
     """
 
     def test_import_creates_meta_file(self, tmp_path, htr_catalogue):
-        from picarones.extras.importers.htr_united import import_htr_united_corpus
+        from picarones.adapters.corpus.htr_united import import_htr_united_corpus
         entry = htr_catalogue.entries[0]
         result = import_htr_united_corpus(entry, tmp_path, max_samples=5)
         meta_file = Path(result["metadata_file"])
         assert meta_file.exists()
 
     def test_import_meta_content(self, tmp_path, htr_catalogue):
-        from picarones.extras.importers.htr_united import import_htr_united_corpus
+        from picarones.adapters.corpus.htr_united import import_htr_united_corpus
         entry = htr_catalogue.entries[0]
         result = import_htr_united_corpus(entry, tmp_path, max_samples=5)
         meta = json.loads(Path(result["metadata_file"]).read_text())
@@ -265,14 +265,14 @@ class TestHTRUnitedImport:
         assert meta["entry_id"] == entry.id
 
     def test_import_returns_dict_keys(self, tmp_path, htr_catalogue):
-        from picarones.extras.importers.htr_united import import_htr_united_corpus
+        from picarones.adapters.corpus.htr_united import import_htr_united_corpus
         entry = htr_catalogue.entries[0]
         result = import_htr_united_corpus(entry, tmp_path, max_samples=5)
         for k in ["entry_id", "title", "output_dir", "files_imported", "metadata_file"]:
             assert k in result, f"Missing key: {k}"
 
     def test_import_creates_output_dir(self, tmp_path, htr_catalogue):
-        from picarones.extras.importers.htr_united import import_htr_united_corpus
+        from picarones.adapters.corpus.htr_united import import_htr_united_corpus
         entry = htr_catalogue.entries[0]
         new_dir = tmp_path / "new_subdir" / "corpus"
         import_htr_united_corpus(entry, new_dir, max_samples=5)
@@ -286,7 +286,7 @@ class TestHTRUnitedImport:
 class TestHuggingFaceDataset:
 
     def test_from_dict_basic(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         d = {
             "dataset_id": "test/dataset", "title": "Test Dataset",
             "description": "A test dataset.", "language": ["French"],
@@ -299,7 +299,7 @@ class TestHuggingFaceDataset:
         assert ds.downloads == 500
 
     def test_as_dict_roundtrip(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         ds = HuggingFaceDataset(
             dataset_id="a/b", title="AB", description="desc",
             language=["Latin"], tags=["htr"],
@@ -309,12 +309,12 @@ class TestHuggingFaceDataset:
         assert d["language"] == ["Latin"]
 
     def test_hf_url(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         ds = HuggingFaceDataset(dataset_id="CATMuS/medieval", title="CATMuS")
         assert ds.hf_url == "https://huggingface.co/datasets/CATMuS/medieval"
 
     def test_as_dict_has_all_keys(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         ds = HuggingFaceDataset(dataset_id="x/y", title="XY")
         d = ds.as_dict()
         for k in ["dataset_id", "title", "description", "language", "tags",
@@ -322,17 +322,17 @@ class TestHuggingFaceDataset:
             assert k in d, f"Missing: {k}"
 
     def test_default_source(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         ds = HuggingFaceDataset(dataset_id="x/y", title="XY")
         assert ds.source == "reference"
 
     def test_from_dict_uses_id_as_fallback_title(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         ds = HuggingFaceDataset.from_dict({"dataset_id": "owner/repo"})
         assert ds.title == "owner/repo"
 
     def test_replace_source_helper(self):
-        from picarones.extras.importers.huggingface import HuggingFaceDataset
+        from picarones.adapters.corpus.huggingface import HuggingFaceDataset
         ds = HuggingFaceDataset(dataset_id="x/y", title="XY", source="reference")
         ds2 = ds._replace_source("api")
         assert ds2.source == "api"
@@ -399,23 +399,23 @@ class TestHuggingFaceImporter:
 class TestHuggingFaceReferenceData:
 
     def test_reference_datasets_loaded(self):
-        from picarones.extras.importers.huggingface import _REFERENCE_DATASETS
+        from picarones.adapters.corpus.huggingface import _REFERENCE_DATASETS
         assert len(_REFERENCE_DATASETS) >= 5
 
     def test_catmus_present(self):
-        from picarones.extras.importers.huggingface import _REFERENCE_DATASETS
+        from picarones.adapters.corpus.huggingface import _REFERENCE_DATASETS
         ids = [d["dataset_id"] for d in _REFERENCE_DATASETS]
         assert any("CATMuS" in did or "catmus" in did.lower() for did in ids)
 
     def test_all_have_required_fields(self):
-        from picarones.extras.importers.huggingface import _REFERENCE_DATASETS
+        from picarones.adapters.corpus.huggingface import _REFERENCE_DATASETS
         for d in _REFERENCE_DATASETS:
             assert "dataset_id" in d
             assert "title" in d
             assert "language" in d
 
     def test_all_are_image_to_text(self):
-        from picarones.extras.importers.huggingface import _REFERENCE_DATASETS
+        from picarones.adapters.corpus.huggingface import _REFERENCE_DATASETS
         for d in _REFERENCE_DATASETS:
             assert d.get("task", "image-to-text") == "image-to-text"
 

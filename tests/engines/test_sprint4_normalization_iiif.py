@@ -10,7 +10,8 @@ from picarones.evaluation.metrics.normalization import (
     _apply_diplomatic_table,
     get_builtin_profile,
 )
-from picarones.measurements.metrics import compute_metrics, aggregate_metrics, MetricsResult
+from picarones.evaluation.metric_result import aggregate_metrics, MetricsResult
+from picarones.measurements.metrics import compute_metrics
 from picarones.extras.importers.iiif import (
     IIIFManifestParser,
     parse_page_selector,

@@ -97,7 +97,7 @@ def _make_document_result(
     hypothesis: str = "Marie de Bourgogne en 1477.",
     ner_metrics: dict | None = None,
 ) -> DocumentResult:
-    from picarones.measurements.metrics import MetricsResult
+    from picarones.evaluation.metric_result import MetricsResult
 
     return DocumentResult(
         doc_id=doc_id,

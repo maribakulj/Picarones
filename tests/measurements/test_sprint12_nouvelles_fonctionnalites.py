@@ -195,7 +195,7 @@ def sample_generator():
     """Fixture partagée : crée un ReportGenerator avec des données fictives."""
     from picarones.reports_v2.html.generator import ReportGenerator
     from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
-    from picarones.measurements.metrics import MetricsResult
+    from picarones.evaluation.metric_result import MetricsResult
 
     def _make_metric(cer=0.1):
         return MetricsResult(

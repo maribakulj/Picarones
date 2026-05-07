@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
 
 

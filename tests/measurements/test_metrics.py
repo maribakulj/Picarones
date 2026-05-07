@@ -2,7 +2,8 @@
 
 import pytest
 
-from picarones.measurements.metrics import aggregate_metrics, compute_metrics, MetricsResult
+from picarones.evaluation.metric_result import aggregate_metrics, MetricsResult
+from picarones.measurements.metrics import compute_metrics
 
 
 class TestComputeMetrics:

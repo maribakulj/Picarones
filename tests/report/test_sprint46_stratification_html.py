@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 from picarones.measurements.narrative.detectors import detect_stratification_recommended
 from picarones.domain.facts import FactImportance, FactType
 from picarones.measurements.narrative.renderer import extract_numbers, render_fact

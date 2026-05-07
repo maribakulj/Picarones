@@ -128,7 +128,7 @@ def test_no_orphaned_whitelist_entries() -> None:
 def test_subpackages_not_affected() -> None:
     """Méta-test : les sous-packages existants de ``measurements/``
     (narrative, statistics, runner) restent intouchés par ce test."""
-    expected_subpackages = {"narrative", "statistics", "runner"}
+    expected_subpackages = {"narrative", "runner"}
     actual = {
         p.name for p in MEASUREMENTS_DIR.iterdir()
         if p.is_dir() and not p.name.startswith("_") and "__pycache__" not in p.name

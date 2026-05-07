@@ -225,7 +225,7 @@ class TestLineMetricsInResults:
 
     def test_document_result_has_line_metrics_field(self):
         from picarones.evaluation.benchmark_result import DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.metric_result import MetricsResult
         dr = DocumentResult(
             doc_id="test_001",
             image_path="/test/img.jpg",
@@ -245,7 +245,7 @@ class TestLineMetricsInResults:
 
     def test_document_result_has_hallucination_metrics_field(self):
         from picarones.evaluation.benchmark_result import DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.metric_result import MetricsResult
         dr = DocumentResult(
             doc_id="test_002",
             image_path="/test/img.jpg",
@@ -265,7 +265,7 @@ class TestLineMetricsInResults:
 
     def test_document_result_as_dict_includes_sprint10_fields(self):
         from picarones.evaluation.benchmark_result import DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.metric_result import MetricsResult
         dr = DocumentResult(
             doc_id="test_003",
             image_path="/test/img.jpg",
@@ -287,7 +287,7 @@ class TestLineMetricsInResults:
 
     def test_engine_report_has_aggregated_sprint10_fields(self):
         from picarones.evaluation.benchmark_result import EngineReport, DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.metric_result import MetricsResult
         dr = DocumentResult(
             doc_id="test_004",
             image_path="/test/img.jpg",

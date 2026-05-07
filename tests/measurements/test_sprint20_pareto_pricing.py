@@ -26,7 +26,7 @@ from picarones.evaluation.metrics.pricing import (
     estimate_cost,
     load_pricing_database,
 )
-from picarones.measurements.statistics import compute_pareto_front
+from picarones.evaluation.statistics import compute_pareto_front
 
 
 # ---------------------------------------------------------------------------

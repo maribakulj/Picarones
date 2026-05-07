@@ -418,7 +418,7 @@ class TestRunnerSilentExceptions:
 
         # Créer un doc_result avec des données de confusion corrompues
         from picarones.evaluation.benchmark_result import DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.metric_result import MetricsResult
         bad_dr = DocumentResult(
             doc_id="x", image_path="x.png", ground_truth="gt", hypothesis="hyp",
             metrics=MetricsResult(cer=0.1, cer_nfc=0.1, cer_caseless=0.1,
@@ -441,7 +441,7 @@ class TestWilcoxonValidation:
 
     def test_identical_sequences_not_significant(self):
         """Séquences identiques → pas de différence, p = 1.0, significant = False."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
         r = wilcoxon_test(a, a)
         assert r["significant"] is False
@@ -450,7 +450,7 @@ class TestWilcoxonValidation:
 
     def test_all_positive_diffs_w_minus_is_zero(self):
         """Si toutes les différences a−b sont positives : W⁻ = 0, W⁺ = n(n+1)/2."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         n = 10
         a = [float(i) for i in range(1, n + 1)]
         b = [0.0] * n
@@ -461,7 +461,7 @@ class TestWilcoxonValidation:
 
     def test_w_plus_w_minus_sum_invariant(self):
         """W⁺ + W⁻ doit toujours être égal à n(n+1)/2 (n = nombre de paires non nulles)."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.10, 0.25, 0.05, 0.40, 0.30, 0.15, 0.20, 0.35, 0.08, 0.18]
         b = [0.12, 0.20, 0.08, 0.35, 0.28, 0.18, 0.15, 0.40, 0.10, 0.20]
         r = wilcoxon_test(a, b)
@@ -474,7 +474,7 @@ class TestWilcoxonValidation:
 
     def test_clearly_different_sequences_significant(self):
         """Deux séquences très différentes (n=15) doivent donner p < 0.05."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.05] * 15          # moteur A très performant
         b = [0.60] * 15          # moteur B peu performant — toutes diff = −0.55
         # Diffs a−b = −0.55 pour tous → W⁺ = 0 → devrait être significatif
@@ -484,7 +484,7 @@ class TestWilcoxonValidation:
 
     def test_large_n_normal_approximation_reasonable(self):
         """Pour n = 20, l'approximation normale doit donner une p-value dans [0, 1]."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         import random
         rng = random.Random(42)
         a = [rng.uniform(0.1, 0.5) for _ in range(20)]
@@ -495,7 +495,7 @@ class TestWilcoxonValidation:
 
     def test_small_n_returns_conservative_p(self):
         """Pour n < 10, la p-value doit être 0.04 (significatif) ou 0.20 (non sign.)."""
-        from picarones.measurements.statistics import wilcoxon_test, _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if _SCIPY_AVAILABLE:
             pytest.skip("scipy disponible — la table exacte n'est pas utilisée")
         a = [0.1, 0.2, 0.3]
@@ -506,7 +506,7 @@ class TestWilcoxonValidation:
 
     def test_result_keys_complete(self):
         """Le dict retourné doit contenir toutes les clés documentées."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         r = wilcoxon_test([0.1, 0.3, 0.2, 0.4, 0.15, 0.35, 0.25, 0.5, 0.45, 0.05],
                           [0.2, 0.2, 0.3, 0.3, 0.25, 0.25, 0.35, 0.35, 0.40, 0.15])
         for key in ("statistic", "p_value", "significant", "interpretation", "n_pairs", "W_plus", "W_minus"):
@@ -521,12 +521,12 @@ class TestWilcoxonScipyIntegration:
 
     def test_scipy_available_flag_is_bool(self):
         """_SCIPY_AVAILABLE doit être un booléen."""
-        from picarones.measurements.statistics import _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import _SCIPY_AVAILABLE
         assert isinstance(_SCIPY_AVAILABLE, bool)
 
     def test_scipy_and_native_agree_on_significance(self):
         """Scipy et l'implémentation native doivent s'accorder sur la significativité."""
-        from picarones.measurements.statistics import wilcoxon_test, _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if not _SCIPY_AVAILABLE:
             pytest.skip("scipy non disponible")
 
@@ -542,7 +542,7 @@ class TestWilcoxonScipyIntegration:
 
     def test_scipy_p_value_in_valid_range(self):
         """La p-value fournie par scipy doit être dans [0, 1]."""
-        from picarones.measurements.statistics import wilcoxon_test, _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if not _SCIPY_AVAILABLE:
             pytest.skip("scipy non disponible")
 

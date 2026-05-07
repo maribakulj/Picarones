@@ -53,41 +53,41 @@ def html_s7(sample_benchmark_s7):
 
 class TestBootstrapCI:
     def test_returns_tuple_of_two(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         result = bootstrap_ci([0.1, 0.2, 0.3])
         assert isinstance(result, tuple) and len(result) == 2
 
     def test_lower_le_upper(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         lo, hi = bootstrap_ci([0.1, 0.2, 0.3, 0.4, 0.5])
         assert lo <= hi
 
     def test_ci_contains_mean(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         values = [0.1, 0.15, 0.2, 0.12, 0.18, 0.13, 0.17]
         lo, hi = bootstrap_ci(values)
         mean = sum(values) / len(values)
         assert lo <= mean <= hi
 
     def test_empty_returns_zeros(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         lo, hi = bootstrap_ci([])
         assert lo == 0.0 and hi == 0.0
 
     def test_single_value(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         lo, hi = bootstrap_ci([0.25])
         assert lo <= 0.25 <= hi
 
     def test_reproducible_with_seed(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         vals = [0.1, 0.2, 0.3, 0.15, 0.25]
         r1 = bootstrap_ci(vals, seed=1)
         r2 = bootstrap_ci(vals, seed=1)
         assert r1 == r2
 
     def test_wider_with_more_variance(self):
-        from picarones.measurements.statistics import bootstrap_ci
+        from picarones.evaluation.statistics import bootstrap_ci
         narrow = [0.10, 0.11, 0.10, 0.11, 0.10]
         wide   = [0.01, 0.50, 0.02, 0.49, 0.01]
         lo_n, hi_n = bootstrap_ci(narrow, n_iter=500)
@@ -101,7 +101,7 @@ class TestBootstrapCI:
 
 class TestWilcoxonTest:
     def test_returns_dict_with_keys(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         r = wilcoxon_test([0.1]*5, [0.1]*5)
         assert "statistic" in r
         assert "p_value" in r
@@ -109,13 +109,13 @@ class TestWilcoxonTest:
         assert "interpretation" in r
 
     def test_identical_series_not_significant(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         vals = [0.1, 0.2, 0.3, 0.15, 0.05]
         r = wilcoxon_test(vals, vals)
         assert not r["significant"]
 
     def test_clearly_different_series_significant(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.01]*12
         b = [0.80]*12
         r = wilcoxon_test(a, b)
@@ -123,37 +123,37 @@ class TestWilcoxonTest:
         assert r["p_value"] < 0.05
 
     def test_p_value_in_range(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.1, 0.15, 0.2, 0.08]
         b = [0.2, 0.25, 0.3, 0.18]
         r = wilcoxon_test(a, b)
         assert 0.0 <= r["p_value"] <= 1.0
 
     def test_interpretation_is_string(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         r = wilcoxon_test([0.1, 0.2], [0.1, 0.2])
         assert isinstance(r["interpretation"], str) and len(r["interpretation"]) > 10
 
     def test_n_pairs_correct(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         r = wilcoxon_test([0.1, 0.2, 0.3], [0.1, 0.2, 0.3])
         # tous les diffs = 0, filtrés en mode wilcox
         assert r["n_pairs"] == 0
 
     def test_mismatched_lengths_raises(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         with pytest.raises(ValueError):
             wilcoxon_test([0.1, 0.2], [0.1])
 
     def test_w_plus_w_minus_present(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.1, 0.2, 0.3, 0.15, 0.25, 0.18, 0.12, 0.22, 0.08, 0.27]
         b = [0.2, 0.3, 0.4, 0.25, 0.35, 0.28, 0.22, 0.32, 0.18, 0.37]
         r = wilcoxon_test(a, b)
         assert "W_plus" in r and "W_minus" in r
 
     def test_significant_larger_sample(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         import random
         rng = random.Random(0)
         a = [rng.uniform(0.0, 0.05) for _ in range(15)]
@@ -162,7 +162,7 @@ class TestWilcoxonTest:
         assert r["significant"]
 
     def test_symmetry(self):
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.1, 0.2, 0.3, 0.15, 0.25, 0.18, 0.22, 0.08, 0.27, 0.14]
         b = [0.2, 0.3, 0.4, 0.25, 0.35, 0.28, 0.32, 0.18, 0.37, 0.24]
         r_ab = wilcoxon_test(a, b)
@@ -177,35 +177,35 @@ class TestWilcoxonTest:
 
 class TestPairwiseStats:
     def test_returns_list(self):
-        from picarones.measurements.statistics import compute_pairwise_stats
+        from picarones.evaluation.statistics import compute_pairwise_stats
         r = compute_pairwise_stats({"A": [0.1, 0.2], "B": [0.3, 0.4]})
         assert isinstance(r, list)
 
     def test_correct_pair_count_2_engines(self):
-        from picarones.measurements.statistics import compute_pairwise_stats
+        from picarones.evaluation.statistics import compute_pairwise_stats
         r = compute_pairwise_stats({"A": [0.1]*5, "B": [0.2]*5})
         assert len(r) == 1
 
     def test_correct_pair_count_3_engines(self):
-        from picarones.measurements.statistics import compute_pairwise_stats
+        from picarones.evaluation.statistics import compute_pairwise_stats
         r = compute_pairwise_stats({
             "A": [0.1]*5, "B": [0.2]*5, "C": [0.3]*5
         })
         assert len(r) == 3
 
     def test_pair_has_engine_names(self):
-        from picarones.measurements.statistics import compute_pairwise_stats
+        from picarones.evaluation.statistics import compute_pairwise_stats
         r = compute_pairwise_stats({"A": [0.1]*5, "B": [0.2]*5})
         assert r[0]["engine_a"] in ["A", "B"]
         assert r[0]["engine_b"] in ["A", "B"]
 
     def test_pair_has_p_value(self):
-        from picarones.measurements.statistics import compute_pairwise_stats
+        from picarones.evaluation.statistics import compute_pairwise_stats
         r = compute_pairwise_stats({"A": [0.1]*5, "B": [0.2]*5})
         assert "p_value" in r[0]
 
     def test_single_engine_returns_empty(self):
-        from picarones.measurements.statistics import compute_pairwise_stats
+        from picarones.evaluation.statistics import compute_pairwise_stats
         r = compute_pairwise_stats({"A": [0.1]*5})
         assert r == []
 
@@ -216,33 +216,33 @@ class TestPairwiseStats:
 
 class TestReliabilityCurve:
     def test_returns_list(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         r = compute_reliability_curve([0.1, 0.2, 0.3])
         assert isinstance(r, list)
 
     def test_correct_number_of_steps(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         r = compute_reliability_curve([0.1]*10, steps=5)
         assert len(r) == 5
 
     def test_pct_docs_increases(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         r = compute_reliability_curve([0.1, 0.2, 0.3, 0.4, 0.5], steps=5)
         pcts = [p["pct_docs"] for p in r]
         assert pcts == sorted(pcts)
 
     def test_mean_cer_increases(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         r = compute_reliability_curve([0.05, 0.10, 0.20, 0.30, 0.50], steps=5)
         cers = [p["mean_cer"] for p in r]
         assert cers[0] <= cers[-1]
 
     def test_empty_returns_empty(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         assert compute_reliability_curve([]) == []
 
     def test_last_point_includes_all(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         vals = [0.1, 0.2, 0.3]
         r = compute_reliability_curve(vals, steps=4)
         last = r[-1]
@@ -250,7 +250,7 @@ class TestReliabilityCurve:
         assert last["mean_cer"] == pytest.approx(expected, rel=1e-4)
 
     def test_each_point_has_required_keys(self):
-        from picarones.measurements.statistics import compute_reliability_curve
+        from picarones.evaluation.statistics import compute_reliability_curve
         r = compute_reliability_curve([0.1, 0.2, 0.3], steps=3)
         for p in r:
             assert "pct_docs" in p and "mean_cer" in p
@@ -262,47 +262,47 @@ class TestReliabilityCurve:
 
 class TestVennData:
     def test_venn2_type(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({"A": {"e1","e2"}, "B": {"e2","e3"}})
         assert r["type"] == "venn2"
 
     def test_venn3_type(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({"A": {"e1"}, "B": {"e2"}, "C": {"e3"}})
         assert r["type"] == "venn3"
 
     def test_venn2_counts_correct(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({"A": {"e1","e2","e3"}, "B": {"e2","e3","e4"}})
         assert r["only_a"] == 1
         assert r["only_b"] == 1
         assert r["both"] == 2
 
     def test_venn2_disjoint(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({"A": {"e1"}, "B": {"e2"}})
         assert r["both"] == 0
         assert r["only_a"] == 1
         assert r["only_b"] == 1
 
     def test_venn2_subset(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({"A": {"e1","e2"}, "B": {"e1","e2","e3"}})
         assert r["only_a"] == 0
 
     def test_venn3_abc_count(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         shared = {"e1","e2"}
         r = compute_venn_data({"A": shared, "B": shared, "C": shared})
         assert r["abc"] == 2
 
     def test_empty_returns_empty(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({})
         assert r == {}
 
     def test_labels_present(self):
-        from picarones.measurements.statistics import compute_venn_data
+        from picarones.evaluation.statistics import compute_venn_data
         r = compute_venn_data({"moteur_a": {"e1"}, "moteur_b": {"e2"}})
         assert r["label_a"] == "moteur_a"
         assert r["label_b"] == "moteur_b"
@@ -324,17 +324,17 @@ class TestErrorClustering:
         ]
 
     def test_returns_list(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data())
         assert isinstance(result, list)
 
     def test_max_clusters_respected(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data(), max_clusters=3)
         assert len(result) <= 3
 
     def test_cluster_has_required_keys(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data())
         if result:
             c = result[0]
@@ -344,7 +344,7 @@ class TestErrorClustering:
             assert hasattr(c, "examples")
 
     def test_as_dict_method(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data())
         if result:
             d = result[0].as_dict()
@@ -354,24 +354,24 @@ class TestErrorClustering:
             assert "examples" in d
 
     def test_sorted_by_count_descending(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data())
         if len(result) >= 2:
             assert result[0].count >= result[1].count
 
     def test_examples_capped_at_5(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data())
         for c in result:
             assert len(c.as_dict()["examples"]) <= 5
 
     def test_empty_data_returns_empty(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors([])
         assert result == []
 
     def test_cluster_id_unique(self):
-        from picarones.measurements.statistics import cluster_errors
+        from picarones.evaluation.statistics import cluster_errors
         result = cluster_errors(self._sample_data())
         ids = [c.cluster_id for c in result]
         assert len(ids) == len(set(ids))
@@ -392,12 +392,12 @@ class TestCorrelationMatrix:
         ]
 
     def test_returns_dict_with_labels_and_matrix(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix(self._sample_metrics())
         assert "labels" in r and "matrix" in r
 
     def test_matrix_is_square(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix(self._sample_metrics())
         n = len(r["labels"])
         assert len(r["matrix"]) == n
@@ -405,13 +405,13 @@ class TestCorrelationMatrix:
             assert len(row) == n
 
     def test_diagonal_is_one(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix(self._sample_metrics())
         for i in range(len(r["labels"])):
             assert r["matrix"][i][i] == pytest.approx(1.0)
 
     def test_cer_quality_negatively_correlated(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix(self._sample_metrics())
         labels = r["labels"]
         if "cer" in labels and "quality_score" in labels:
@@ -420,7 +420,7 @@ class TestCorrelationMatrix:
             assert r["matrix"][i][j] < 0  # plus la qualité est bonne, plus le CER est bas
 
     def test_symmetric_matrix(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix(self._sample_metrics())
         n = len(r["labels"])
         for i in range(n):
@@ -428,18 +428,18 @@ class TestCorrelationMatrix:
                 assert r["matrix"][i][j] == pytest.approx(r["matrix"][j][i], abs=1e-6)
 
     def test_empty_returns_empty(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix([])
         assert r == {"labels": [], "matrix": []}
 
     def test_custom_metric_keys(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         data = [{"a": 1.0, "b": 2.0, "c": 3.0}] * 5
         r = compute_correlation_matrix(data, metric_keys=["a", "b"])
         assert r["labels"] == ["a", "b"]
 
     def test_values_in_range(self):
-        from picarones.measurements.statistics import compute_correlation_matrix
+        from picarones.evaluation.statistics import compute_correlation_matrix
         r = compute_correlation_matrix(self._sample_metrics())
         for row in r["matrix"]:
             for v in row:

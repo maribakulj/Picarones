@@ -22,7 +22,7 @@ from picarones.measurements.numerical_sequences_hooks import (
     aggregate_numerical_sequence_metrics,
     compute_numerical_sequence_metrics_adaptive,
 )
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
 
 

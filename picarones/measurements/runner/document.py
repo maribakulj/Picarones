@@ -16,7 +16,8 @@ from typing import Optional
 
 from picarones.evaluation.benchmark_result import DocumentResult
 from picarones.adapters.legacy_engines.base import EngineResult
-from picarones.measurements.metrics import MetricsResult, compute_metrics
+from picarones.evaluation.metric_result import MetricsResult
+from picarones.measurements.metrics import compute_metrics
 
 
 def _calibration_from_engine_result(
