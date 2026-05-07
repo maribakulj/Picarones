@@ -7,6 +7,27 @@ Phase 5.C.batch7 — module relocalisé depuis
 reste disponible via un shim avec ``DeprecationWarning`` ;
 suppression prévue en 2.0.
 
+Phase 7.B.2 — module relocalisé une seconde fois
+------------------------------------------------
+``picarones.evaluation.pipeline_benchmark`` →
+``picarones.pipeline.legacy_pipeline_benchmark``.  Raison : ce module
+consomme le ``PipelineRunner`` legacy (et désormais directement le
+``PipelineExecutor`` canonique en 7.B.3) — ces dépendances sortent
+de la couche ``evaluation/`` vers la couche ``pipeline/``, ce
+qu'interdit la règle d'architecture concentrique.
+
+Phase 7.B.3 — exécution via le canonique direct
+-----------------------------------------------
+Depuis 2026-05, ``run_pipeline_benchmark`` ne passe **plus** par
+``PipelineRunner.run``.  Il consomme directement
+:class:`picarones.pipeline.executor.PipelineExecutor` et reconstruit
+les ``PipelineResult`` legacy via les helpers de
+:mod:`picarones.pipeline._legacy_translator`.  Bénéfice : la spec
+canonique est planifiée **une seule fois** pour tout le corpus
+(économie N-1 plans) et ce module n'a plus de dépendance d'API à
+``PipelineRunner`` — débloque la suppression du runner legacy en
+sub-phase 7.D.
+
 Sprint 64 — Étape 4 / axe B du plan d'évolution 2026 : suite directe
 du Sprint 63.  Le ``PipelineRunner`` exécute une pipeline sur **un**
 document ; ce module fournit l'orchestration sur un **corpus
@@ -51,13 +72,22 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-from picarones.evaluation.corpus import Corpus, Document
 from picarones.domain.artifacts import ArtifactType
-from picarones.pipeline.legacy_runner import (
-    PipelineResult,
-    PipelineRunner,
-    PipelineSpec,
+from picarones.domain.documents import DocumentRef
+from picarones.evaluation.corpus import Corpus, Document
+from picarones.pipeline._legacy_module_adapter import (
+    _BaseModuleAdapter,
+    _PayloadRegistry,
+    wrap_initial_inputs,
 )
+from picarones.pipeline._legacy_translator import (
+    build_legacy_pipeline_result,
+    legacy_spec_to_canonical_spec,
+)
+from picarones.pipeline.executor import PipelineExecutor, PipelineSpecInvalid
+from picarones.pipeline.legacy_runner import PipelineResult, PipelineSpec
+from picarones.pipeline.planner import PipelinePlanner
+from picarones.pipeline.types import RunContext
 
 logger = logging.getLogger(__name__)
 
@@ -307,14 +337,16 @@ def run_pipeline_benchmark(
 
     Comportement
     ------------
-    L'orchestration est **séquentielle** par document.  Pour chaque
-    document, ``PipelineRunner.run`` est appelé ; quel que soit le
-    résultat (réussi, partiellement échoué, totalement invalide),
-    le résultat est ajouté à ``per_doc_results`` et le benchmark
-    continue avec le document suivant.
+    L'orchestration est **séquentielle** par document.  Phase 7.B.3 :
+    la spec canonique est planifiée une seule fois (économie N-1
+    plans) puis ``PipelineExecutor.run_plan`` est appelé pour chaque
+    document.  Quel que soit le résultat (réussi, partiellement
+    échoué, totalement invalide), le résultat est ajouté à
+    ``per_doc_results`` et le benchmark continue avec le document
+    suivant.
 
-    Si la spec est statiquement invalide (cf.
-    ``PipelineSpec.validate``), tous les documents auront un
+    Si la spec est statiquement invalide (cf. ``PipelineSpec.validate``
+    ou ``PipelinePlanner.plan``), tous les documents auront un
     ``PipelineResult.error`` non vide et aucune étape ne sera
     exécutée — le résultat reste cohérent.
     """
@@ -323,6 +355,54 @@ def run_pipeline_benchmark(
     )
     documents = list(corpus.documents)
     result.n_docs = len(documents)
+
+    # Validation amont legacy : si la pipeline est statiquement
+    # invalide, on n'exécute aucun document mais on remplit quand
+    # même per_doc_results avec des PipelineResult.error pour
+    # préserver l'invariant ``n_docs == len(per_doc_results)``.
+    initial_input_types = _initial_input_types_for_corpus(
+        documents, initial_inputs_factory,
+    )
+    problems = spec.validate(initial_input_types)
+    if problems:
+        error_msg = " ; ".join(problems)
+        for doc in documents:
+            result.per_doc_results.append(
+                PipelineResult(
+                    pipeline_name=spec.name,
+                    doc_id=doc.doc_id,
+                    error=error_msg,
+                ),
+            )
+        # Agrégation : aucune étape exécutée → tous les step_results
+        # sont None.
+        for step in spec.steps:
+            per_doc_step = [(pr.doc_id, None) for pr in result.per_doc_results]
+            result.per_step_aggregates.append(
+                _aggregate_step(step.name, per_doc_step),
+            )
+        return result
+
+    # Planification canonique unique pour tout le corpus.
+    canonical_spec, _ = legacy_spec_to_canonical_spec(spec, initial_input_types)
+    planner = PipelinePlanner()
+    try:
+        plan = planner.plan(canonical_spec)
+    except Exception as exc:  # noqa: BLE001
+        # Cohérent avec le format legacy : tous les documents
+        # remontent l'erreur planning.
+        logger.warning(
+            "[pipeline_benchmark] planning a levé sur %s : %s",
+            spec.name, exc,
+        )
+        msg = f"planning_error: {type(exc).__name__}: {exc}"
+        for doc in documents:
+            result.per_doc_results.append(
+                PipelineResult(
+                    pipeline_name=spec.name, doc_id=doc.doc_id, error=msg,
+                ),
+            )
+        return result
 
     benchmark_t0 = time.monotonic()
     for doc in documents:
@@ -333,18 +413,17 @@ def run_pipeline_benchmark(
                 "[pipeline_benchmark] factory a levé sur %s : %s",
                 doc.doc_id, exc,
             )
-            # On crée un PipelineResult portant l'erreur factory
             failed = PipelineResult(
                 pipeline_name=spec.name, doc_id=doc.doc_id,
                 error=f"initial_inputs_factory: {type(exc).__name__}: {exc}",
             )
             result.per_doc_results.append(failed)
             continue
-        per_doc = PipelineRunner.run(spec, doc, initial)
+        per_doc = _run_one_document_via_canonical(spec, doc, initial, plan)
         result.per_doc_results.append(per_doc)
     result.total_duration_seconds = time.monotonic() - benchmark_t0
 
-    # Agrégation par étape
+    # Agrégation par étape (logique inchangée).
     step_names = [step.name for step in spec.steps]
     for idx, step_name in enumerate(step_names):
         per_doc_step: list[tuple[str, Any]] = []
@@ -352,16 +431,83 @@ def run_pipeline_benchmark(
             if idx < len(pr.steps):
                 per_doc_step.append((pr.doc_id, pr.steps[idx]))
             else:
-                # Pipeline a été arrêtée en amont : aucune étape de
-                # cet index n'existe.  On compte ça comme une
-                # absence d'étape (cf. ``_aggregate_step`` qui gère
-                # le ``None``).
                 per_doc_step.append((pr.doc_id, None))
         result.per_step_aggregates.append(
             _aggregate_step(step_name, per_doc_step),
         )
 
     return result
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 7.B.3 — exécution mono-document via le canonique
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _initial_input_types_for_corpus(
+    documents: list[Document],
+    factory: InitialInputsFactory,
+) -> tuple[ArtifactType, ...]:
+    """Inspecte le premier document pour déduire les types initiaux.
+
+    Sprint 64 : la factory peut produire des types différents par
+    document (rare, mais possible).  Pour la planification corpus-wide,
+    on prend ceux du premier document avec une factory réussie.  Si la
+    factory lève sur tous les documents, on retourne ``()`` — la
+    validation amont remontera les inputs manquants par document.
+    """
+    for doc in documents:
+        try:
+            initial = factory(doc)
+        except Exception:  # noqa: BLE001
+            continue
+        return tuple(initial.keys())
+    return ()
+
+
+def _run_one_document_via_canonical(
+    spec: PipelineSpec,
+    document: Document,
+    initial_inputs: dict[ArtifactType, Any],
+    plan,
+) -> PipelineResult:
+    """Exécute ``spec`` sur ``document`` via le ``ExecutionPlan``
+    pré-calculé du corpus.
+
+    Le plan canonique est partagé entre tous les documents (économie
+    de planification).  L'``adapter_resolver`` et le registre de
+    payloads sont créés par doc — exigence du contrat
+    :class:`_BaseModuleAdapter`.
+    """
+    registry = _PayloadRegistry()
+    canonical_inputs = wrap_initial_inputs(
+        initial_inputs, registry, document.doc_id,
+    )
+    adapter_map = {
+        step.name: _BaseModuleAdapter(step.module, registry)
+        for step in spec.steps
+    }
+    document_ref = DocumentRef(id=document.doc_id)
+    context = RunContext(
+        document_id=document.doc_id,
+        code_version="legacy_runner",
+        pipeline_name=spec.name,
+    )
+    executor = PipelineExecutor(adapter_resolver=adapter_map.__getitem__)
+    try:
+        canonical_result = executor.run_plan(
+            plan, document_ref, canonical_inputs, context,
+        )
+    except PipelineSpecInvalid as exc:
+        # Ne devrait pas arriver puisque le plan a déjà été validé
+        # par le planner — mais on défend en profondeur.
+        return PipelineResult(
+            pipeline_name=spec.name, doc_id=document.doc_id,
+            error=f"executor_run_failed: {exc}",
+        )
+    return build_legacy_pipeline_result(
+        spec, document, canonical_result, registry,
+    )
 
 
 __all__ = [

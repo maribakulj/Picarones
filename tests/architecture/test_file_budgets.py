@@ -73,12 +73,16 @@ FILE_BUDGETS: dict[str, int] = {
     # ``pipeline/legacy_runner.py`` parce qu'il importe désormais le
     # ``PipelineExecutor`` canonique (couche pipeline) — interdit à
     # ``evaluation/`` par la règle d'architecture concentrique.
-    # Le module a gagné ~100 LOC pour les helpers de délégation
-    # (_delegate_to_canonical_executor, _build_legacy_step_result,
-    # _translate_canonical_error) en remplacement de la boucle
-    # _run_step supprimée.  Sera divisé en 7.D quand le runner
-    # legacy disparaît au profit du canonique direct.
-    "picarones/pipeline/legacy_runner.py": 825,           # actuel 735
+    # Phase 7.B.3 : les helpers de traduction ont été extraits vers
+    # ``pipeline/_legacy_translator.py`` (mutualisation avec
+    # legacy_pipeline_benchmark).  Le runner est revenu à ~490 LOC.
+    "picarones/pipeline/legacy_runner.py": 550,           # actuel 487
+    # Phase 7.B.3 : run_pipeline_benchmark consomme directement
+    # PipelineExecutor.run_plan (au lieu de passer par
+    # PipelineRunner.run) et planifie une fois pour tout le corpus.
+    # +150 LOC pour la conversion de spec + la boucle exécution +
+    # la branche de fallback validation amont.
+    "picarones/pipeline/legacy_pipeline_benchmark.py": 600,  # actuel 519
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
     # Sprint A14-S10 + Lot D — déplacés depuis measurements/.
