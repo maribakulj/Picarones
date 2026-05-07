@@ -148,7 +148,7 @@ def build_pipeline_view_html(
     # Sous-section 3 : absorption d'erreur par jonction
     if junctions:
         try:
-            from picarones.report.error_absorption_render import (
+            from picarones.reports_v2.html.renderers.error_absorption import (
                 build_error_absorption_html,
             )
             html = build_error_absorption_html(junctions, labels=labels)
@@ -171,7 +171,7 @@ def build_pipeline_view_html(
             from picarones.measurements.incremental_comparison import (
                 compare_isolated_effect,
             )
-            from picarones.report.incremental_comparison_render import (
+            from picarones.reports_v2.html.renderers.incremental_comparison import (
                 build_incremental_comparison_html,
             )
             comparison = compare_isolated_effect(
@@ -200,7 +200,7 @@ def build_pipeline_view_html(
     # Sous-section 5 : audit des modules contribués
     if module_audits:
         try:
-            from picarones.report.module_audit_render import (
+            from picarones.reports_v2.html.renderers.module_audit import (
                 build_module_audit_html,
             )
             html = build_module_audit_html(module_audits, labels=labels)

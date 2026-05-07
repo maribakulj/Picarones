@@ -268,7 +268,7 @@ class ReportGenerator:
             build_oracle_gap_html,
         )
         # Sprint 41 — section NER (résumé F1 par moteur + heatmap par catégorie).
-        from picarones.report.ner_render import (
+        from picarones.reports_v2.html.renderers.ner import (
             build_ner_per_category_html,
             build_ner_summary_html,
         )

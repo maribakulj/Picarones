@@ -144,7 +144,7 @@ def build_diagnostics_view_html(
             from picarones.measurements.image_predictive import (
                 aggregate_corpus_predictive,
             )
-            from picarones.report.image_predictive_render import (
+            from picarones.reports_v2.html.renderers.image_predictive import (
                 build_image_predictive_html,
             )
             aggregated = aggregate_corpus_predictive(image_qualities)

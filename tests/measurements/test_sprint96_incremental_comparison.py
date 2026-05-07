@@ -31,7 +31,7 @@ from picarones.measurements.incremental_comparison import (
     PipelineRun,
     compare_isolated_effect,
 )
-from picarones.report.incremental_comparison_render import (
+from picarones.reports_v2.html.renderers.incremental_comparison import (
     build_incremental_comparison_html,
 )
 

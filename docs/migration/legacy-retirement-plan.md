@@ -692,12 +692,7 @@ architecture vérifiée.
 **Reporté aux batches suivants** :
 
 - Batch 2 ✅ (cf. ci-dessous) — 5 renderers (45-165 LOC).
-- Batch 3 (~5 renderers moyens) : ``module_audit``,
-  ``ner``, ``image_predictive``,
-  ``incremental_comparison``, ``numerical_sequences``
-  (ce dernier exige d'abord la migration du module
-  ``measurements/numerical_sequences.py`` qui dépend de
-  ``measurements/roman_numerals.py``).
+- Batch 3 ✅ (cf. ci-dessous) — 5 renderers (173-222 LOC).
 - Batch 4 (~5 renderers gros) : ``error_absorption``,
   ``baseline``, ``inter_engine``, ``robustness_projection``,
   ``stratification``.
@@ -751,6 +746,36 @@ architecture vérifiée.
 
 **Cumul Phase 5.C** (batches 1+2) : 10 / 22 renderers migrés
 (~1198 lignes).  12 renderers restants.
+
+#### Phase 5.C.batch3 — Lot 3 : 5 renderers moyens (2026-05)
+
+Troisième vague.  Tous les renderers sélectionnés sont
+**purs sur le contrat** : import depuis ``_helpers/`` uniquement,
+pas de dépendance sur des modules legacy non-migrés.
+
+**Migrations effectuées** :
+
+| Source legacy                                  | Destination canonique                                  |
+|------------------------------------------------|--------------------------------------------------------|
+| ``report/module_audit_render.py`` (173)        | ``reports_v2/html/renderers/module_audit.py``          |
+| ``report/incremental_comparison_render.py`` (201)| ``reports_v2/html/renderers/incremental_comparison.py``|
+| ``report/image_predictive_render.py`` (207)    | ``reports_v2/html/renderers/image_predictive.py``      |
+| ``report/error_absorption_render.py`` (210)    | ``reports_v2/html/renderers/error_absorption.py``      |
+| ``report/ner_render.py`` (222)                 | ``reports_v2/html/renderers/ner.py``                   |
+
+Total : ~1013 lignes relocalisées.  5 nouveaux shims minimaux
+(< 20 lignes) avec ``DeprecationWarning``.
+
+**Adaptations transverses** :
+
+- Tests + ``picarones/report/generator.py`` mis à jour pour les
+  5 chemins canoniques.
+
+**Acceptance batch 3** : 5019 tests passent, lint vert,
+architecture vérifiée.
+
+**Cumul Phase 5.C** (batches 1+2+3) : 15 / 22 renderers migrés
+(~2211 lignes).  7 renderers restants.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

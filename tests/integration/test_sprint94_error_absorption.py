@@ -29,7 +29,7 @@ from picarones.measurements.error_absorption import (
     aggregate_error_absorption,
     compute_error_absorption,
 )
-from picarones.report.error_absorption_render import (
+from picarones.reports_v2.html.renderers.error_absorption import (
     build_error_absorption_html,
 )
 

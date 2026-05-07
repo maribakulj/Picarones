@@ -35,7 +35,7 @@ from picarones.measurements.image_predictive import (
     compute_corpus_homogeneity,
     compute_paleographic_complexity,
 )
-from picarones.report.image_predictive_render import (
+from picarones.reports_v2.html.renderers.image_predictive import (
     build_image_predictive_html,
 )
 
