@@ -217,154 +217,195 @@ non-instanciable, ou HF Space veut le cache d'artefacts).
 
 ## 5. Recommandation
 
-**Stratégie 4.A — Wrapper legacy → canonique** est la voie
-recommandée :
+> **Mise à jour 2026-05** : l'utilisateur a précisé que le projet
+> est en stand-by jusqu'à la fin de la migration complète et que
+> la rétrocompat de l'API publique n'est pas une contrainte.  Cela
+> élimine l'avantage principal de la stratégie 4.A (wrapper) et
+> rend la stratégie 4.B (migration complète) recommandée :
 
-- Préserve l'API publique → pas de breaking change pour les
-  callers externes (BnF, HF Space, scripts).
-- Unifie le moteur d'exécution → 1 seul path à maintenir.
-- L'API legacy ``BaseModule`` reste le contrat utilisateur ;
-  elle est juste implémentée par-dessus le canonique.
-- Met en lumière les réelles différences sémantiques (cache,
-  provenance, hash) qui peuvent être exposées progressivement à
-  l'API legacy sans la casser.
+**Stratégie 4.B — Migration complète** est la voie cible.
 
-La stratégie 4.B (migration complète) sera possible plus tard,
-**après** 4.A : une fois le legacy unifié sur le canonique en
-interne, les callers peuvent migrer un par un sans risque.
+Bénéfices avec contrainte API levée :
 
-La stratégie 4.C (cohabitation) est pragmatique mais reporte
-indéfiniment la dette.  Elle convient si la priorité est de
-finir Phases 6-11 d'abord — ce qui est défendable.
+- 1 seul design final, plus de wrapper interne à maintenir.
+- Le contrat des modules tiers (``BaseModule`` → ``StepExecutor``)
+  peut changer sans gérer la rétrocompat.
+- Les ``Artifact`` typés (provenance, content_hash, uri) deviennent
+  natifs partout — pas de double conversion.
+
+Risques résiduels :
+
+- ~2500 LOC à toucher entre prod + tests.
+- L'évaluation auto vs GT (legacy : à chaque step) doit être
+  ré-implémentée comme une post-étape canonique.
+- Risque de régression sur les ~7 tests sprints axe B
+  (fixtures volumineuses).
+- Plusieurs sessions de travail nécessaires (5-7 sessions).
 
 ---
 
-## 6. Sub-plan d'exécution (stratégie 4.A)
+## 6. Découvertes additionnelles (audit complémentaire)
 
-### 6.A Sub-phase 1 — Adaptateur ``BaseModule`` → ``StepExecutor``
+L'audit initial parlait de 4 callers de production de
+``PipelineRunner``.  Une investigation plus poussée révèle un
+écosystème legacy plus large, qui doit être inclus dans le plan :
 
-Crée un wrapper ``_BaseModuleAdapter`` qui satisfait le Protocol
-``StepExecutor`` à partir d'une instance ``BaseModule`` :
+### 6.A Legacy engines (`picarones/engines/`, ~1500 LOC)
 
-- ``name`` ← ``module.name``
-- ``input_types`` ← ``frozenset(module.input_types)``
-- ``output_types`` ← ``frozenset(module.output_types)``
-- ``execution_mode`` ← ``module.execution_mode``
-- ``execute(inputs, params, context)`` :
-  - convertit ``inputs: dict[ArtifactType, Artifact]`` en
-    ``dict[ArtifactType, payload]`` (lit ``artifact.uri`` quand
-    le payload est un fichier, sinon le payload brut est passé
-    en clair).
-  - appelle ``module.process(payload_inputs)``.
-  - reconvertit le ``dict[ArtifactType, payload]`` retourné en
-    ``dict[ArtifactType, Artifact]`` (calcule ``content_hash``
-    + ``provenance`` automatiquement).
+5 modules OCR legacy qui héritent de ``BaseOCREngine`` (lui-même
+extension de ``BaseModule``) :
 
-**Fichier** : ``picarones/evaluation/_pipeline_adapter.py``
-(privé, ~150 LOC).
+- ``engines/base.py:BaseOCREngine``
+- ``engines/tesseract.py:TesseractEngine`` (177 l)
+- ``engines/pero_ocr.py:PeroOCREngine`` (182 l)
+- ``engines/mistral_ocr.py:MistralOCREngine`` (231 l)
+- ``engines/google_vision.py:GoogleVisionEngine`` (256 l)
+- ``engines/azure_doc_intel.py:AzureDocIntelEngine``
 
-**Tests** : ``tests/evaluation/test_pipeline_adapter.py`` —
-unitaires sur la conversion bidirectionnelle.
+**Équivalents canoniques existent** dans
+``picarones/adapters/ocr/`` (TesseractAdapter, PeroOCRAdapter,
+etc.) et implémentent déjà ``StepExecutor``.  Mais les noms de
+classes et les APIs publiques **diffèrent** — pas un simple shim.
 
-**Effort** : 1 session.
+Callers production des engines legacy :
+- ``picarones/web/benchmark_utils.py``
+- ``picarones/pipelines/base.py`` (lui-même legacy, Phase 6)
 
-### 6.B Sub-phase 2 — ``PipelineRunner`` consomme ``PipelineExecutor``
+### 6.B Legacy LLM (``picarones/llm/``, ~67 LOC)
 
-Remplace le corps de ``PipelineRunner.run`` :
+**Déjà migré** : tous les fichiers sont des shims qui
+ré-exportent depuis ``picarones/adapters/llm/``.  Rien à faire.
 
-```python
-@staticmethod
-def run(spec: PipelineSpec_legacy, document: Document, initial_inputs: dict) -> PipelineResult_legacy:
-    canonical_spec = _to_canonical_spec(spec)  # conversion
-    canonical_inputs = _to_canonical_artifacts(initial_inputs)
-    resolver = _LegacyAdapterResolver(spec)  # mappe step.name → wrapper
-    executor = PipelineExecutor(adapter_resolver=resolver)
-    canonical_result = executor.run(canonical_spec, document_ref, canonical_inputs, context)
-    return _to_legacy_result(canonical_result, document, spec)  # reconvertit
-```
+### 6.C Legacy modules officiels (``picarones/modules/``)
 
-Évaluation auto vs GT : ré-implémentée dans ``_to_legacy_result``
-après l'exécution canonique (parcours des artefacts produits,
-appel ``compute_at_junction``).
+- ``modules/alto_text_to_mono_region.py:TextToAltoMonoRegion``
+  (310 LOC) — extension de ``BaseModule``.
 
-**Tests** : les 7 fichiers de tests legacy doivent passer
-**inchangés** — c'est l'invariant de cette sub-phase.
+**Pas d'équivalent canonique** à ce jour.  Cible documentée :
+``picarones/formats/alto/baseline_reconstruction.py`` ou
+``picarones/evaluation/projectors/text_to_alto.py``
+(cf. Phase 7 du plan de retrait).
 
-**Effort** : 1-2 sessions (la conversion des résultats est
-non-triviale à cause de ``junction_metrics``).
+### 6.D Sémantique des payloads vs Artifacts
 
-### 6.C Sub-phase 3 — Suppression du moteur legacy
+La conversion ``BaseModule.process`` ↔ ``StepExecutor.execute``
+n'est pas triviale parce que :
 
-Une fois la sub-phase 2 stable :
+- Le legacy passe des **payloads bruts** :
+  - ``ArtifactType.IMAGE`` → ``str`` (chemin du fichier image)
+  - ``ArtifactType.RAW_TEXT`` → ``str`` (contenu textuel inline)
+  - ``ArtifactType.ALTO_XML`` → ``str`` (contenu XML inline)
+  - ``ArtifactType.ENTITIES`` → ``list[dict]``
+- Le canonique passe des ``Artifact`` Pydantic immutables :
+  - ``uri`` (filesystem ou URI distant)
+  - ``content_hash`` (SHA-256)
+  - ``provenance`` (``ProvenanceRecord``)
+  - **pas de champ ``content`` direct** — le contenu se lit via
+    ``uri``.
 
-- Le code de ``run`` legacy entre lignes 384-590 de
-  ``evaluation/pipeline.py`` (le moteur d'exécution proprement
-  dit) est supprimé.
-- Seules restent : les data classes (``PipelineSpec``,
-  ``PipelineStep``, ``StepResult``, ``PipelineResult``) +
-  l'adaptateur + la fonction ``_artifact_type_to_gt_level``.
-- Le module passe de 607 LOC à ~250 LOC.
+Pour les tests legacy qui injectent du contenu inline (mock
+modules retournant ``"hello"``), il faut **soit** :
 
-**Effort** : 0.5 session (suppression mécanique + tests qui
-doivent toujours passer).
+1. Persister le contenu dans un fichier temporaire et pointer
+   ``artifact.uri`` dessus.
+2. Ajouter une convention ``data:`` URI pour le contenu inline.
+3. Étendre ``Artifact`` avec un champ ``inline_payload: bytes |
+   None`` optionnel.
 
-### 6.D Sub-phase 4 — Documentation & deprecation
+Décision recommandée : **option 1** (fichier temporaire), parce
+qu'elle préserve la sémantique « un artefact a toujours un
+identifiant filesystem » et permet le cache/provenance proprement.
 
-- Document que ``evaluation.pipeline.PipelineRunner`` est un
-  **wrapper de compatibilité** sur ``pipeline.executor.PipelineExecutor``.
-- Émet ``DeprecationWarning`` à l'instanciation
-  d'un ``PipelineSpec`` legacy si un caller externe l'utilise
-  (warning silencieux dans le code interne).
-- Pointe vers le canonique pour les nouveaux callers.
+---
 
-**Effort** : 0.5 session.
+## 7. Sub-plan d'exécution révisé (stratégie 4.B)
 
-### 6.E Sub-phase 5 (optionnelle) — Migration des 4 callers internes
+### Sub-phase 7.A — Migration des adapters concrets
 
-Avec le wrapper en place, on peut maintenant migrer
-**incrémentalement** les 4 callers internes vers le canonique :
+Bouclage de la migration des adapters legacy (engines/llm/modules)
+vers les canoniques avant de toucher aux pipeline runners.
 
-1. ``pipeline_spec_loader`` : produit des
-   ``picarones.domain.pipeline_spec.PipelineSpec`` (Pydantic) au
-   lieu du legacy.
-2. ``pipeline_benchmark`` : consomme directement
-   ``PipelineExecutor.run_plan``.
+**Étapes** :
+
+1. ``engines/`` → shims pointant vers ``adapters/ocr/`` (avec
+   alias de classes : ``TesseractEngine = TesseractAdapter``,
+   etc.).
+2. Mise à jour des callers de ``engines/`` à utiliser
+   ``adapters/ocr/`` directement.
+3. ``modules/alto_text_to_mono_region.py`` → migré vers
+   ``picarones/evaluation/projectors/text_to_alto.py`` (canonique
+   en ``StepExecutor``).
+4. Suppression du shim ``engines/``.
+
+**Effort** : 2-3 sessions.
+
+### Sub-phase 7.B — Migration des callers ``PipelineRunner``
+
+Une fois les adapters unifiés sur ``StepExecutor`` :
+
+1. ``pipeline_spec_loader`` : produit des ``picarones.domain.pipeline_spec.PipelineSpec``
+   (Pydantic) avec ``adapter_name: str`` au lieu d'instances.
+2. ``pipeline_benchmark`` : consomme ``PipelineExecutor.run_plan``.
+   ``StepAggregate`` accepte ``StepResult`` Pydantic canonique.
 3. ``pipeline_comparison`` : idem.
 4. ``__init__.py`` : ré-exporte les canoniques.
 
-À ce stade, le legacy ``evaluation/pipeline`` ne contient plus
-que des shims pour les callers externes (BnF, HF Space).
+**Effort** : 2 sessions.
 
-**Effort** : 2-3 sessions, par caller.
+### Sub-phase 7.C — Refactor des tests
+
+Les 7 fichiers de tests legacy axe B (sprints 63-68 + 95) :
+
+- Mocks ``BaseModule`` → mocks ``StepExecutor`` Protocol.
+- Payloads bruts → ``Artifact`` (avec helper
+  ``make_inline_artifact(content, type_)`` pour réduire le
+  boilerplate).
+- ``Document`` legacy → ``DocumentRef`` canonique.
+- Fixtures ``junction_metrics`` → ré-implémentation via
+  post-étape canonique.
+
+**Effort** : 1-2 sessions.
+
+### Sub-phase 7.D — Suppression du legacy
+
+1. Suppression de ``evaluation/pipeline.PipelineRunner``,
+   ``PipelineSpec``, ``PipelineStep``, ``StepResult``,
+   ``PipelineResult`` (le legacy).
+2. Suppression de ``domain/module_protocol.BaseModule``.
+3. Le module ``evaluation/pipeline.py`` réduit à
+   ``_artifact_type_to_gt_level`` ou supprimé totalement.
+4. ``core/pipeline.py`` (shim) supprimé.
+5. ``core/modules.py`` (shim) supprimé.
+
+**Effort** : 0.5 session (suppression mécanique).
 
 ---
 
-## 7. Total effort estimé
+## 8. Total effort révisé (stratégie 4.B)
 
 | Sub-phase | Description                                | Effort           |
 |-----------|--------------------------------------------|------------------|
-| 6.A       | Adaptateur ``BaseModule`` → ``StepExecutor`` | 1 session        |
-| 6.B       | ``PipelineRunner`` consomme l'executor     | 1-2 sessions     |
-| 6.C       | Suppression du moteur legacy               | 0.5 session      |
-| 6.D       | Documentation & deprecation                | 0.5 session      |
-| 6.E (opt) | Migration des 4 callers internes           | 2-3 sessions     |
-| **Total** | **(jusqu'à 6.D)**                          | **3-4 sessions** |
-| **Total** | **(jusqu'à 6.E)**                          | **5-7 sessions** |
+| 7.A       | Migration adapters concrets                | 2-3 sessions     |
+| 7.B       | Migration callers PipelineRunner           | 2 sessions       |
+| 7.C       | Refactor des tests                         | 1-2 sessions     |
+| 7.D       | Suppression du legacy                      | 0.5 session      |
+| **Total** | **Migration complète**                     | **5-8 sessions** |
 
 ---
 
-## 8. Décision
+## 9. Ordre d'exécution recommandé
 
-À l'issue de cet audit, l'utilisateur décide :
+L'ordre **bottom-up** est plus sûr : à chaque étape, les tests
+restent verts.
 
-1. **Aller** — démarrer la sub-phase 6.A maintenant.
-2. **Reporter** — passer à Phase 6 (``pipelines/``) du retrait
-   du legacy, garder la cohabitation documentée comme état
-   provisoire.
-3. **Hybrider** — faire 6.A + 6.B (wrapper en place) puis
-   reporter 6.C-6.E.
+```
+Sub-phase 7.A (adapters) → Sub-phase 7.B (orchestration) →
+Sub-phase 7.C (tests) → Sub-phase 7.D (suppression)
+```
 
-L'option 2 (reporter) est défendable : Phases 6-11 du retrait du
-legacy peuvent toutes se faire **sans avoir résolu cette
-convergence**, et le travail accumulé donnera plus de signal sur
-la priorité réelle de l'unification du pipeline.
+L'ordre **top-down** (start by removing PipelineRunner, then
+fix everything that breaks) est plus risqué mais plus rapide
+si on accepte une période de tests rouges.
+
+Recommandation : **bottom-up**, par étapes verticales testables.
+
