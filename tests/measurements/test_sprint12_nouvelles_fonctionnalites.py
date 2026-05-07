@@ -28,7 +28,7 @@ FAKE_PNG = (
 class TestMacOSHiddenFilesFiltering:
     def test_hidden_images_ignored_in_corpus(self, tmp_path):
         """Les fichiers ._* ne doivent pas être comptés comme images valides."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
 
         # Image réelle avec GT
         (tmp_path / "page_001.png").write_bytes(FAKE_PNG)
@@ -134,7 +134,7 @@ class TestExcludeCharsNormalization:
 
     def test_char_exclude_propagated_in_run_benchmark(self, tmp_path):
         """char_exclude doit être transmis à run_benchmark et réduire le CER."""
-        from picarones.core.corpus import Corpus, Document
+        from picarones.evaluation.corpus import Corpus, Document
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
@@ -194,7 +194,7 @@ class TestChartJsInline:
 def sample_generator():
     """Fixture partagée : crée un ReportGenerator avec des données fictives."""
     from picarones.reports_v2.html.generator import ReportGenerator
-    from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
+    from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
     from picarones.measurements.metrics import MetricsResult
 
     def _make_metric(cer=0.1):

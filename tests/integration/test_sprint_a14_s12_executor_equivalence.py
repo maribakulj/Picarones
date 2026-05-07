@@ -41,7 +41,7 @@ from typing import Any
 
 import pytest
 
-from picarones.core.corpus import Corpus, Document
+from picarones.evaluation.corpus import Corpus, Document
 from picarones.domain import Artifact, ArtifactType, DocumentRef
 from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.measurements.metrics import compute_metrics

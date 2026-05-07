@@ -22,7 +22,7 @@ import pytest
 
 def _make_fake_benchmark():
     """Retourne un BenchmarkResult minimal pour tester le générateur."""
-    from picarones.core.results import BenchmarkResult, EngineReport, DocumentResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult, EngineReport, DocumentResult
     from picarones.measurements.metrics import MetricsResult
 
     def _metrics(cer, wer=0.2):

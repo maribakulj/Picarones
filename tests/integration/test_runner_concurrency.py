@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.corpus import Corpus, Document
+from picarones.evaluation.corpus import Corpus, Document
 from picarones.adapters.legacy_engines.base import BaseOCREngine
 
 

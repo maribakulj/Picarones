@@ -2,8 +2,7 @@
 
 Phase 5.C.batch7 — module relocalisé depuis
 ``picarones.core.pipeline`` vers ``picarones.evaluation.pipeline``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
+Shim ``picarones.core.pipeline`` retiré au Lot C (2026-05-07).
 
 Coexistence avec ``picarones.pipeline.executor``
 ------------------------------------------------

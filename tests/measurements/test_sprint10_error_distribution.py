@@ -224,7 +224,7 @@ class TestLineMetricsInResults:
     """Tests pour l'intégration des métriques Sprint 10 dans les modèles de données."""
 
     def test_document_result_has_line_metrics_field(self):
-        from picarones.core.results import DocumentResult
+        from picarones.evaluation.benchmark_result import DocumentResult
         from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_001",
@@ -244,7 +244,7 @@ class TestLineMetricsInResults:
         assert dr.line_metrics["gini"] == pytest.approx(0.3)
 
     def test_document_result_has_hallucination_metrics_field(self):
-        from picarones.core.results import DocumentResult
+        from picarones.evaluation.benchmark_result import DocumentResult
         from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_002",
@@ -264,7 +264,7 @@ class TestLineMetricsInResults:
         assert dr.hallucination_metrics["is_hallucinating"] is True
 
     def test_document_result_as_dict_includes_sprint10_fields(self):
-        from picarones.core.results import DocumentResult
+        from picarones.evaluation.benchmark_result import DocumentResult
         from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_003",
@@ -286,7 +286,7 @@ class TestLineMetricsInResults:
         assert "hallucination_metrics" in d
 
     def test_engine_report_has_aggregated_sprint10_fields(self):
-        from picarones.core.results import EngineReport, DocumentResult
+        from picarones.evaluation.benchmark_result import EngineReport, DocumentResult
         from picarones.measurements.metrics import MetricsResult
         dr = DocumentResult(
             doc_id="test_004",

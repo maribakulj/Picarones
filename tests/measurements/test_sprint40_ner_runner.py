@@ -26,14 +26,14 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.corpus import Corpus, Document, EntitiesGT, GTLevel, TextGT
+from picarones.evaluation.corpus import Corpus, Document, EntitiesGT, GTLevel, TextGT
 from picarones.measurements.ner_backends import (
     SPACY_PROFILES,
     SpacyEntityExtractor,
     get_extractor,
     is_spacy_available,
 )
-from picarones.core.results import DocumentResult, EngineReport
+from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
 from picarones.measurements.runner import _aggregate_ner, _attach_ner_metrics
 
 

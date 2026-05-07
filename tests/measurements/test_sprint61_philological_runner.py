@@ -28,7 +28,7 @@ from picarones.measurements.philological_hooks import (
     aggregate_philological_metrics,
     compute_philological_metrics,
 )
-from picarones.core.results import DocumentResult, EngineReport
+from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
 from picarones.measurements.metrics import MetricsResult
 
 

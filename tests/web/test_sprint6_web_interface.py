@@ -921,7 +921,7 @@ class TestRunnerProgressCallback:
 
     def test_callback_called_with_mock_engine(self, tmp_corpus):
         """Le callback est appelé pour chaque document."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
@@ -942,7 +942,7 @@ class TestRunnerProgressCallback:
 
     def test_callback_receives_engine_name(self, tmp_corpus):
         """Le callback reçoit le nom du moteur."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
@@ -963,7 +963,7 @@ class TestRunnerProgressCallback:
 
     def test_callback_exception_does_not_crash(self, tmp_corpus):
         """Une exception dans le callback ne plante pas le benchmark."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 

@@ -134,70 +134,23 @@ LEGACY_PARITY: dict[str, ParityEntry] = {
     # retirées en même temps que les shims pour garder la table
     # alignée avec l'arbre legacy réellement présent sur disque.
     # ──────────────────────────────────────────────────────────
-    # Phase 4-ter (résiduel) — results
+    # Phase 4-ter résiduel + 4-quater + 5.C.batch7 — results,
+    # corpus, pipeline (Lot C)
     # ──────────────────────────────────────────────────────────
-    "picarones.core.results.BenchmarkResult": {
-        "canonical": "picarones.evaluation.benchmark_result.BenchmarkResult",
-    },
-    "picarones.core.results.EngineReport": {
-        "canonical": "picarones.evaluation.benchmark_result.EngineReport",
-    },
-    "picarones.core.results.DocumentResult": {
-        "canonical": "picarones.evaluation.benchmark_result.DocumentResult",
-    },
-    # ──────────────────────────────────────────────────────────
-    # Phase 4-quater — corpus
-    # ──────────────────────────────────────────────────────────
-    "picarones.core.corpus.Document": {
-        "canonical": "picarones.evaluation.corpus.Document",
-    },
-    "picarones.core.corpus.Corpus": {
-        "canonical": "picarones.evaluation.corpus.Corpus",
-    },
-    "picarones.core.corpus.GTLevel": {
-        "canonical": "picarones.evaluation.corpus.GTLevel",
-    },
-    "picarones.core.corpus.TextGT": {
-        "canonical": "picarones.evaluation.corpus.TextGT",
-    },
-    "picarones.core.corpus.AltoGT": {
-        "canonical": "picarones.evaluation.corpus.AltoGT",
-    },
-    "picarones.core.corpus.PageGT": {
-        "canonical": "picarones.evaluation.corpus.PageGT",
-    },
-    "picarones.core.corpus.EntitiesGT": {
-        "canonical": "picarones.evaluation.corpus.EntitiesGT",
-    },
-    "picarones.core.corpus.ReadingOrderGT": {
-        "canonical": "picarones.evaluation.corpus.ReadingOrderGT",
-    },
-    "picarones.core.corpus.load_corpus_from_directory": {
-        "canonical": "picarones.evaluation.corpus.load_corpus_from_directory",
-    },
-    # ──────────────────────────────────────────────────────────
-    # Phase 5.C.batch7 — pipeline (legacy PipelineRunner)
-    # ──────────────────────────────────────────────────────────
-    "picarones.core.pipeline.PipelineRunner": {
-        "canonical": "picarones.evaluation.pipeline.PipelineRunner",
-        "behavior_diff": (
-            "Pendant 7.B-7.D, le PipelineRunner legacy reste mais "
-            "délègue progressivement à PipelineExecutor canonique. "
-            "Sera supprimé en 7.D."
-        ),
-    },
-    "picarones.core.pipeline.PipelineSpec": {
-        "canonical": "picarones.evaluation.pipeline.PipelineSpec",
-    },
-    "picarones.core.pipeline.PipelineStep": {
-        "canonical": "picarones.evaluation.pipeline.PipelineStep",
-    },
-    "picarones.core.pipeline.PipelineResult": {
-        "canonical": "picarones.evaluation.pipeline.PipelineResult",
-    },
-    "picarones.core.pipeline.StepResult": {
-        "canonical": "picarones.evaluation.pipeline.StepResult",
-    },
+    # ``core.results``, ``core.corpus`` et ``core.pipeline`` ont
+    # été supprimés (Lot C de la migration core → evaluation).
+    # Les symboles publics (BenchmarkResult, EngineReport,
+    # DocumentResult, Document, Corpus, GTLevel, TextGT, AltoGT,
+    # PageGT, EntitiesGT, ReadingOrderGT, load_corpus_from_directory,
+    # PipelineRunner, PipelineSpec, PipelineStep, PipelineResult,
+    # StepResult) sont exposés depuis
+    # ``picarones.evaluation.{benchmark_result, corpus, pipeline}``.
+    # Comme pour les Lots A et B, les entrées sont retirées en
+    # même temps que les shims pour garder la table alignée avec
+    # l'arbre legacy réellement présent sur disque.
+    # Note 7.B-7.D : le ``PipelineRunner`` canonique reste
+    # transitoire et délègue progressivement à
+    # ``PipelineExecutor`` (cf. pipeline-convergence-plan.md).
     # ──────────────────────────────────────────────────────────
     # Phase 7.A — engines, modules
     # ──────────────────────────────────────────────────────────

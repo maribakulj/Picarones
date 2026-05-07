@@ -58,7 +58,7 @@ class TestRareTokenRecall:
 
     def test_returns_empty_dict_on_empty_benchmark(self) -> None:
         # Benchmark sans engine_reports → dict vide.
-        from picarones.core.results import BenchmarkResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult
         bench = BenchmarkResult(
             corpus_name="empty",
             corpus_source=None,

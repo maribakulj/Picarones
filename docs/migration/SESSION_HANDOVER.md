@@ -203,10 +203,12 @@ fiable.)
 
 ### 4.A Imports legacy dans les tests
 
-**101 fichiers** avec **526 statements** d'import depuis les
+**91 fichiers** avec **472 statements** d'import depuis les
 paquets legacy (``core``, ``measurements``, ``engines``,
-``llm``, ``pipelines``, ``report``, ``modules``) — Lots A et B
-terminés (cf. 4.D ci-dessous).
+``llm``, ``pipelines``, ``report``, ``modules``) — Lots A, B et
+C terminés (cf. 4.D ci-dessous).  Le sous-paquet ``core/`` ne
+contient plus que ``diff_utils`` et ``xml_utils`` (à migrer en
+Lot G ou plus tard).
 
 Top chemins consommés :
 
@@ -216,7 +218,7 @@ Top chemins consommés :
 | 18      | ``from picarones.measurements.metrics import MetricsResult``  |
 | 16      | ``from picarones.measurements.statistics import wilcoxon_test`` |
 | 13      | ``from picarones.measurements.metrics import compute_metrics`` |
-| 12      | ``from picarones.core.corpus import load_corpus_from_directory`` |
+| 10      | ``from picarones.measurements.normalization import get_builtin_profile`` |
 
 **Pourquoi c'est important** : ces tests passent par les shims
 au lieu de pointer vers le canonique.  Tant que ces imports
@@ -224,9 +226,10 @@ existent, on **ne peut pas supprimer les shims** (le test casse).
 
 **Stratégie** : sed batch par chemin, valider les tests,
 commit, avancer.  Shims supprimés dans les Lots A
-(``core.modules`` + ``core.facts``) et B
+(``core.modules`` + ``core.facts``), B
 (``core.metric_registry`` + ``core.metric_hooks`` +
-``core.metrics``) sur la branche
+``core.metrics``) et C (``core.results`` + ``core.corpus`` +
+``core.pipeline``) sur la branche
 ``claude/migrate-core-to-domain-8ubIT``.
 
 ### 4.B Imports legacy en production (hors shims eux-mêmes)
@@ -271,10 +274,16 @@ L'ordre recommandé, par lots de symboles cohérents :
      supprimés ; ``docs/reference/normalization-profiles.md`` et
      ``docs/reference/api-stable.md`` migrés vers les chemins
      canoniques.
-3. **Lot C — evaluation/{benchmark_result, corpus, pipeline}** :
+3. ✅ **Lot C — evaluation/{benchmark_result, corpus, pipeline}**
+   (~75 imports migrés, shims supprimés) :
    - ``core.results.*`` → ``evaluation.benchmark_result.*``
    - ``core.corpus.*`` → ``evaluation.corpus.*``
    - ``core.pipeline.*`` → ``evaluation.pipeline.*``
+   - Shims ``picarones.core.{results, corpus, pipeline}``
+     supprimés ; sections de ``docs/reference/api-stable.md``
+     migrées vers les chemins canoniques ; logger filter dans
+     ``test_sprint32_multi_level_gt`` aligné sur
+     ``picarones.evaluation.corpus``.
 4. **Lot D — evaluation/metrics/*** (~80 imports) :
    - ``measurements.{difficulty, taxonomy, calibration, …}`` →
      ``evaluation.metrics.{...}``

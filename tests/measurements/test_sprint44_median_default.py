@@ -27,7 +27,7 @@ from picarones.measurements.metrics import MetricsResult
 from picarones.measurements.narrative.detectors import detect_median_mean_gap_warning
 from picarones.domain.facts import FactImportance, FactType
 from picarones.measurements.narrative.renderer import extract_numbers, render_fact
-from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
+from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
 
 
 # ──────────────────────────────────────────────────────────────────────────

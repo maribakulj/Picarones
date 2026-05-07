@@ -1,27 +1,27 @@
-"""Picarones — Cercle 1 : abstractions de domaine.
+"""Picarones — couche legacy ``core/`` en cours de retrait.
 
-Ce package contient **uniquement des contrats** : dataclasses du
-domaine, types d'artefacts, interfaces abstraites, registres, modèle
-narratif. Pas de logique métier, pas de calcul, pas d'I/O.
+Ce package, historiquement nommé « Cercle 1 — abstractions de
+domaine », est progressivement vidé au profit des canoniques en
+8 couches concentriques (cf. ``docs/explanation/architecture.md``).
 
-Règle de dépendance : un module du cercle 1 peut importer un autre
-module du cercle 1. Il ne peut **rien** importer des cercles 2 ou 3
-(``measurements``, ``engines``, ``llm``, ``pipelines``, ``modules``,
-``extras``, ``report``, ``cli``, ``web``).
+Modules restants
+----------------
+- :mod:`diff_utils`       compute_word_diff, compute_char_diff (helpers
+  utilisés par quelques tests historiques ; canonique :
+  :mod:`picarones.evaluation._diff_utils`).
+- :mod:`xml_utils`        safe_parse_xml (canonique :
+  :mod:`picarones.formats._xml_utils`).
 
-Modules
--------
-- :mod:`corpus`           Document, Corpus, GTLevel + payloads typés
-- :mod:`results`          DocumentResult, EngineReport, BenchmarkResult
-- :mod:`pipeline`         PipelineRunner, PipelineSpec, PipelineStep
-
-Modules retirés (Phase 4-bis et suivantes du retrait du legacy) :
-
+Modules retirés (Phase 4-bis et suivantes du retrait du legacy)
+---------------------------------------------------------------
 - ``modules``         → ``picarones.domain.{artifacts, module_protocol}`` (Lot A).
 - ``facts``           → ``picarones.domain.facts`` (Lot A).
 - ``metrics``         → ``picarones.evaluation.metric_result`` (Lot B).
 - ``metric_registry`` → ``picarones.evaluation.metric_registry`` (Lot B).
 - ``metric_hooks``    → ``picarones.evaluation.metric_hooks`` (Lot B).
+- ``results``         → ``picarones.evaluation.benchmark_result`` (Lot C).
+- ``corpus``          → ``picarones.evaluation.corpus`` (Lot C).
+- ``pipeline``        → ``picarones.evaluation.pipeline`` (Lot C).
 
 Voir :doc:`docs/explanation/architecture.md` pour le manifeste complet et
 :doc:`docs/reference/api-stable.md` pour le contrat de stabilité de chaque

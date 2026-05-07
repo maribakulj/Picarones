@@ -14,9 +14,10 @@ exposé en re-export pour ne pas casser les callers existants — ce
 n'est pas un shim au sens architectural (adaptation d'une API
 incompatible) mais un alias de chemin.
 
-Différence avec l'ancien ``picarones.core.pipeline`` (Sprint 63)
-----------------------------------------------------------------
-L'ancien ``PipelineStep`` portait un champ ``module: BaseModule``
+Différence avec ``picarones.evaluation.pipeline`` (Sprint 63)
+-------------------------------------------------------------
+``PipelineStep`` legacy (relocalisé en ``picarones.evaluation.pipeline``)
+porte un champ ``module: BaseModule``
 — une **instance** d'objet exécutable.  Conséquence : la spec
 n'était pas sérialisable en YAML, et un test qui voulait juste
 valider la cohérence des types devait instancier des stubs.

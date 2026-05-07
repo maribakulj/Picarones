@@ -38,7 +38,7 @@ ou change de forme.
 
 ## Liste exhaustive
 
-### `picarones.core.corpus`
+### `picarones.evaluation.corpus`
 
 ```python
 class GTLevel(str, Enum):
@@ -85,7 +85,7 @@ class BaseModule(ABC):
 ExecutionMode = Literal["io", "cpu"]
 ```
 
-### `picarones.core.results`
+### `picarones.evaluation.benchmark_result`
 
 ```python
 class DocumentResult:    # résultat moteur sur un doc (CER, métriques, taxonomy…)
@@ -119,7 +119,7 @@ def run_benchmark(
 ) -> BenchmarkResult
 ```
 
-### `picarones.core.pipeline`
+### `picarones.evaluation.pipeline`
 
 ```python
 class PipelineStep:

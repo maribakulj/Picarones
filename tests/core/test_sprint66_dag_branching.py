@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from picarones.core.corpus import Document, GTLevel, TextGT
+from picarones.evaluation.corpus import Document, GTLevel, TextGT
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
 from picarones.evaluation.pipeline import (

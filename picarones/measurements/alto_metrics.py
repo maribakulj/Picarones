@@ -25,7 +25,7 @@ Robustesse
 ----------
 - L'ALTO peut être passé sous forme :
     * ``str`` (XML brut),
-    * :class:`picarones.core.corpus.AltoGT` (porteur d'un ``xml_content``),
+    * :class:`picarones.evaluation.corpus.AltoGT` (porteur d'un ``xml_content``),
     * tout objet exposant un attribut ``xml_content`` typé.
 - Le parser tolère les ALTO sans namespace, ALTO 2.x, ALTO 3.x, ALTO
   4.x — il cherche les balises locales par leur nom court (``Page``,
@@ -40,7 +40,7 @@ Cas typique d'usage
 -------------------
 Un VLM produit un ALTO via un reconstructeur (par exemple
 :class:`picarones.modules.TextToAltoMonoRegion`).  La GT
-:class:`picarones.core.corpus.AltoGT` du document est confrontée à la
+:class:`picarones.evaluation.corpus.AltoGT` du document est confrontée à la
 sortie via :func:`picarones.evaluation.metric_registry.compute_at_junction`,
 qui sélectionne automatiquement les métriques ``(ALTO, ALTO)``
 ci-dessous.

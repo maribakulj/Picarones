@@ -31,7 +31,7 @@ from typing import Any
 
 import pytest
 
-from picarones.core.corpus import Corpus, Document, GTLevel, TextGT
+from picarones.evaluation.corpus import Corpus, Document, GTLevel, TextGT
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
 from picarones.evaluation.pipeline_comparison import (

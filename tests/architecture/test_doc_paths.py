@@ -60,6 +60,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   historique de la migration legacy → executor).  Le doc actif
 #:   ``docs/reference/normalization-profiles.md`` a été corrigé
 #:   en place vers ``picarones/evaluation/metric_hooks.py``.
+#: - 83 (sprint « Lot C — core.{results,corpus,pipeline} → evaluation »,
+#:   2026-05-07) : suppression des shims ``picarones/core/results.py``,
+#:   ``picarones/core/corpus.py`` et ``picarones/core/pipeline.py``.
+#:   Trois nouvelles références héritées : deux dans ``CHANGELOG.md``
+#:   (intouchable) + une dans ``docs/roadmap/evolution-2026.md``
+#:   (plan stratégique historique).  Le doc actif
+#:   ``docs/reference/api-stable.md`` a été migré vers les chemins
+#:   canoniques ``picarones.evaluation.{benchmark_result, corpus,
+#:   pipeline}``.
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
@@ -68,7 +77,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: - ``docs/migration/executor-equivalence.md`` : audit historique
 #:   d'équivalence executor (cite des chemins legacy à des fins
 #:   de comparaison).
-BROKEN_PATHS_BASELINE = 80
+BROKEN_PATHS_BASELINE = 83
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

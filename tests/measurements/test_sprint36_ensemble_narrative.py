@@ -126,7 +126,7 @@ class TestComputeInterEngineAnalysis:
 
 class TestBenchmarkResultExposure:
     def test_as_dict_includes_when_set(self) -> None:
-        from picarones.core.results import BenchmarkResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult
 
         br = BenchmarkResult(
             corpus_name="t",
@@ -138,7 +138,7 @@ class TestBenchmarkResultExposure:
         assert "inter_engine_analysis" in br.as_dict()
 
     def test_as_dict_omits_when_none(self) -> None:
-        from picarones.core.results import BenchmarkResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult
 
         br = BenchmarkResult(
             corpus_name="t",

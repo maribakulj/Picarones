@@ -171,7 +171,7 @@ class TestRunnerTimeout:
 
     def test_timeout_doc_result_has_error(self, tmp_corpus):
         """Un document ayant dépassé le timeout doit avoir engine_error contenant 'timeout'."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
         import time
@@ -200,7 +200,7 @@ class TestRunnerTimeout:
 
     def test_timeout_doc_result_cer_is_one(self, tmp_corpus):
         """Un document timeout doit avoir CER = 1.0."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
         import time
@@ -226,7 +226,7 @@ class TestRunnerTimeout:
 
     def test_fast_docs_not_affected_by_timeout(self, tmp_corpus):
         """Des documents rapides ne doivent pas être touchés par un timeout généreux."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
@@ -257,7 +257,7 @@ class TestRunnerPartialResults:
 
     def test_partial_file_created_during_run(self, tmp_corpus, tmp_path):
         """_save_partial_line doit être appelée pour chaque document traité."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
         # Sprint « découpage de runner.py » (mai 2026) : ``_save_partial_line``
@@ -296,7 +296,7 @@ class TestRunnerPartialResults:
 
     def test_partial_file_deleted_after_success(self, tmp_corpus, tmp_path):
         """Le fichier .partial.json doit être supprimé après un benchmark réussi."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
@@ -317,7 +317,7 @@ class TestRunnerPartialResults:
 
     def test_partial_load_skips_already_done_docs(self, tmp_corpus, tmp_path):
         """La reprise depuis un fichier partiel doit sauter les documents déjà traités."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import _load_partial, _partial_path
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
@@ -360,7 +360,7 @@ class TestRunnerSilentExceptions:
     def test_confusion_failure_logs_warning(self, tmp_corpus, caplog):
         """Une erreur dans build_confusion_matrix doit être loguée, pas ignorée."""
         import logging
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
@@ -386,7 +386,7 @@ class TestRunnerSilentExceptions:
     def test_progress_callback_failure_logs_warning(self, tmp_corpus, caplog):
         """Une exception dans le progress_callback doit être loguée, pas propagée."""
         import logging
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
@@ -417,7 +417,7 @@ class TestRunnerSilentExceptions:
         from picarones.measurements.runner import _aggregate_confusion
 
         # Créer un doc_result avec des données de confusion corrompues
-        from picarones.core.results import DocumentResult
+        from picarones.evaluation.benchmark_result import DocumentResult
         from picarones.measurements.metrics import MetricsResult
         bad_dr = DocumentResult(
             doc_id="x", image_path="x.png", ground_truth="gt", hypothesis="hyp",

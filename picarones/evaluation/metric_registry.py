@@ -8,7 +8,7 @@ le décorateur ``@register_metric``.  Chaque métrique enregistre une
 typée à une jonction se fait via ``select_metrics(input_types)``.
 
 Le runner d'une pipeline composée
-(:func:`picarones.core.pipeline.PipelineRunner.run`) consomme ce
+(:func:`picarones.evaluation.pipeline.PipelineRunner.run`) consomme ce
 registre pour évaluer automatiquement chaque jonction GT vs sortie.
 
 Différence avec ``picarones.evaluation.registry.MetricRegistry``

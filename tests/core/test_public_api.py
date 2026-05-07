@@ -72,7 +72,7 @@ def _assert_function(module_path: str, name: str):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 1. picarones.core.corpus — modèle Document/Corpus + GT multi-niveaux
+# 1. picarones.evaluation.corpus — modèle Document/Corpus + GT multi-niveaux (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -83,13 +83,13 @@ class TestCorpusApi:
         "TextGT", "AltoGT", "PageGT", "EntitiesGT", "ReadingOrderGT",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.corpus", name)
+        _assert_class("picarones.evaluation.corpus", name)
 
     def test_load_corpus_from_directory_exists(self):
-        _assert_function("picarones.core.corpus", "load_corpus_from_directory")
+        _assert_function("picarones.evaluation.corpus", "load_corpus_from_directory")
 
     def test_gt_suffixes_constant(self):
-        from picarones.core.corpus import GTLevel, GT_SUFFIXES
+        from picarones.evaluation.corpus import GTLevel, GT_SUFFIXES
 
         assert isinstance(GT_SUFFIXES, dict)
         # Chacun des 5 niveaux GT doit avoir un suffixe
@@ -99,7 +99,7 @@ class TestCorpusApi:
             )
 
     def test_gtlevel_values(self):
-        from picarones.core.corpus import GTLevel
+        from picarones.evaluation.corpus import GTLevel
 
         # Les 5 valeurs sont contractuelles — leur ordre/nom n'importe
         # pas, leur présence si.
@@ -155,7 +155,7 @@ class TestModulesApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 3. picarones.core.results — modèles de résultats
+# 3. picarones.evaluation.benchmark_result — modèles de résultats (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -164,7 +164,7 @@ class TestResultsApi:
         "DocumentResult", "EngineReport", "BenchmarkResult",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.results", name)
+        _assert_class("picarones.evaluation.benchmark_result", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -235,7 +235,7 @@ class TestRunnerApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 6. picarones.core.pipeline — banc d'essai pipelines
+# 6. picarones.evaluation.pipeline — banc d'essai pipelines (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -245,7 +245,7 @@ class TestPipelineRunnerApi:
         "StepResult", "PipelineResult", "PipelineRunner",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.pipeline", name)
+        _assert_class("picarones.evaluation.pipeline", name)
 
 
 class TestPipelineBenchmarkApi:
@@ -492,13 +492,13 @@ class TestApiStableDoc:
         content = path.read_text(encoding="utf-8")
         # Présence des 14 sections (1 par module)
         for module in [
-            "picarones.core.corpus",
+            "picarones.evaluation.corpus",
             "picarones.domain.artifacts",
             "picarones.domain.module_protocol",
-            "picarones.core.results",
+            "picarones.evaluation.benchmark_result",
             "picarones.measurements.metrics",
             "picarones.measurements.runner",
-            "picarones.core.pipeline",
+            "picarones.evaluation.pipeline",
             "picarones.measurements.pipeline_benchmark",
             "picarones.measurements.pipeline_comparison",
             "picarones.measurements.pipeline_spec_loader",

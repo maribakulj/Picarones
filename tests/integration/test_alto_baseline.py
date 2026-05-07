@@ -26,7 +26,7 @@ from picarones.measurements.alto_metrics import (
     alto_text_cer,
     extract_text_from_alto,
 )
-from picarones.core.corpus import AltoGT, Document, GTLevel, TextGT
+from picarones.evaluation.corpus import AltoGT, Document, GTLevel, TextGT
 from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule

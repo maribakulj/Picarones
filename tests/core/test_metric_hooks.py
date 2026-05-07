@@ -116,7 +116,7 @@ class TestBuiltinHooksRegistration:
         from dataclasses import fields
 
         from picarones.evaluation.metric_hooks import select_document_hooks
-        from picarones.core.results import DocumentResult
+        from picarones.evaluation.benchmark_result import DocumentResult
 
         doc_fields = {f.name for f in fields(DocumentResult)}
         for hook in select_document_hooks("standard"):
@@ -130,7 +130,7 @@ class TestBuiltinHooksRegistration:
         from dataclasses import fields
 
         from picarones.evaluation.metric_hooks import select_corpus_aggregators
-        from picarones.core.results import EngineReport
+        from picarones.evaluation.benchmark_result import EngineReport
 
         report_fields = {f.name for f in fields(EngineReport)}
         for agg in select_corpus_aggregators("standard"):

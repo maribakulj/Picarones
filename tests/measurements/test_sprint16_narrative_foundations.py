@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.corpus import Corpus, Document
+from picarones.evaluation.corpus import Corpus, Document
 from picarones.measurements.narrative import (
     DetectorRegistry,
     Fact,
