@@ -33,8 +33,8 @@ module a un seul emplacement canonique.
 
 ### `picarones/domain/` — types purs
 
-Cercle 1.  Aucune dépendance d'exécution, aucun I/O, aucun framework.
-Pydantic et stdlib uniquement.
+Couche 1 (la plus interne).  Aucune dépendance d'exécution,
+aucun I/O, aucun framework.  Pydantic et stdlib uniquement.
 
 | Module | Contenu |
 |---|---|

@@ -320,24 +320,23 @@ A traceability table mapping each profile to its source standard
 
 ```
 picarones/
-├── core/                       Cercle 1 — pure abstractions (7 modules)
-├── measurements/               Cercle 2 — official metrics (~70 modules + narrative engine)
-├── engines/                    Cercle 2 — 5 OCR adapters
-├── llm/                        Cercle 2 — 4 LLM adapters
-├── pipelines/                  Cercle 2 — OCR+LLM pipelines
-├── modules/                    Cercle 2 — official BaseModule modules
-├── extras/                     Cercle 3 — plugins (importers, historical)
-├── report/                     Cercle 3 — HTML rendering
-├── cli/                        Cercle 3 — Click CLI (15 commands)
-├── web/                        Cercle 3 — FastAPI app + 11 routers
-├── prompts/                    8 versioned prompt templates
-└── data/                       Indicative tables (pricing.yaml)
+├── domain/         Layer 1 — pure types (Pydantic, stdlib only)
+├── formats/        Layer 2 — parsing/serialization (ALTO, PAGE XML)
+├── evaluation/     Layer 3 — metrics & analyses
+├── pipeline/       Layer 4 — canonical pipeline executor
+├── adapters/       Layer 5 — external libs (OCR, LLM, VLM, corpus)
+├── app/            Layer 6 — application services
+├── reports_v2/     Layer 7 — HTML / JSON / CSV report renderers
+└── interfaces/     Layer 8 — CLI Click, Web FastAPI
 ```
 
-Strict 3-circle architecture: imports flow only from outer to inner.
-Enforced by `tests/core/test_circle_dependencies.py` (Sprint A3).
-See [`docs/explanation/architecture.md`](docs/explanation/architecture.md) for the full
-manifesto.
+Legacy paths (`core/, measurements/, engines/, llm/, pipelines/,
+report/, modules/`) still present as shims, in active retirement
+(see `docs/migration/`).  Strict 8-layer architecture: imports flow
+outer → inner. Enforced by
+`tests/architecture/test_layer_dependencies.py`. See
+[`docs/explanation/architecture.md`](docs/explanation/architecture.md)
+for the full manifesto.
 
 ---
 

@@ -43,35 +43,36 @@ Le rewrite ciblé attaque ces trois problèmes ensemble.
 
 ```
 picarones/
-  domain/            # Cercle 1 — types purs (Artifact, PipelineSpec,
+  domain/            # Couche 1 — types purs (Artifact, PipelineSpec,
                      #   EvaluationSpec, DocumentRef, Provenance)
-  evaluation/        # Cercle 2 — vues, projecteurs, métriques
+  formats/           # Couche 2 — ALTO, PAGE, normalisation texte
+    alto/
+    pagexml/
+    text/
+  evaluation/        # Couche 3 — vues, projecteurs, métriques
     views/
     projectors/
     metrics/
     registry.py
-  pipeline/          # Cercle 2 — exécution
+  pipeline/          # Couche 4 — exécution canonique
     executor.py
     cache.py
     spec.py
-  formats/           # Cercle 2 — ALTO, PAGE, normalisation texte
-    alto/
-    pagexml/
-    text/
-  adapters/          # Cercle 3 — moteurs OCR/LLM/VLM, importers, storage
+  adapters/          # Couche 5 — moteurs OCR/LLM/VLM, importers, storage
     ocr/
     llm/
     vlm/
     corpus/
     storage/
-  app/               # Cercle 4 — services applicatifs
+  app/               # Couche 6 — services applicatifs
     services/
     schemas/
-  interfaces/        # Cercle 5 — CLI, web, reports
-    cli/
-    web/
-  reports/
+  reports_v2/        # Couche 7 — rendu HTML / JSON / CSV
     html/
+    json/
+    csv/
+    narrative/
+  interfaces/        # Couche 8 — CLI, web
     json/
     csv/
 ```

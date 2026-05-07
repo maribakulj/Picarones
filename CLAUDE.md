@@ -43,57 +43,74 @@ picarones serve --port 8080          # interface web locale
 
 ## Structure
 
+Architecture canonique en **8 couches concentriques** :
+
 ```
 picarones/
-├── core/                       Cercle 1 — abstractions pures (7 modules)
-│   ├── modules.py              BaseModule, ArtifactType
-│   ├── corpus.py               Document, Corpus, GTLevel, payloads typés
-│   ├── results.py              DocumentResult, EngineReport, BenchmarkResult
+├── domain/                     Couche 1 — types purs (Pydantic + stdlib only)
+│   ├── artifacts.py            Artifact, ArtifactType (10 types)
+│   ├── corpus.py               CorpusSpec
+│   ├── documents.py            DocumentRef
+│   ├── pipeline_spec.py        PipelineSpec, PipelineStep (Pydantic immutable)
+│   ├── module_protocol.py      BaseModule (en cours de retrait au profit de StepExecutor)
+│   ├── facts.py                Fact, FactType, FactImportance, DetectorRegistry
+│   ├── evaluation_spec.py      MetricSpec, EvaluationView, EvaluationSpec
+│   ├── projection_spec.py      ProjectionSpec
+│   ├── provenance.py           ProvenanceRecord
+│   ├── run_manifest.py         RunManifest
+│   └── errors.py               PicaronesError, AdapterStepError, ...
+│
+├── formats/                    Couche 2 — parsing/sérialisation (lxml, defusedxml)
+│   ├── alto/, pagexml/         ALTO 4, PAGE XML
+│   └── _xml_utils.py           safe_parse_xml
+│
+├── evaluation/                 Couche 3 — métriques et calcul
+│   ├── metrics/                ~30 métriques (CER/WER, MUFI, philological, NER, …)
+│   ├── statistics/             Wilcoxon, Friedman/Nemenyi, bootstrap, Pareto, CDD
+│   ├── views/, projectors/     EvaluationView (S13+), AltoToText, PageToText, ...
+│   ├── corpus.py               Document, Corpus, GTLevel + payloads (legacy en retrait)
+│   ├── pipeline.py             PipelineRunner legacy (en cours de convergence)
+│   ├── benchmark_result.py     BenchmarkResult, EngineReport, DocumentResult
 │   ├── metric_registry.py      MetricSpec, register_metric, compute_at_junction
 │   ├── metric_hooks.py         register_document_metric, register_corpus_aggregator
-│   ├── pipeline.py             PipelineRunner, PipelineSpec, PipelineStep
-│   └── facts.py                Fact, FactType, FactImportance, DetectorRegistry
+│   ├── metric_result.py        MetricsResult, aggregate_metrics
+│   └── _diff_utils.py          compute_word_diff, compute_char_diff, diff_stats
 │
-├── measurements/               Cercle 2 — métriques officielles (~55 modules)
-│   ├── runner.py               run_benchmark (orchestration)
-│   ├── statistics/             sous-package (Wilcoxon, Friedman/Nemenyi, bootstrap, Pareto, clustering, corrélation, distributions, CDD)
-│   ├── metrics.py / normalization.py / builtin_hooks.py
-│   ├── confusion.py / taxonomy.py / calibration.py / line_metrics.py / ...
-│   ├── readability.py / reliability.py / searchability.py / ner.py / ...
-│   ├── mufi.py / abbreviations.py / unicode_blocks.py / roman_numerals.py
-│   ├── pipeline_benchmark.py / pipeline_comparison.py / pipeline_spec_loader.py
-│   └── narrative/              moteur narratif (arbiter, renderer, registry,
-│                                18 détecteurs en 6 familles : ranking, pareto,
-│                                stratum, quality, history, ensemble)
+├── pipeline/                   Couche 4 — orchestration canonique
+│   ├── executor.py             PipelineExecutor (instance-based)
+│   ├── planner.py              ExecutionPlan, StepInputBinding
+│   ├── protocols.py            StepExecutor Protocol, ExecutionMode
+│   ├── types.py                RunContext, StepResult, PipelineResult (Pydantic)
+│   └── _legacy_module_adapter.py  Pont BaseModule → StepExecutor (transitoire)
 │
-├── engines/                    Cercle 2 — adapters OCR (5)
-│   ├── base.py                 BaseOCREngine (hérite de BaseModule)
-│   ├── tesseract.py / pero_ocr.py
-│   ├── mistral_ocr.py / google_vision.py / azure_doc_intel.py
+├── adapters/                   Couche 5 — adapters externes (libs externes autorisées)
+│   ├── ocr/                    Tesseract, Pero, Mistral OCR, Google Vision, Azure DI, Precomputed
+│   ├── llm/                    OpenAI, Anthropic, Mistral, Ollama (BaseLLMAdapter)
+│   ├── vlm/                    Adapters VLM (zero-shot)
+│   ├── corpus/                 IIIF, Gallica, HTR-United, HuggingFace
+│   ├── storage/                ArtifactStore, JobStore
+│   ├── legacy_engines/         5 OCR engines legacy (BaseModule-based, en retrait)
+│   └── legacy_modules/         TextToAltoMonoRegion (en retrait)
 │
-├── llm/                        Cercle 2 — adapters LLM (4)
-│   ├── base.py / mistral_adapter.py / openai_adapter.py
-│   └── anthropic_adapter.py / ollama_adapter.py
+├── app/                        Couche 6 — services applicatifs
+│   └── services/               BenchmarkService, CorpusRunner, RunOrchestrator
 │
-├── pipelines/                  Cercle 2 — pipelines OCR+LLM intégrés
-│   ├── base.py (OCRLLMPipeline) / over_normalization.py
+├── reports_v2/                 Couche 7 — rendu HTML / JSON / CSV
+│   ├── html/                   ReportGenerator + 22 renderers + 5 vues + templates Jinja2
+│   ├── json/, csv/             exports tabulaires
+│   ├── narrative/              moteur narratif (18 détecteurs)
+│   ├── glossary/, i18n/        glossaire + i18n FR/EN
+│   └── _helpers/               colors, render_helpers, assets
 │
-├── modules/                    Cercle 2 — modules BaseModule officiels
-│   └── alto_text_to_mono_region.py
+├── interfaces/                 Couche 8 — entrées utilisateur
+│   ├── cli/                    Click CLI
+│   └── web/                    FastAPI (en cours de migration)
 │
-├── extras/                     Cercle 3 — plugins / extensions
-│   └── importers/              IIIF, Gallica, HTR-United, HuggingFace, eScriptorium
-│
-├── report/                     Cercle 3 — rendu HTML
-│   ├── generator.py / colors.py / diff_utils.py
-│   ├── views/                  5 vues thématiques
-│   ├── templates/ / i18n/ / glossary/ / vendor/
-│   └── *_render.py             ~22 renderers (calibration, NER, Pareto, etc.)
-│
-├── cli/                        Cercle 3 — Click (7 fichiers)
-├── web/                        Cercle 3 — FastAPI (app.py, jobs.py)
 ├── prompts/                    8 fichiers .txt FR+EN
 ├── data/                       Tables indicatives (pricing.yaml)
+│
+# Arborescence legacy en cours de retrait (cf. docs/migration/) :
+# core/, measurements/, engines/, llm/, pipelines/, report/, modules/, web/, cli/, extras/
 └── fixtures.py                 Corpus de test fictifs
 ```
 
@@ -278,12 +295,12 @@ Résumé express :
 ## Moteur narratif
 
 Le modèle de données (`Fact`, `FactType`, `FactImportance`,
-`DetectorRegistry`) vit en cercle 1 dans
-[`picarones/core/facts.py`](picarones/core/facts.py). Les détecteurs et
-le rendu vivent en cercle 2 :
+`DetectorRegistry`) vit en couche 1 (`domain`) dans
+[`picarones/domain/facts.py`](picarones/domain/facts.py). Les détecteurs et
+le rendu vivent en couche 7 (`reports_v2`) :
 
 ```
-picarones/measurements/narrative/
+picarones/reports_v2/narrative/
 ├── __init__.py              API publique + pipeline build_synthesis
 ├── arbiter.py               Tri par importance, non-redondance, anti-contradiction
 ├── renderer.py              Rendu templates YAML par str.format_map (déterministe)

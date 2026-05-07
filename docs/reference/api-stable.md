@@ -1,26 +1,34 @@
-# API publique stable de Picarones (Cercle 1)
+# API publique stable de Picarones
 
-Phase D du chantier de refonte en 3 cercles — engagement contractuel
-de stabilité de l'API publique du Cercle 1.
+> **Statut** : ce document décrivait l'API publique du Cercle 1
+> historique (`picarones.core/`).  Le projet est en cours de
+> retrait du legacy vers une **architecture 8 couches**
+> (`domain → formats → evaluation → pipeline → adapters → app
+> → reports_v2 → interfaces`, cf.
+> [`docs/explanation/architecture.md`](../explanation/architecture.md)).
+>
+> **Pendant la migration** (jusqu'à la version 2.0), l'API
+> publique est en cours de refonte.  Tous les chemins legacy
+> (`picarones.core.X`, `picarones.measurements.X`, etc.) sont
+> des shims `DeprecationWarning` qui ré-exportent depuis le
+> canonique.  Les nouveaux imports doivent utiliser les chemins
+> canoniques (`picarones.domain.*`, `picarones.evaluation.*`).
+>
+> Le tableau de parité legacy ↔ canonique vit dans
+> [`tests/architecture/test_legacy_canonical_parity.py`](../../tests/architecture/test_legacy_canonical_parity.py).
 
 ## Définition
 
-L'API publique de Picarones est constituée des classes, fonctions,
-constantes et types listés ci-dessous, exportés depuis le sous-package
-`picarones.core/`. Ce qui est dans cette liste constitue **un contrat
-de stabilité** : nous nous engageons à ne pas le casser entre versions
-mineures (semver `1.x.0`).
+L'API publique stable de Picarones est constituée des classes,
+fonctions, constantes et types listés ci-dessous, désormais
+exportés depuis l'arborescence canonique.
 
-Ce qui n'est pas dans cette liste — y compris les modules historiques
-qui ont été déplacés vers `picarones.measurements/`, `picarones.extras/`
-et accessibles via shims rétrocompat — peut évoluer à tout moment
+Ce qui n'est pas dans cette liste peut évoluer à tout moment
 sans bump majeur.
 
-Les imports historiques (`from picarones.core.confusion import ...`,
-`from picarones.core.narrative.facts import ...`, etc.) restent
-fonctionnels mais ne font **pas** partie de l'API publique stable :
-ce sont des aliases rétrocompat. Pour de la nouveauté, préférer
-`from picarones.measurements.confusion import ...`.
+Les imports historiques restent fonctionnels via shims pendant
+la migration ; ils ne font **pas** partie de l'API publique
+stable et émettent un `DeprecationWarning`.
 
 ## Test automatique
 
@@ -245,7 +253,7 @@ def reset_default_store(...)
 - **Comportement des renderers HTML** : la structure des fichiers HTML
   peut évoluer entre versions mineures. Nous gardons les noms des
   vues principales.
-- **Internes des modules Cercle 1** : les noms commençant par `_`
+- **Internes des modules canoniques** : les noms commençant par `_`
   ne font pas partie de l'API publique. Les tests Sprints
   historiques qui les importent (Sprint 13/42) sont préservés mais
   par effort, pas par contrat.
@@ -258,9 +266,9 @@ Un bump majeur sera nécessaire pour :
 - Changer la signature d'une fonction publique de manière non
   rétrocompatible.
 - Casser le format de sérialisation du `BenchmarkResult.to_json()`.
-- Renommer un module Cercle 1.
+- Renommer un module de l'arborescence canonique.
 
-## Modules historiques rétrocompat (non Cercle 1)
+## Modules historiques rétrocompat (non canoniques)
 
 Les imports suivants continuent à fonctionner mais ne font pas partie
 de l'API publique stable. Ils peuvent évoluer ou être retirés en
