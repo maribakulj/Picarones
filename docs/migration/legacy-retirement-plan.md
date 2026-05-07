@@ -706,7 +706,20 @@ architecture vérifiée.
   ``snapshot.py``, ``report_data/`` (8 fichiers), templates
   Jinja2 (13 fichiers), ``picarones/i18n.py``.
 
-Phase 5 est **terminée**.
+Phase 5 est **terminée** côté ``report/``.
+
+**Note sur ``core/pipeline.py``** : la Phase 5.C.batch7 a
+*relocalisé* le ``PipelineRunner`` legacy de ``core/pipeline.py``
+vers ``evaluation/pipeline.py``, mais **n'a pas effectué la
+convergence** avec le canonique ``picarones.pipeline.executor``
+(designs incompatibles : ``BaseModule`` vs ``StepExecutor``,
+payloads bruts vs ``Artifact`` typés, dataclass mutable vs
+Pydantic immutable, ...).  L'audit détaillé + sub-plan est dans
+``docs/migration/pipeline-convergence-plan.md``.  La
+recommandation est la stratégie « wrapper legacy → canonique »
+(3-4 sessions) qui préserve l'API publique des callers tout en
+unifiant le moteur.  Décision sur quand exécuter la convergence
+laissée au prochain sprint dédié.
 
 #### Phase 5.C.batch2 — Lot 2 : 5 renderers moyens (2026-05)
 
