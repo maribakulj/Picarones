@@ -691,12 +691,13 @@ architecture vérifiée.
 
 **Reporté aux batches suivants** :
 
-- Batch 2 (~5 renderers moyens, 150-200 LOC chacun) :
-  ``difficulty``, ``lexical_modernization``, ``numerical_sequences``,
-  ``multirun_stability``, ``throughput``.
-- Batch 3 (~5 renderers moyens) : ``longitudinal``,
-  ``module_audit``, ``ner``, ``image_predictive``,
-  ``incremental_comparison``.
+- Batch 2 ✅ (cf. ci-dessous) — 5 renderers (45-165 LOC).
+- Batch 3 (~5 renderers moyens) : ``module_audit``,
+  ``ner``, ``image_predictive``,
+  ``incremental_comparison``, ``numerical_sequences``
+  (ce dernier exige d'abord la migration du module
+  ``measurements/numerical_sequences.py`` qui dépend de
+  ``measurements/roman_numerals.py``).
 - Batch 4 (~5 renderers gros) : ``error_absorption``,
   ``baseline``, ``inter_engine``, ``robustness_projection``,
   ``stratification``.
@@ -710,6 +711,46 @@ architecture vérifiée.
   ``snapshot.py``, ``report_data/``, templates Jinja2.
 
 Effort restant estimé : 8-12 jours.
+
+#### Phase 5.C.batch2 — Lot 2 : 5 renderers moyens (2026-05)
+
+Deuxième vague.  Substitution dans la sélection initiale :
+``numerical_sequences_render`` reporté au batch 3 (sa dépendance
+``measurements/numerical_sequences.py`` dépend elle-même de
+``measurements/roman_numerals.py``, deux modules legacy non
+migrés vers ``evaluation/metrics/`` ; le renderer ne peut donc pas
+les importer depuis le canonique).  Remplacé par
+``longitudinal_render`` qui n'a pas de dépendance legacy.
+
+**Migrations effectuées** :
+
+| Source legacy                                | Destination canonique                                |
+|----------------------------------------------|------------------------------------------------------|
+| ``report/difficulty_render.py`` (45)         | ``reports_v2/html/renderers/difficulty.py``          |
+| ``report/lexical_modernization_render.py`` (114) | ``reports_v2/html/renderers/lexical_modernization.py`` |
+| ``report/multirun_stability_render.py`` (151)| ``reports_v2/html/renderers/multirun_stability.py``  |
+| ``report/throughput_render.py`` (154)        | ``reports_v2/html/renderers/throughput.py``          |
+| ``report/longitudinal_render.py`` (165)      | ``reports_v2/html/renderers/longitudinal.py``        |
+
+Total : ~629 lignes relocalisées.  5 nouveaux shims minimaux
+(< 20 lignes) avec ``DeprecationWarning``.
+
+**Adaptations transverses** :
+
+- ``reports_v2/html/renderers/lexical_modernization.py`` import
+  canonique ``picarones.evaluation.metrics.lexical_modernization``
+  (au lieu du shim legacy ``picarones.measurements.lexical_modernization``).
+- ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à
+  ``"lexical_modernization"`` (même rationale que ``specialization``
+  au batch 1).
+- Tests + ``picarones/report/generator.py`` mis à jour pour les
+  5 chemins canoniques.
+
+**Acceptance batch 2** : 5019 tests passent, lint vert,
+architecture vérifiée.
+
+**Cumul Phase 5.C** (batches 1+2) : 10 / 22 renderers migrés
+(~1198 lignes).  12 renderers restants.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

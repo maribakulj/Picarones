@@ -28,7 +28,7 @@ from picarones.measurements.throughput import (
     aggregate_effective_throughput,
     compute_effective_throughput,
 )
-from picarones.report.throughput_render import build_throughput_html
+from picarones.reports_v2.html.renderers.throughput import build_throughput_html
 
 
 def _load_labels(lang: str) -> dict:

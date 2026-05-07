@@ -32,7 +32,7 @@ from picarones.measurements.lexical_modernization import (
     compute_lexical_modernization,
     top_modernized_tokens,
 )
-from picarones.report.lexical_modernization_render import (
+from picarones.reports_v2.html.renderers.lexical_modernization import (
     build_lexical_modernization_html,
 )
 

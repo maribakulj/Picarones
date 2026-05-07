@@ -134,7 +134,7 @@ def build_economics_view_html(
             from picarones.measurements.throughput import (
                 aggregate_effective_throughput,
             )
-            from picarones.report.throughput_render import (
+            from picarones.reports_v2.html.renderers.throughput import (
                 build_throughput_html,
             )
             inputs = _estimate_engine_throughput_inputs(engine_reports)

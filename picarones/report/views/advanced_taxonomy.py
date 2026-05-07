@@ -203,7 +203,7 @@ def build_advanced_taxonomy_view_html(
     # Sous-section 4 : modernisation lexicale (opt-in)
     if lexical_modernization:
         try:
-            from picarones.report.lexical_modernization_render import (
+            from picarones.reports_v2.html.renderers.lexical_modernization import (
                 build_lexical_modernization_html,
             )
             html = build_lexical_modernization_html(

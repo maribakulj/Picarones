@@ -165,7 +165,7 @@ def build_diagnostics_view_html(
     # Sous-section 4 : évolution longitudinale (opt-in)
     if longitudinal:
         try:
-            from picarones.report.longitudinal_render import (
+            from picarones.reports_v2.html.renderers.longitudinal import (
                 build_longitudinal_html,
             )
             html = build_longitudinal_html(longitudinal, labels=labels)
@@ -185,7 +185,7 @@ def build_diagnostics_view_html(
     # Sous-section 5 : stabilité multi-runs (opt-in)
     if stability:
         try:
-            from picarones.report.multirun_stability_render import (
+            from picarones.reports_v2.html.renderers.multirun_stability import (
                 build_multirun_stability_html,
             )
             html = build_multirun_stability_html(stability, labels=labels)

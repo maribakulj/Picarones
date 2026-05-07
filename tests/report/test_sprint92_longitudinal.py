@@ -33,7 +33,7 @@ from picarones.measurements.longitudinal import (
 from picarones.measurements.narrative import build_synthesis
 from picarones.measurements.narrative.detectors import detect_regression_in_history
 from picarones.core.facts import FactImportance, FactType
-from picarones.report.longitudinal_render import build_longitudinal_html
+from picarones.reports_v2.html.renderers.longitudinal import build_longitudinal_html
 
 
 def _load_labels(lang: str) -> dict:

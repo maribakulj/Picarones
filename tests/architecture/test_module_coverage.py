@@ -61,17 +61,17 @@ MEASUREMENTS_DIR = PICARONES_DIR / "measurements"
 #: de fin de ligne ``noqa F401`` dans
 #: ``picarones/measurements/__init__.py``).
 TEST_ONLY_BASELINE: frozenset[str] = frozenset({
-    # Phase 5.C : ``measurements/specialization.py`` est un shim
-    # vers ``evaluation/metrics/specialization``.  Son unique
-    # consommateur production (le renderer
-    # ``report/specialization_render.py``) a été migré vers
-    # ``reports_v2/html/renderers/specialization.py`` qui importe
-    # le canonique directement (la règle layer-dependencies
-    # interdit d'importer le shim depuis ``reports_v2/``).  Tant
-    # que des tests ou un caller externe utilisent le chemin
-    # legacy, le shim reste en place ; l'entrée ici est retirée
-    # au plus tard à la version 2.0 quand le shim disparaîtra.
+    # Phase 5.C : modules ``measurements/X.py`` qui sont des shims
+    # vers ``evaluation/metrics/X``.  Leur unique consommateur
+    # production (le renderer ``report/X_render.py``) a été migré
+    # vers ``reports_v2/html/renderers/X.py`` qui importe le
+    # canonique directement (la règle layer-dependencies interdit
+    # d'importer un shim depuis ``reports_v2/``).  Tant que des
+    # tests ou un caller externe utilisent le chemin legacy, le
+    # shim reste en place ; les entrées ici sont retirées au plus
+    # tard à la version 2.0 quand les shims disparaîtront.
     "specialization",
+    "lexical_modernization",
 })
 
 
