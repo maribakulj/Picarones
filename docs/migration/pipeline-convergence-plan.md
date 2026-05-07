@@ -100,9 +100,9 @@ Sprints S6-S7-S28, design rewrite ciblé.
   l'exécution corpus-wide via ``PipelineRunner.run()``.
 - ``picarones/evaluation/pipeline_comparison.py`` — compare N
   ``PipelineSpec`` via ``run_pipeline_benchmark``.
-- ``picarones/measurements/pipeline_spec_loader.py`` — charge des
-  YAML legacy en ``PipelineSpec`` + ``PipelineStep`` legacy
-  (avec instanciation des modules par ``adapter_name``).
+- ``picarones/measurements/pipeline_spec_loader`` (Phase 7.D —
+  module supprimé) — chargeait des YAML legacy en
+  ``PipelineSpec`` + ``PipelineStep`` legacy.
 
 **Tests** : 7 fichiers de tests directs (``test_sprint63_*``,
 ``test_sprint64_*``, ``test_sprint65_*``, ``test_sprint66_*``,

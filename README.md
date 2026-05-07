@@ -235,7 +235,6 @@ this table or fail.
 | `picarones import` | Import a corpus from a remote source (IIIF, HF, HTR-United) |
 | `picarones info` | Display version and system information |
 | `picarones metrics` | Compute CER/WER between two text files |
-| `picarones pipeline` | Run / compare composed pipelines from a YAML spec (Sprint 70) |
 | `picarones report` | Generate an HTML report from JSON results |
 | `picarones robustness` | Run robustness analysis with degraded images |
 | `picarones run` | Run a full benchmark on a corpus |
@@ -395,7 +394,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~4940 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~4760 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

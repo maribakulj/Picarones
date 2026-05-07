@@ -404,10 +404,9 @@ wrapper ``_BaseModuleAdapter`` créé en 7.B.1.
    d'inputs versionnés, exécution chronométrée, capture
    d'erreur, évaluation auto vs GT, conversion outputs).
 
-2. **Lire** ``picarones/pipeline/_legacy_module_adapter.py``
-   en entier pour comprendre les outils disponibles
-   (``_BaseModuleAdapter``, ``_PayloadRegistry``,
-   ``wrap_initial_inputs``).
+2. **(Phase 7.D — module supprimé)** : ``_BaseModuleAdapter`` et
+   ``_PayloadRegistry`` vivaient dans ``_legacy_module_adapter.py``,
+   retiré avec le runner en 7.D.
 
 3. **Écrire** un nouveau corps de ``PipelineRunner.run`` qui :
    - Crée un ``_PayloadRegistry`` par appel.

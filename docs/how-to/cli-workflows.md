@@ -14,8 +14,6 @@ accessibles via `picarones <cmd>` après `pip install -e .`.
 | `economics` | `_workflows.py` | `economics` | Bench + throughput effectif |
 | `edition` | `_workflows.py` | `philological` | Bench + taxonomie miroir |
 | `compare` | `_workflows.py` | — | Comparer 2 runs JSON existants |
-| `pipeline run` | `_pipeline.py` | `pipeline` | Bench d'une pipeline composée |
-| `pipeline compare` | `_pipeline.py` | `pipeline` | Comparer N pipelines |
 | `serve` | `_serve.py` | — | Lance l'interface web FastAPI |
 | `import iiif` | `_imports.py` | — | Importe un manifeste IIIF en corpus |
 | `history` | `_history.py` | — | Consulte l'historique SQLite |
@@ -85,39 +83,14 @@ jour modèle) et génère un rapport HTML de diff.
 
 ## Pipeline composée — axe B + chantier 1
 
-### `picarones pipeline run`
+### `picarones pipeline run` / `pipeline compare` — retirés en 7.D
 
-```bash
-picarones pipeline run examples/pipelines/ocr_to_alto.yaml \
-    --corpus ./mon_corpus \
-    --output-html rapport_pipeline.html
-```
-
-Exécute une pipeline déclarative (YAML) sur un corpus. Le YAML peut
-référencer n'importe quelle classe `BaseModule` accessible :
-
-- Engines OCR Picarones (`picarones.engines.tesseract.TesseractEngine`).
-- Modules de référence Picarones (`picarones.modules.alto_text_to_mono_region.TextToAltoMonoRegion`).
-- Modules tiers de l'utilisateur (`my_pkg.my_module.MyModule`).
-
-Le rapport HTML inclut :
-- Résumé corpus-wide (succès/échecs, durée).
-- Tableau par étape (durée mean/median, métriques aux jonctions).
-- DAG visuel (chantier 3 — sous-section opt-in).
-- Absorption d'erreur par jonction (chantier 3 — opt-in).
-
-### `picarones pipeline compare`
-
-```bash
-picarones pipeline compare \
-    examples/pipelines/comparison.yaml \
-    --corpus ./corpus \
-    --baseline ocr_only \
-    --output-html comparison.html
-```
-
-Compare N pipelines (déclarées dans le même YAML) sur le même corpus
-en mode apple-to-apple, avec ranking + gain table vs baseline.
+Les commandes ``picarones pipeline run`` et ``pipeline compare`` ont
+été retirées en Phase 7.D du retrait du legacy (mai 2026), avec le
+``PipelineRunner`` legacy qu'elles enveloppaient.  Une CLI au-dessus
+du ``PipelineExecutor`` canonique pourra être réintroduite
+post-2.0.  En attendant, l'API Python est documentée dans
+[`docs/reference/api-stable.md`](../reference/api-stable.md).
 
 ## Imports — chantier 4
 
@@ -214,7 +187,5 @@ pour découvrir la sortie sans corpus réel.
   Click + helpers + commandes simples.
 - [`picarones/cli/_workflows.py`](../picarones/cli/_workflows.py) —
   run, diagnose, economics, edition, compare + helper `_run_workflow`.
-- [`picarones/cli/_pipeline.py`](../picarones/cli/_pipeline.py) —
-  pipeline group.
 - Voir aussi [`docs/reference/normalization-profiles.md`](profiles.md) et
   [`docs/reference/views.md`](views.md).

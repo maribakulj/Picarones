@@ -175,7 +175,6 @@ class TestCliPackage:
         "_serve",
         "_history",
         "_robustness",
-        "_pipeline",
     ])
     def test_submodule_loaded(self, submodule):
         try:
@@ -192,11 +191,16 @@ class TestCliPackage:
     @pytest.mark.parametrize("cmd_name", [
         "run", "diagnose", "economics", "edition", "compare",
         "metrics", "engines", "info", "report", "demo",
-        "serve", "history", "robustness", "pipeline", "import",
+        "serve", "history", "robustness", "import",
     ])
     def test_all_15_commands_registered(self, cmd_name):
-        """Les 15 commandes/groupes historiques doivent être enregistrés
-        sur le groupe ``cli`` après l'import en cascade."""
+        """Les commandes/groupes historiques doivent être enregistrés
+        sur le groupe ``cli`` après l'import en cascade.
+
+        Phase 7.D : la commande ``pipeline`` (groupe ``run``/``compare``)
+        a été retirée — elle exposait le runner legacy ``PipelineRunner``
+        désormais supprimé.  Le compteur historique passe de 15 à 14.
+        """
         try:
             from picarones.cli import cli
         except ImportError as exc:
