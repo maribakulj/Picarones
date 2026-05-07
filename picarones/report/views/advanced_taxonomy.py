@@ -136,7 +136,7 @@ def build_advanced_taxonomy_view_html(
         pair = _select_two_engines_for_comparison(engines_summary)
         if pair is not None:
             from picarones.measurements.taxonomy_comparison import compare_taxonomies
-            from picarones.report.taxonomy_comparison_render import (
+            from picarones.reports_v2.html.renderers.taxonomy_comparison import (
                 build_taxonomy_comparison_html,
             )
             engine_a, engine_b = pair
@@ -163,7 +163,7 @@ def build_advanced_taxonomy_view_html(
     # Sous-section 2 : co-occurrence (opt-in)
     if cooccurrence:
         try:
-            from picarones.report.taxonomy_cooccurrence_render import (
+            from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
                 build_taxonomy_cooccurrence_html,
             )
             html = build_taxonomy_cooccurrence_html(cooccurrence, labels=labels)
@@ -183,7 +183,7 @@ def build_advanced_taxonomy_view_html(
     # Sous-section 3 : intra-document (opt-in)
     if intra_doc:
         try:
-            from picarones.report.taxonomy_intra_doc_render import (
+            from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
                 build_taxonomy_intra_doc_html,
             )
             html = build_taxonomy_intra_doc_html(intra_doc, labels=labels)

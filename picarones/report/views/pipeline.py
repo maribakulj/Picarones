@@ -124,7 +124,7 @@ def build_pipeline_view_html(
     # Sous-section 2 : DAG visualization
     if dag_nodes:
         try:
-            from picarones.report.pipeline_dag_render import (
+            from picarones.reports_v2.html.renderers.pipeline_dag import (
                 build_pipeline_dag_html,
             )
             html = build_pipeline_dag_html(

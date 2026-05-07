@@ -27,7 +27,7 @@ from picarones.measurements.taxonomy_comparison import (
     RECOVERABILITY,
     compare_taxonomies,
 )
-from picarones.report.taxonomy_comparison_render import (
+from picarones.reports_v2.html.renderers.taxonomy_comparison import (
     build_taxonomy_comparison_html,
 )
 

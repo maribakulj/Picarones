@@ -29,7 +29,7 @@ import pytest
 from picarones.measurements.taxonomy_cooccurrence import (
     compute_taxonomy_cooccurrence,
 )
-from picarones.report.taxonomy_cooccurrence_render import (
+from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
     build_taxonomy_cooccurrence_html,
 )
 

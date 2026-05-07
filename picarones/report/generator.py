@@ -316,10 +316,10 @@ class ReportGenerator:
         from picarones.reports_v2.html.renderers.rare_token_recall import (
             build_rare_token_recall_html,
         )
-        from picarones.report.taxonomy_cooccurrence_render import (
+        from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
             build_taxonomy_cooccurrence_html,
         )
-        from picarones.report.taxonomy_intra_doc_render import (
+        from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
             build_taxonomy_intra_doc_html,
         )
 

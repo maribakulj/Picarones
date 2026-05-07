@@ -97,7 +97,7 @@ class TestTaxonomyCooccurrence:
             assert r == results[0]
 
     def test_compatible_with_renderer(self, sample_benchmark) -> None:
-        from picarones.report.taxonomy_cooccurrence_render import (
+        from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
             build_taxonomy_cooccurrence_html,
         )
         result = compute_taxonomy_cooccurrence_section(sample_benchmark)
@@ -138,7 +138,7 @@ class TestTaxonomyIntraDoc:
             assert key in result, f"clé {key!r} manquante (renderer la requiert)"
 
     def test_renders_html_when_signal_present(self, sample_benchmark) -> None:
-        from picarones.report.taxonomy_intra_doc_render import (
+        from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
             build_taxonomy_intra_doc_html,
         )
         result = compute_taxonomy_intra_doc_section(sample_benchmark)

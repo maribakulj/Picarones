@@ -206,7 +206,7 @@ def build_diagnostics_view_html(
     if benchmark is not None:
         try:
             from picarones.measurements.worst_lines import extract_worst_lines
-            from picarones.report.worst_lines_render import (
+            from picarones.reports_v2.html.renderers.worst_lines import (
                 build_worst_lines_table_html,
             )
             entries = extract_worst_lines(benchmark, top_n=20)

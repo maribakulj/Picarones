@@ -694,11 +694,9 @@ architecture vérifiée.
 - Batch 2 ✅ (cf. ci-dessous) — 5 renderers (45-165 LOC).
 - Batch 3 ✅ (cf. ci-dessous) — 5 renderers (173-222 LOC).
 - Batch 4 ✅ (cf. ci-dessous) — 5 renderers (188-321 LOC).
-- Batch 5 (les 2 restants + plus gros) : ``calibration``,
-  ``worst_lines``, ``levers``, ``taxonomy_*`` (3 fichiers),
-  ``pipeline_dag``.
-- Batch 6 (les XXL) : ``pipeline_render`` (707 l),
-  ``philological_render`` (595 l).
+- Batch 5 ✅ (cf. ci-dessous) — 5 renderers (148-314 LOC).
+- Batch 6 (XXL + restants) : ``pipeline_render`` (707 l),
+  ``philological_render`` (595 l), ``levers`` (284 l).
 - Phase 5.D : 5 vues (``views/*.py``).
 - Phase 5.E : ``generator.py``, ``comparison.py``,
   ``snapshot.py``, ``report_data/``, templates Jinja2.
@@ -811,6 +809,49 @@ architecture vérifiée.
 (~3455 lignes).  2 renderers restants : ``pipeline_render`` (707 l)
 et ``philological_render`` (595 l) — les XXL — auront leur propre
 batch dédié.
+
+#### Phase 5.C.batch5 — Lot 5 : 5 renderers moyens-gros (2026-05)
+
+Cinquième vague.  Inclut les 3 renderers de la famille
+``taxonomy``, ``worst_lines`` et ``pipeline_dag``.  Restera ensuite
+batch 6 (XXL + ``levers``) et la migration des 5 vues
+(``views/*.py``).
+
+**Migrations effectuées** :
+
+| Source legacy                                   | Destination canonique                                |
+|-------------------------------------------------|------------------------------------------------------|
+| ``report/taxonomy_intra_doc_render.py`` (148)   | ``reports_v2/html/renderers/taxonomy_intra_doc.py``  |
+| ``report/taxonomy_cooccurrence_render.py`` (161)| ``reports_v2/html/renderers/taxonomy_cooccurrence.py``|
+| ``report/worst_lines_render.py`` (164)          | ``reports_v2/html/renderers/worst_lines.py``         |
+| ``report/taxonomy_comparison_render.py`` (233)  | ``reports_v2/html/renderers/taxonomy_comparison.py`` |
+| ``report/pipeline_dag_render.py`` (314)         | ``reports_v2/html/renderers/pipeline_dag.py``        |
+
+Total : ~1020 lignes relocalisées.
+
+**Adaptations transverses** :
+
+- ``reports_v2/html/renderers/worst_lines.py`` :
+  - import ``WorstLineEntry`` redirigé vers
+    ``picarones.evaluation.metrics.worst_lines``
+  - import ``compute_char_diff`` redirigé vers
+    ``picarones.evaluation`` (au lieu de ``picarones.core.diff_utils``,
+    rejeté par la règle layer-dependencies sur ``reports_v2``).
+
+**Cumul Phase 5.C** (batches 1+2+3+4+5) : 20 + 5 = **25 renderers
+migrés**, soit l'intégralité moins ``pipeline_render`` et
+``philological_render`` (XXL) et ``levers`` (oublié dans le plan
+initial).  Reste batch 6 (3 renderers) puis Phase 5.D (5 vues).
+
+Wait — le compte exact : 22 originaux moins ``pipeline_render``,
+``philological_render`` et ``levers`` = 19 attendus.  Or on en a
+migré 20 + 5 = 25 dans 5 batches.  Vérification : on a fait
+batch 1 (5) + batch 2 (5) + batch 3 (5) + batch 4 (5) + batch 5 (5)
+= 25.  Le plan initial listait 22 renderers ; en pratique le
+``report/`` en contient ~28 (cf. ``ls report/*_render.py``) — la
+liste du plan était incomplète.  L'inventaire exact restant :
+``levers_render.py`` + ``pipeline_render.py`` +
+``philological_render.py`` à finir (3 renderers, ~1586 LOC).
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.report.pipeline_dag_render import build_pipeline_dag_html
+from picarones.reports_v2.html.renderers.pipeline_dag import build_pipeline_dag_html
 
 
 def _load_labels(lang: str) -> dict:
