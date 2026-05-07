@@ -101,7 +101,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **5070 passed, 12 skipped, 8 deselected, 0 failed**
+`pytest tests/` → **5120 passed, 12 skipped, 8 deselected, 0 failed**
 (post-S59).  Les deselected sont les markers `live` (5 tests d'intégration
 contre vraie API/binaire) + `network` (3 tests qui hit le réseau réel),
 opt-in en local via `pytest -m live` ou `pytest -m network`.  Le
@@ -197,6 +197,13 @@ Pour le travail courant, ce qui compte :
   projet est en stand-by jusqu'à la fin de la migration
   complète — tests rouges acceptables temporairement, breaking
   changes acceptés.
+- **Principe directeur** : suppression agressive.  Pas de shim
+  qui survit à son usage.  Dès qu'un caller migre vers le
+  canonique, son shim est supprimé.  Tout symbole legacy public
+  doit être tracé dans
+  [`tests/architecture/test_legacy_canonical_parity.py`](tests/architecture/test_legacy_canonical_parity.py)
+  — c'est le journal de bord vivant qui garantit qu'aucune
+  fonctionnalité n'est silencieusement perdue.
 - **Plan maître** : [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md)
   — cartographie complète des Phases 0-11 avec statut.
 - **Sub-plan convergence pipeline** : [`docs/migration/pipeline-convergence-plan.md`](docs/migration/pipeline-convergence-plan.md)
@@ -224,7 +231,7 @@ Résumé express :
 
 1. `git branch --show-current` → `claude/repo-analysis-cukvm`.
 2. `git status` → working tree clean.
-3. `pytest tests/ -q --no-header --tb=line` → 5070 passed.
+3. `pytest tests/ -q --no-header --tb=line` → 5120 passed.
 4. `git log -1 --format=%B` → décrit la prochaine sub-phase.
 
 **Règles d'architecture critiques** (apprises à la dure) :
@@ -312,7 +319,7 @@ détecte, arbitre, rend.
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces, Python 3.11+
-- **Tests** : `pytest tests/ -q` → 5070 passed, 12 skipped, 24
+- **Tests** : `pytest tests/ -q` → 5120 passed, 12 skipped, 24
   deselected, 0 failed (au moment de la pause de session).
 - **Plan d'évolution actif** : [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md).
 - **Plan retrait du legacy (maître)** : [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md).

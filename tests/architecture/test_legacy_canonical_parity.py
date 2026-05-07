@@ -1,0 +1,525 @@
+"""Test architectural — parité legacy ↔ canonique.
+
+Pourquoi ce test
+----------------
+Le retrait du legacy se fait par phases (cf. :doc:`docs/migration/legacy-retirement-plan.md`).
+À chaque phase, des symboles publics legacy migrent vers leur
+équivalent canonique.  Sans garde-fou, deux risques :
+
+1. **Suppression silencieuse d'une feature** : un symbole legacy
+   disparaît sans équivalent canonique → la feature est perdue.
+2. **Drift de l'API** : un nouveau symbole legacy est ajouté
+   sans équivalent canonique → la dette de migration grossit.
+
+Ce test maintient un **journal de bord vivant** :
+:data:`LEGACY_PARITY` est une table 3-états qui pour chaque
+symbole legacy connu déclare :
+
+- ``canonical: <module.symbol>`` — symbole équivalent dans
+  l'arbre canonique.
+- ``dropped: <raison>`` — feature volontairement abandonnée.
+- ``unmigrated: <cible prévue>`` — migration prévue, à venir.
+
+Limites du test
+---------------
+**Ce test ne vérifie que la présence de symbole, pas le
+comportement.**  Deux symboles peuvent porter le même nom et
+avoir des sémantiques différentes (cf. ``ArtifactType`` 6 vs 10
+valeurs).  Les différences comportementales sont signalées par
+le champ optionnel ``behavior_diff`` qui sert de mémoire à
+l'équipe.
+
+Pour la vérification comportementale réelle :
+
+- Les tests unitaires métier couvrent les usages individuels.
+- Le test d'intégration ``tests/integration/test_sprint_a14_s12_executor_equivalence.py``
+  compare des comportements bout-en-bout.
+- La régression bit-for-bit sur les rapports HTML (cible Phase
+  11 du retrait du legacy) couvrira la sortie utilisateur finale.
+
+Maintenance
+-----------
+- À chaque migration d'un symbole, ajouter ou mettre à jour son
+  entrée dans :data:`LEGACY_PARITY`.
+- Si un nouveau symbole legacy est introduit (rare mais possible
+  pour patcher un bug bloquant), l'inscrire avec
+  ``"unmigrated": "<cible>"``.
+- Si un symbole est supprimé du legacy, retirer son entrée.
+- ``BOOTSTRAP_BASELINE`` autorise temporairement N symboles non
+  trackés ; à diminuer à chaque session de migration.
+"""
+
+from __future__ import annotations
+
+import ast
+import importlib
+import inspect
+import warnings
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: Paquets legacy (cf. ``test_no_legacy_imports_in_rewrite``).
+LEGACY_PACKAGES: tuple[str, ...] = (
+    "core",
+    "measurements",
+    "engines",
+    "llm",
+    "pipelines",
+    "report",
+    "modules",
+)
+
+#: Combien de symboles legacy peuvent être absents de
+#: :data:`LEGACY_PARITY` sans faire échouer le test.  À diminuer
+#: à chaque session de migration : on cible 0 quand le retrait
+#: est complet.
+BOOTSTRAP_BASELINE = 110
+
+
+# ──────────────────────────────────────────────────────────────────
+# Table de parité legacy ↔ canonique
+# ──────────────────────────────────────────────────────────────────
+
+#: Entrée de :data:`LEGACY_PARITY`.  Exactement une des trois
+#: clés (``canonical``, ``dropped``, ``unmigrated``) est
+#: renseignée par entrée.
+ParityEntry = dict[str, Any]
+
+
+#: Mapping ``"<legacy_module>.<symbol>" → entry``.  Les entrées
+#: sont ajoutées au fil des phases de migration ; la table est le
+#: journal de bord vivant du retrait du legacy.
+#:
+#: État initial : seed des migrations déjà effectuées (Phases
+#: 1, 4-bis, 4-ter, 4-quater, 7.A).  À étendre à chaque sprint.
+LEGACY_PARITY: dict[str, ParityEntry] = {
+    # ──────────────────────────────────────────────────────────
+    # Phase 1 — diff_utils, xml_utils, facts
+    # ──────────────────────────────────────────────────────────
+    "picarones.core.diff_utils.compute_word_diff": {
+        "canonical": "picarones.evaluation._diff_utils.compute_word_diff",
+    },
+    "picarones.core.diff_utils.compute_char_diff": {
+        "canonical": "picarones.evaluation._diff_utils.compute_char_diff",
+    },
+    "picarones.core.diff_utils.diff_stats": {
+        "canonical": "picarones.evaluation._diff_utils.diff_stats",
+    },
+    "picarones.core.xml_utils.safe_parse_xml": {
+        "canonical": "picarones.formats._xml_utils.safe_parse_xml",
+    },
+    "picarones.core.facts.Fact": {
+        "canonical": "picarones.domain.facts.Fact",
+    },
+    "picarones.core.facts.FactType": {
+        "canonical": "picarones.domain.facts.FactType",
+    },
+    "picarones.core.facts.FactImportance": {
+        "canonical": "picarones.domain.facts.FactImportance",
+    },
+    "picarones.core.facts.DetectorRegistry": {
+        "canonical": "picarones.domain.facts.DetectorRegistry",
+    },
+    # ──────────────────────────────────────────────────────────
+    # Phase 4-bis — modules / ArtifactType / BaseModule
+    # ──────────────────────────────────────────────────────────
+    "picarones.core.modules.ArtifactType": {
+        "canonical": "picarones.domain.artifacts.ArtifactType",
+        "behavior_diff": (
+            "Legacy : 6 valeurs (TEXT, ALTO, PAGE, ENTITIES, "
+            "READING_ORDER, IMAGE).  Canonique : 10 valeurs avec "
+            "RAW_TEXT/CORRECTED_TEXT/ALTO_XML/PAGE_XML/CANONICAL_DOCUMENT/"
+            "ALIGNMENT/CONFIDENCES.  Aliases TEXT/ALTO/PAGE conservés "
+            "pour rétrocompat (suppression en 2.0)."
+        ),
+    },
+    "picarones.core.modules.BaseModule": {
+        "canonical": "picarones.domain.module_protocol.BaseModule",
+        "behavior_diff": (
+            "BaseModule sera supprimé en 7.D au profit du Protocol "
+            "StepExecutor.  Cf. docs/migration/pipeline-convergence-plan.md."
+        ),
+    },
+    "picarones.core.modules.ExecutionMode": {
+        "canonical": "picarones.domain.module_protocol.ExecutionMode",
+    },
+    # ──────────────────────────────────────────────────────────
+    # Phase 4-ter — metric_registry, metric_hooks, metrics, results
+    # ──────────────────────────────────────────────────────────
+    "picarones.core.metric_registry.MetricSpec": {
+        "canonical": "picarones.evaluation.metric_registry.MetricSpec",
+    },
+    "picarones.core.metric_registry.register_metric": {
+        "canonical": "picarones.evaluation.metric_registry.register_metric",
+    },
+    "picarones.core.metric_registry.compute_at_junction": {
+        "canonical": "picarones.evaluation.metric_registry.compute_at_junction",
+    },
+    "picarones.core.metric_registry.select_metrics": {
+        "canonical": "picarones.evaluation.metric_registry.select_metrics",
+    },
+    "picarones.core.metric_registry.get_metric": {
+        "canonical": "picarones.evaluation.metric_registry.get_metric",
+    },
+    "picarones.core.metric_registry.all_metrics": {
+        "canonical": "picarones.evaluation.metric_registry.all_metrics",
+    },
+    "picarones.core.metric_hooks.register_document_metric": {
+        "canonical": "picarones.evaluation.metric_hooks.register_document_metric",
+    },
+    "picarones.core.metric_hooks.register_corpus_aggregator": {
+        "canonical": "picarones.evaluation.metric_hooks.register_corpus_aggregator",
+    },
+    "picarones.core.metric_hooks.PROFILE_STANDARD": {
+        "canonical": "picarones.evaluation.metric_hooks.PROFILE_STANDARD",
+    },
+    "picarones.core.metric_hooks.PROFILE_FULL": {
+        "canonical": "picarones.evaluation.metric_hooks.PROFILE_FULL",
+    },
+    "picarones.core.metric_hooks.PROFILE_MINIMAL": {
+        "canonical": "picarones.evaluation.metric_hooks.PROFILE_MINIMAL",
+    },
+    "picarones.core.metrics.MetricsResult": {
+        "canonical": "picarones.evaluation.metric_result.MetricsResult",
+    },
+    "picarones.core.metrics.aggregate_metrics": {
+        "canonical": "picarones.evaluation.metric_result.aggregate_metrics",
+    },
+    "picarones.core.results.BenchmarkResult": {
+        "canonical": "picarones.evaluation.benchmark_result.BenchmarkResult",
+    },
+    "picarones.core.results.EngineReport": {
+        "canonical": "picarones.evaluation.benchmark_result.EngineReport",
+    },
+    "picarones.core.results.DocumentResult": {
+        "canonical": "picarones.evaluation.benchmark_result.DocumentResult",
+    },
+    # ──────────────────────────────────────────────────────────
+    # Phase 4-quater — corpus
+    # ──────────────────────────────────────────────────────────
+    "picarones.core.corpus.Document": {
+        "canonical": "picarones.evaluation.corpus.Document",
+    },
+    "picarones.core.corpus.Corpus": {
+        "canonical": "picarones.evaluation.corpus.Corpus",
+    },
+    "picarones.core.corpus.GTLevel": {
+        "canonical": "picarones.evaluation.corpus.GTLevel",
+    },
+    "picarones.core.corpus.TextGT": {
+        "canonical": "picarones.evaluation.corpus.TextGT",
+    },
+    "picarones.core.corpus.AltoGT": {
+        "canonical": "picarones.evaluation.corpus.AltoGT",
+    },
+    "picarones.core.corpus.PageGT": {
+        "canonical": "picarones.evaluation.corpus.PageGT",
+    },
+    "picarones.core.corpus.EntitiesGT": {
+        "canonical": "picarones.evaluation.corpus.EntitiesGT",
+    },
+    "picarones.core.corpus.ReadingOrderGT": {
+        "canonical": "picarones.evaluation.corpus.ReadingOrderGT",
+    },
+    "picarones.core.corpus.load_corpus_from_directory": {
+        "canonical": "picarones.evaluation.corpus.load_corpus_from_directory",
+    },
+    # ──────────────────────────────────────────────────────────
+    # Phase 5.C.batch7 — pipeline (legacy PipelineRunner)
+    # ──────────────────────────────────────────────────────────
+    "picarones.core.pipeline.PipelineRunner": {
+        "canonical": "picarones.evaluation.pipeline.PipelineRunner",
+        "behavior_diff": (
+            "Pendant 7.B-7.D, le PipelineRunner legacy reste mais "
+            "délègue progressivement à PipelineExecutor canonique. "
+            "Sera supprimé en 7.D."
+        ),
+    },
+    "picarones.core.pipeline.PipelineSpec": {
+        "canonical": "picarones.evaluation.pipeline.PipelineSpec",
+    },
+    "picarones.core.pipeline.PipelineStep": {
+        "canonical": "picarones.evaluation.pipeline.PipelineStep",
+    },
+    "picarones.core.pipeline.PipelineResult": {
+        "canonical": "picarones.evaluation.pipeline.PipelineResult",
+    },
+    "picarones.core.pipeline.StepResult": {
+        "canonical": "picarones.evaluation.pipeline.StepResult",
+    },
+    # ──────────────────────────────────────────────────────────
+    # Phase 7.A — engines, modules
+    # ──────────────────────────────────────────────────────────
+    "picarones.engines.base.BaseOCREngine": {
+        "canonical": "picarones.adapters.legacy_engines.base.BaseOCREngine",
+        "behavior_diff": (
+            "BaseOCREngine hérite de BaseModule legacy.  Sera "
+            "remplacé par BaseOCRAdapter (StepExecutor) en 7.D."
+        ),
+    },
+    "picarones.engines.base.EngineResult": {
+        "canonical": "picarones.adapters.legacy_engines.base.EngineResult",
+    },
+    "picarones.engines.tesseract.TesseractEngine": {
+        "canonical": "picarones.adapters.legacy_engines.tesseract.TesseractEngine",
+    },
+    "picarones.engines.pero_ocr.PeroOCREngine": {
+        "canonical": "picarones.adapters.legacy_engines.pero_ocr.PeroOCREngine",
+    },
+    "picarones.engines.mistral_ocr.MistralOCREngine": {
+        "canonical": "picarones.adapters.legacy_engines.mistral_ocr.MistralOCREngine",
+    },
+    "picarones.engines.google_vision.GoogleVisionEngine": {
+        "canonical": "picarones.adapters.legacy_engines.google_vision.GoogleVisionEngine",
+    },
+    "picarones.engines.azure_doc_intel.AzureDocIntelEngine": {
+        "canonical": "picarones.adapters.legacy_engines.azure_doc_intel.AzureDocIntelEngine",
+    },
+    "picarones.engines.factory.engine_from_name": {
+        "canonical": "picarones.adapters.legacy_engines.factory.engine_from_name",
+    },
+    "picarones.modules.alto_text_to_mono_region.TextToAltoMonoRegion": {
+        "canonical": "picarones.adapters.legacy_modules.alto_text_to_mono_region.TextToAltoMonoRegion",
+    },
+}
+
+
+# ──────────────────────────────────────────────────────────────────
+# Helpers
+# ──────────────────────────────────────────────────────────────────
+
+
+def _resolve(dotted: str) -> Any | None:
+    """Résout ``"package.module.symbol"`` en l'objet effectif.
+
+    Retourne ``None`` si la résolution échoue (module introuvable
+    ou symbole absent).  Émet un warning silencieux : on
+    ignore les ``DeprecationWarning`` des shims.
+    """
+    parts = dotted.rsplit(".", 1)
+    if len(parts) != 2:
+        return None
+    module_path, symbol = parts
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            module = importlib.import_module(module_path)
+    except ImportError:
+        return None
+    return getattr(module, symbol, None)
+
+
+def _signatures_compatible(legacy_obj: Any, canonical_obj: Any) -> bool:
+    """Vérifie que deux callables ont des signatures compatibles.
+
+    Compatible = même nombre de paramètres positionnels.  Pour
+    les classes, on inspecte ``__init__``.  Si l'un des deux
+    n'est pas inspectable (e.g. C-builtin), on retourne ``True``
+    (on ne peut pas comparer).
+    """
+    try:
+        sig_legacy = inspect.signature(legacy_obj)
+        sig_canonical = inspect.signature(canonical_obj)
+    except (TypeError, ValueError):
+        # Pas un callable inspectable : on tolère
+        return True
+    pos_legacy = [
+        p for p in sig_legacy.parameters.values()
+        if p.kind in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+    ]
+    pos_canonical = [
+        p for p in sig_canonical.parameters.values()
+        if p.kind in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+    ]
+    return len(pos_legacy) == len(pos_canonical)
+
+
+def _scan_legacy_public_symbols() -> set[str]:
+    """Liste tous les symboles publics top-level dans les
+    paquets legacy.
+
+    Scanne via AST (statique, plus stable que ``import + dir``).
+    Retourne les ``"<full_module_path>.<symbol_name>"``.
+    """
+    out: set[str] = set()
+    for pkg in LEGACY_PACKAGES:
+        root = REPO_ROOT / "picarones" / pkg
+        if not root.is_dir():
+            continue
+        for path in root.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            if path.name == "__init__.py":
+                continue  # __init__ : on ne tracke que les modules nommés
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except (OSError, SyntaxError):
+                continue
+            module_name = ".".join(
+                ["picarones", *path.relative_to(REPO_ROOT / "picarones").with_suffix("").parts]
+            )
+            for node in tree.body:
+                names: list[str] = []
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    names.append(node.name)
+                elif isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            names.append(target.id)
+                for sym in names:
+                    if sym.startswith("_"):
+                        continue
+                    out.add(f"{module_name}.{sym}")
+    return out
+
+
+# ──────────────────────────────────────────────────────────────────
+# Tests
+# ──────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "legacy_path,entry",
+    sorted(LEGACY_PARITY.items()),
+    ids=lambda v: v if isinstance(v, str) else "",
+)
+def test_each_entry_is_resolvable(legacy_path: str, entry: ParityEntry) -> None:
+    """Chaque entrée doit avoir exactement un état renseigné.
+
+    Validation par entrée :
+
+    - ``canonical`` : les deux symboles existent + signatures
+      compatibles (warning si non).
+    - ``dropped``   : justification non vide.
+    - ``unmigrated``: cible non vide (le canonique peut ne pas
+      encore exister, c'est tout l'intérêt de cet état).
+    """
+    states = {"canonical", "dropped", "unmigrated"}
+    present = states & entry.keys()
+    assert len(present) == 1, (
+        f"{legacy_path} doit avoir exactement un de {states}, "
+        f"trouvé : {sorted(present)}"
+    )
+    state = next(iter(present))
+    if state == "canonical":
+        canonical_path = entry["canonical"]
+        legacy_obj = _resolve(legacy_path)
+        canonical_obj = _resolve(canonical_path)
+        assert legacy_obj is not None, (
+            f"Symbole legacy ``{legacy_path}`` introuvable.  "
+            "Si le symbole a été supprimé, retire son entrée de "
+            "LEGACY_PARITY."
+        )
+        assert canonical_obj is not None, (
+            f"Symbole canonique ``{canonical_path}`` introuvable.  "
+            "Vérifie le chemin canonique ou que le module existe."
+        )
+        assert _signatures_compatible(legacy_obj, canonical_obj), (
+            f"Signatures incompatibles entre ``{legacy_path}`` et "
+            f"``{canonical_path}``.  Mets à jour ``behavior_diff`` "
+            "pour documenter le changement, ou aligne les signatures."
+        )
+    elif state == "dropped":
+        reason = entry["dropped"]
+        assert isinstance(reason, str) and reason.strip(), (
+            f"{legacy_path} marqué dropped sans justification.  "
+            "Ajoute la raison du drop pour traçabilité."
+        )
+    elif state == "unmigrated":
+        target = entry["unmigrated"]
+        assert isinstance(target, str) and target.strip(), (
+            f"{legacy_path} marqué unmigrated sans cible.  "
+            "Ajoute le chemin canonique prévu."
+        )
+
+
+def test_no_untracked_legacy_symbol_above_baseline() -> None:
+    """Tout symbole public legacy doit être tracé dans :data:`LEGACY_PARITY`.
+
+    Mode bootstrap : :data:`BOOTSTRAP_BASELINE` autorise N
+    symboles non trackés.  À diminuer à chaque sprint de
+    migration ; cible 0 quand la migration est complète.
+    """
+    public_symbols = _scan_legacy_public_symbols()
+    untracked = public_symbols - LEGACY_PARITY.keys()
+    if len(untracked) > BOOTSTRAP_BASELINE:
+        sample = "\n".join(f"  {s}" for s in sorted(untracked)[:30])
+        more = (
+            f"\n  ... ({len(untracked) - 30} de plus)"
+            if len(untracked) > 30
+            else ""
+        )
+        raise AssertionError(
+            f"\n{len(untracked)} symbole(s) legacy non tracé(s) "
+            f"dans LEGACY_PARITY (baseline {BOOTSTRAP_BASELINE}).\n\n"
+            f"{sample}{more}\n\n"
+            "Ajoute chaque symbole à LEGACY_PARITY avec son état :\n"
+            "  - ``canonical: <module.symbol>`` si déjà migré\n"
+            "  - ``dropped: <raison>`` si abandonné\n"
+            "  - ``unmigrated: <cible prévue>`` si encore à venir\n\n"
+            "Ou abaisse BOOTSTRAP_BASELINE si on est sous le seuil "
+            "(faute de quoi le test ne progresse plus)."
+        )
+
+
+def test_baseline_should_tighten_when_progress() -> None:
+    """Si on est sous le baseline, abaisser BOOTSTRAP_BASELINE.
+
+    Ce test est l'inverse du précédent : il rappelle que le
+    baseline doit suivre la progression.  Pareil pattern que
+    ``test_doc_paths::test_baseline_must_be_tightened_when_progress_made``.
+    """
+    public_symbols = _scan_legacy_public_symbols()
+    untracked = public_symbols - LEGACY_PARITY.keys()
+    assert len(untracked) >= BOOTSTRAP_BASELINE, (
+        f"\nExcellent : {len(untracked)} symboles non tracés vs "
+        f"baseline {BOOTSTRAP_BASELINE}.\n"
+        "Mets à jour BOOTSTRAP_BASELINE dans "
+        "tests/architecture/test_legacy_canonical_parity.py."
+    )
+
+
+def test_canonical_paths_dont_themselves_use_legacy() -> None:
+    """Les cibles canoniques ne doivent pas pointer vers du legacy.
+
+    Cas pathologique : on déclare ``canonical:
+    picarones.evaluation.X`` mais ``picarones.evaluation.X``
+    importe en interne depuis ``picarones.core.Y``.  Ce serait un
+    bug d'aiguillage.
+
+    Ce test ne couvre pas le cas (couverture par
+    ``test_no_legacy_imports_in_rewrite``) ; ici on se contente
+    de vérifier que les cibles canoniques sont dans des paquets
+    rewrite reconnus.
+    """
+    REWRITE_PREFIXES = (
+        "picarones.domain.",
+        "picarones.formats.",
+        "picarones.evaluation.",
+        "picarones.pipeline.",
+        "picarones.adapters.",
+        "picarones.app.",
+        "picarones.reports_v2.",
+        "picarones.interfaces.",
+    )
+    misrouted: list[tuple[str, str]] = []
+    for legacy, entry in LEGACY_PARITY.items():
+        canonical = entry.get("canonical")
+        if not canonical:
+            continue
+        if not canonical.startswith(REWRITE_PREFIXES):
+            misrouted.append((legacy, canonical))
+    assert not misrouted, (
+        "Cibles canoniques en dehors des paquets rewrite :\n"
+        + "\n".join(f"  {legacy} → {canonical}" for legacy, canonical in misrouted)
+    )

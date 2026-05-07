@@ -7,6 +7,29 @@
 
 ---
 
+## 0. Principe directeur (mis à jour 2026-05)
+
+**Suppression agressive, pas de shim qui survit à son usage.**
+
+- Le projet est en stand-by jusqu'à la fin de la migration
+  complète.  Personne (ni externe ni HuggingFace Space) ne
+  consommera l'API legacy avant cette fin.
+- Pas de préservation de l'API publique : breaking changes
+  acceptés.
+- Dès qu'un caller migre vers le canonique, son shim est
+  **supprimé** (pas conservé pour un usage hypothétique).
+- Tout symbole legacy public doit être tracé dans
+  ``tests/architecture/test_legacy_canonical_parity.py`` :
+  `canonical: ...` (équivalent canonique existe), `dropped: ...`
+  (volontairement abandonné, justifié), ou `unmigrated: ...`
+  (cible prévue, en cours).
+
+Le test ``test_legacy_canonical_parity`` garantit qu'**aucune
+fonctionnalité legacy n'est silencieusement perdue** au cours
+de la migration.  C'est le journal de bord vivant.
+
+---
+
 ## 1. Sources de vérité (par ordre de priorité)
 
 1. **[`legacy-retirement-plan.md`](legacy-retirement-plan.md)** —
@@ -17,9 +40,13 @@
    sous-plan détaillé de la convergence ``BaseModule`` /
    ``PipelineRunner`` → ``StepExecutor`` / ``PipelineExecutor``
    (Sub-phases 7.A-7.D).
-3. **[`../../CLAUDE.md`](../../CLAUDE.md)** — règles d'architecture
+3. **[`../../tests/architecture/test_legacy_canonical_parity.py`](../../tests/architecture/test_legacy_canonical_parity.py)** —
+   journal vivant de la migration : table 3-états des symboles
+   legacy avec leur équivalent canonique.  À mettre à jour à
+   chaque migration.
+4. **[`../../CLAUDE.md`](../../CLAUDE.md)** — règles d'architecture
    à respecter, statut de la migration, et liens vers le reste.
-4. **`git log --oneline -10`** — les 10 derniers commits
+5. **`git log --oneline -10`** — les 10 derniers commits
    donnent l'état réel.  Le dernier commit message décrit
    souvent la prochaine sub-phase à exécuter.
 
@@ -38,7 +65,7 @@ git status
 
 # 3. Tests verts à l'état initial ?
 python -m pytest tests/ -q --no-header --tb=line
-# → doit retourner: 5070 passed (au moment de la pause de session)
+# → doit retourner: 5085 passed (au moment de la pause de session)
 
 # 4. Lint vert ?
 ruff check picarones/ tests/
@@ -67,15 +94,20 @@ Résumé :
   (``evaluation/metrics/``), pas les shims legacy
   (``measurements/X.py``).
 
-### 3.B Pattern shim
+### 3.B Pattern shim — UNIQUEMENT TRANSITOIRE
 
-Pour un shim minimal :
+⚠️ **Principe** : un shim n'existe que pour la durée d'un
+sprint.  Dès que tous ses consommateurs ont migré, il est
+**supprimé**.
+
+Pour un shim minimal (transitoire) :
 
 ```python
-"""``picarones.X.Y`` — shim re-export (déprécié, suppression 2.0).
+"""``picarones.X.Y`` — shim re-export (déprécié, suppression imminente).
 
 Canonique : :mod:`picarones.canonical.path`.  Phase X.Y du
-retrait du legacy.
+retrait du legacy.  Ce shim disparaît dès que tous les callers
+auront migré (généralement dans le commit suivant).
 """
 
 from __future__ import annotations
@@ -94,6 +126,10 @@ warnings.warn(
     stacklevel=2,
 )
 ```
+
+**Avant de créer un shim**, demandez-vous : « est-ce que je peux
+juste migrer tous les callers maintenant et supprimer le legacy
+en bloc ? »  Si oui, faites-le — pas de shim intermédiaire.
 
 ### 3.C ``test_module_coverage::TEST_ONLY_BASELINE``
 
@@ -124,7 +160,28 @@ référence cassée.  Soit :
 Quand le fichier sera créé en réalité, abaisser
 ``BROKEN_PATHS_BASELINE``.
 
-### 3.F README généré
+### 3.F Test parité legacy ↔ canonique
+
+``tests/architecture/test_legacy_canonical_parity.py`` maintient
+une table 3-états (``LEGACY_PARITY``) :
+
+- ``canonical: <module.symbol>`` — équivalent canonique existe.
+  Le test vérifie présence + signatures compatibles.
+- ``dropped: <raison>`` — feature volontairement abandonnée
+  avec justification écrite.
+- ``unmigrated: <cible prévue>`` — migration prévue ; cible
+  peut ne pas encore exister.
+
+À chaque migration d'un symbole, **mettre à jour la table**.
+Les symboles non trackés sont comptés via
+``BOOTSTRAP_BASELINE`` (à diminuer à chaque session).
+
+Limites du test : il ne vérifie que la **présence** et les
+**signatures**, pas le comportement réel.  Les différences
+sémantiques sont signalées via le champ ``behavior_diff``
+optionnel.
+
+### 3.G README généré
 
 Le compteur de tests dans `README.md` et `CLAUDE.md` est
 synchronisé par `scripts/gen_readme_tables.py`.  À chaque
