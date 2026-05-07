@@ -41,7 +41,7 @@ Cas typique d'usage
 Un VLM produit un ALTO via un reconstructeur (par exemple
 :class:`picarones.modules.TextToAltoMonoRegion`).  La GT
 :class:`picarones.core.corpus.AltoGT` du document est confrontée à la
-sortie via :func:`picarones.core.metric_registry.compute_at_junction`,
+sortie via :func:`picarones.evaluation.metric_registry.compute_at_junction`,
 qui sélectionne automatiquement les métriques ``(ALTO, ALTO)``
 ci-dessous.
 """

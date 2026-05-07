@@ -51,12 +51,24 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   ``CHANGELOG.md`` (journal versionné) et
 #:   ``docs/roadmap/evolution-2026.md`` (plan stratégique historique
 #:   décrivant la création initiale du module).
+#: - 80 (sprint « Lot B — core.metric_* → evaluation », 2026-05-07) :
+#:   suppression des shims ``picarones/core/metric_registry.py``,
+#:   ``picarones/core/metric_hooks.py`` et
+#:   ``picarones/core/metrics.py``.  Trois nouvelles références
+#:   héritées : deux dans ``CHANGELOG.md`` (intouchable) + une
+#:   dans ``docs/migration/executor-equivalence.md`` (audit
+#:   historique de la migration legacy → executor).  Le doc actif
+#:   ``docs/reference/normalization-profiles.md`` a été corrigé
+#:   en place vers ``picarones/evaluation/metric_hooks.py``.
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
 #: - ``docs/audits/*.md`` : audits historiques, intouchables.
 #: - ``docs/roadmap/evolution-2026.md`` : plan stratégique historique.
-BROKEN_PATHS_BASELINE = 77
+#: - ``docs/migration/executor-equivalence.md`` : audit historique
+#:   d'équivalence executor (cite des chemins legacy à des fins
+#:   de comparaison).
+BROKEN_PATHS_BASELINE = 80
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

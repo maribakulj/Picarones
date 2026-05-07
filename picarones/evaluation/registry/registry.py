@@ -6,9 +6,10 @@ de l'application (cf. ``picarones/app/services/registry_service.py``
 au S20) — pas de singleton global, pas de side-effect d'import,
 pas de décorateur magique.
 
-Différence avec l'existant ``picarones.core.metric_registry``
--------------------------------------------------------------
-L'ancien module utilise un dict module-level
+Différence avec ``picarones.evaluation.metric_registry``
+--------------------------------------------------------
+L'autre registre (relocalisé depuis ``picarones.core.metric_registry``
+en Phase 4-ter) utilise un dict module-level
 ``_METRIC_REGISTRY`` rempli par un décorateur ``@register_metric``
 appliqué au top-level d'autres modules.  Conséquence : un
 ``import picarones`` charge ~50 sous-modules pour amorcer le

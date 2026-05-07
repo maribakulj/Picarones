@@ -203,10 +203,10 @@ fiable.)
 
 ### 4.A Imports legacy dans les tests
 
-**102 fichiers** avec **569 statements** d'import depuis les
+**101 fichiers** avec **526 statements** d'import depuis les
 paquets legacy (``core``, ``measurements``, ``engines``,
-``llm``, ``pipelines``, ``report``, ``modules``) — Lot A
-terminé (cf. 4.D ci-dessous).
+``llm``, ``pipelines``, ``report``, ``modules``) — Lots A et B
+terminés (cf. 4.D ci-dessous).
 
 Top chemins consommés :
 
@@ -222,11 +222,12 @@ Top chemins consommés :
 au lieu de pointer vers le canonique.  Tant que ces imports
 existent, on **ne peut pas supprimer les shims** (le test casse).
 
-**Stratégie** : sed batch par chemin (ex : tous les
-``picarones.core.metric_registry`` → ``picarones.evaluation.metric_registry``),
-valider les tests, commit, avancer.  Suppression des shims
-``core.modules.py`` et ``core.facts.py`` faite dans le Lot A
-(commit ``claude/migrate-core-to-domain-8ubIT``).
+**Stratégie** : sed batch par chemin, valider les tests,
+commit, avancer.  Shims supprimés dans les Lots A
+(``core.modules`` + ``core.facts``) et B
+(``core.metric_registry`` + ``core.metric_hooks`` +
+``core.metrics``) sur la branche
+``claude/migrate-core-to-domain-8ubIT``.
 
 ### 4.B Imports legacy en production (hors shims eux-mêmes)
 
@@ -260,10 +261,16 @@ L'ordre recommandé, par lots de symboles cohérents :
      supprimés ; doc utilisateur (tutorials/, developer/,
      reference/api-stable.md, explanation/narrative-engine.en.md)
      pointe maintenant vers les canoniques.
-2. **Lot B — evaluation/metric_*** (~50 imports) :
+2. ✅ **Lot B — evaluation/metric_*** (~45 imports migrés, shims
+   supprimés) :
    - ``core.metric_registry.*`` → ``evaluation.metric_registry.*``
    - ``core.metric_hooks.*`` → ``evaluation.metric_hooks.*``
    - ``core.metrics.*`` → ``evaluation.metric_result.*``
+   - Shims ``picarones.core.metric_registry`` +
+     ``picarones.core.metric_hooks`` + ``picarones.core.metrics``
+     supprimés ; ``docs/reference/normalization-profiles.md`` et
+     ``docs/reference/api-stable.md`` migrés vers les chemins
+     canoniques.
 3. **Lot C — evaluation/{benchmark_result, corpus, pipeline}** :
    - ``core.results.*`` → ``evaluation.benchmark_result.*``
    - ``core.corpus.*`` → ``evaluation.corpus.*``

@@ -121,47 +121,21 @@ LEGACY_PARITY: dict[str, ParityEntry] = {
     # retirées en même temps que les shims pour garder la table
     # alignée avec l'arbre legacy réellement présent sur disque.
     # ──────────────────────────────────────────────────────────
-    # Phase 4-ter — metric_registry, metric_hooks, metrics, results
+    # Phase 4-ter — metric_registry, metric_hooks, metrics
     # ──────────────────────────────────────────────────────────
-    "picarones.core.metric_registry.MetricSpec": {
-        "canonical": "picarones.evaluation.metric_registry.MetricSpec",
-    },
-    "picarones.core.metric_registry.register_metric": {
-        "canonical": "picarones.evaluation.metric_registry.register_metric",
-    },
-    "picarones.core.metric_registry.compute_at_junction": {
-        "canonical": "picarones.evaluation.metric_registry.compute_at_junction",
-    },
-    "picarones.core.metric_registry.select_metrics": {
-        "canonical": "picarones.evaluation.metric_registry.select_metrics",
-    },
-    "picarones.core.metric_registry.get_metric": {
-        "canonical": "picarones.evaluation.metric_registry.get_metric",
-    },
-    "picarones.core.metric_registry.all_metrics": {
-        "canonical": "picarones.evaluation.metric_registry.all_metrics",
-    },
-    "picarones.core.metric_hooks.register_document_metric": {
-        "canonical": "picarones.evaluation.metric_hooks.register_document_metric",
-    },
-    "picarones.core.metric_hooks.register_corpus_aggregator": {
-        "canonical": "picarones.evaluation.metric_hooks.register_corpus_aggregator",
-    },
-    "picarones.core.metric_hooks.PROFILE_STANDARD": {
-        "canonical": "picarones.evaluation.metric_hooks.PROFILE_STANDARD",
-    },
-    "picarones.core.metric_hooks.PROFILE_FULL": {
-        "canonical": "picarones.evaluation.metric_hooks.PROFILE_FULL",
-    },
-    "picarones.core.metric_hooks.PROFILE_MINIMAL": {
-        "canonical": "picarones.evaluation.metric_hooks.PROFILE_MINIMAL",
-    },
-    "picarones.core.metrics.MetricsResult": {
-        "canonical": "picarones.evaluation.metric_result.MetricsResult",
-    },
-    "picarones.core.metrics.aggregate_metrics": {
-        "canonical": "picarones.evaluation.metric_result.aggregate_metrics",
-    },
+    # ``core.metric_registry``, ``core.metric_hooks`` et
+    # ``core.metrics`` ont été supprimés (Lot B de la migration
+    # core → evaluation).  Les symboles publics
+    # (MetricSpec, register_metric, compute_at_junction, …,
+    # PROFILE_*, KNOWN_PROFILES, MetricsResult, aggregate_metrics)
+    # sont exposés depuis
+    # ``picarones.evaluation.{metric_registry, metric_hooks,
+    # metric_result}``.  Comme pour le Lot A, les entrées sont
+    # retirées en même temps que les shims pour garder la table
+    # alignée avec l'arbre legacy réellement présent sur disque.
+    # ──────────────────────────────────────────────────────────
+    # Phase 4-ter (résiduel) — results
+    # ──────────────────────────────────────────────────────────
     "picarones.core.results.BenchmarkResult": {
         "canonical": "picarones.evaluation.benchmark_result.BenchmarkResult",
     },

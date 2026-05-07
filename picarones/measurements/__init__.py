@@ -125,7 +125,7 @@ la règle de dépendance des 3 cercles.
 # qui violait la règle.
 #
 # Tout consommateur qui veut utiliser ``compute_at_junction``
-# (``picarones.core.metric_registry``) doit avoir importé
+# (``picarones.evaluation.metric_registry``) doit avoir importé
 # ``picarones.measurements`` au moins une fois pour que les décorateurs
 # ``@register_metric`` aient été exécutés. C'est le cas par défaut dans
 # le pipeline standard ; les notebooks isolés peuvent ajouter

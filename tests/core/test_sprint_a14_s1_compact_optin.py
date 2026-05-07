@@ -19,7 +19,7 @@ suppression des analyses via ``drop_analyses=True``.
 
 from __future__ import annotations
 
-from picarones.core.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 from picarones.core.results import DocumentResult
 
 

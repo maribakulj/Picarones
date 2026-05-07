@@ -13,15 +13,15 @@ Modules
 -------
 - :mod:`corpus`           Document, Corpus, GTLevel + payloads typés
 - :mod:`results`          DocumentResult, EngineReport, BenchmarkResult
-- :mod:`metrics`          MetricsResult (dataclass), aggregate_metrics
-- :mod:`metric_registry`  MetricSpec, register_metric, compute_at_junction
-- :mod:`metric_hooks`     register_document_metric, register_corpus_aggregator
 - :mod:`pipeline`         PipelineRunner, PipelineSpec, PipelineStep
 
-Modules retirés (Lot A — Phase 4-bis/4-quinquies du retrait du legacy) :
+Modules retirés (Phase 4-bis et suivantes du retrait du legacy) :
 
-- ``modules`` → ``picarones.domain.{artifacts, module_protocol}``.
-- ``facts``   → ``picarones.domain.facts``.
+- ``modules``         → ``picarones.domain.{artifacts, module_protocol}`` (Lot A).
+- ``facts``           → ``picarones.domain.facts`` (Lot A).
+- ``metrics``         → ``picarones.evaluation.metric_result`` (Lot B).
+- ``metric_registry`` → ``picarones.evaluation.metric_registry`` (Lot B).
+- ``metric_hooks``    → ``picarones.evaluation.metric_hooks`` (Lot B).
 
 Voir :doc:`docs/explanation/architecture.md` pour le manifeste complet et
 :doc:`docs/reference/api-stable.md` pour le contrat de stabilité de chaque

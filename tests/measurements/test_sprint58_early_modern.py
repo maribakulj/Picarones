@@ -38,7 +38,7 @@ from picarones.measurements.early_modern_typography import (
     early_modern_preservation,
     get_category,
 )
-from picarones.core.metric_registry import compute_at_junction, select_metrics
+from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
 
 

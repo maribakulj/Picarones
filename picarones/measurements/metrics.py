@@ -15,8 +15,8 @@ Métriques implémentées
 Modèle de données
 -----------------
 ``MetricsResult`` (dataclass pure) et ``aggregate_metrics`` (stats
-moyenne/médiane via ``statistics`` stdlib) vivent en cercle 1 dans
-:mod:`picarones.core.metrics`. Ils sont ré-exportés ici pour la
+moyenne/médiane via ``statistics`` stdlib) vivent en couche 3 dans
+:mod:`picarones.evaluation.metric_result`. Ils sont ré-exportés ici pour la
 commodité — un module qui consomme déjà ``compute_metrics`` n'a
 qu'à en faire ``from picarones.measurements.metrics import …``.
 """

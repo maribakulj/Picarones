@@ -4,7 +4,7 @@ Picarones expose **7 profils de calcul** qui modulent les métriques
 calculées par le runner selon le use case. Chaque profil active un
 sous-ensemble des **12 hooks document-level** et **12 agrégateurs
 corpus-level** du registre central
-([`picarones/core/metric_hooks.py`](../picarones/core/metric_hooks.py)).
+([`picarones/evaluation/metric_hooks.py`](../picarones/evaluation/metric_hooks.py)).
 
 ## Synoptique
 
@@ -131,7 +131,7 @@ Voir [`docs/explanation/narrative-engine.md`](developer/narrative-engine.md)
 pour le détail. Pattern de base :
 
 ```python
-from picarones.core.metric_hooks import (
+from picarones.evaluation.metric_hooks import (
     register_document_metric, PROFILE_DIAGNOSTICS, PROFILE_FULL,
 )
 
@@ -148,7 +148,7 @@ def my_hook(*, ground_truth, hypothesis, image_path, corpus_lang, ocr_result):
 
 ## Code source
 
-- [`picarones/core/metric_hooks.py`](../picarones/core/metric_hooks.py)
+- [`picarones/evaluation/metric_hooks.py`](../picarones/evaluation/metric_hooks.py)
   — registre, profils, `run_document_hooks()`, `run_corpus_aggregators()`.
 - [`picarones/measurements/builtin_hooks.py`](../picarones/measurements/builtin_hooks.py)
   — les 12 hooks doc + 12 agrégateurs natifs Picarones.

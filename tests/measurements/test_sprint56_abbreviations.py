@@ -34,7 +34,7 @@ from picarones.measurements.abbreviations import (
     compute_abbreviation_metrics,
     detect_abbreviations,
 )
-from picarones.core.metric_registry import compute_at_junction, select_metrics
+from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
 
 

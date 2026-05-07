@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.metric_registry import select_metrics
+from picarones.evaluation.metric_registry import select_metrics
 from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.readability import (
     count_sentences,
@@ -236,7 +236,7 @@ class TestRegistryIntegration:
         assert "flesch_delta_en" in names
 
     def test_registered_function_returns_same_as_direct_call(self) -> None:
-        from picarones.core.metric_registry import compute_at_junction
+        from picarones.evaluation.metric_registry import compute_at_junction
 
         gt = "Je vous envoie cette missive afin de vous informer."
         ocr = "Je vous écris une lettre. Voici la situation."

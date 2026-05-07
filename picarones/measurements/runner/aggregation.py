@@ -4,7 +4,7 @@ Chantier 2 (post-Sprint 97) : la logique d'agrégation par-engine de
 toutes les métriques (confusion, taxonomy, structure, image_quality,
 line_metrics, hallucination, calibration, char_scores) vit désormais
 dans :mod:`picarones.measurements.builtin_hooks` (single source of truth,
-exposé via le registre :mod:`picarones.core.metric_hooks`).
+exposé via le registre :mod:`picarones.evaluation.metric_hooks`).
 
 Les noms ci-dessous restent disponibles depuis
 ``picarones.measurements.runner`` pour la rétrocompat des tests

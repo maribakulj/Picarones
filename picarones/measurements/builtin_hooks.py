@@ -17,7 +17,7 @@ CER/WER comptent). Les profils ``economics`` et ``pipeline`` sont
 réservés pour des hooks futurs.
 
 L'import de ce module **suffit** à peupler les registres :
-:mod:`picarones.core.metric_hooks` se contente d'exposer les
+:mod:`picarones.evaluation.metric_hooks` se contente d'exposer les
 décorateurs ; le runner ne dépend que d'une seule fonction —
 ``select_document_hooks(profile)`` — pour découvrir les hooks actifs.
 

@@ -292,25 +292,25 @@ class TestPipelineSpecLoaderApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 7. picarones.core.metric_registry — registre typé
+# 7. picarones.evaluation.metric_registry — registre typé (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestMetricRegistryApi:
     def test_metric_spec_class(self):
-        _assert_class("picarones.core.metric_registry", "MetricSpec")
+        _assert_class("picarones.evaluation.metric_registry", "MetricSpec")
 
     @pytest.mark.parametrize("name", [
         "register_metric", "get_metric", "all_metrics",
         "select_metrics", "compute_at_junction",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.metric_registry", name)
+        _assert_function("picarones.evaluation.metric_registry", name)
 
     def test_register_metric_keyword_only(self):
         """``register_metric`` est exclusivement keyword-only sur ``name``,
         ``input_types`` etc. — décorateur factory."""
-        from picarones.core.metric_registry import register_metric
+        from picarones.evaluation.metric_registry import register_metric
         sig = inspect.signature(register_metric)
         for name in ["name", "input_types", "description"]:
             assert name in sig.parameters, (
@@ -319,7 +319,7 @@ class TestMetricRegistryApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 8. picarones.core.metric_hooks — profils + registre de hooks
+# 8. picarones.evaluation.metric_hooks — profils + registre de hooks (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -330,14 +330,14 @@ class TestMetricHooksApi:
         "PROFILE_FULL",
     ])
     def test_profile_constant_exists(self, profile_name):
-        from picarones.core import metric_hooks
+        from picarones.evaluation import metric_hooks
         assert hasattr(metric_hooks, profile_name), (
             f"Profil {profile_name} disparu"
         )
         assert isinstance(getattr(metric_hooks, profile_name), str)
 
     def test_known_profiles_set(self):
-        from picarones.core.metric_hooks import KNOWN_PROFILES
+        from picarones.evaluation.metric_hooks import KNOWN_PROFILES
 
         assert isinstance(KNOWN_PROFILES, frozenset)
         # Les 7 profils contractuels
@@ -347,7 +347,7 @@ class TestMetricHooksApi:
         "DocumentMetricHook", "CorpusMetricAggregator",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.metric_hooks", name)
+        _assert_class("picarones.evaluation.metric_hooks", name)
 
     @pytest.mark.parametrize("name", [
         "validate_profile",
@@ -356,7 +356,7 @@ class TestMetricHooksApi:
         "run_document_hooks", "run_corpus_aggregators",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.metric_hooks", name)
+        _assert_function("picarones.evaluation.metric_hooks", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -502,8 +502,8 @@ class TestApiStableDoc:
             "picarones.measurements.pipeline_benchmark",
             "picarones.measurements.pipeline_comparison",
             "picarones.measurements.pipeline_spec_loader",
-            "picarones.core.metric_registry",
-            "picarones.core.metric_hooks",
+            "picarones.evaluation.metric_registry",
+            "picarones.evaluation.metric_hooks",
             "picarones.measurements.builtin_metrics",
             "picarones.measurements.alto_metrics",
             "picarones.web.jobs",

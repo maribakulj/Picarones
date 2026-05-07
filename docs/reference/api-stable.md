@@ -158,7 +158,7 @@ def load_comparison_specs_from_yaml(path) -> tuple[list[PipelineSpec], dict]
 def load_comparison_specs_from_dict(data: dict) -> tuple[list[PipelineSpec], dict]
 ```
 
-### `picarones.core.metric_registry`
+### `picarones.evaluation.metric_registry`
 
 ```python
 class MetricSpec:    # frozen dataclass : name, func, input_types, ...
@@ -170,7 +170,7 @@ def select_metrics(input_types) -> list[MetricSpec]
 def compute_at_junction(reference, hypothesis, input_types, *, skip_on_error=True) -> dict
 ```
 
-### `picarones.core.metric_hooks`
+### `picarones.evaluation.metric_hooks`
 
 ```python
 # Profils — constantes
