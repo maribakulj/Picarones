@@ -69,13 +69,6 @@ from picarones.domain.facts import (
     FactImportance,
     FactType,
 )
-from picarones.pipeline.legacy_runner import (
-    PipelineResult,
-    PipelineRunner,
-    PipelineSpec,
-    PipelineStep,
-    StepResult,
-)
 from picarones.evaluation.metric_registry import (
     MetricSpec,
     compute_at_junction,
@@ -118,12 +111,6 @@ __all__ = [
     "Fact",
     "FactImportance",
     "FactType",
-    # Pipelines composées (axe B)
-    "PipelineResult",
-    "PipelineRunner",
-    "PipelineSpec",
-    "PipelineStep",
-    "StepResult",
     # Registre de métriques typées
     "MetricSpec",
     "compute_at_junction",
