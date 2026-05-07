@@ -118,7 +118,7 @@ class ArtifactType(str, Enum):
     PAGE = "page_xml"
 
     @classmethod
-    def _missing_(cls, value):
+    def _missing_(cls, value: object) -> "ArtifactType | None":
         """Accepte les valeurs string legacy (``"text"``, ``"alto"``,
         ``"page"``) en plus des valeurs canoniques.
 
@@ -126,11 +126,13 @@ class ArtifactType(str, Enum):
         legacy par exemple) — sans lui, ``ValueError``.  À supprimer
         en 2.0 avec les aliases legacy ci-dessus.
         """
-        legacy_map = {
+        legacy_map: dict[str, "ArtifactType"] = {
             "text": cls.RAW_TEXT,
             "alto": cls.ALTO_XML,
             "page": cls.PAGE_XML,
         }
+        if not isinstance(value, str):
+            return None
         return legacy_map.get(value)
 
 

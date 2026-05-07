@@ -56,7 +56,7 @@ Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
 # Développement et tests.
 # pytest-timeout (Sprint A1) garantit qu'aucun test individuel ne hang la CI
 # au-delà de la limite définie dans [tool.pytest.ini_options].
-# mypy (Sprint A1, M-4) : type-check strict sur picarones/core/ + lax ailleurs.
+# mypy (Sprint A1, M-4) : type-check strict sur picarones/domain/ + lax ailleurs.
 # bandit (Sprint A1, B-7) : scanner sécurité statique du code Python.
 # pip-audit (Sprint A1, B-7) : détection des CVE des dépendances installées.
 dev = [
@@ -77,7 +77,7 @@ web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0", "python
 # Sinon fallback pur Python (approximations normale / Wilson-Hilferty).
 stats = ["scipy>=1.11.0"]
 # Extracteurs d'entités nommées (Sprint 40 — A.II.1.a du plan d'évolution).
-# Sans cet extra, picarones.core.ner_backends.SpacyEntityExtractor tombe
+# Sans cet extra, picarones.evaluation.metrics.ner_backends.SpacyEntityExtractor tombe
 # en mode dégradé silencieux et le runner saute le calcul NER.
 ner = ["spacy>=3.7.0"]
 # Import HuggingFace Datasets
@@ -224,11 +224,15 @@ exclude_lines = [
 # ──────────────────────────────────────────────────────────────────
 # Sprint A1 (M-4) — type-checking gradient.
 #
-# Stratégie : ``picarones.core`` est en mode ``strict`` car c'est la
-# couche la plus stable et l'API publique. Les autres cercles passent
-# en mode permissif (``ignore_missing_imports`` + pas de strict) — au
-# fur et à mesure des sprints suivants, on monte le niveau (Sprint A11
-# resserre `picarones.measurements`).
+# Stratégie : ``picarones.domain`` est en mode ``strict`` car c'est la
+# couche 1 du rewrite (types purs, Pydantic + stdlib only) — l'API
+# publique stable et la base de l'architecture concentrique. Les autres
+# couches passent en mode permissif (``ignore_missing_imports`` + pas
+# de strict) — au fur et à mesure des sprints suivants, on monte le
+# niveau (Sprint A11 resserre `picarones.measurements`).
+# Note : avant les Lots A-G de la migration legacy → rewrite, ce strict
+# ciblait ``picarones.core`` ; ce paquet a été entièrement supprimé,
+# son contenu est désormais dans ``domain/``, ``evaluation/`` et ``formats/``.
 # ──────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.11"
@@ -243,7 +247,7 @@ no_implicit_optional = true
 follow_imports = "silent"
 
 [[tool.mypy.overrides]]
-module = "picarones.core.*"
+module = "picarones.domain.*"
 strict = true
 # A1 baseline : ces deux checks pré-existants génèrent ~70 % des erreurs
 # (annotations ``dict``/``tuple`` sans paramètres génériques, retours typés

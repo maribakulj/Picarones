@@ -5,7 +5,7 @@
 #   - Linux, macOS, Windows
 #   - Couverture exigée >= 85 % (--cov-fail-under, plancher 2 pts sous baseline 87 %)
 #   - Timeout pytest 5 min par test individuel (pytest-timeout, mode thread)
-#   - Type-check mypy (strict sur picarones/core/, lax ailleurs — durci en A11)
+#   - Type-check mypy (strict sur picarones/domain/, lax ailleurs — durci en A11)
 #   - Scanners sécurité : bandit (statique) + pip-audit (CVE deps) + trivy (image)
 #   - Build de la distribution Python
 #   - Vérification de l'exécutable demo
@@ -278,7 +278,7 @@ jobs:
   # Job 5 : Type-checking — Sprint A1 (item M-4)
   #
   # mypy est configuré dans pyproject.toml [tool.mypy] :
-  # - strict sur picarones.core.* (10 modules)
+  # - strict sur picarones.domain.* (couche 1 du rewrite, ex-picarones.core)
   # - lax ailleurs (follow_imports=silent)
   # Deux checks pré-existants désactivés (disallow_any_generics et
   # warn_return_any), à ré-activer en Sprint A11 après fix des
@@ -303,8 +303,8 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[dev,web,stats]"
 
-      - name: Run mypy on picarones/core (strict)
-        run: python -m mypy picarones/core/
+      - name: Run mypy on picarones/domain (strict)
+        run: python -m mypy picarones/domain/
 
   # ──────────────────────────────────────────────────────────────────
   # Job 6 : Sécurité — Sprint A1 (item B-7)

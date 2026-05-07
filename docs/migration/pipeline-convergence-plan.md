@@ -408,4 +408,3 @@ fix everything that breaks) est plus risqué mais plus rapide
 si on accepte une période de tests rouges.
 
 Recommandation : **bottom-up**, par étapes verticales testables.
-
