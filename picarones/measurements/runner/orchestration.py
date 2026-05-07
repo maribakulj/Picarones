@@ -321,21 +321,8 @@ def run_benchmark(
                     processed_count += 1
 
         finally:
+            executor.shutdown(wait=False, cancel_futures=True)
             pbar.close()
-            # Sur Python 3.12+, ``ProcessPoolExecutor.shutdown(wait=False)``
-            # laisse les workers vivants ; l'atexit ``_python_exit`` de
-            # ``concurrent.futures.process`` essaie ensuite de les
-            # joindre indéfiniment, ce qui hang la CI Ubuntu (exit
-            # code 124 après timeout GNU 9 min).  Le ``ThreadPoolExecutor``
-            # n'a pas ce problème (les threads daemon meurent avec le
-            # processus).  ``cancel_futures=True`` annule les futures en
-            # attente dans les deux cas ; le ``wait=True`` côté process
-            # garantit que les workers en cours finissent leur batch et
-            # libèrent leurs sous-processus avant le retour.
-            executor.shutdown(
-                wait=is_cpu_bound,
-                cancel_futures=True,
-            )
 
         if _is_cancelled():
             logger.info(
