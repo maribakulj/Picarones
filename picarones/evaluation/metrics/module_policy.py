@@ -255,7 +255,7 @@ def audit_module(
         passed=inherits_base,
         detail=(
             None if inherits_base
-            else "la classe n'hérite pas de picarones.core.modules.BaseModule"
+            else "la classe n'hérite pas de picarones.domain.module_protocol.BaseModule"
         ),
     ))
 
@@ -285,10 +285,23 @@ def audit_module(
         pass
     # Comparaison case-insensitive : on accepte "TEXT" ou "text"
     # côté manifest, le contrat sémantique est le même.
-    declared_in_lower = sorted(t.lower() for t in declared_in)
-    declared_out_lower = sorted(t.lower() for t in declared_out)
-    manifest_in_lower = sorted(t.lower() for t in manifest.input_types)
-    manifest_out_lower = sorted(t.lower() for t in manifest.output_types)
+    #
+    # Phase 4-bis : on normalise aussi les aliases legacy
+    # (``"text"`` ↔ ``"raw_text"``, etc.) pour qu'un module qui
+    # déclare ``ArtifactType.TEXT`` (valeur canonique
+    # ``"raw_text"``) soit accepté contre un manifest qui
+    # déclare le nom legacy ``"text"`` ou inversement.
+    from picarones.domain.artifacts import LEGACY_VALUE_ALIASES
+    _LEGACY_TO_CANONICAL = {v: k for k, v in LEGACY_VALUE_ALIASES.items()}
+
+    def _canonicalize(t: str) -> str:
+        low = t.lower()
+        return _LEGACY_TO_CANONICAL.get(low, low)
+
+    declared_in_lower = sorted(_canonicalize(t) for t in declared_in)
+    declared_out_lower = sorted(_canonicalize(t) for t in declared_out)
+    manifest_in_lower = sorted(_canonicalize(t) for t in manifest.input_types)
+    manifest_out_lower = sorted(_canonicalize(t) for t in manifest.output_types)
     in_match = declared_in_lower == manifest_in_lower
     checks.append(AuditCheck(
         name="module.input_types_match_manifest",

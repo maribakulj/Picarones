@@ -20,7 +20,7 @@ import re
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.generator import ReportGenerator
+from picarones.reports_v2.html.generator import ReportGenerator
 
 
 @pytest.fixture(scope="module")
@@ -85,7 +85,7 @@ def test_default_palette_is_okabe_ito(demo_html: str) -> None:
 
 def test_classic_palette_still_available_via_module() -> None:
     """``CLASSIC_*`` reste exportable pour rétrocompat."""
-    from picarones.report.colors import (
+    from picarones.reports_v2._helpers.colors import (
         CLASSIC_GREEN,
         CLASSIC_ORANGE,
         CLASSIC_RED,
@@ -191,10 +191,10 @@ def test_i18n_fr_en_have_same_keys() -> None:
 
     repo_root = Path(__file__).resolve().parents[2]
     fr_keys = set(
-        json.loads((repo_root / "picarones/report/i18n/fr.json").read_text(encoding="utf-8")).keys()
+        json.loads((repo_root / "picarones/reports_v2/i18n/fr.json").read_text(encoding="utf-8")).keys()
     )
     en_keys = set(
-        json.loads((repo_root / "picarones/report/i18n/en.json").read_text(encoding="utf-8")).keys()
+        json.loads((repo_root / "picarones/reports_v2/i18n/en.json").read_text(encoding="utf-8")).keys()
     )
     only_fr = fr_keys - en_keys
     only_en = en_keys - fr_keys

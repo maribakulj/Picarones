@@ -274,11 +274,11 @@ def test_optional_deps_not_required_at_top_level() -> None:
     # Liste des modules engines qu'on doit pouvoir au moins charger
     # (pas exécuter) sans planter.
     optional_engine_modules = (
-        "picarones.engines.tesseract",
-        "picarones.engines.pero_ocr",
-        "picarones.engines.mistral_ocr",
-        "picarones.engines.google_vision",
-        "picarones.engines.azure_doc_intel",
+        "picarones.adapters.legacy_engines.tesseract",
+        "picarones.adapters.legacy_engines.pero_ocr",
+        "picarones.adapters.legacy_engines.mistral_ocr",
+        "picarones.adapters.legacy_engines.google_vision",
+        "picarones.adapters.legacy_engines.azure_doc_intel",
     )
     failed: list[tuple[str, str]] = []
     for mod_name in optional_engine_modules:

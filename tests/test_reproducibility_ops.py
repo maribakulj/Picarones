@@ -142,9 +142,9 @@ def test_env_example_exists_and_documents_keys() -> None:
 
 
 def test_reproducibility_snapshots_doc_exists() -> None:
-    """``docs/reproducibility-snapshots.md`` doit exister et documenter
-    la procédure end-to-end."""
-    f = REPO_ROOT / "docs" / "reproducibility-snapshots.md"
+    """``docs/reference/reproducibility-snapshots.md`` doit exister et
+    documenter la procédure end-to-end (S60 — Diataxis)."""
+    f = REPO_ROOT / "docs" / "reference" / "reproducibility-snapshots.md"
     assert f.exists()
     text = f.read_text(encoding="utf-8")
     # Sections clés attendues.
@@ -244,7 +244,7 @@ def test_pricing_staleness_detector_registered() -> None:
     """Le détecteur ``detect_pricing_staleness`` doit être enregistré."""
     # Trigger registration
     import picarones.measurements  # noqa: F401
-    from picarones.core.facts import FactType
+    from picarones.domain.facts import FactType
     from picarones.measurements.narrative.detectors import DETECTORS_BY_TYPE
 
     assert FactType.PRICING_STALENESS_WARNING in DETECTORS_BY_TYPE
@@ -270,7 +270,7 @@ def test_pricing_staleness_detector_fires_when_expired() -> None:
     """Le détecteur émet un Fact si la date est dépassée."""
     from datetime import date, timedelta
 
-    from picarones.core.facts import FactType
+    from picarones.domain.facts import FactType
     from picarones.measurements.narrative.detectors.pareto import (
         detect_pricing_staleness,
     )

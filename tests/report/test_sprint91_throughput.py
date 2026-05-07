@@ -20,21 +20,21 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.marginal_cost import (
+from picarones.evaluation.metrics.marginal_cost import (
     compute_marginal_cost,
     compute_marginal_cost_matrix,
 )
-from picarones.measurements.throughput import (
+from picarones.evaluation.metrics.throughput import (
     aggregate_effective_throughput,
     compute_effective_throughput,
 )
-from picarones.report.throughput_render import build_throughput_html
+from picarones.reports_v2.html.renderers.throughput import build_throughput_html
 
 
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

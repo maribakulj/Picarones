@@ -21,9 +21,9 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modules import ArtifactType
-from picarones.measurements.roman_numerals import (
+from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
+from picarones.domain.artifacts import ArtifactType
+from picarones.evaluation.metrics.roman_numerals import (
     ALL_STATUSES,
     STATUS_CASE_CHANGED,
     STATUS_CONVERTED_TO_ARABIC,
@@ -385,7 +385,7 @@ class TestShortcuts:
 
 class TestRegistryIntegration:
     def test_metrics_registered(self) -> None:
-        import picarones.measurements.roman_numerals  # noqa: F401
+        import picarones.evaluation.metrics.roman_numerals  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

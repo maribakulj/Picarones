@@ -27,8 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from picarones.measurements.worst_lines import WorstLineEntry, extract_worst_lines
-from picarones.report.worst_lines_render import build_worst_lines_table_html
+from picarones.evaluation.metrics.worst_lines import WorstLineEntry, extract_worst_lines
+from picarones.reports_v2.html.renderers.worst_lines import build_worst_lines_table_html
 
 
 # ──────────────────────────────────────────────────────────────────────────

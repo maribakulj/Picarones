@@ -123,7 +123,7 @@ def robustness_cmd(
         report = generate_demo_robustness_report(engine_names=[engine])
     else:
         # Charger le corpus
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         try:
             corp = load_corpus_from_directory(corpus)
         except (FileNotFoundError, ValueError) as exc:

@@ -22,7 +22,7 @@ from unittest.mock import patch
 import pytest
 
 if TYPE_CHECKING:
-    from picarones.core.results import BenchmarkResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult
 
 
 # ===========================================================================
@@ -161,8 +161,8 @@ class TestEScriptoriumConnect:
 class TestEScriptoriumExport:
 
     def _make_benchmark(self, engine_name: str = "tesseract") -> "BenchmarkResult":
-        from picarones.core.results import BenchmarkResult, EngineReport, DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult, EngineReport, DocumentResult
+        from picarones.evaluation.metric_result import MetricsResult
         metrics = MetricsResult(cer=0.05, wer=0.10, cer_nfc=0.05,
                                 cer_caseless=0.04, cer_diplomatic=0.04,
                                 wer_normalized=0.09, mer=0.09, wil=0.05,
@@ -227,8 +227,8 @@ class TestEScriptoriumExport:
 
     def test_export_skips_error_docs(self):
         from picarones.extras.importers.escriptorium import EScriptoriumClient
-        from picarones.core.results import BenchmarkResult, EngineReport, DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult, EngineReport, DocumentResult
+        from picarones.evaluation.metric_result import MetricsResult
         metrics = MetricsResult(cer=0.1, wer=0.2, cer_nfc=0.1, cer_caseless=0.1,
                                 cer_diplomatic=0.1, wer_normalized=0.2, mer=0.2, wil=0.1,
                                 reference_length=50, hypothesis_length=50)

@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from picarones.engines.base import BaseOCREngine, EngineResult
-from picarones.engines.tesseract import TesseractEngine
-from picarones.engines.pero_ocr import PeroOCREngine
+from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
+from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+from picarones.adapters.legacy_engines.pero_ocr import PeroOCREngine
 
 
 # ---------------------------------------------------------------------------
@@ -118,9 +118,9 @@ class TestTesseractEngine:
         img.write_bytes(b"fake")
 
         with (
-            patch("picarones.engines.tesseract._PYTESSERACT_AVAILABLE", True),
-            patch("picarones.engines.tesseract.pytesseract") as mock_tess,
-            patch("picarones.engines.tesseract.Image") as mock_pil,
+            patch("picarones.adapters.legacy_engines.tesseract._PYTESSERACT_AVAILABLE", True),
+            patch("picarones.adapters.legacy_engines.tesseract.pytesseract") as mock_tess,
+            patch("picarones.adapters.legacy_engines.tesseract.Image") as mock_pil,
         ):
             mock_tess.image_to_string.return_value = "Résultat OCR mock"
             mock_pil.open.return_value = MagicMock()
@@ -137,7 +137,7 @@ class TestTesseractEngine:
         img = tmp_path / "page.png"
         img.write_bytes(b"fake")
 
-        with patch("picarones.engines.tesseract._PYTESSERACT_AVAILABLE", False):
+        with patch("picarones.adapters.legacy_engines.tesseract._PYTESSERACT_AVAILABLE", False):
             engine = TesseractEngine()
             result = engine.run(img)
 
@@ -167,7 +167,7 @@ class TestPeroOCREngine:
         img = tmp_path / "page.png"
         img.write_bytes(b"fake")
 
-        with patch("picarones.engines.pero_ocr._PERO_AVAILABLE", False):
+        with patch("picarones.adapters.legacy_engines.pero_ocr._PERO_AVAILABLE", False):
             engine = PeroOCREngine(config={"config": "/fake/config.ini"})
             result = engine.run(img)
 
@@ -178,7 +178,7 @@ class TestPeroOCREngine:
         img = tmp_path / "page.png"
         img.write_bytes(b"fake")
 
-        with patch("picarones.engines.pero_ocr._PERO_AVAILABLE", True):
+        with patch("picarones.adapters.legacy_engines.pero_ocr._PERO_AVAILABLE", True):
             engine = PeroOCREngine()
             result = engine.run(img)
 

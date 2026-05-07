@@ -15,8 +15,8 @@ Métriques implémentées
 Modèle de données
 -----------------
 ``MetricsResult`` (dataclass pure) et ``aggregate_metrics`` (stats
-moyenne/médiane via ``statistics`` stdlib) vivent en cercle 1 dans
-:mod:`picarones.core.metrics`. Ils sont ré-exportés ici pour la
+moyenne/médiane via ``statistics`` stdlib) vivent en couche 3 dans
+:mod:`picarones.evaluation.metric_result`. Ils sont ré-exportés ici pour la
 commodité — un module qui consomme déjà ``compute_metrics`` n'a
 qu'à en faire ``from picarones.measurements.metrics import …``.
 """
@@ -27,7 +27,7 @@ import logging
 import unicodedata
 from typing import Optional
 
-from picarones.core.metrics import MetricsResult, aggregate_metrics
+from picarones.evaluation.metric_result import MetricsResult, aggregate_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,7 @@ def compute_metrics(
         cer_diplomatic: Optional[float] = None
         diplomatic_profile_name: Optional[str] = None
         try:
-            from picarones.measurements.normalization import DEFAULT_DIPLOMATIC_PROFILE
+            from picarones.evaluation.metrics.normalization import DEFAULT_DIPLOMATIC_PROFILE
             profile = normalization_profile or DEFAULT_DIPLOMATIC_PROFILE
             ref_diplo = profile.normalize(reference)
             hyp_diplo = profile.normalize(hypothesis)
@@ -197,4 +197,4 @@ __all__ = ["MetricsResult", "aggregate_metrics", "compute_metrics"]
 # Import paresseux pour éviter les imports circulaires
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from picarones.measurements.normalization import NormalizationProfile
+    from picarones.evaluation.metrics.normalization import NormalizationProfile

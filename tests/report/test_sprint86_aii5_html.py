@@ -22,8 +22,8 @@ from picarones.measurements.numerical_sequences_hooks import (
     aggregate_numerical_sequence_metrics,
     compute_numerical_sequence_metrics_adaptive,
 )
-from picarones.measurements.metrics import MetricsResult
-from picarones.core.results import DocumentResult, EngineReport
+from picarones.evaluation.metric_result import MetricsResult
+from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
 
 
 def _stub_metrics() -> MetricsResult:
@@ -36,10 +36,10 @@ from picarones.measurements.searchability_hooks import (
     aggregate_searchability_metrics,
     compute_searchability_metrics,
 )
-from picarones.report.numerical_sequences_render import (
+from picarones.reports_v2.html.renderers.numerical_sequences import (
     build_numerical_sequences_html,
 )
-from picarones.report.searchability_render import (
+from picarones.reports_v2.html.renderers.searchability import (
     build_searchability_summary_html,
 )
 
@@ -47,7 +47,7 @@ from picarones.report.searchability_render import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

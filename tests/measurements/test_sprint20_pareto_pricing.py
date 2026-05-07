@@ -20,13 +20,13 @@ from picarones.measurements.narrative.detectors import (
     detect_cost_outlier,
     detect_pareto_alternative,
 )
-from picarones.core.facts import FactType
-from picarones.measurements.pricing import (
+from picarones.domain.facts import FactType
+from picarones.evaluation.metrics.pricing import (
     build_costs_for_benchmark,
     estimate_cost,
     load_pricing_database,
 )
-from picarones.measurements.statistics import compute_pareto_front
+from picarones.evaluation.statistics import compute_pareto_front
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +267,7 @@ def benchmark_result():
 
 class TestReportIntegration:
     def test_report_contains_pareto_card(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -279,7 +279,7 @@ class TestReportIntegration:
         assert "pareto-experimental" in html  # étiquette expérimental
 
     def test_report_json_contains_pareto_data(self, benchmark_result):
-        from picarones.report.generator import _build_report_data
+        from picarones.reports_v2.html.generator import _build_report_data
         data = _build_report_data(benchmark_result, images_b64={})
         pareto = data.get("pareto", {})
         assert "cost" in pareto
@@ -293,7 +293,7 @@ class TestReportIntegration:
     def test_synthesis_may_include_pareto_sentence(self, benchmark_result, tmp_path):
         # Sur la fixture de démo, pero_ocr + tesseract sont sur le front → la
         # synthèse doit remonter une alternative moins chère
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -306,11 +306,11 @@ class TestReportIntegration:
 
     def test_pricing_yaml_is_packaged(self):
         """Garde-fou : le YAML doit être accessible depuis le package."""
-        from picarones.measurements.pricing import _DEFAULT_PRICING_PATH
+        from picarones.evaluation.metrics.pricing import _DEFAULT_PRICING_PATH
         assert Path(_DEFAULT_PRICING_PATH).exists()
 
     def test_english_locale_renders_pareto_labels(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report_en.html"
         ReportGenerator(benchmark_result, lang="en").generate(out)
         html = out.read_text(encoding="utf-8")

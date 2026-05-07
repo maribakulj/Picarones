@@ -26,8 +26,8 @@ from pathlib import Path
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.generator import ReportGenerator
-from picarones.report.inter_engine_render import (
+from picarones.reports_v2.html.generator import ReportGenerator
+from picarones.reports_v2.html.renderers.inter_engine import (
     build_divergence_matrix_html,
     build_oracle_gap_html,
 )
@@ -270,7 +270,7 @@ class TestI18NCompleteness:
         path = (
             Path(__file__).parent.parent.parent
             / "picarones"
-            / "report"
+            / "reports_v2"
             / "i18n"
             / f"{lang}.json"
         )

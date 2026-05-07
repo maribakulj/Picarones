@@ -24,7 +24,7 @@ import pytest
 
 class TestViewsImport:
     def test_all_views_import(self):
-        from picarones.report.views import (
+        from picarones.reports_v2.html.views import (
             build_advanced_taxonomy_view_html,
             build_diagnostics_view_html,
             build_economics_view_html,
@@ -50,33 +50,33 @@ def empty_report_data() -> dict:
 
 class TestAdaptiveMasking:
     def test_economics_empty_returns_empty(self, empty_report_data):
-        from picarones.report.views import build_economics_view_html
+        from picarones.reports_v2.html.views import build_economics_view_html
 
         assert build_economics_view_html(empty_report_data, {}) == ""
 
     def test_advanced_taxonomy_empty_returns_empty(self, empty_report_data):
-        from picarones.report.views import build_advanced_taxonomy_view_html
+        from picarones.reports_v2.html.views import build_advanced_taxonomy_view_html
 
         assert build_advanced_taxonomy_view_html(empty_report_data, {}) == ""
 
     def test_diagnostics_empty_returns_empty(self, empty_report_data):
-        from picarones.report.views import build_diagnostics_view_html
+        from picarones.reports_v2.html.views import build_diagnostics_view_html
 
         assert build_diagnostics_view_html(empty_report_data, {}) == ""
 
     def test_pipeline_empty_returns_empty(self, empty_report_data):
-        from picarones.report.views import build_pipeline_view_html
+        from picarones.reports_v2.html.views import build_pipeline_view_html
 
         assert build_pipeline_view_html(empty_report_data, {}) == ""
 
     def test_robustness_empty_returns_empty(self, empty_report_data):
-        from picarones.report.views import build_robustness_view_html
+        from picarones.reports_v2.html.views import build_robustness_view_html
 
         assert build_robustness_view_html(empty_report_data, {}) == ""
 
     def test_advanced_taxonomy_single_engine_returns_empty(self):
         """La comparaison nécessite ≥ 2 moteurs."""
-        from picarones.report.views import build_advanced_taxonomy_view_html
+        from picarones.reports_v2.html.views import build_advanced_taxonomy_view_html
 
         single = {"engines": [{
             "name": "tess",
@@ -114,7 +114,7 @@ class _MockEngineReport:
 
 class TestEconomicsView:
     def test_throughput_with_realistic_engines(self):
-        from picarones.report.views import build_economics_view_html
+        from picarones.reports_v2.html.views import build_economics_view_html
 
         reports = [
             _MockEngineReport("tesseract"),
@@ -130,7 +130,7 @@ class TestEconomicsView:
         assert "pero" in html
 
     def test_extra_html_blocks_appended(self):
-        from picarones.report.views import build_economics_view_html
+        from picarones.reports_v2.html.views import build_economics_view_html
 
         extra = ['<div class="custom">CUSTOM_BLOCK</div>']
         html = build_economics_view_html(
@@ -143,7 +143,7 @@ class TestEconomicsView:
 
     def test_zero_duration_excludes_engine(self):
         """Bench depuis cache (durations=0) ne génère pas de throughput."""
-        from picarones.report.views import build_economics_view_html
+        from picarones.reports_v2.html.views import build_economics_view_html
 
         report = _MockEngineReport("cached")
         for dr in report.document_results:
@@ -157,7 +157,7 @@ class TestEconomicsView:
 
 class TestAdvancedTaxonomyView:
     def test_two_engines_taxonomy_compared(self):
-        from picarones.report.views import build_advanced_taxonomy_view_html
+        from picarones.reports_v2.html.views import build_advanced_taxonomy_view_html
 
         report_data = {
             "engines": [
@@ -189,7 +189,7 @@ class TestAdvancedTaxonomyView:
 
     def test_anti_injection_engine_name(self):
         """Un nom de moteur avec balises HTML doit être échappé."""
-        from picarones.report.views import build_advanced_taxonomy_view_html
+        from picarones.reports_v2.html.views import build_advanced_taxonomy_view_html
 
         report_data = {
             "engines": [
@@ -216,7 +216,7 @@ class TestAdvancedTaxonomyView:
         assert "&lt;script" in html or "alert" not in html.lower()
 
     def test_lexical_modernization_optional(self):
-        from picarones.report.views import build_advanced_taxonomy_view_html
+        from picarones.reports_v2.html.views import build_advanced_taxonomy_view_html
 
         report_data = {
             "engines": [
@@ -259,14 +259,14 @@ class TestAdvancedTaxonomyView:
 class TestDiagnosticsView:
     def test_levers_only_when_signal(self):
         """detect_levers doit être appelé. Si rien ne déclenche, vue masquée."""
-        from picarones.report.views import build_diagnostics_view_html
+        from picarones.reports_v2.html.views import build_diagnostics_view_html
 
         # report_data minimal — aucun levier ne devrait se déclencher
         empty = {"engines": []}
         assert build_diagnostics_view_html(empty, {}) == ""
 
     def test_image_predictive_with_qualities(self):
-        from picarones.report.views import build_diagnostics_view_html
+        from picarones.reports_v2.html.views import build_diagnostics_view_html
 
         # Liste d'image_qualities synthétiques (>= 1 doc)
         qualities = [
@@ -295,7 +295,7 @@ class TestDiagnosticsView:
 
 class TestDetailsShell:
     def test_first_block_open_others_closed(self):
-        from picarones.report.views.economics import _render_view_shell
+        from picarones.reports_v2.html.views.economics import _render_view_shell
 
         html = _render_view_shell(
             view_title="Test",
@@ -312,7 +312,7 @@ class TestDetailsShell:
         assert "aaa" in html and "bbb" in html and "ccc" in html
 
     def test_xml_chars_in_titles_escaped(self):
-        from picarones.report.views.economics import _render_view_shell
+        from picarones.reports_v2.html.views.economics import _render_view_shell
 
         html = _render_view_shell(
             view_title="<script>alert(1)</script>",
@@ -345,11 +345,11 @@ class TestGeneratorWiring:
         une docstring) et trop liée à la forme du code.
         """
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         bench = generate_sample_benchmark()
         gen = ReportGenerator(bench, lang="fr")
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
 
         report_data = {
             "engines": [],
@@ -381,7 +381,7 @@ class TestGeneratorWiring:
 
         tpl_src = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "templates" / "view_analyses.html"
+            / "picarones" / "reports_v2" / "html" / "templates" / "view_analyses.html"
         ).read_text(encoding="utf-8")
         assert "{% if economics_view_html %}" in tpl_src
         assert "{% if advanced_taxonomy_view_html %}" in tpl_src

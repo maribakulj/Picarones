@@ -5,32 +5,48 @@ fondamentaux du projet.
 
 ## Architecture
 
-Voir [CLAUDE.md](../../CLAUDE.md) pour la cartographie complète des
-modules. En résumé :
+Voir [CLAUDE.md](../../CLAUDE.md) et
+[`docs/explanation/architecture.md`](../explanation/architecture.md)
+pour la cartographie complète.  En résumé : architecture **8
+couches concentriques** (post-rewrite, canonique) :
 
 ```
 picarones/
-├── core/                # cœur analytique pur Python (Cercle 1)
-│   ├── pipeline.py      # PipelineRunner pour pipelines composées
-│   ├── corpus.py        # Document, Corpus, GTLevel
-│   ├── results.py       # DocumentResult, EngineReport, BenchmarkResult
-│   ├── modules.py       # BaseModule, ArtifactType
+├── domain/              # Layer 1 — types purs (Pydantic, stdlib only)
+│   ├── artifacts.py     # Artifact, ArtifactType (10 types)
+│   ├── corpus.py        # CorpusSpec
+│   ├── documents.py     # DocumentRef
+│   ├── pipeline_spec.py # PipelineSpec, PipelineStep (Pydantic immutable)
+│   ├── module_protocol.py # BaseModule (ABC, en cours de retrait au profit de StepExecutor)
 │   ├── facts.py         # Fact, FactType, registre narratif
 │   └── …
-├── measurements/        # métriques officielles (Cercle 2)
-│   ├── runner.py        # orchestration ThreadPool/ProcessPool
-│   ├── metrics.py       # CER/WER/MER/WIL via jiwer
-│   ├── statistics/      # Wilcoxon, Friedman, Nemenyi, Pareto
-│   │   (sous-package depuis le sprint « découpage statistics.py »)
-│   ├── narrative/       # moteur de synthèse factuelle
-│   ├── pricing.py       # modèle de coût pour la vue Pareto
-│   └── …
-├── engines/             # adaptateurs OCR (Tesseract, Pero, Mistral OCR…)
-├── llm/                 # adaptateurs LLM (OpenAI, Anthropic, Mistral, Ollama)
-├── pipelines/           # OCRLLMPipeline (3 modes)
-├── report/              # générateur HTML + templates Jinja2 + i18n + glossaire
-└── web/                 # FastAPI + SPA vanilla JS
+├── formats/             # Layer 2 — parsing/serialization (ALTO 4, PAGE XML, JSON)
+├── evaluation/          # Layer 3 — métriques et calcul
+│   ├── metrics/         # ~30 métriques (CER/WER, MUFI, philological, NER, …)
+│   ├── statistics/      # Wilcoxon, Friedman/Nemenyi, bootstrap, Pareto
+│   ├── views/, projectors/  # EvaluationView (S13+), projecteurs Alto/Page/CanonicalToText
+│   ├── corpus.py        # Document, Corpus, GTLevel (legacy en cours de retrait)
+│   ├── pipeline.py      # PipelineRunner legacy (en cours de retrait)
+│   └── benchmark_result.py # BenchmarkResult, EngineReport, DocumentResult
+├── pipeline/            # Layer 4 — PipelineExecutor canonique (instance-based)
+├── adapters/            # Layer 5 — adapters externes (libs externes autorisées)
+│   ├── ocr/             # Tesseract, Pero, Mistral OCR, Google Vision, Azure DI
+│   ├── llm/             # OpenAI, Anthropic, Mistral, Ollama
+│   ├── vlm/             # Adapters VLM (zero-shot)
+│   ├── corpus/          # IIIF, Gallica, HTR-United, HuggingFace
+│   ├── storage/         # ArtifactStore, JobStore
+│   └── legacy_engines/, legacy_modules/  # legacy BaseModule-based, en retrait
+├── app/                 # Layer 6 — services applicatifs (BenchmarkService, …)
+├── reports_v2/          # Layer 7 — rendu HTML / JSON / CSV (22 renderers + 5 vues)
+└── interfaces/          # Layer 8 — CLI Click, Web FastAPI
+
+# Arborescence legacy en cours de retrait (cf. docs/migration/) :
+# core/, measurements/, engines/, llm/, pipelines/, report/, modules/
 ```
+
+Règle d'import stricte : les flèches d'import vont uniquement
+de l'extérieur vers l'intérieur (de bas en haut dans le diagramme).
+Vérifié par `tests/architecture/test_layer_dependencies.py`.
 
 ## Guides d'extension
 

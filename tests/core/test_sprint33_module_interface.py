@@ -26,9 +26,10 @@ from typing import Any
 
 import pytest
 
-from picarones.core.corpus import GTLevel
-from picarones.core.modules import ArtifactType, BaseModule
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.evaluation.corpus import GTLevel
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
+from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -147,7 +148,9 @@ class TestBaseModuleContract:
         m = UpperCaseTextModule()
         r = repr(m)
         assert "uppercase" in r
-        assert "text→text" in r
+        # Phase 4-bis : ``ArtifactType.TEXT.value`` est désormais
+        # ``"raw_text"`` (alias canonique vers ``RAW_TEXT``).
+        assert "raw_text→raw_text" in r
 
     def test_default_execution_mode(self) -> None:
         # UpperCaseTextModule a forcé "cpu" ; un module qui ne déclare

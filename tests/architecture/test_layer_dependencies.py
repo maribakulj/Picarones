@@ -93,6 +93,9 @@ EXTERNAL_ALLOWED: dict[str, frozenset[str]] = {
         # S10 — fichiers de calcul migrés depuis measurements/ :
         "PIL",      # image_quality utilise Pillow pour analyser les images
         "yaml",     # pricing charge sa table de coûts depuis YAML
+        # Phase 4 (retrait legacy) — modules migrés depuis
+        # measurements/ qui ont besoin de leur lib spécifique :
+        "spacy",    # ner_backends wrappe les modèles NER spaCy
     }),
     "pipeline": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
@@ -123,6 +126,12 @@ EXTERNAL_ALLOWED: dict[str, frozenset[str]] = {
     "reports_v2": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
         "jinja2", "markupsafe", "yaml",
+        # Phase 5 : ``_helpers/assets.py`` (relocalisé depuis
+        # ``report/assets.py``) utilise Pillow pour redimensionner
+        # et encoder les images en data-URI dans le rapport HTML
+        # autonome.  Légitime — un rapport « gallery view » sans
+        # PIL aurait des images poids plein navigateur.
+        "PIL",
     }),
 }
 

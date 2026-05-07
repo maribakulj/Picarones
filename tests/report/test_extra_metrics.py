@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.report_data import build_report_data
-from picarones.report.report_data.extra_metrics import (
+from picarones.reports_v2.html.data import build_report_data
+from picarones.reports_v2.html.data.extra_metrics import (
     compute_marginal_cost_section,
     compute_rare_token_recall_per_engine,
     compute_taxonomy_cooccurrence_section,
@@ -58,7 +58,7 @@ class TestRareTokenRecall:
 
     def test_returns_empty_dict_on_empty_benchmark(self) -> None:
         # Benchmark sans engine_reports → dict vide.
-        from picarones.core.results import BenchmarkResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult
         bench = BenchmarkResult(
             corpus_name="empty",
             corpus_source=None,
@@ -97,7 +97,7 @@ class TestTaxonomyCooccurrence:
             assert r == results[0]
 
     def test_compatible_with_renderer(self, sample_benchmark) -> None:
-        from picarones.report.taxonomy_cooccurrence_render import (
+        from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
             build_taxonomy_cooccurrence_html,
         )
         result = compute_taxonomy_cooccurrence_section(sample_benchmark)
@@ -138,7 +138,7 @@ class TestTaxonomyIntraDoc:
             assert key in result, f"clé {key!r} manquante (renderer la requiert)"
 
     def test_renders_html_when_signal_present(self, sample_benchmark) -> None:
-        from picarones.report.taxonomy_intra_doc_render import (
+        from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
             build_taxonomy_intra_doc_html,
         )
         result = compute_taxonomy_intra_doc_section(sample_benchmark)
@@ -180,7 +180,7 @@ class TestMarginalCost:
         assert compute_marginal_cost_section(engines_summary) is None
 
     def test_renderer_compatibility(self) -> None:
-        from picarones.report.marginal_cost_render import (
+        from picarones.reports_v2.html.renderers.marginal_cost import (
             build_marginal_cost_html,
         )
         engines_summary = [

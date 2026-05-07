@@ -31,15 +31,16 @@ from typing import Any
 
 import pytest
 
-from picarones.core.corpus import AltoGT, Document, GTLevel, TextGT
-from picarones.core.metric_registry import select_metrics
-from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline import (
+from picarones.evaluation.corpus import AltoGT, Document, GTLevel, TextGT
+from picarones.evaluation.metric_registry import select_metrics
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
+from picarones.evaluation.pipeline import (
     PipelineRunner,
     PipelineSpec,
     PipelineStep,
 )
-from picarones.modules import TextToAltoMonoRegion
+from picarones.adapters.legacy_modules import TextToAltoMonoRegion
 
 
 class _DeterministicOCR(BaseModule):

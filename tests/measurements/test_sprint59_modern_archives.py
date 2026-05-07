@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.metric_registry import compute_at_junction, select_metrics
+from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.measurements.modern_archives import (
     ADDRESS,
     ADMINISTRATIVE,
@@ -53,7 +53,7 @@ from picarones.measurements.modern_archives import (
     modern_archives_expansion_score,
     modern_archives_strict_score,
 )
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 
 # ──────────────────────────────────────────────────────────────────────────

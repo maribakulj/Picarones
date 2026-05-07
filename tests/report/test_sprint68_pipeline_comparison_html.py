@@ -31,13 +31,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.modules import ArtifactType
-from picarones.measurements.pipeline_benchmark import (
+from picarones.domain.artifacts import ArtifactType
+from picarones.evaluation.pipeline_benchmark import (
     PipelineBenchmarkResult,
     StepAggregate,
 )
-from picarones.measurements.pipeline_comparison import PipelineComparisonResult
-from picarones.report.pipeline_render import (
+from picarones.evaluation.pipeline_comparison import PipelineComparisonResult
+from picarones.reports_v2.html.renderers.pipeline import (
     RankingSpec,
     build_pipeline_comparison_report_html,
     build_pipeline_comparison_summary_html,
@@ -94,7 +94,9 @@ def _make_comparison(
 class TestRankingSpec:
     def test_display_label_default(self) -> None:
         spec = RankingSpec(ArtifactType.TEXT, "cer")
-        assert spec.display_label == "text.cer"
+        # Phase 4-bis : ``ArtifactType.TEXT.value`` est désormais
+        # ``"raw_text"`` (alias canonique vers ``RAW_TEXT``).
+        assert spec.display_label == "raw_text.cer"
 
     def test_display_label_explicit(self) -> None:
         spec = RankingSpec(ArtifactType.TEXT, "cer", label="CER global")
@@ -367,7 +369,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

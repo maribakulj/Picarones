@@ -232,8 +232,8 @@ class TestCompute:
 
 class TestNoGlobalSingleton:
     def test_two_registries_are_independent(self) -> None:
-        """Différence cruciale avec l'ancien
-        ``picarones.core.metric_registry`` qui a un dict global :
+        """Différence cruciale avec
+        ``picarones.evaluation.metric_registry`` qui a un dict global :
         deux ``MetricRegistry()`` ne se partagent rien."""
         reg_a = MetricRegistry()
         reg_b = MetricRegistry()

@@ -45,11 +45,72 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   corrigé en place ; un audit historique
 #:   (``docs/audits/institutional-readiness-2026-05.md``) référence
 #:   l'ancien chemin et reste intouché par convention.
+#: - 77 (sprint « Lot A — core.{modules,facts} → domain », 2026-05-07) :
+#:   suppression des shims ``picarones/core/modules.py`` et
+#:   ``picarones/core/facts.py``.  Deux références demeurent dans
+#:   ``CHANGELOG.md`` (journal versionné) et
+#:   ``docs/roadmap/evolution-2026.md`` (plan stratégique historique
+#:   décrivant la création initiale du module).
+#: - 80 (sprint « Lot B — core.metric_* → evaluation », 2026-05-07) :
+#:   suppression des shims ``picarones/core/metric_registry.py``,
+#:   ``picarones/core/metric_hooks.py`` et
+#:   ``picarones/core/metrics.py``.  Trois nouvelles références
+#:   héritées : deux dans ``CHANGELOG.md`` (intouchable) + une
+#:   dans ``docs/migration/executor-equivalence.md`` (audit
+#:   historique de la migration legacy → executor).  Le doc actif
+#:   ``docs/reference/normalization-profiles.md`` a été corrigé
+#:   en place vers ``picarones/evaluation/metric_hooks.py``.
+#: - 83 (sprint « Lot C — core.{results,corpus,pipeline} → evaluation »,
+#:   2026-05-07) : suppression des shims ``picarones/core/results.py``,
+#:   ``picarones/core/corpus.py`` et ``picarones/core/pipeline.py``.
+#:   Trois nouvelles références héritées : deux dans ``CHANGELOG.md``
+#:   (intouchable) + une dans ``docs/roadmap/evolution-2026.md``
+#:   (plan stratégique historique).  Le doc actif
+#:   ``docs/reference/api-stable.md`` a été migré vers les chemins
+#:   canoniques ``picarones.evaluation.{benchmark_result, corpus,
+#:   pipeline}``.
+#: - 88 (sprint « Lot D — measurements/X (34 shims) → evaluation/metrics »,
+#:   2026-05-07) : suppression des 34 shims plats de ``measurements/``.
+#:   Cinq nouveaux chemins cassés héritage : 4 dans ``docs/audits/*.md``
+#:   (intouchable) + 1 dans ``docs/roadmap/evolution-2026.md``
+#:   (plan stratégique historique).  Les docs actifs ``CLAUDE.md``,
+#:   ``README.md`` et ``SPECS.md`` ont été corrigés en place vers
+#:   ``picarones/formats/text/normalization.py``.
+#: - 94 (sprint « Lot E — engines/ + modules/ → adapters/legacy_* »,
+#:   2026-05-07) : suppression des 8 shims ``picarones/engines/`` et
+#:   ``picarones/modules/``.  Six nouveaux chemins cassés héritage :
+#:   5 dans ``CHANGELOG.md`` (intouchable) + 1 dans
+#:   ``docs/audits/remediation-plan-2026-05.md`` (intouchable) — les
+#:   audits citant ``aws_textract`` / ``kraken`` étaient déjà cassés
+#:   avant la migration (ces moteurs n'ont jamais été implémentés).
+#:   ``SPECS.md`` a été corrigé en place vers
+#:   ``picarones/adapters/legacy_engines/base.py``.
+#: - 132 (sprint « Lot F — report/ → reports_v2/ », 2026-05-07) :
+#:   suppression des 37 shims ``picarones/report/`` (29 *_render.py,
+#:   2 helpers, 6 modules + glossary).  38 nouveaux chemins cassés
+#:   héritage : 29 dans ``CHANGELOG.md`` + 8 dans ``docs/audits/*.md``
+#:   et ``docs/migration/legacy-retirement-plan.md`` — tous
+#:   intouchables.  Le doc actif ``docs/reference/views.md`` a été
+#:   corrigé en place vers les chemins ``picarones/reports_v2/html/{views,
+#:   generator, renderers, templates}``.
+#: - 134 (sprint « Lot G — core/{diff_utils, xml_utils} », 2026-05-07) :
+#:   suppression des 2 derniers shims de ``picarones/core/``.  Le
+#:   sous-paquet ``core/`` n'existe plus du tout.  Deux nouveaux
+#:   chemins cassés héritage dans ``CHANGELOG.md`` (intouchable).
+#: - 138 (sprints « Lots H + I », 2026-05-07) : suppression du
+#:   sous-paquet ``measurements/statistics/`` (Lot H, 9 shims) et
+#:   des 3 shims ``extras/importers/{htr_united, huggingface,
+#:   _fallback_log}`` (Lot I).  Quatre nouveaux chemins cassés
+#:   héritage répartis dans ``docs/audits/*.md`` (intouchables).
 #:
-#: Les 73 restants sont **TOUS** dans :
-#: - ``CHANGELOG.md`` (67) : journal historique versionné, intouchable.
-#: - ``docs/audits/*.md`` (6) : audits historiques, intouchables.
-BROKEN_PATHS_BASELINE = 73
+#: Les chemins cassés restants sont **TOUS** dans :
+#: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
+#: - ``docs/audits/*.md`` : audits historiques, intouchables.
+#: - ``docs/roadmap/evolution-2026.md`` : plan stratégique historique.
+#: - ``docs/migration/{executor-equivalence, legacy-retirement-plan}.md`` :
+#:   audits/plans historiques (citent des chemins legacy à des fins
+#:   de comparaison).
+BROKEN_PATHS_BASELINE = 138
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

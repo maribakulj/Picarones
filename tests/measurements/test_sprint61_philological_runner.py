@@ -28,8 +28,8 @@ from picarones.measurements.philological_hooks import (
     aggregate_philological_metrics,
     compute_philological_metrics,
 )
-from picarones.core.results import DocumentResult, EngineReport
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
+from picarones.evaluation.metric_result import MetricsResult
 
 
 def _make_doc(
@@ -257,7 +257,7 @@ class TestRunnerIntegration:
 
     def test_runner_attaches_philological(self, tmp_path) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         # Créer une image fictive (le module image_quality échouera
         # gracieusement, ce qui est OK pour le test).
@@ -282,7 +282,7 @@ class TestRunnerIntegration:
 
     def test_runner_omits_philological_on_plain_text(self, tmp_path) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         img = tmp_path / "doc.png"
         img.write_bytes(b"")

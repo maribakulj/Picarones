@@ -38,7 +38,7 @@ from typing import Optional
 # Émission du warning ``experimental`` à l'import. Phase C du chantier
 # de refonte — voir docstring du module ci-dessus.
 warnings.warn(
-    "picarones.extras.importers.huggingface is experimental and may "
+    "picarones.adapters.corpus.huggingface is experimental and may "
     "change or be removed without notice. Use at your own risk until "
     "an institutional use case validates the API.",
     category=UserWarning,

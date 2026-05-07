@@ -46,7 +46,7 @@ def _benchmark_json(engines_to_cer: dict[str, float], **extra) -> dict:
 
 class TestCompareBenchmarks:
     def test_identical_runs_no_regression(self):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a = _benchmark_json({"tesseract": 0.05, "pero": 0.07})
         b = _benchmark_json({"tesseract": 0.05, "pero": 0.07})
         diff = compare_benchmarks(a, b, threshold=0.005)
@@ -54,7 +54,7 @@ class TestCompareBenchmarks:
         assert all(not d.is_regression and not d.is_improvement for d in diff.deltas)
 
     def test_regression_detected_above_threshold(self):
-        from picarones.report.comparison import compare_benchmarks, detect_regressions
+        from picarones.reports_v2.html.comparison import compare_benchmarks, detect_regressions
         a = _benchmark_json({"tesseract": 0.05})
         b = _benchmark_json({"tesseract": 0.06})  # +1 pp
         diff = compare_benchmarks(a, b, threshold=0.005)
@@ -64,7 +64,7 @@ class TestCompareBenchmarks:
         assert regs[0].delta_cer == pytest.approx(0.01, abs=1e-9)
 
     def test_improvement_detected_below_threshold(self):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a = _benchmark_json({"tesseract": 0.05})
         b = _benchmark_json({"tesseract": 0.04})  # -1 pp
         diff = compare_benchmarks(a, b, threshold=0.005)
@@ -72,14 +72,14 @@ class TestCompareBenchmarks:
         assert not diff.deltas[0].is_regression
 
     def test_below_threshold_is_stable(self):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a = _benchmark_json({"tesseract": 0.05})
         b = _benchmark_json({"tesseract": 0.052})  # +0.2 pp, sous le seuil 0.5 pp
         diff = compare_benchmarks(a, b, threshold=0.005)
         assert not diff.deltas[0].is_regression
 
     def test_engines_only_in_one_side(self):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a = _benchmark_json({"tesseract": 0.05, "pero": 0.07})
         b = _benchmark_json({"tesseract": 0.05, "kraken": 0.06})
         diff = compare_benchmarks(a, b, threshold=0.005)
@@ -88,7 +88,7 @@ class TestCompareBenchmarks:
         assert {d.engine for d in diff.deltas} == {"tesseract"}
 
     def test_none_cer_does_not_raise(self):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a = _benchmark_json({"tesseract": None})
         b = _benchmark_json({"tesseract": 0.05})
         diff = compare_benchmarks(a, b)
@@ -96,7 +96,7 @@ class TestCompareBenchmarks:
         assert not diff.deltas[0].is_regression
 
     def test_regressions_sorted_by_severity(self):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a = _benchmark_json({"a": 0.05, "b": 0.05, "c": 0.05})
         b = _benchmark_json({"a": 0.07, "b": 0.10, "c": 0.06})  # b plus grave
         diff = compare_benchmarks(a, b, threshold=0.005)
@@ -105,7 +105,7 @@ class TestCompareBenchmarks:
         assert engines_in_order.index("b") < engines_in_order.index("a")
 
     def test_loads_from_file_path(self, tmp_path):
-        from picarones.report.comparison import compare_benchmarks
+        from picarones.reports_v2.html.comparison import compare_benchmarks
         a_path = tmp_path / "a.json"
         b_path = tmp_path / "b.json"
         a_path.write_text(json.dumps(_benchmark_json({"tesseract": 0.05})))
@@ -116,7 +116,7 @@ class TestCompareBenchmarks:
 
 class TestRenderComparisonHTML:
     def test_html_is_self_contained_and_named(self, tmp_path):
-        from picarones.report.comparison import compare_benchmarks, render_comparison_html
+        from picarones.reports_v2.html.comparison import compare_benchmarks, render_comparison_html
         a = _benchmark_json({"tesseract": 0.05})
         b = _benchmark_json({"tesseract": 0.07})
         diff = compare_benchmarks(a, b, label_a="V1", label_b="V2")

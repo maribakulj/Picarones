@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.report.baseline_render import (
+from picarones.reports_v2.html.renderers.baseline import (
     _build_difficulty_boxplot_svg,
     _quantiles,
     build_corpus_difficulty_baseline_html,
@@ -213,7 +213,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

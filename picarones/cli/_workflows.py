@@ -129,7 +129,7 @@ def run_cmd(
     """
     _setup_logging(verbose)
 
-    from picarones.core.corpus import load_corpus_from_directory
+    from picarones.evaluation.corpus import load_corpus_from_directory
     from picarones.measurements.runner import run_benchmark
 
     # Chargement du corpus
@@ -227,7 +227,7 @@ def _run_workflow(
     """
     _setup_logging(verbose)
 
-    from picarones.core.corpus import load_corpus_from_directory
+    from picarones.evaluation.corpus import load_corpus_from_directory
     from picarones.measurements.runner import run_benchmark
 
     try:
@@ -479,7 +479,7 @@ def compare_cmd(
     """
     _setup_logging(verbose)
 
-    from picarones.report.comparison import (
+    from picarones.reports_v2.html.comparison import (
         compare_benchmarks,
         detect_regressions,
         render_comparison_html,

@@ -22,8 +22,8 @@ import pytest
 
 def _make_fake_benchmark():
     """Retourne un BenchmarkResult minimal pour tester le générateur."""
-    from picarones.core.results import BenchmarkResult, EngineReport, DocumentResult
-    from picarones.measurements.metrics import MetricsResult
+    from picarones.evaluation.benchmark_result import BenchmarkResult, EngineReport, DocumentResult
+    from picarones.evaluation.metric_result import MetricsResult
 
     def _metrics(cer, wer=0.2):
         return MetricsResult(
@@ -62,7 +62,7 @@ def _make_fake_benchmark():
 
 def _generate_html(bm=None) -> str:
     """Génère le HTML complet du rapport pour un BenchmarkResult minimal."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
     import tempfile
     import os
     if bm is None:

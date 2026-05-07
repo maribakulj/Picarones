@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.longitudinal import (
+from picarones.evaluation.metrics.longitudinal import (
     compute_corpus_longitudinal,
     compute_engine_longitudinal,
     compute_linear_trend,
@@ -32,14 +32,14 @@ from picarones.measurements.longitudinal import (
 )
 from picarones.measurements.narrative import build_synthesis
 from picarones.measurements.narrative.detectors import detect_regression_in_history
-from picarones.core.facts import FactImportance, FactType
-from picarones.report.longitudinal_render import build_longitudinal_html
+from picarones.domain.facts import FactImportance, FactType
+from picarones.reports_v2.html.renderers.longitudinal import build_longitudinal_html
 
 
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

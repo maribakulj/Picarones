@@ -20,11 +20,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.robustness_projection import (
+from picarones.evaluation.metrics.robustness_projection import (
     aggregate_projection_per_engine,
     project_robustness_on_corpus,
 )
-from picarones.report.robustness_projection_render import (
+from picarones.reports_v2.html.renderers.robustness_projection import (
     build_robustness_projection_html,
 )
 
@@ -32,7 +32,7 @@ from picarones.report.robustness_projection_render import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

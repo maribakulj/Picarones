@@ -23,7 +23,7 @@
 ## Table des matières
 
 1. [Vision et positionnement](#1-vision-et-positionnement)
-2. [Architecture en 3 cercles](#2-architecture-en-3-cercles)
+2. [Architecture en 8 couches concentriques](#2-architecture-en-8-couches-concentriques)
 3. [Module 1 — Corpus et imports](#3-module-1--corpus-et-imports)
 4. [Module 2 — Adaptateurs OCR / HTR](#4-module-2--adaptateurs-ocr--htr)
 5. [Module 3 — Pipelines OCR+LLM et pipelines composables](#5-module-3--pipelines-ocrllm-et-pipelines-composables)
@@ -125,72 +125,108 @@ plusieurs briques nouvelles dans l'écosystème OCR/HTR open-source :
 
 ---
 
-## 2. Architecture en 3 cercles
+## 2. Architecture en 8 couches concentriques
 
 ```
-   Cercle 3 (extras, report, cli, web)
-   │
-   ▼
-   Cercle 2 (measurements, engines, llm, pipelines, modules)
-   │
-   ▼
-   Cercle 1 (core)
+domain → formats → evaluation → pipeline → adapters → app → reports_v2 → interfaces
 ```
 
 **Règle de dépendance** : les imports vont uniquement de
-l'extérieur vers l'intérieur. Aucun shim — un module a un seul
-emplacement. La règle est appliquée par
-`tests/core/test_circle_dependencies.py` (Sprint A3) qui parse
+l'extérieur vers l'intérieur (de gauche à droite dans le
+diagramme).  La règle est appliquée par
+`tests/architecture/test_layer_dependencies.py` qui parse
 l'AST de chaque fichier et bloque toute violation au merge.
 
-### 2.1 Cercle 1 — abstractions pures
+> **Note sur le legacy** : le projet est en cours de retrait
+> du legacy.  Une arborescence historique
+> (``picarones/{core,measurements,engines,llm,pipelines,
+> report,modules}``) cohabite encore et est en train de
+> disparaître phase par phase.  Cf.
+> [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md)
+> pour le statut et le calendrier.  Tout nouveau code va
+> dans l'arborescence canonique ; les chemins legacy
+> existants sont des shims minimaux destinés à être
+> supprimés.
 
-7 modules dans `picarones/core/` :
+### 2.1 `picarones/domain/` — types purs
 
-- `corpus.py` — `Document`, `Corpus`, `GTLevel.{TEXT,ALTO,PAGE,ENTITIES,READING_ORDER}`,
-  payloads typés, loader auto-détectant les fichiers `.gt.alto.xml`,
-  `.gt.page.xml`, `.gt.entities.json`, `.gt.reading_order.json`.
-- `modules.py` — `BaseModule`, `ArtifactType`. Interface commune
-  à OCR, mappeurs, rewriters, classifieurs.
-- `metric_registry.py` — `MetricSpec`, `@register_metric`,
-  `select_metrics`, `compute_at_junction`. Sélection par signature
-  de types exacte (pas de coercion).
-- `metric_hooks.py` — registre legacy compatible (Sprint 16-).
-- `metrics.py` — `MetricsResult`, `aggregate_metrics`.
-- `results.py` — `DocumentResult`, `EngineReport`, `BenchmarkResult`,
-  sérialisation JSON.
-- `facts.py` — `Fact`, `FactType` (20 entrées), `FactImportance`,
-  `DetectorRegistry`. Modèle de données du moteur narratif.
-- `diff_utils.py` — `compute_word_diff`, `compute_char_diff`,
-  `diff_stats` (déplacé Cercle 3 → Cercle 1 en A3).
-- `pipeline.py` — `PipelineRunner`, `PipelineSpec`, `PipelineStep`.
-- `xml_utils.py` — `safe_parse_xml` (defusedxml).
+Cercle le plus interne.  Stdlib + Pydantic uniquement, aucune
+I/O, aucun framework, aucun module legacy.
 
-### 2.2 Cercle 2 — logique métier
+| Module | Contenu |
+|---|---|
+| `artifacts.py` | `Artifact`, `ArtifactType` (10 types : IMAGE, RAW_TEXT, CORRECTED_TEXT, ALTO_XML, PAGE_XML, CANONICAL_DOCUMENT, ENTITIES, READING_ORDER, ALIGNMENT, CONFIDENCES) |
+| `corpus.py` | `CorpusSpec` |
+| `documents.py` | `DocumentRef` |
+| `evaluation_spec.py` | `MetricSpec`, `EvaluationView`, `EvaluationSpec` |
+| `pipeline_spec.py` | `PipelineSpec`, `PipelineStep`, `INITIAL_STEP_ID` |
+| `projection_spec.py` | `ProjectionSpec` |
+| `provenance.py` | `ProvenanceRecord` |
+| `run_manifest.py` | `RunManifest` |
+| `module_protocol.py` | `BaseModule` (ABC, voie de retrait au profit de `StepExecutor`) |
+| `facts.py` | `Fact`, `FactType`, `FactImportance`, `DetectorRegistry` |
+| `errors.py` | Hiérarchie d'exceptions (`PicaronesError`, `AdapterStepError`, …) |
 
-5 sous-packages :
+### 2.2 `picarones/formats/` — parsing / sérialisation
 
-- `measurements/` — ~70 modules de calcul de métriques + le
-  moteur narratif (`narrative/` avec arbiter, registry, renderer,
-  20 détecteurs en 6 familles).
-- `engines/` — adaptateurs OCR : Tesseract, Pero OCR, Mistral OCR,
-  Google Vision, Azure Document Intelligence (5 adapters).
-- `llm/` — adaptateurs LLM : OpenAI, Anthropic, Mistral, Ollama
-  (4 adapters).
-- `pipelines/` — orchestration OCR+LLM (3 modes historiques).
-- `modules/` — modules `BaseModule` officiels (ALTO text→region
-  mappers).
+ALTO 4, PAGE XML, JSON, XML utilitaires.  Stdlib + lxml +
+defusedxml.  Pas de logique métier.
 
-### 2.3 Cercle 3 — entrées et rendu
+### 2.3 `picarones/evaluation/` — métriques et calcul
 
-- `report/` — générateur HTML, ~25 modules de rendu, vendor
-  Chart.js, templates Jinja2 (10 partials), i18n FR/EN, glossaire
-  contextuel (25 entrées bilingues).
-- `cli/` — Click CLI (15 commandes) en package `picarones/cli/`.
-- `web/` — FastAPI (app + 11 routers + sécurité + jobs SQLite +
-  maintenance auto-purge).
-- `extras/` — plugins : importers (IIIF, Gallica, HTR-United, HF
-  Datasets, eScriptorium), modules historiques.
+Cœur de la valeur ajoutée.  Stdlib + numpy + scipy + jiwer +
+spacy + rapidfuzz.
+
+| Sous-paquet | Contenu |
+|---|---|
+| `metrics/` | ~30 métriques (CER, WER, MUFI, philological, NER, calibration, taxonomy, …) |
+| `statistics/` | Wilcoxon, Friedman/Nemenyi, bootstrap, Pareto, clustering, CDD |
+| `views/`, `projectors/` | EvaluationView (Sprint S13+), projecteurs `AltoToText`, `PageToText`, `CanonicalToText` |
+| `corpus.py` | `Document`, `Corpus`, `GTLevel`, payloads (legacy en cours de retrait) |
+| `metric_registry.py`, `metric_hooks.py`, `metric_result.py` | Registres typés + hooks + dataclasses résultats |
+| `pipeline.py`, `pipeline_benchmark.py`, `pipeline_comparison.py` | `PipelineRunner` legacy + orchestration corpus-wide (en cours de convergence vers `pipeline.executor`) |
+| `benchmark_result.py` | `BenchmarkResult`, `EngineReport`, `DocumentResult`, sérialisation JSON |
+| `engines/` | OCR engines legacy (`BaseOCREngine`-based) — temporairement avant suppression complète |
+| `_diff_utils.py` | `compute_word_diff`, `compute_char_diff`, `diff_stats` |
+
+### 2.4 `picarones/pipeline/` — orchestration canonique
+
+`PipelineExecutor` instance-based, `StepExecutor` Protocol,
+`ExecutionPlan` immuable.  Cible canonique pour le bench
+d'axe B (pipelines composées).
+
+### 2.5 `picarones/adapters/` — adapters externes
+
+Adapters OCR / LLM / VLM consommant des libs externes
+(pytesseract, mistralai, openai, anthropic, google.cloud,
+azure.*, pero_ocr, ollama).  Implémentent `StepExecutor`.
+
+| Sous-paquet | Contenu |
+|---|---|
+| `ocr/` | `TesseractAdapter`, `PeroOCRAdapter`, `MistralOCRAdapter`, `GoogleVisionAdapter`, `AzureDocIntelAdapter`, `PrecomputedAdapter` |
+| `llm/` | `BaseLLMAdapter` + Mistral / OpenAI / Anthropic / Ollama |
+| `vlm/` | Adapters VLM (zero-shot OCR via vision-language models) |
+| `corpus/` | Loaders externes : IIIF, Gallica, HTR-United, HuggingFace |
+| `storage/` | `ArtifactStore`, `JobStore` (S29 + S47) |
+| `legacy_engines/`, `legacy_modules/` | Engines + modules legacy `BaseModule`-based (en cours de retrait, cf. Phase 7.A) |
+
+### 2.6 `picarones/app/` — services applicatifs
+
+`BenchmarkService`, `CorpusRunner`, `RunOrchestrator`.
+Orchestrent les pipelines canoniques sur corpus.
+
+### 2.7 `picarones/reports_v2/` — rendu HTML / JSON / CSV
+
+Rapport final consommant un `BenchmarkResult` ou `RunResult`.
+22 renderers thématiques + 5 vues (advanced_taxonomy,
+diagnostics, economics, pipeline, robustness) +
+`ReportGenerator` orchestrateur + templates Jinja2 +
+glossaire bilingue (25 entrées) + i18n FR/EN.
+
+### 2.8 `picarones/interfaces/` — entrées utilisateur
+
+CLI Click, Web FastAPI, IIIF/Gallica/eScriptorium importers
+exposés en interface.
 
 ---
 
@@ -263,7 +299,7 @@ Endpoint `POST /api/corpus/upload`. Validation Pillow
 ### 4.1 Architecture des adaptateurs
 
 Chaque moteur OCR est une classe Python qui hérite de
-`BaseOCREngine` (`picarones/engines/base.py`), elle-même héritière
+`BaseOCREngine` (`picarones/adapters/legacy_engines/base.py`), elle-même héritière
 de `BaseModule` (Sprint 33). Une instance déclare son
 `execution_mode` (`"io"` ou `"cpu"`) que le runner utilise pour
 choisir entre `ThreadPoolExecutor` (cloud APIs) et
@@ -431,7 +467,7 @@ canonique (champ `reference`).
 
 ### 6.2 Profils de normalisation
 
-11 profils livrés (`picarones/measurements/normalization.py`,
+11 profils livrés (`picarones/formats/text/normalization.py`,
 exposés via `/api/normalization/profiles`) : `nfc`, `caseless`,
 `minimal`, `medieval_french`, `early_modern_french`,
 `medieval_latin`, `medieval_english`, `early_modern_english`,
@@ -649,7 +685,7 @@ qui contient :
   git, paquets installés (top 200).
 
 Procédure complète de re-jeu d'un benchmark à 5 ans d'écart :
-[`docs/reproducibility-snapshots.md`](docs/reproducibility-snapshots.md)
+[`docs/reference/reproducibility-snapshots.md`](docs/reference/reproducibility-snapshots.md)
 (Sprint A8 / M-12).
 
 ### 9.2 Reproductibilité des builds

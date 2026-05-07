@@ -29,15 +29,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from picarones.core.corpus import Corpus, Document, GTLevel, TextGT
-from picarones.core.modules import ArtifactType, BaseModule
-from picarones.measurements.pipeline_benchmark import (
+from picarones.evaluation.corpus import Corpus, Document, GTLevel, TextGT
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
+from picarones.evaluation.pipeline_benchmark import (
     PipelineBenchmarkResult,
     StepAggregate,
     default_initial_inputs,
     run_pipeline_benchmark,
 )
-from picarones.core.pipeline import PipelineSpec, PipelineStep
+from picarones.evaluation.pipeline import PipelineSpec, PipelineStep
 
 
 # ──────────────────────────────────────────────────────────────────────────

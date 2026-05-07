@@ -4,7 +4,7 @@ import json
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.generator import ReportGenerator, _build_report_data, _cer_color
+from picarones.reports_v2.html.generator import ReportGenerator, _build_report_data, _cer_color
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ def sample_generator(sample_benchmark):
 
 class TestGenerateSampleBenchmark:
     def test_returns_benchmark_result(self, sample_benchmark):
-        from picarones.core.results import BenchmarkResult
+        from picarones.evaluation.benchmark_result import BenchmarkResult
         assert isinstance(sample_benchmark, BenchmarkResult)
 
     def test_correct_engine_count(self, sample_benchmark):

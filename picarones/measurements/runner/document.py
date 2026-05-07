@@ -14,9 +14,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from picarones.core.results import DocumentResult
-from picarones.engines.base import EngineResult
-from picarones.measurements.metrics import MetricsResult, compute_metrics
+from picarones.evaluation.benchmark_result import DocumentResult
+from picarones.adapters.legacy_engines.base import EngineResult
+from picarones.evaluation.metric_result import MetricsResult
+from picarones.measurements.metrics import compute_metrics
 
 
 def _calibration_from_engine_result(
@@ -67,7 +68,7 @@ def _compute_document_result(
     # sous-processus du pool (le top-level ``import`` du runner ne le fait
     # pas pour ne pas pénaliser le démarrage des moteurs minimaux).
     import picarones.measurements.builtin_hooks  # noqa: F401
-    from picarones.core.metric_hooks import run_document_hooks
+    from picarones.evaluation.metric_hooks import run_document_hooks
 
     if ocr_result.success:
         # Sprint A14-S1 — A.I.0 P0 : propagation du profil de

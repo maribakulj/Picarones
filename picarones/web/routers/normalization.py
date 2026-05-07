@@ -10,7 +10,7 @@ router = APIRouter()
 @router.get("/api/normalization/profiles")
 async def api_normalization_profiles() -> dict:
     """Liste les profils de normalisation disponibles avec leurs caractéristiques."""
-    from picarones.measurements.normalization import NORMALIZATION_PROFILES
+    from picarones.evaluation.metrics.normalization import NORMALIZATION_PROFILES
 
     profiles = [
         {

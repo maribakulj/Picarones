@@ -23,11 +23,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.taxonomy_comparison import (
+from picarones.evaluation.metrics.taxonomy_comparison import (
     RECOVERABILITY,
     compare_taxonomies,
 )
-from picarones.report.taxonomy_comparison_render import (
+from picarones.reports_v2.html.renderers.taxonomy_comparison import (
     build_taxonomy_comparison_html,
 )
 
@@ -91,7 +91,7 @@ class TestCompare:
 
     def test_recoverability_constant_complete(self) -> None:
         # Sanité : RECOVERABILITY couvre toutes les classes du module
-        from picarones.measurements.taxonomy import ERROR_CLASSES
+        from picarones.evaluation.metrics.taxonomy import ERROR_CLASSES
         for cls in ERROR_CLASSES:
             assert cls in RECOVERABILITY
 
@@ -194,7 +194,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

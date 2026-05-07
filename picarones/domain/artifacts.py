@@ -103,6 +103,67 @@ class ArtifactType(str, Enum):
     #: reliability diagram).
     CONFIDENCES = "confidences"
 
+    #: Aliases legacy pour rétrocompat avec ``picarones.core.modules``
+    #: (Phase 4-bis du retrait du legacy).  Le mécanisme natif d'Enum
+    #: Python rend ces noms équivalents aux canoniques :
+    #:
+    #: >>> ArtifactType.TEXT is ArtifactType.RAW_TEXT
+    #: True
+    #:
+    #: Le mapping sémantique TEXT → RAW_TEXT est documenté dans
+    #: ``docs/migration/regression-tolerances.md``.  À supprimer en 2.0
+    #: une fois tous les callers legacy retirés.
+    TEXT = "raw_text"
+    ALTO = "alto_xml"
+    PAGE = "page_xml"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "ArtifactType | None":
+        """Accepte les valeurs string legacy (``"text"``, ``"alto"``,
+        ``"page"``) en plus des valeurs canoniques.
+
+        Ce hook est invoqué par ``ArtifactType("text")`` (lecture YAML
+        legacy par exemple) — sans lui, ``ValueError``.  À supprimer
+        en 2.0 avec les aliases legacy ci-dessus.
+        """
+        legacy_map: dict[str, "ArtifactType"] = {
+            "text": cls.RAW_TEXT,
+            "alto": cls.ALTO_XML,
+            "page": cls.PAGE_XML,
+        }
+        if not isinstance(value, str):
+            return None
+        return legacy_map.get(value)
+
+
+#: Map valeur canonique → valeur string legacy.  Permet aux dicts
+#: indexés par ``ArtifactType.value`` (junction_metrics du runner
+#: legacy, etc.) de présenter les **deux** clés pendant la phase de
+#: migration : un caller rewrite qui cherche ``["raw_text"]`` et un
+#: test legacy qui cherche ``["text"]`` voient le même résultat.
+#:
+#: Phase 4-bis du retrait du legacy.  Sera retiré en 2.0 quand tous
+#: les callers utilisent les valeurs canoniques.
+LEGACY_VALUE_ALIASES: dict[str, str] = {
+    "raw_text": "text",
+    "alto_xml": "alto",
+    "page_xml": "page",
+}
+
+
+def expand_legacy_keys(d: dict) -> dict:
+    """Pour chaque clé canonique de ``d`` qui a un alias legacy
+    (cf. :data:`LEGACY_VALUE_ALIASES`), copie la valeur sous l'alias.
+
+    Mute le dict en place ET le retourne (chainable).  Idempotent :
+    si la clé legacy existe déjà avec une valeur différente, on ne
+    l'écrase pas (un override explicite gagne).
+    """
+    for canonical, legacy in LEGACY_VALUE_ALIASES.items():
+        if canonical in d and legacy not in d:
+            d[legacy] = d[canonical]
+    return d
+
 
 def compute_content_hash(payload: bytes) -> str:
     """SHA-256 hex (64 chars) d'un payload binaire.

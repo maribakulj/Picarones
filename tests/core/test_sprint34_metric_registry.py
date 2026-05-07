@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.metric_registry import (
+from picarones.evaluation.metric_registry import (
     MetricSpec,
     all_metrics,
     compute_at_junction,
@@ -27,7 +27,7 @@ from picarones.core.metric_registry import (
     register_metric,
     select_metrics,
 )
-from picarones.core.modules import ArtifactType
+from picarones.domain.artifacts import ArtifactType
 
 
 # Force l'import du module qui enregistre les métriques natives. Les
@@ -126,7 +126,7 @@ class TestComputeAtJunction:
             assert "cer" in out
         finally:
             # Nettoyage manuel — pas d'API publique, on écrit dans le dict.
-            from picarones.core.metric_registry import _METRIC_REGISTRY
+            from picarones.evaluation.metric_registry import _METRIC_REGISTRY
 
             _METRIC_REGISTRY.pop("_test_always_raises", None)
 
@@ -146,7 +146,7 @@ class TestComputeAtJunction:
                     skip_on_error=False,
                 )
         finally:
-            from picarones.core.metric_registry import _METRIC_REGISTRY
+            from picarones.evaluation.metric_registry import _METRIC_REGISTRY
 
             _METRIC_REGISTRY.pop("_test_propagates", None)
 
@@ -211,7 +211,7 @@ class TestRegistrationGuards:
                 def _second(ref: str, hyp: str) -> float:
                     return 1.0
         finally:
-            from picarones.core.metric_registry import _METRIC_REGISTRY
+            from picarones.evaluation.metric_registry import _METRIC_REGISTRY
 
             _METRIC_REGISTRY.pop("_test_duplicate", None)
 
@@ -232,7 +232,7 @@ class TestRegistrationGuards:
             input_types=(ArtifactType.TEXT, ArtifactType.TEXT),
         )(_func)
 
-        from picarones.core.metric_registry import _METRIC_REGISTRY
+        from picarones.evaluation.metric_registry import _METRIC_REGISTRY
 
         _METRIC_REGISTRY.pop("_test_idempotent", None)
 

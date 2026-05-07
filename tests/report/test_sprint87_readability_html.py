@@ -16,13 +16,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.metrics import MetricsResult
+from picarones.evaluation.metric_result import MetricsResult
 from picarones.measurements.readability_hooks import (
     aggregate_readability_metrics,
     compute_readability_metrics,
 )
-from picarones.core.results import DocumentResult, EngineReport
-from picarones.report.readability_render import (
+from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
+from picarones.reports_v2.html.renderers.readability import (
     build_readability_summary_html,
 )
 
@@ -38,7 +38,7 @@ def _stub_metrics() -> MetricsResult:
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

@@ -21,13 +21,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.report.pipeline_dag_render import build_pipeline_dag_html
+from picarones.reports_v2.html.renderers.pipeline_dag import build_pipeline_dag_html
 
 
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 
@@ -95,7 +95,7 @@ class TestRender:
         # Le test valide la sémantique « ≤ 0.05 → bon » sans coder en
         # dur le hex (qui peut évoluer avec la palette).  Comparaison
         # via ``COLOR_GREEN`` du module canonique.
-        from picarones.report.colors import COLOR_GREEN
+        from picarones.reports_v2._helpers.colors import COLOR_GREEN
 
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b",
@@ -104,7 +104,7 @@ class TestRender:
         assert COLOR_GREEN in html
 
     def test_colour_yellow(self) -> None:
-        from picarones.report.colors import COLOR_YELLOW
+        from picarones.reports_v2._helpers.colors import COLOR_YELLOW
 
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b", "metric_value": 0.10}]
@@ -112,7 +112,7 @@ class TestRender:
         assert COLOR_YELLOW in html
 
     def test_colour_red_for_high_cer(self) -> None:
-        from picarones.report.colors import COLOR_RED
+        from picarones.reports_v2._helpers.colors import COLOR_RED
 
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b", "metric_value": 0.30}]
@@ -121,7 +121,7 @@ class TestRender:
 
     def test_higher_is_better_inverts(self) -> None:
         # F1 = 0.95 = bonne qualité (haut)
-        from picarones.report.colors import COLOR_GREEN
+        from picarones.reports_v2._helpers.colors import COLOR_GREEN
 
         nodes = [{"name": "a"}, {"name": "b"}]
         edges = [{"from": "a", "to": "b", "metric_value": 0.96}]

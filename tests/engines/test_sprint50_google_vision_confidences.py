@@ -30,8 +30,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import picarones.engines.google_vision as gv_module
-from picarones.engines.google_vision import GoogleVisionEngine
+import picarones.adapters.legacy_engines.google_vision as gv_module
+from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -332,7 +332,7 @@ class TestRESTPath:
 class TestEndToEndWithRunner:
     def test_runner_picks_up_google_vision_confidences(self) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         ocr = EngineResult(
             engine_name="google_vision",

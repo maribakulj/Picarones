@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.normalization import (
+from picarones.evaluation.metrics.normalization import (
     NormalizationProfile,
     DEFAULT_DIPLOMATIC_PROFILE,
     _apply_diplomatic_table,
     get_builtin_profile,
 )
-from picarones.measurements.metrics import compute_metrics, aggregate_metrics, MetricsResult
+from picarones.evaluation.metric_result import aggregate_metrics, MetricsResult
+from picarones.measurements.metrics import compute_metrics
 from picarones.extras.importers.iiif import (
     IIIFManifestParser,
     parse_page_selector,
@@ -205,7 +206,7 @@ class TestDiplomaticCER:
         assert "diplomatic_profile_name" in d
 
     def test_cer_diplomatic_with_custom_profile(self):
-        from picarones.measurements.normalization import NormalizationProfile
+        from picarones.evaluation.metrics.normalization import NormalizationProfile
         profile = NormalizationProfile(
             name="test_profile",
             diplomatic_table={"ſ": "s"}
@@ -614,27 +615,27 @@ class TestSlugify:
 class TestMistralOCREngine:
 
     def test_import(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         assert MistralOCREngine is not None
 
     def test_name(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine()
         assert engine.name == "mistral_ocr"
 
     def test_version_default_model(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine()
         # Le modèle par défaut est désormais mistral-ocr-latest (API OCR native)
         assert "mistral-ocr" in engine.version()
 
     def test_version_custom_model(self):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         engine = MistralOCREngine({"model": "pixtral-large-latest"})
         assert engine.version() == "pixtral-large-latest"
 
     def test_missing_api_key_raises(self, monkeypatch, tmp_path):
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
         engine = MistralOCREngine()
         # Créer un fichier image factice
@@ -644,28 +645,28 @@ class TestMistralOCREngine:
             engine._run_ocr(img)
 
     def test_exported_from_engines(self):
-        from picarones.engines import MistralOCREngine
+        from picarones.adapters.legacy_engines import MistralOCREngine
         assert MistralOCREngine is not None
 
 
 class TestGoogleVisionEngine:
 
     def test_import(self):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         assert GoogleVisionEngine is not None
 
     def test_name(self):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         engine = GoogleVisionEngine()
         assert engine.name == "google_vision"
 
     def test_version(self):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         engine = GoogleVisionEngine()
         assert engine.version() == "v1"
 
     def test_missing_credentials_raises(self, monkeypatch, tmp_path):
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         engine = GoogleVisionEngine()
@@ -675,23 +676,23 @@ class TestGoogleVisionEngine:
             engine._run_ocr(img)
 
     def test_exported_from_engines(self):
-        from picarones.engines import GoogleVisionEngine
+        from picarones.adapters.legacy_engines import GoogleVisionEngine
         assert GoogleVisionEngine is not None
 
 
 class TestAzureDocIntelEngine:
 
     def test_import(self):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         assert AzureDocIntelEngine is not None
 
     def test_name(self):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         engine = AzureDocIntelEngine()
         assert engine.name == "azure_doc_intel"
 
     def test_missing_key_raises(self, monkeypatch, tmp_path):
-        from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
         monkeypatch.delenv("AZURE_DOC_INTEL_KEY", raising=False)
         monkeypatch.delenv("AZURE_DOC_INTEL_ENDPOINT", raising=False)
         engine = AzureDocIntelEngine()
@@ -701,7 +702,7 @@ class TestAzureDocIntelEngine:
             engine._run_ocr(img)
 
     def test_exported_from_engines(self):
-        from picarones.engines import AzureDocIntelEngine
+        from picarones.adapters.legacy_engines import AzureDocIntelEngine
         assert AzureDocIntelEngine is not None
 
 
@@ -790,7 +791,7 @@ class TestReportDiplomaticCER:
     def test_report_data_has_cer_diplomatic(self):
         """_build_report_data doit inclure cer_diplomatic dans engines_summary."""
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import _build_report_data
+        from picarones.reports_v2.html.generator import _build_report_data
 
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, images_b64={})
@@ -805,7 +806,7 @@ class TestReportDiplomaticCER:
     def test_html_contains_cer_diplo_column(self, tmp_path):
         """Le HTML généré doit contenir la colonne CER diplo."""
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark()
         out = tmp_path / "report_test.html"
@@ -818,7 +819,7 @@ class TestReportDiplomaticCER:
     def test_html_contains_medieval_graphie_indicator(self, tmp_path):
         """Le rapport doit mentionner les graphies médiévales (ſ=s ou u=v)."""
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark()
         out = tmp_path / "report_test.html"

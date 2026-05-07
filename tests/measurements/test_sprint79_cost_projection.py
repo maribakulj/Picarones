@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.cost_projection import (
+from picarones.evaluation.metrics.cost_projection import (
     ProjectedCost,
     cost_gap_table,
     project_all_engines,
@@ -31,7 +31,7 @@ from picarones.measurements.cost_projection import (
     project_cost_total,
     project_engine,
 )
-from picarones.measurements.pricing import EngineCost
+from picarones.evaluation.metrics.pricing import EngineCost
 
 
 def _ec(name: str, cost_1k: float | None, co2_1k: float | None = None,

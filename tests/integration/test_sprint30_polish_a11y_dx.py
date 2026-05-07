@@ -29,20 +29,20 @@ ROOT = Path(__file__).parent.parent.parent
 
 class TestI18nCache:
     def test_get_labels_returns_dict(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         labels = get_labels("fr")
         assert isinstance(labels, dict)
         assert len(labels) > 5
 
     def test_get_labels_unknown_falls_back_to_fr(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         fr = get_labels("fr")
         unknown = get_labels("xx-pas-existante")
         # Le fallback doit être le contenu fr
         assert unknown == fr
 
     def test_get_labels_cached(self):
-        from picarones import i18n
+        from picarones.reports_v2 import i18n
         i18n.reload_translations()
         # Premier appel — peuple le cache
         i18n.get_labels("fr")
@@ -54,7 +54,7 @@ class TestI18nCache:
         assert info_after.hits > info_before.hits
 
     def test_reload_translations_clears_cache(self):
-        from picarones import i18n
+        from picarones.reports_v2 import i18n
         i18n.get_labels("fr")
         info_before = i18n._get_labels_cached.cache_info()
         assert info_before.currsize >= 1
@@ -69,7 +69,7 @@ class TestI18nCache:
 
 class TestSafeVersionLogsDebug:
     def test_exception_in_version_does_not_propagate(self):
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class BrokenEngine(BaseOCREngine):
             @property
@@ -88,7 +88,7 @@ class TestSafeVersionLogsDebug:
         assert v == "unknown"
 
     def test_stacktrace_emitted_at_debug_level(self, caplog):
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class BrokenEngine(BaseOCREngine):
             @property
@@ -102,7 +102,7 @@ class TestSafeVersionLogsDebug:
                 return ""
 
         eng = BrokenEngine()
-        with caplog.at_level(logging.DEBUG, logger="picarones.engines.base"):
+        with caplog.at_level(logging.DEBUG, logger="picarones.adapters.legacy_engines.base"):
             eng._safe_version()
         # Le log debug doit mentionner la classe + l'exception
         assert any(
@@ -117,7 +117,7 @@ class TestSafeVersionLogsDebug:
 
 class TestBadgesAccessibility:
     def test_app_js_exposes_tier_helpers(self):
-        path = ROOT / "picarones" / "report" / "templates" / "_app.js"
+        path = ROOT / "picarones" / "reports_v2" / "html" / "templates" / "_app.js"
         src = path.read_text(encoding="utf-8")
         for fn in ("cerTier", "cerTierIcon", "cerTierLabel"):
             assert f"function {fn}" in src, (
@@ -125,7 +125,7 @@ class TestBadgesAccessibility:
             )
 
     def test_styles_define_tier_patterns(self):
-        path = ROOT / "picarones" / "report" / "templates" / "_styles.css"
+        path = ROOT / "picarones" / "reports_v2" / "html" / "templates" / "_styles.css"
         src = path.read_text(encoding="utf-8")
         for tier in ("excellent", "acceptable", "mediocre", "critical"):
             assert f'data-cer-tier="{tier}"' in src, (
@@ -138,7 +138,7 @@ class TestBadgesAccessibility:
         assert "border: 1.5px double" in src
 
     def test_main_badge_carries_data_attr_and_aria(self):
-        path = ROOT / "picarones" / "report" / "templates" / "_app.js"
+        path = ROOT / "picarones" / "reports_v2" / "html" / "templates" / "_app.js"
         src = path.read_text(encoding="utf-8")
         assert "setAttribute('data-cer-tier'" in src
         assert "setAttribute('aria-label'" in src
@@ -206,7 +206,7 @@ class TestChangelogAndSpecsUpdated:
 class TestGeneratedReportCarriesA11y:
     def test_generated_html_embeds_tier_helpers(self, tmp_path):
         from picarones import fixtures
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         b = fixtures.generate_sample_benchmark(n_docs=4)
         out = tmp_path / "rapport.html"

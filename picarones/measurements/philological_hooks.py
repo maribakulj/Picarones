@@ -34,7 +34,7 @@ from picarones.measurements.abbreviations import compute_abbreviation_metrics
 from picarones.measurements.early_modern_typography import compute_early_modern_metrics
 from picarones.measurements.modern_archives import compute_modern_archives_metrics
 from picarones.measurements.mufi import compute_mufi_coverage
-from picarones.measurements.roman_numerals import compute_roman_numeral_metrics
+from picarones.evaluation.metrics.roman_numerals import compute_roman_numeral_metrics
 from picarones.measurements.unicode_blocks import compute_unicode_block_accuracy
 
 logger = logging.getLogger(__name__)
@@ -296,7 +296,7 @@ def _aggregate_modern_archives(per_doc: list[dict]) -> dict:
 
 
 def _aggregate_roman_numerals(per_doc: list[dict]) -> dict:
-    from picarones.measurements.roman_numerals import ALL_STATUSES, VALUE_PRESERVING_STATUSES
+    from picarones.evaluation.metrics.roman_numerals import ALL_STATUSES, VALUE_PRESERVING_STATUSES
 
     n_total = 0
     per_status: dict[str, int] = {s: 0 for s in ALL_STATUSES}

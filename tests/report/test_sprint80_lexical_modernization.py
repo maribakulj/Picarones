@@ -27,12 +27,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.lexical_modernization import (
+from picarones.evaluation.metrics.lexical_modernization import (
     aggregate_lexical_modernization,
     compute_lexical_modernization,
     top_modernized_tokens,
 )
-from picarones.report.lexical_modernization_render import (
+from picarones.reports_v2.html.renderers.lexical_modernization import (
     build_lexical_modernization_html,
 )
 
@@ -222,7 +222,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

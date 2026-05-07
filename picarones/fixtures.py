@@ -13,19 +13,19 @@ import random
 import struct
 import zlib
 
-from picarones.measurements.metrics import MetricsResult
-from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
+from picarones.evaluation.metric_result import MetricsResult
+from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
 from picarones.pipelines.over_normalization import detect_over_normalization
 # Sprint 5 — métriques avancées
-from picarones.measurements.confusion import build_confusion_matrix
-from picarones.measurements.char_scores import compute_ligature_score, compute_diacritic_score
-from picarones.measurements.taxonomy import classify_errors, aggregate_taxonomy
-from picarones.measurements.structure import analyze_structure, aggregate_structure
-from picarones.measurements.image_quality import generate_mock_quality_scores, aggregate_image_quality
-from picarones.measurements.char_scores import aggregate_ligature_scores, aggregate_diacritic_scores
+from picarones.evaluation.metrics.confusion import build_confusion_matrix
+from picarones.evaluation.metrics.char_scores import compute_ligature_score, compute_diacritic_score
+from picarones.evaluation.metrics.taxonomy import classify_errors, aggregate_taxonomy
+from picarones.evaluation.metrics.structure import analyze_structure, aggregate_structure
+from picarones.evaluation.metrics.image_quality import generate_mock_quality_scores, aggregate_image_quality
+from picarones.evaluation.metrics.char_scores import aggregate_ligature_scores, aggregate_diacritic_scores
 # Sprint 10 — distribution des erreurs + hallucinations VLM
-from picarones.measurements.line_metrics import compute_line_metrics, aggregate_line_metrics, LineMetrics
-from picarones.measurements.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
+from picarones.evaluation.metrics.line_metrics import compute_line_metrics, aggregate_line_metrics, LineMetrics
+from picarones.evaluation.metrics.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
 
 # ---------------------------------------------------------------------------
 # Textes GT réalistes (documents patrimoniaux)
@@ -427,11 +427,11 @@ def generate_sample_benchmark(
                 }
 
         # Agrégation Sprint 5
-        from picarones.measurements.confusion import aggregate_confusion_matrices, ConfusionMatrix
-        from picarones.measurements.char_scores import LigatureScore, DiacriticScore
-        from picarones.measurements.taxonomy import TaxonomyResult
-        from picarones.measurements.structure import StructureResult
-        from picarones.measurements.image_quality import ImageQualityResult
+        from picarones.evaluation.metrics.confusion import aggregate_confusion_matrices, ConfusionMatrix
+        from picarones.evaluation.metrics.char_scores import LigatureScore, DiacriticScore
+        from picarones.evaluation.metrics.taxonomy import TaxonomyResult
+        from picarones.evaluation.metrics.structure import StructureResult
+        from picarones.evaluation.metrics.image_quality import ImageQualityResult
 
         agg_confusion = aggregate_confusion_matrices([
             ConfusionMatrix(**dr.confusion_matrix)
@@ -468,7 +468,7 @@ def generate_sample_benchmark(
             LineMetrics.from_dict(dr.line_metrics)
             for dr in doc_results if dr.line_metrics
         ])
-        from picarones.measurements.hallucination import HallucinationMetrics as _HM
+        from picarones.evaluation.metrics.hallucination import HallucinationMetrics as _HM
         agg_hallucination = aggregate_hallucination_metrics([
             _HM.from_dict(dr.hallucination_metrics)
             for dr in doc_results if dr.hallucination_metrics

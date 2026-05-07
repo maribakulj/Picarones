@@ -27,9 +27,9 @@ from typing import Optional
 
 from tqdm import tqdm
 
-from picarones.core.corpus import Corpus
-from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
-from picarones.engines.base import BaseOCREngine
+from picarones.evaluation.corpus import Corpus
+from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
+from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.measurements.runner.document import (
     _make_error_doc_result,
     _make_timeout_doc_result,
@@ -140,7 +140,7 @@ def run_benchmark(
     # dans le main process (les sous-processus du pool feront leur
     # propre import dans ``_compute_document_result``).
     import picarones.measurements.builtin_hooks  # noqa: F401
-    from picarones.core.metric_hooks import (
+    from picarones.evaluation.metric_hooks import (
         run_corpus_aggregators, validate_profile,
     )
     validate_profile(profile)
@@ -151,7 +151,7 @@ def run_benchmark(
     # éviter de re-résoudre N fois côté workers.
     norm_profile_obj = None
     if normalization_profile is not None:
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         norm_profile_obj = get_builtin_profile(normalization_profile)
 
     def _is_cancelled() -> bool:
@@ -435,7 +435,7 @@ def run_benchmark(
     inter_engine_payload: Optional[dict] = None
     if len(engine_reports) >= 2:
         try:
-            from picarones.measurements.inter_engine import compute_inter_engine_analysis
+            from picarones.evaluation.metrics.inter_engine import compute_inter_engine_analysis
 
             taxonomy_distros = {
                 report.engine_name: (

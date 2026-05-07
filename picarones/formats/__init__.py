@@ -23,4 +23,6 @@ pas sur des résultats d'OCR.
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from picarones.formats._xml_utils import safe_parse_xml
+
+__all__: list[str] = ["safe_parse_xml"]

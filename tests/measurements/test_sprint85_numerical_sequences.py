@@ -16,7 +16,7 @@ Couvre :
 
 from __future__ import annotations
 
-from picarones.measurements.numerical_sequences import (
+from picarones.evaluation.metrics.numerical_sequences import (
     CATEGORIES,
     _detect_currencies,
     _detect_foliations,
@@ -223,8 +223,8 @@ class TestRealistic:
 
 class TestRegistry:
     def test_strict_and_value_metrics_registered(self) -> None:
-        from picarones.core.metric_registry import select_metrics
-        from picarones.core.modules import ArtifactType
+        from picarones.evaluation.metric_registry import select_metrics
+        from picarones.domain.artifacts import ArtifactType
 
         metrics = select_metrics((ArtifactType.TEXT, ArtifactType.TEXT))
         names = [m.name for m in metrics]
@@ -243,8 +243,8 @@ class TestRegistry:
         assert value == 1.0
 
     def test_metric_via_compute_at_junction(self) -> None:
-        from picarones.core.metric_registry import compute_at_junction
-        from picarones.core.modules import ArtifactType
+        from picarones.evaluation.metric_registry import compute_at_junction
+        from picarones.domain.artifacts import ArtifactType
 
         results = compute_at_junction(
             "1789, IV", "1789, IV",

@@ -60,7 +60,18 @@ MEASUREMENTS_DIR = PICARONES_DIR / "measurements"
 #: l'API publique du package (imports explicites avec directive
 #: de fin de ligne ``noqa F401`` dans
 #: ``picarones/measurements/__init__.py``).
-TEST_ONLY_BASELINE: frozenset[str] = frozenset()
+TEST_ONLY_BASELINE: frozenset[str] = frozenset({
+    # Lot D — la majorité des entrées historiques (shims
+    # ``measurements/X.py`` vers ``evaluation/metrics/X``) ont été
+    # supprimées au Lot D, donc retirées de cette baseline.  Ne
+    # restent que les modules qui n'ont pas de canonique migré et
+    # dont le seul consommateur production est désormais hors
+    # ``picarones/`` (renderer canonique qui consomme le canonique
+    # directement, mais module legacy gardé pour les tests).
+    "numerical_sequences_hooks",
+    "pipeline_benchmark",
+    "pipeline_comparison",
+})
 
 
 def _measurements_modules() -> list[str]:

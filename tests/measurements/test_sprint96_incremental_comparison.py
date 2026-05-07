@@ -27,11 +27,11 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.incremental_comparison import (
+from picarones.evaluation.metrics.incremental_comparison import (
     PipelineRun,
     compare_isolated_effect,
 )
-from picarones.report.incremental_comparison_render import (
+from picarones.reports_v2.html.renderers.incremental_comparison import (
     build_incremental_comparison_html,
 )
 
@@ -39,7 +39,7 @@ from picarones.report.incremental_comparison_render import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

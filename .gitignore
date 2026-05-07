@@ -28,9 +28,19 @@ jobs.db-shm
 jobs.db-wal
 
 # Exceptions : fichiers HTML sources du package (templates Jinja2, pas rapports)
-!picarones/report/templates/*.html
 !picarones/web/templates/*.html
+# Lot G fix (mai 2026) — Phase 5.E avait migré les templates de
+# picarones/report/templates/ vers picarones/reports_v2/html/templates/
+# mais oublié l'exception .gitignore correspondante : les 10 .html
+# avaient donc été silencieusement ignorés par git lors du commit
+# cc53ead, faisant échouer ~91 tests (TemplateNotFound _header.html
+# etc.).  Cette nouvelle exception remplace l'ancienne (plus en
+# vigueur depuis la suppression de picarones/report/ au Lot F).
+!picarones/reports_v2/html/templates/*.html
 # Sprint A14-S3 — sous-package du code (homonyme de corpus/ data ignoré ligne 21)
 !picarones/adapters/corpus/
 !picarones/adapters/corpus/**
+# Phase 4-quater (cleanup) : ré-ignorer __pycache__/ dans ce sous-package
+# (la négation ci-dessus est trop large et casse la règle ligne 1).
+picarones/adapters/corpus/**/__pycache__/
 _version.py

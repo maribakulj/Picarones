@@ -29,7 +29,7 @@ def test_new_path_exposes_all_eleven_profiles() -> None:
 def test_old_reexport_works() -> None:
     """Compat ascendante : ~50 consommateurs importent depuis l'ancien
     chemin."""
-    from picarones.measurements.normalization import (
+    from picarones.evaluation.metrics.normalization import (
         DEFAULT_DIPLOMATIC_PROFILE,
         NORMALIZATION_PROFILES,
         NormalizationProfile,
@@ -44,7 +44,7 @@ def test_old_reexport_works() -> None:
 def test_private_symbols_reexported() -> None:
     """Les symboles préfixés ``_`` utilisés en aval doivent rester
     importables depuis l'ancien chemin."""
-    from picarones.measurements.normalization import (
+    from picarones.evaluation.metrics.normalization import (
         _apply_diplomatic_table,
         _parse_exclude_chars,
     )
@@ -59,7 +59,7 @@ def test_old_and_new_paths_share_same_objects() -> None:
         NormalizationProfile as NewProfile,
         get_builtin_profile as new_get,
     )
-    from picarones.measurements.normalization import (
+    from picarones.evaluation.metrics.normalization import (
         NORMALIZATION_PROFILES as old_profiles,
         NormalizationProfile as OldProfile,
         get_builtin_profile as old_get,

@@ -13,10 +13,10 @@ utiliser les sous-packages explicites :
 
 >>> from picarones.measurements.runner import run_benchmark
 >>> from picarones.measurements.metrics import compute_metrics
->>> from picarones.engines.tesseract import TesseractEngine
+>>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
 
-Voir ``docs/architecture.md`` pour la cartographie complète des
-3 cercles, et ``docs/api-stable.md`` pour le contrat de stabilité.
+Voir ``docs/explanation/architecture.md`` pour la cartographie complète des
+3 cercles, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ __author__ = "Picarones contributors"
 # API publique — Cercle 1 uniquement
 # ──────────────────────────────────────────────────────────────────────────
 
-from picarones.core.corpus import (
+from picarones.evaluation.corpus import (
     Corpus,
     Document,
     GTLevel,
@@ -55,27 +55,28 @@ from picarones.core.corpus import (
     ReadingOrderGT,
     load_corpus_from_directory,
 )
-from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.results import (
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
+from picarones.evaluation.benchmark_result import (
     BenchmarkResult,
     DocumentResult,
     EngineReport,
 )
-from picarones.core.metrics import MetricsResult, aggregate_metrics
-from picarones.core.facts import (
+from picarones.evaluation.metric_result import MetricsResult, aggregate_metrics
+from picarones.domain.facts import (
     DetectorRegistry,
     Fact,
     FactImportance,
     FactType,
 )
-from picarones.core.pipeline import (
+from picarones.evaluation.pipeline import (
     PipelineResult,
     PipelineRunner,
     PipelineSpec,
     PipelineStep,
     StepResult,
 )
-from picarones.core.metric_registry import (
+from picarones.evaluation.metric_registry import (
     MetricSpec,
     compute_at_junction,
     register_metric,

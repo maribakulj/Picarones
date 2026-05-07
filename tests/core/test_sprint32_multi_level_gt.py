@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.core.corpus import (
+from picarones.evaluation.corpus import (
     AltoGT,
     Document,
     EntitiesGT,
@@ -298,7 +298,7 @@ class TestRobustness:
             "{ ceci n'est pas du JSON", encoding="utf-8"
         )
 
-        with caplog.at_level("WARNING", logger="picarones.core.corpus"):
+        with caplog.at_level("WARNING", logger="picarones.evaluation.corpus"):
             corpus = load_corpus_from_directory(tmp_path)
 
         # Le document reste chargé avec son niveau TEXT
@@ -317,7 +317,7 @@ class TestRobustness:
             json.dumps({"foo": "bar"}), encoding="utf-8"
         )
 
-        with caplog.at_level("WARNING", logger="picarones.core.corpus"):
+        with caplog.at_level("WARNING", logger="picarones.evaluation.corpus"):
             corpus = load_corpus_from_directory(tmp_path)
 
         assert not corpus.documents[0].has_gt(GTLevel.ENTITIES)

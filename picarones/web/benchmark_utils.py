@@ -87,8 +87,8 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
     ocr = None
     if not is_corpus_ocr:
-        from picarones.engines.tesseract import TesseractEngine
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
 
         if engine_id == "tesseract":
             ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
@@ -96,7 +96,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
             ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
         elif engine_id == "google_vision":
             try:
-                from picarones.engines.google_vision import GoogleVisionEngine
+                from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
                 ocr = GoogleVisionEngine(
                     config={"detection_type": comp.ocr_model or "document_text_detection"},
                 )
@@ -104,7 +104,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
                 raise RuntimeError("Google Vision non disponible.") from exc
         elif engine_id == "azure_doc_intel":
             try:
-                from picarones.engines.azure_doc_intel import AzureDocIntelEngine
+                from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
                 ocr = AzureDocIntelEngine(
                     config={"model": comp.ocr_model or "prebuilt-document"},
                 )
@@ -152,7 +152,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
 
         corpus = load_corpus_from_directory(req.corpus_path)
@@ -208,7 +208,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 "total": total_steps,
             })
 
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
         result = run_benchmark(
@@ -226,7 +226,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
             return
 
         job.add_event("log", {"message": "Génération du rapport HTML…"})
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         gen = ReportGenerator(result, lang=req.report_lang)
         gen.generate(output_html)
 
@@ -254,7 +254,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
 
         # Charger le corpus
@@ -268,7 +268,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
 
         # Instancier les moteurs via la factory cercle 2 (pas de
         # dépendance ``click`` dans le code web).
-        from picarones.engines.factory import engine_from_name
+        from picarones.adapters.legacy_engines.factory import engine_from_name
 
         ocr_engines = []
         for engine_name in req.engines:
@@ -316,7 +316,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
                 "total": total_steps,
             })
 
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
         result = run_benchmark(
@@ -334,7 +334,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
             return
 
         job.add_event("log", {"message": "Génération du rapport HTML…"})
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         report_lang = getattr(req, "report_lang", "fr")
         gen = ReportGenerator(result, lang=report_lang)
         gen.generate(output_html)

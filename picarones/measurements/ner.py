@@ -57,8 +57,8 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable
 
-from picarones.core.metric_registry import register_metric
-from picarones.core.modules import ArtifactType
+from picarones.evaluation.metric_registry import register_metric
+from picarones.domain.artifacts import ArtifactType
 
 logger = logging.getLogger(__name__)
 

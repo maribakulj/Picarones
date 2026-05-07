@@ -1,20 +1,22 @@
-"""Importeurs de corpus depuis sources distantes (Cercle 3).
+"""Importeurs de corpus depuis sources distantes.
 
-Importeurs livrés
------------------
+Importeurs livrés ici (legacy, en cours de retrait) :
+
 - :mod:`_http`         — helpers HTTP partagés (validate_http_url, download_url)
 - :mod:`iiif`          — manifestes IIIF v2/v3 (Bodleian, BnF, Vatican…)
-- :mod:`htr_united`    — datasets HTR-United (CC0, GitHub)
 - :mod:`gallica`       — BnF Gallica (SRU + IIIF + OCR brut)
-- :mod:`huggingface`   — datasets HuggingFace ⚠ **expérimental**
 - :mod:`escriptorium`  — projets eScriptorium ⚠ **expérimental**
 
-Modules expérimentaux
----------------------
-``huggingface`` et ``escriptorium`` émettent un ``UserWarning`` à
-l'import. Ils sont fonctionnellement présents mais leur usage en
-production n'est pas garanti — l'API HuggingFace Datasets évolue
-fréquemment et eScriptorium n'a qu'un test isolé.
+Importeurs migrés vers :mod:`picarones.adapters.corpus` (Lot I) :
+
+- ``htr_united``        → :mod:`picarones.adapters.corpus.htr_united`
+- ``huggingface``       → :mod:`picarones.adapters.corpus.huggingface`
+  ⚠ **expérimental**
+- ``_fallback_log``     → :mod:`picarones.adapters.corpus._fallback_log`
+
+L'API publique de ce package re-expose ces modules canoniques pour
+préserver la rétrocompat (``from picarones.extras.importers import
+HuggingFaceDataset, HTRUnitedEntry, …``).
 """
 
 from picarones.extras.importers.iiif import IIIFImporter, import_iiif_manifest
@@ -30,7 +32,7 @@ from picarones.extras.importers.escriptorium import (
     EScriptoriumDocument,
     connect_escriptorium,
 )
-from picarones.extras.importers._fallback_log import (
+from picarones.adapters.corpus._fallback_log import (
     consume_fallback_log,
     peek_fallback_log,
     record_fallback,

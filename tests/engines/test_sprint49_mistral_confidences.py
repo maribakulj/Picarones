@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.engines.mistral_ocr import MistralOCREngine
+from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -275,7 +275,7 @@ class TestRunOverride:
 class TestEndToEndWithRunner:
     def test_runner_picks_up_mistral_confidences(self) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.engines.base import EngineResult
+        from picarones.adapters.legacy_engines.base import EngineResult
 
         ocr = EngineResult(
             engine_name="mistral_ocr",

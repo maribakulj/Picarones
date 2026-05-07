@@ -2,7 +2,7 @@
 
 Couvre :
 
-- :mod:`picarones.core.metric_hooks` : profils, registre, décorateurs,
+- :mod:`picarones.evaluation.metric_hooks` : profils, registre, décorateurs,
   sélection par profil, exécution avec gestion d'erreurs.
 - :mod:`picarones.measurements.builtin_hooks` : enregistre les 12+12 hooks
   historiques sur le profil ``standard``.
@@ -28,7 +28,7 @@ import pytest
 
 class TestProfiles:
     def test_known_profiles_complete(self):
-        from picarones.core.metric_hooks import KNOWN_PROFILES
+        from picarones.evaluation.metric_hooks import KNOWN_PROFILES
 
         assert KNOWN_PROFILES == frozenset({
             "minimal", "standard", "philological", "diagnostics",
@@ -36,20 +36,20 @@ class TestProfiles:
         })
 
     def test_validate_profile_accepts_known(self):
-        from picarones.core.metric_hooks import validate_profile
+        from picarones.evaluation.metric_hooks import validate_profile
 
         for p in ["minimal", "standard", "philological", "diagnostics",
                   "economics", "pipeline", "full"]:
             validate_profile(p)  # ne lève pas
 
     def test_validate_profile_rejects_unknown(self):
-        from picarones.core.metric_hooks import validate_profile
+        from picarones.evaluation.metric_hooks import validate_profile
 
         with pytest.raises(ValueError, match="profil inconnu"):
             validate_profile("philolagic")
 
     def test_validate_profile_rejects_empty(self):
-        from picarones.core.metric_hooks import validate_profile
+        from picarones.evaluation.metric_hooks import validate_profile
 
         with pytest.raises(ValueError):
             validate_profile("")
@@ -64,7 +64,7 @@ class TestBuiltinHooksRegistration:
     def test_twelve_document_hooks_registered(self):
         # Import déclenche l'enregistrement via décorateurs.
         import picarones.measurements.builtin_hooks  # noqa: F401
-        from picarones.core.metric_hooks import _all_document_hook_names
+        from picarones.evaluation.metric_hooks import _all_document_hook_names
 
         names = set(_all_document_hook_names())
         expected = {
@@ -77,7 +77,7 @@ class TestBuiltinHooksRegistration:
 
     def test_twelve_corpus_aggregators_registered(self):
         import picarones.measurements.builtin_hooks  # noqa: F401
-        from picarones.core.metric_hooks import _all_corpus_aggregator_names
+        from picarones.evaluation.metric_hooks import _all_corpus_aggregator_names
 
         names = set(_all_corpus_aggregator_names())
         expected = {
@@ -90,7 +90,7 @@ class TestBuiltinHooksRegistration:
 
     def test_standard_profile_activates_all_hooks(self):
         import picarones.measurements.builtin_hooks  # noqa: F401
-        from picarones.core.metric_hooks import (
+        from picarones.evaluation.metric_hooks import (
             select_corpus_aggregators, select_document_hooks,
         )
 
@@ -101,7 +101,7 @@ class TestBuiltinHooksRegistration:
 
     def test_minimal_profile_activates_zero_hooks(self):
         import picarones.measurements.builtin_hooks  # noqa: F401
-        from picarones.core.metric_hooks import (
+        from picarones.evaluation.metric_hooks import (
             select_corpus_aggregators, select_document_hooks,
         )
 
@@ -115,8 +115,8 @@ class TestBuiltinHooksRegistration:
         import picarones.measurements.builtin_hooks  # noqa: F401
         from dataclasses import fields
 
-        from picarones.core.metric_hooks import select_document_hooks
-        from picarones.core.results import DocumentResult
+        from picarones.evaluation.metric_hooks import select_document_hooks
+        from picarones.evaluation.benchmark_result import DocumentResult
 
         doc_fields = {f.name for f in fields(DocumentResult)}
         for hook in select_document_hooks("standard"):
@@ -129,8 +129,8 @@ class TestBuiltinHooksRegistration:
         import picarones.measurements.builtin_hooks  # noqa: F401
         from dataclasses import fields
 
-        from picarones.core.metric_hooks import select_corpus_aggregators
-        from picarones.core.results import EngineReport
+        from picarones.evaluation.metric_hooks import select_corpus_aggregators
+        from picarones.evaluation.benchmark_result import EngineReport
 
         report_fields = {f.name for f in fields(EngineReport)}
         for agg in select_corpus_aggregators("standard"):
@@ -157,7 +157,7 @@ class _MockEngineResult:
 
 class TestRunDocumentHooks:
     def test_minimal_profile_returns_empty_dict(self):
-        from picarones.core.metric_hooks import run_document_hooks
+        from picarones.evaluation.metric_hooks import run_document_hooks
 
         result = run_document_hooks(
             "minimal",
@@ -172,7 +172,7 @@ class TestRunDocumentHooks:
     def test_hook_exception_does_not_propagate(self, caplog):
         """Un hook qui lève doit être loggé en warning, pas faire
         échouer le calcul des autres hooks."""
-        import picarones.core.metric_hooks as mh
+        import picarones.evaluation.metric_hooks as mh
 
         # Crée un profil de test isolé via un hook qui lève
         custom_profile_name = "standard"
@@ -205,7 +205,7 @@ class TestRunDocumentHooks:
     def test_requires_success_skips_failed_ocr(self):
         """Un hook ``requires_success=True`` ne doit pas être appelé si
         ``ocr_result.success`` est False."""
-        import picarones.core.metric_hooks as mh
+        import picarones.evaluation.metric_hooks as mh
 
         called = []
 
@@ -233,7 +233,7 @@ class TestRunDocumentHooks:
     def test_requires_token_confidences_skips_when_absent(self):
         """Un hook ``requires_token_confidences=True`` doit être sauté
         quand ``ocr_result.token_confidences`` est None."""
-        import picarones.core.metric_hooks as mh
+        import picarones.evaluation.metric_hooks as mh
 
         called = []
 
@@ -299,7 +299,7 @@ class TestDecoratorIdempotence:
     def test_register_same_func_twice_is_silent(self):
         """Ré-import d'un module en test ne doit pas lever sur le
         décorateur déjà appliqué."""
-        from picarones.core.metric_hooks import register_document_metric
+        from picarones.evaluation.metric_hooks import register_document_metric
 
         @register_document_metric(
             name="reimport_test_chantier2",
@@ -319,7 +319,7 @@ class TestDecoratorIdempotence:
         assert result is _hook
 
     def test_register_different_func_same_name_raises(self):
-        from picarones.core.metric_hooks import register_document_metric
+        from picarones.evaluation.metric_hooks import register_document_metric
 
         @register_document_metric(
             name="conflict_test_chantier2",
@@ -339,7 +339,7 @@ class TestDecoratorIdempotence:
                 return None
 
     def test_register_unknown_profile_raises(self):
-        from picarones.core.metric_hooks import register_document_metric
+        from picarones.evaluation.metric_hooks import register_document_metric
 
         with pytest.raises(ValueError, match="profils inconnus"):
             @register_document_metric(

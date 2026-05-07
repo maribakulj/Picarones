@@ -26,10 +26,10 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.taxonomy_intra_doc import (
+from picarones.evaluation.metrics.taxonomy_intra_doc import (
     compute_taxonomy_position_heatmap,
 )
-from picarones.report.taxonomy_intra_doc_render import (
+from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
     build_taxonomy_intra_doc_html,
 )
 
@@ -174,7 +174,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

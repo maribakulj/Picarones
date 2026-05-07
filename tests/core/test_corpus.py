@@ -1,9 +1,9 @@
-"""Tests unitaires pour picarones.core.corpus."""
+"""Tests unitaires pour picarones.evaluation.corpus."""
 
 import pytest
 from pathlib import Path
 
-from picarones.core.corpus import load_corpus_from_directory, Document
+from picarones.evaluation.corpus import load_corpus_from_directory, Document
 
 
 @pytest.fixture

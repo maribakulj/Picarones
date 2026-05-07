@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modules import ArtifactType
+from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
+from picarones.domain.artifacts import ArtifactType
 from picarones.measurements.reading_order import (
     compute_reading_order_metrics,
     reading_order_f1,

@@ -21,7 +21,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 from picarones.llm.base import BaseLLMAdapter
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ class OCRLLMPipeline(BaseOCREngine):
     Examples
     --------
     >>> from picarones.llm import OpenAIAdapter
-    >>> from picarones.engines.tesseract import TesseractEngine
+    >>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
     >>> pipeline = OCRLLMPipeline(
     ...     ocr_engine=TesseractEngine({"lang": "fra"}),
     ...     llm_adapter=OpenAIAdapter(model="gpt-4o"),

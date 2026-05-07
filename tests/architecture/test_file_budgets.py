@@ -49,22 +49,34 @@ FILE_BUDGETS: dict[str, int] = {
     # et le sous-package picarones/report/report_data/. Budget serré
     # à 500 pour verrouiller le gain ; toute croissance > 500 sera
     # un signal pour redécouper.
-    "picarones/report/generator.py": 500,                 # actuel 431
+    # Phase 5.E : ``report/generator.py`` est désormais un shim ;
+    # canonique dans ``reports_v2/html/generator.py``.
+    "picarones/reports_v2/html/generator.py": 550,        # actuel 471
     # --- Fichiers métier larges.
     "picarones/measurements/robustness.py": 850,          # actuel 731
-    "picarones/report/pipeline_render.py": 815,           # actuel 707 (rétréci)
-    "picarones/core/results.py": 750,                     # actuel 636
-    "picarones/report/philological_render.py": 700,       # actuel 595 (rétréci)
+    # Phase 5.C.batch7 : ``report/pipeline_render.py`` est désormais
+    # un shim ; canonique dans ``reports_v2/html/renderers/pipeline.py``.
+    "picarones/reports_v2/html/renderers/pipeline.py": 815,  # actuel 713
+    # Phase 4-ter : ``core/results.py`` est désormais un shim
+    # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
+    # même budget pour la même raison historique (modèles
+    # BenchmarkResult/EngineReport/DocumentResult).
+    "picarones/evaluation/benchmark_result.py": 750,      # actuel 702
+    # Phase 5.C : ``report/philological_render.py`` est désormais
+    # un shim (≤ 25 l).  Le contenu canonique vit dans
+    # ``reports_v2/html/renderers/philological.py``.
+    "picarones/reports_v2/html/renderers/philological.py": 700,  # actuel 601
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
-    "picarones/core/pipeline.py": 675,                    # actuel 571
+    # Phase 5.C.batch7 : ``core/pipeline.py`` est désormais un shim ;
+    # canonique dans ``evaluation/pipeline.py``.
+    "picarones/evaluation/pipeline.py": 700,              # actuel 622
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
-    "picarones/measurements/levers.py": 675,              # actuel 561 (re-export S10)
-    # Sprint A14-S10 — déplacés depuis measurements/, l'ancien
-    # emplacement est désormais un re-export.  Le contenu canonique
-    # vit dans evaluation/metrics/.
+    # Sprint A14-S10 + Lot D — déplacés depuis measurements/.
+    # L'ancien emplacement (shim) a été supprimé au Lot D ; seul le
+    # canonique reste dans evaluation/metrics/.
     "picarones/evaluation/metrics/levers.py": 675,        # actuel 561
     "picarones/evaluation/metrics/inter_engine.py": 575,  # actuel 484
     "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
@@ -101,29 +113,45 @@ FILE_BUDGETS: dict[str, int] = {
     # S59 ajout du descripteur ``_DeprecatedAttribute`` + alias rétrocompat
     # ``DEFAULT_CORRECTION_PROMPT`` + warning lang fallback (M6).
     "picarones/adapters/llm/base.py": 560,                # actuel 486
-    "picarones/core/corpus.py": 600,                      # actuel 511
+    # Phase 4-quater : ``core/corpus.py`` est désormais un shim
+    # (≤ 30 l).  Le contenu canonique vit dans ``evaluation/`` ;
+    # même budget pour la même raison historique
+    # (Document/Corpus/GTLevel + 5 payloads + load_corpus_from_directory).
+    "picarones/evaluation/corpus.py": 600,                # actuel 533
     "picarones/fixtures.py": 600,                         # actuel 510
-    "picarones/measurements/inter_engine.py": 575,        # actuel 484
-    "picarones/measurements/roman_numerals.py": 575,      # actuel 478
-    "picarones/extras/importers/htr_united.py": 575,      # actuel 473 (re-export S11)
-    # Sprint A14-S11 — d\xc3\xa9plac\xc3\xa9s depuis extras/importers/, l'ancien
-    # emplacement est d\xc3\xa9sormais un re-export.
+    # Phase 5.C.batch7 + Lot D : le shim
+    # ``measurements/roman_numerals.py`` a été supprimé.  Seul le
+    # canonique ``evaluation/metrics/roman_numerals.py`` reste.
+    "picarones/evaluation/metrics/roman_numerals.py": 575,  # actuel 484
+    # Sprint A14-S11 + Lot I — déplacés depuis extras/importers/.
+    # Les shims ``extras/importers/{htr_united, huggingface,
+    # _fallback_log}`` ont été supprimés au Lot I (mai 2026).
     "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     "picarones/cli/_workflows.py": 550,                   # actuel 469
-    "picarones/extras/importers/huggingface.py": 550,     # actuel 464
-    "picarones/core/metric_hooks.py": 500,                # actuel 423
-    "picarones/measurements/numerical_sequences.py": 500, # actuel 422
-    "picarones/measurements/normalization.py": 500,       # actuel 420 (re-export S9)
-    # Sprint A14-S9 — déplacé depuis measurements/normalization.py.
-    # L'ancien emplacement est désormais un re-export ; le contenu
-    # canonique vit ici.
+    # Phase 4-ter : ``core/metric_hooks.py`` est désormais un shim
+    # (≤ 80 l).  Le contenu canonique vit dans ``evaluation/`` ;
+    # même budget pour la même raison historique (centralise les
+    # hooks document/corpus, croissance maîtrisée).
+    "picarones/evaluation/metric_hooks.py": 500,          # actuel 427
+    # Phase 5.C.batch7 : ``measurements/numerical_sequences.py`` est
+    # désormais un shim ; canonique dans
+    # ``evaluation/metrics/numerical_sequences.py``.
+    "picarones/evaluation/metrics/numerical_sequences.py": 500,  # actuel 428
+    # Sprint A14-S9 + Lot D — déplacé depuis measurements/normalization.py.
+    # Le shim a été supprimé au Lot D ; seul le canonique reste.
     "picarones/formats/text/normalization.py": 500,       # actuel 420
-    "picarones/report/comparison.py": 500,                # actuel 409
+    # Phase 5.E : ``report/comparison.py`` est désormais un shim ;
+    # canonique dans ``reports_v2/html/comparison.py``.
+    "picarones/reports_v2/html/comparison.py": 500,       # actuel 414
     # --- Module mutualisé créé par le sprint des render helpers
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
     # calibré sur la taille post-documentation des conventions.
-    "picarones/report/render_helpers.py": 480,            # actuel 415
+    # Phase 5 : ``report/render_helpers.py`` est désormais un shim
+    # (≤ 25 l).  Le contenu canonique vit dans
+    # ``reports_v2/_helpers/`` ; même budget pour la même raison
+    # historique (consolidation des 25 helpers de couleur).
+    "picarones/reports_v2/_helpers/render_helpers.py": 480,  # actuel 428
     # --- Services applicatifs et orchestration du rewrite ciblé.
     # Budgets calibrés à current + 15 % de marge.  La CLI elle-même
     # reste mince (~110 lignes) — toute logique métier vit dans

@@ -47,7 +47,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/maribakulj/Picarones"
-Documentation = "https://github.com/maribakulj/Picarones/blob/main/INSTALL.md"
+Documentation = "https://github.com/maribakulj/Picarones/blob/main/docs/index.md"
 Repository = "https://github.com/maribakulj/Picarones"
 Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/maribakulj/Picarones/issues"
@@ -56,7 +56,7 @@ Changelog = "https://github.com/maribakulj/Picarones/blob/main/CHANGELOG.md"
 # Développement et tests.
 # pytest-timeout (Sprint A1) garantit qu'aucun test individuel ne hang la CI
 # au-delà de la limite définie dans [tool.pytest.ini_options].
-# mypy (Sprint A1, M-4) : type-check strict sur picarones/core/ + lax ailleurs.
+# mypy (Sprint A1, M-4) : type-check strict sur picarones/domain/ + lax ailleurs.
 # bandit (Sprint A1, B-7) : scanner sécurité statique du code Python.
 # pip-audit (Sprint A1, B-7) : détection des CVE des dépendances installées.
 dev = [
@@ -77,11 +77,20 @@ web = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "httpx>=0.27.0", "python
 # Sinon fallback pur Python (approximations normale / Wilson-Hilferty).
 stats = ["scipy>=1.11.0"]
 # Extracteurs d'entités nommées (Sprint 40 — A.II.1.a du plan d'évolution).
-# Sans cet extra, picarones.core.ner_backends.SpacyEntityExtractor tombe
+# Sans cet extra, picarones.evaluation.metrics.ner_backends.SpacyEntityExtractor tombe
 # en mode dégradé silencieux et le runner saute le calcul NER.
 ner = ["spacy>=3.7.0"]
 # Import HuggingFace Datasets
 hf = ["datasets>=2.19.0"]
+# Site documentation auto-généré (mkdocstrings + mkdocs-material).
+# Build : ``mkdocs build`` ; serve : ``mkdocs serve``.  La référence
+# d'API ``docs/api/`` est régénérée à chaque build depuis les
+# docstrings — pas de drift possible avec le code.
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.25.0",
+]
 # Moteurs OCR optionnels
 pero = ["pero-ocr>=0.1.0"]
 kraken = ["kraken>=4.0.0"]
@@ -156,11 +165,14 @@ testpaths = ["tests"]
 # Windows) — utilisé par les tests CLI E2E qui résolvent leurs mock
 # adapters via dotted path (``importlib.import_module("tests.fixtures.…")``).
 pythonpath = ["."]
-# Exclusion par défaut : markers ``network`` et ``live`` non
-# sélectionnés.  Override en local via ``pytest -m network`` ou
-# ``pytest -m live`` (avec env vars / binaires correctement
-# configurés).  ``-m ""`` pour tout exécuter.
-addopts = "-v --tb=short -m 'not network and not live'"
+# Exclusion par défaut : markers ``network``, ``live`` et
+# ``regression`` non sélectionnés.  Override en local via
+# ``pytest -m network`` ou ``pytest -m live`` (avec env vars /
+# binaires correctement configurés).  Le marker ``regression``
+# (harness legacy ↔ rewrite) est lent ; opt-in via
+# ``pytest -m regression`` ou run dédié en CI.  ``-m ""`` pour
+# tout exécuter.
+addopts = "-v --tb=short -m 'not network and not live and not regression'"
 # Sprint A1 (M-15) : aucun test individuel ne doit dépasser 5 minutes.
 # Mode "thread" car certains tests utilisent ProcessPoolExecutor qui est
 # incompatible avec le timeout en mode "signal" sur certaines plateformes.
@@ -179,6 +191,7 @@ markers = [
     "slow: tests longs (corpus de référence, intégration cloud) ; non bloquants en dev local",
     "network: tests qui hit le réseau réel ; exclus par défaut",
     "live: tests d'intégration contre vraie API/binaire (Tesseract, Anthropic, OpenAI, Mistral) ; exclus par défaut, opt-in en local via 'pytest -m live'",
+    "regression: harness de régression legacy ↔ rewrite (tests/regression/legacy_vs_rewrite/) ; exclus par défaut, opt-in via 'pytest -m regression' ou job CI dédié",
 ]
 
 # ──────────────────────────────────────────────────────────────────
@@ -211,11 +224,15 @@ exclude_lines = [
 # ──────────────────────────────────────────────────────────────────
 # Sprint A1 (M-4) — type-checking gradient.
 #
-# Stratégie : ``picarones.core`` est en mode ``strict`` car c'est la
-# couche la plus stable et l'API publique. Les autres cercles passent
-# en mode permissif (``ignore_missing_imports`` + pas de strict) — au
-# fur et à mesure des sprints suivants, on monte le niveau (Sprint A11
-# resserre `picarones.measurements`).
+# Stratégie : ``picarones.domain`` est en mode ``strict`` car c'est la
+# couche 1 du rewrite (types purs, Pydantic + stdlib only) — l'API
+# publique stable et la base de l'architecture concentrique. Les autres
+# couches passent en mode permissif (``ignore_missing_imports`` + pas
+# de strict) — au fur et à mesure des sprints suivants, on monte le
+# niveau (Sprint A11 resserre `picarones.measurements`).
+# Note : avant les Lots A-G de la migration legacy → rewrite, ce strict
+# ciblait ``picarones.core`` ; ce paquet a été entièrement supprimé,
+# son contenu est désormais dans ``domain/``, ``evaluation/`` et ``formats/``.
 # ──────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.11"
@@ -230,7 +247,7 @@ no_implicit_optional = true
 follow_imports = "silent"
 
 [[tool.mypy.overrides]]
-module = "picarones.core.*"
+module = "picarones.domain.*"
 strict = true
 # A1 baseline : ces deux checks pré-existants génèrent ~70 % des erreurs
 # (annotations ``dict``/``tuple`` sans paramètres génériques, retours typés

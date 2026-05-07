@@ -26,12 +26,12 @@ from pathlib import Path
 import pytest
 
 from picarones.fixtures import generate_sample_benchmark
-from picarones.report.calibration_render import (
+from picarones.reports_v2.html.renderers.calibration import (
     build_calibration_summary_html,
     build_reliability_diagram_svg,
     build_reliability_diagrams_grid_html,
 )
-from picarones.report.generator import ReportGenerator
+from picarones.reports_v2.html.generator import ReportGenerator
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -289,7 +289,7 @@ class TestI18NCompleteness:
     def test_key_present(self, lang: str, key: str) -> None:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "report" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
         )
         data = json.loads(path.read_text(encoding="utf-8"))
         assert key in data, f"Clé {key!r} manquante dans {lang}.json"

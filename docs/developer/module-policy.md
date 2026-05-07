@@ -14,7 +14,7 @@ qu'un module soit acceptable.
 
 Pour qu'un module soit acceptable :
 
-1. Il **hérite** de `picarones.core.modules.BaseModule` (Sprint 33).
+1. Il **hérite** de `picarones.domain.module_protocol.BaseModule` (Sprint 33).
 2. Il déclare ses `input_types` et `output_types` (parmi
    `ArtifactType.{IMAGE, TEXT, ALTO, PAGE, ENTITIES, READING_ORDER}`).
 3. Il fournit un `ModuleManifest` avec **5 champs obligatoires** :
@@ -80,11 +80,12 @@ manifest = ModuleManifest(
 ## Contrat `BaseModule`
 
 Tout module exécutable hérite de
-`picarones.core.modules.BaseModule` (Sprint 33). Le contrat minimal
+`picarones.domain.module_protocol.BaseModule` (Sprint 33). Le contrat minimal
 est :
 
 ```python
-from picarones.core.modules import ArtifactType, BaseModule
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
 
 class MyLlmCorrecteur(BaseModule):
     name = "my-llm-correcteur"

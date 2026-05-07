@@ -28,7 +28,7 @@ FAKE_PNG = (
 class TestMacOSHiddenFilesFiltering:
     def test_hidden_images_ignored_in_corpus(self, tmp_path):
         """Les fichiers ._* ne doivent pas être comptés comme images valides."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
 
         # Image réelle avec GT
         (tmp_path / "page_001.png").write_bytes(FAKE_PNG)
@@ -71,7 +71,7 @@ class TestMacOSHiddenFilesFiltering:
 
 class TestExcludeCharsNormalization:
     def test_parse_exclude_chars_from_comma_string(self):
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
 
         result = _parse_exclude_chars("', -, –")
         assert "'" in result
@@ -79,7 +79,7 @@ class TestExcludeCharsNormalization:
         assert "–" in result
 
     def test_parse_exclude_chars_from_plain_string(self):
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
 
         result = _parse_exclude_chars(".,;:!?")
         assert "." in result
@@ -87,13 +87,13 @@ class TestExcludeCharsNormalization:
         assert "?" in result
 
     def test_parse_exclude_chars_empty(self):
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
 
         assert _parse_exclude_chars("") == frozenset()
         assert _parse_exclude_chars(None) == frozenset()
 
     def test_normalize_strips_excluded_chars(self):
-        from picarones.measurements.normalization import NormalizationProfile
+        from picarones.evaluation.metrics.normalization import NormalizationProfile
 
         profile = NormalizationProfile(
             name="test",
@@ -102,7 +102,7 @@ class TestExcludeCharsNormalization:
         assert profile.normalize("Bonjour, monde.") == "Bonjour monde"
 
     def test_sans_ponctuation_profile_exists(self):
-        from picarones.measurements.normalization import NORMALIZATION_PROFILES
+        from picarones.evaluation.metrics.normalization import NORMALIZATION_PROFILES
 
         assert "sans_ponctuation" in NORMALIZATION_PROFILES
         p = NORMALIZATION_PROFILES["sans_ponctuation"]
@@ -111,7 +111,7 @@ class TestExcludeCharsNormalization:
         assert "?" in p.exclude_chars
 
     def test_sans_apostrophes_profile_exists(self):
-        from picarones.measurements.normalization import NORMALIZATION_PROFILES
+        from picarones.evaluation.metrics.normalization import NORMALIZATION_PROFILES
 
         assert "sans_apostrophes" in NORMALIZATION_PROFILES
         p = NORMALIZATION_PROFILES["sans_apostrophes"]
@@ -134,9 +134,9 @@ class TestExcludeCharsNormalization:
 
     def test_char_exclude_propagated_in_run_benchmark(self, tmp_path):
         """char_exclude doit être transmis à run_benchmark et réduire le CER."""
-        from picarones.core.corpus import Corpus, Document
+        from picarones.evaluation.corpus import Corpus, Document
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine, EngineResult
+        from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
         class MockEngine(BaseOCREngine):
             name = "mock"
@@ -193,9 +193,9 @@ class TestChartJsInline:
 @pytest.fixture
 def sample_generator():
     """Fixture partagée : crée un ReportGenerator avec des données fictives."""
-    from picarones.report.generator import ReportGenerator
-    from picarones.core.results import BenchmarkResult, DocumentResult, EngineReport
-    from picarones.measurements.metrics import MetricsResult
+    from picarones.reports_v2.html.generator import ReportGenerator
+    from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
+    from picarones.evaluation.metric_result import MetricsResult
 
     def _make_metric(cer=0.1):
         return MetricsResult(

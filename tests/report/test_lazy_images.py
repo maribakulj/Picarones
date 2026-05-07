@@ -55,7 +55,7 @@ def demo_benchmark_with_images(tmp_path: Path):
 def test_default_mode_inlines_images(demo_benchmark_with_images, tmp_path: Path) -> None:
     """``lazy_images=False`` (défaut) : les images vivent en base64
     inline dans le HTML, aucun fichier d'asset n'est créé."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     out = tmp_path / "report.html"
     gen = ReportGenerator(demo_benchmark_with_images)
@@ -83,7 +83,7 @@ def test_lazy_mode_creates_asset_directory(
 ) -> None:
     """``lazy_images=True`` : ``report-assets/`` est créé à côté du HTML
     et contient des fichiers image."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     out = tmp_path / "report.html"
     gen = ReportGenerator(demo_benchmark_with_images, lazy_images=True)
@@ -104,7 +104,7 @@ def test_lazy_mode_html_references_relative_urls(
 ) -> None:
     """En mode lazy, le HTML référence les images via URL relative
     ``report-assets/...`` plutôt qu'un data-URI."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     out = tmp_path / "report.html"
     gen = ReportGenerator(demo_benchmark_with_images, lazy_images=True)
@@ -127,7 +127,7 @@ def test_lazy_mode_significantly_reduces_html_size(
     favorable au lazy. Test peu strict (ratio > 1.05) pour ne pas
     être flaky en fonction du contenu vendor.
     """
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     inline_out = tmp_path / "inline.html"
     lazy_out = tmp_path / "lazy.html"
@@ -152,7 +152,7 @@ def test_lazy_mode_with_missing_image_does_not_crash(tmp_path: Path) -> None:
     """Si l'image source n'existe pas, l'externalisation log un warning
     et continue (rétrocompat avec ``_encode_image_b64`` qui retourne ''
     silencieusement)."""
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     bench = generate_sample_benchmark(n_docs=2)
     # Pointe vers un chemin inexistant
@@ -171,7 +171,7 @@ def test_safe_filename_generation(tmp_path: Path) -> None:
     des noms de fichiers normalisés (pas de path traversal possible)."""
     from PIL import Image
 
-    from picarones.report.generator import _externalize_images_to_dir
+    from picarones.reports_v2.html.generator import _externalize_images_to_dir
 
     src = tmp_path / "src.png"
     Image.new("RGB", (50, 50), color=(0, 0, 0)).save(src)

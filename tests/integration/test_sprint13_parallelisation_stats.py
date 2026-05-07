@@ -101,27 +101,27 @@ class TestEngineExecutionMode:
 
     def test_base_engine_default_mode_is_io(self):
         """BaseOCREngine doit avoir execution_mode = 'io' par défaut."""
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         assert BaseOCREngine.execution_mode == "io"
 
     def test_tesseract_engine_mode_is_cpu(self):
         """TesseractEngine doit avoir execution_mode = 'cpu'."""
-        from picarones.engines.tesseract import TesseractEngine
+        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
         assert TesseractEngine.execution_mode == "cpu"
 
     def test_pero_engine_mode_is_cpu(self):
         """PeroOCREngine doit avoir execution_mode = 'cpu'."""
-        from picarones.engines.pero_ocr import PeroOCREngine
+        from picarones.adapters.legacy_engines.pero_ocr import PeroOCREngine
         assert PeroOCREngine.execution_mode == "cpu"
 
     def test_mistral_engine_default_mode_is_io(self):
         """MistralOCREngine doit hériter execution_mode = 'io'."""
-        from picarones.engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
         assert MistralOCREngine.execution_mode == "io"
 
     def test_google_vision_default_mode_is_io(self):
         """GoogleVisionEngine doit hériter execution_mode = 'io'."""
-        from picarones.engines.google_vision import GoogleVisionEngine
+        from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
         assert GoogleVisionEngine.execution_mode == "io"
 
 
@@ -171,9 +171,9 @@ class TestRunnerTimeout:
 
     def test_timeout_doc_result_has_error(self, tmp_corpus):
         """Un document ayant dépassé le timeout doit avoir engine_error contenant 'timeout'."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         import time
 
         class SlowEngine(BaseOCREngine):
@@ -200,9 +200,9 @@ class TestRunnerTimeout:
 
     def test_timeout_doc_result_cer_is_one(self, tmp_corpus):
         """Un document timeout doit avoir CER = 1.0."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         import time
 
         class SlowEngine(BaseOCREngine):
@@ -226,9 +226,9 @@ class TestRunnerTimeout:
 
     def test_fast_docs_not_affected_by_timeout(self, tmp_corpus):
         """Des documents rapides ne doivent pas être touchés par un timeout généreux."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class FastEngine(BaseOCREngine):
             @property
@@ -257,9 +257,9 @@ class TestRunnerPartialResults:
 
     def test_partial_file_created_during_run(self, tmp_corpus, tmp_path):
         """_save_partial_line doit être appelée pour chaque document traité."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
         # Sprint « découpage de runner.py » (mai 2026) : ``_save_partial_line``
         # vit désormais dans le sous-module ``runner.partial`` ; le ré-export
         # dans ``runner.__init__`` est une référence figée. Pour patcher
@@ -296,9 +296,9 @@ class TestRunnerPartialResults:
 
     def test_partial_file_deleted_after_success(self, tmp_corpus, tmp_path):
         """Le fichier .partial.json doit être supprimé après un benchmark réussi."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -317,7 +317,7 @@ class TestRunnerPartialResults:
 
     def test_partial_load_skips_already_done_docs(self, tmp_corpus, tmp_path):
         """La reprise depuis un fichier partiel doit sauter les documents déjà traités."""
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import _load_partial, _partial_path
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
@@ -360,9 +360,9 @@ class TestRunnerSilentExceptions:
     def test_confusion_failure_logs_warning(self, tmp_corpus, caplog):
         """Une erreur dans build_confusion_matrix doit être loguée, pas ignorée."""
         import logging
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -375,7 +375,7 @@ class TestRunnerSilentExceptions:
             "picarones.measurements.runner._compute_document_result",
             wraps=__import__("picarones.measurements.runner", fromlist=["_compute_document_result"])._compute_document_result,
         ):
-            with patch("picarones.measurements.confusion.build_confusion_matrix", side_effect=RuntimeError("crash test")):
+            with patch("picarones.evaluation.metrics.confusion.build_confusion_matrix", side_effect=RuntimeError("crash test")):
                 with caplog.at_level(logging.WARNING):
                     result = run_benchmark(corpus, [MockEngine()], show_progress=False)
 
@@ -386,9 +386,9 @@ class TestRunnerSilentExceptions:
     def test_progress_callback_failure_logs_warning(self, tmp_corpus, caplog):
         """Une exception dans le progress_callback doit être loguée, pas propagée."""
         import logging
-        from picarones.core.corpus import load_corpus_from_directory
+        from picarones.evaluation.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -417,8 +417,8 @@ class TestRunnerSilentExceptions:
         from picarones.measurements.runner import _aggregate_confusion
 
         # Créer un doc_result avec des données de confusion corrompues
-        from picarones.core.results import DocumentResult
-        from picarones.measurements.metrics import MetricsResult
+        from picarones.evaluation.benchmark_result import DocumentResult
+        from picarones.evaluation.metric_result import MetricsResult
         bad_dr = DocumentResult(
             doc_id="x", image_path="x.png", ground_truth="gt", hypothesis="hyp",
             metrics=MetricsResult(cer=0.1, cer_nfc=0.1, cer_caseless=0.1,
@@ -441,7 +441,7 @@ class TestWilcoxonValidation:
 
     def test_identical_sequences_not_significant(self):
         """Séquences identiques → pas de différence, p = 1.0, significant = False."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
         r = wilcoxon_test(a, a)
         assert r["significant"] is False
@@ -450,7 +450,7 @@ class TestWilcoxonValidation:
 
     def test_all_positive_diffs_w_minus_is_zero(self):
         """Si toutes les différences a−b sont positives : W⁻ = 0, W⁺ = n(n+1)/2."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         n = 10
         a = [float(i) for i in range(1, n + 1)]
         b = [0.0] * n
@@ -461,7 +461,7 @@ class TestWilcoxonValidation:
 
     def test_w_plus_w_minus_sum_invariant(self):
         """W⁺ + W⁻ doit toujours être égal à n(n+1)/2 (n = nombre de paires non nulles)."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.10, 0.25, 0.05, 0.40, 0.30, 0.15, 0.20, 0.35, 0.08, 0.18]
         b = [0.12, 0.20, 0.08, 0.35, 0.28, 0.18, 0.15, 0.40, 0.10, 0.20]
         r = wilcoxon_test(a, b)
@@ -474,7 +474,7 @@ class TestWilcoxonValidation:
 
     def test_clearly_different_sequences_significant(self):
         """Deux séquences très différentes (n=15) doivent donner p < 0.05."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         a = [0.05] * 15          # moteur A très performant
         b = [0.60] * 15          # moteur B peu performant — toutes diff = −0.55
         # Diffs a−b = −0.55 pour tous → W⁺ = 0 → devrait être significatif
@@ -484,7 +484,7 @@ class TestWilcoxonValidation:
 
     def test_large_n_normal_approximation_reasonable(self):
         """Pour n = 20, l'approximation normale doit donner une p-value dans [0, 1]."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         import random
         rng = random.Random(42)
         a = [rng.uniform(0.1, 0.5) for _ in range(20)]
@@ -495,7 +495,7 @@ class TestWilcoxonValidation:
 
     def test_small_n_returns_conservative_p(self):
         """Pour n < 10, la p-value doit être 0.04 (significatif) ou 0.20 (non sign.)."""
-        from picarones.measurements.statistics import wilcoxon_test, _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if _SCIPY_AVAILABLE:
             pytest.skip("scipy disponible — la table exacte n'est pas utilisée")
         a = [0.1, 0.2, 0.3]
@@ -506,7 +506,7 @@ class TestWilcoxonValidation:
 
     def test_result_keys_complete(self):
         """Le dict retourné doit contenir toutes les clés documentées."""
-        from picarones.measurements.statistics import wilcoxon_test
+        from picarones.evaluation.statistics import wilcoxon_test
         r = wilcoxon_test([0.1, 0.3, 0.2, 0.4, 0.15, 0.35, 0.25, 0.5, 0.45, 0.05],
                           [0.2, 0.2, 0.3, 0.3, 0.25, 0.25, 0.35, 0.35, 0.40, 0.15])
         for key in ("statistic", "p_value", "significant", "interpretation", "n_pairs", "W_plus", "W_minus"):
@@ -521,12 +521,12 @@ class TestWilcoxonScipyIntegration:
 
     def test_scipy_available_flag_is_bool(self):
         """_SCIPY_AVAILABLE doit être un booléen."""
-        from picarones.measurements.statistics import _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import _SCIPY_AVAILABLE
         assert isinstance(_SCIPY_AVAILABLE, bool)
 
     def test_scipy_and_native_agree_on_significance(self):
         """Scipy et l'implémentation native doivent s'accorder sur la significativité."""
-        from picarones.measurements.statistics import wilcoxon_test, _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if not _SCIPY_AVAILABLE:
             pytest.skip("scipy non disponible")
 
@@ -542,7 +542,7 @@ class TestWilcoxonScipyIntegration:
 
     def test_scipy_p_value_in_valid_range(self):
         """La p-value fournie par scipy doit être dans [0, 1]."""
-        from picarones.measurements.statistics import wilcoxon_test, _SCIPY_AVAILABLE
+        from picarones.evaluation.statistics import wilcoxon_test, _SCIPY_AVAILABLE
         if not _SCIPY_AVAILABLE:
             pytest.skip("scipy non disponible")
 

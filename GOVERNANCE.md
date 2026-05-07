@@ -97,7 +97,7 @@ prestation (cf. modalités à définir au cas par cas).
 ## Politique de breaking changes
 
 L'API publique de Picarones est définie par
-[`docs/api-stable.md`](docs/api-stable.md). Elle inclut :
+[`docs/reference/api-stable.md`](docs/reference/api-stable.md). Elle inclut :
 
 - les symboles ré-exportés depuis `picarones/__init__.py` ;
 - les commandes CLI `picarones X` documentées dans le README ;

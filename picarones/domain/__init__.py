@@ -58,6 +58,14 @@ from picarones.domain.evaluation_spec import (
     EvaluationView,
     MetricSpec,
 )
+from picarones.domain.facts import (
+    DetectorFn,
+    DetectorRegistry,
+    Fact,
+    FactImportance,
+    FactType,
+    detect_all,
+)
 from picarones.domain.pipeline_spec import (
     INITIAL_STEP_ID,
     PipelineSpec,
@@ -102,4 +110,11 @@ __all__ = [
     # S17 — Run manifest (pure domain ; RunResult vit dans app/)
     "RunManifest",
     "utcnow",
+    # Phase 1 — Facts narratifs (canonique migré depuis core/facts.py)
+    "DetectorFn",
+    "DetectorRegistry",
+    "Fact",
+    "FactImportance",
+    "FactType",
+    "detect_all",
 ]

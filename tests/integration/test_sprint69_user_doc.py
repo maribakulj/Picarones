@@ -14,8 +14,10 @@ from pathlib import Path
 
 import pytest
 
+# S60 — restructuration Diataxis : ``user/`` éclaté en
+# ``tutorials/`` (apprendre).
 DOC_PATH = (
-    Path(__file__).parent.parent.parent / "docs" / "user"
+    Path(__file__).parent.parent.parent / "docs" / "tutorials"
     / "writing-a-pipeline-module.md"
 )
 
@@ -148,10 +150,11 @@ class TestCodeSnippets:
         assert doc.count("```python") >= 5
 
     def test_imports_correct_modules(self, doc: str) -> None:
-        # Les imports doivent pointer vers les vrais modules
-        # picarones.core.* et picarones.report.*
-        assert "from picarones.core.modules import" in doc
-        assert "from picarones.core.pipeline import" in doc
-        assert "from picarones.measurements.pipeline_benchmark import" in doc
-        assert "from picarones.measurements.pipeline_comparison import" in doc
-        assert "from picarones.report.pipeline_render import" in doc
+        # Les imports doivent pointer vers les vrais modules canoniques
+        # (post-migration core → domain).
+        assert "from picarones.domain.artifacts import" in doc
+        assert "from picarones.domain.module_protocol import" in doc
+        assert "from picarones.evaluation.pipeline import" in doc
+        assert "from picarones.evaluation.pipeline_benchmark import" in doc
+        assert "from picarones.evaluation.pipeline_comparison import" in doc
+        assert "from picarones.reports_v2.html.renderers.pipeline import" in doc

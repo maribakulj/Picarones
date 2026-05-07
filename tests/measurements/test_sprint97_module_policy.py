@@ -28,15 +28,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.module_policy import (
+from picarones.evaluation.metrics.module_policy import (
     AuditCheck,
     AuditResult,
     ModuleManifest,
     audit_module,
     validate_manifest,
 )
-from picarones.core.modules import ArtifactType, BaseModule
-from picarones.report.module_audit_render import (
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
+from picarones.reports_v2.html.renderers.module_audit import (
     build_module_audit_html,
 )
 
@@ -44,7 +45,7 @@ from picarones.report.module_audit_render import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

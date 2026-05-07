@@ -19,14 +19,14 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.pricing import (
+from picarones.evaluation.metrics.pricing import (
     EngineCost,
     PricingDefaults,
     build_costs_for_benchmark,
     estimate_cost,
     load_pricing_database,
 )
-from picarones.measurements.statistics import compute_pareto_front
+from picarones.evaluation.statistics import compute_pareto_front
 
 
 # ---------------------------------------------------------------------------

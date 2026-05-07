@@ -48,7 +48,7 @@ automatiquement sur `fr` si une langue manque.
 
 ## Format YAML pour les templates narratifs
 
-Voir `docs/developer/narrative-engine.md` pour le détail. En bref :
+Voir `docs/explanation/narrative-engine.md` pour le détail. En bref :
 
 ```yaml
 fact_type_value: >-

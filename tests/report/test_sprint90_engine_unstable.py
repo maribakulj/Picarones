@@ -23,8 +23,8 @@ from pathlib import Path
 
 from picarones.measurements.narrative import build_synthesis
 from picarones.measurements.narrative.detectors import detect_engine_unstable
-from picarones.core.facts import FactImportance, FactType
-from picarones.report.multirun_stability_render import (
+from picarones.domain.facts import FactImportance, FactType
+from picarones.reports_v2.html.renderers.multirun_stability import (
     build_multirun_stability_html,
 )
 
@@ -32,7 +32,7 @@ from picarones.report.multirun_stability_render import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

@@ -18,9 +18,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Couples (FR, EN) à valider. Sprint A11 livre les 5 prioritaires ;
 # d'autres viendront dans des sprints ultérieurs.
 TRANSLATION_PAIRS: list[tuple[str, str]] = [
-    ("docs/user/reading-a-report.md", "docs/user/reading-a-report.en.md"),
+    ("docs/tutorials/reading-a-report.md", "docs/tutorials/reading-a-report.en.md"),
     ("docs/developer/index.md", "docs/developer/index.en.md"),
-    ("docs/developer/narrative-engine.md", "docs/developer/narrative-engine.en.md"),
+    ("docs/explanation/narrative-engine.md", "docs/explanation/narrative-engine.en.md"),
+    ("SECURITY.md", "SECURITY.en.md"),
     ("docs/developer/extending-glossary.md", "docs/developer/extending-glossary.en.md"),
     ("docs/developer/extending-i18n.md", "docs/developer/extending-i18n.en.md"),
     ("CONTRIBUTING.md", "CONTRIBUTING.en.md"),

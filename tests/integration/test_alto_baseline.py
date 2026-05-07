@@ -26,16 +26,17 @@ from picarones.measurements.alto_metrics import (
     alto_text_cer,
     extract_text_from_alto,
 )
-from picarones.core.corpus import AltoGT, Document, GTLevel, TextGT
-from picarones.core.metric_registry import compute_at_junction, select_metrics
-from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline import (
+from picarones.evaluation.corpus import AltoGT, Document, GTLevel, TextGT
+from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
+from picarones.domain.artifacts import ArtifactType
+from picarones.domain.module_protocol import BaseModule
+from picarones.evaluation.pipeline import (
     PipelineRunner,
     PipelineSpec,
     PipelineStep,
 )
-from picarones.modules import TextToAltoMonoRegion
-from picarones.modules.alto_text_to_mono_region import _build_alto_xml
+from picarones.adapters.legacy_modules import TextToAltoMonoRegion
+from picarones.adapters.legacy_modules.alto_text_to_mono_region import _build_alto_xml
 
 
 # ──────────────────────────────────────────────────────────────────────────

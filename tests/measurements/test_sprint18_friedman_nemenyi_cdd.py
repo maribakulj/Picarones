@@ -14,7 +14,7 @@ import re
 
 import pytest
 
-from picarones.measurements.statistics import (
+from picarones.evaluation.statistics import (
     build_critical_difference_svg,
     friedman_test,
     nemenyi_posthoc,
@@ -316,7 +316,7 @@ def benchmark_result():
 
 class TestReportIntegration:
     def test_report_contains_cdd_section(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -328,7 +328,7 @@ class TestReportIntegration:
         assert "cd-tie" in html
 
     def test_report_json_contains_friedman_and_nemenyi(self, benchmark_result, tmp_path):
-        from picarones.report.generator import _build_report_data
+        from picarones.reports_v2.html.generator import _build_report_data
         data = _build_report_data(benchmark_result, images_b64={})
         stats = data.get("statistics", {})
         assert "friedman" in stats
@@ -338,7 +338,7 @@ class TestReportIntegration:
         assert "tied_groups" in stats["nemenyi"]
 
     def test_cdd_help_section_present(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -346,7 +346,7 @@ class TestReportIntegration:
         assert "toggleCDDHelp" in html  # la fonction est bien liée au bouton
 
     def test_english_locale_uses_english_cdd_labels(self, benchmark_result, tmp_path):
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         out = tmp_path / "report_en.html"
         ReportGenerator(benchmark_result, lang="en").generate(out)
         html = out.read_text(encoding="utf-8")
@@ -362,7 +362,7 @@ class TestReportIntegration:
 class TestStatisticalTieDetector:
     def test_detector_emits_fact_when_engines_are_tied(self):
         from picarones.measurements.narrative.detectors import detect_statistical_tie
-        from picarones.core.facts import FactType
+        from picarones.domain.facts import FactType
 
         benchmark_data = {
             "statistics": {
@@ -408,7 +408,7 @@ class TestStatisticalTieDetector:
 
     def test_non_leader_tie_is_high_not_critical(self):
         from picarones.measurements.narrative.detectors import detect_statistical_tie
-        from picarones.core.facts import FactImportance
+        from picarones.domain.facts import FactImportance
 
         benchmark_data = {
             "statistics": {

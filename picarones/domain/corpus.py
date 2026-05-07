@@ -4,7 +4,7 @@ Description **immuable et déclarative** d'un corpus à benchmarker.
 Construit par un adapter de corpus (``picarones.adapters.corpus.*``),
 consommé par les services applicatifs et le pipeline executor.
 
-Différence avec l'ancien ``picarones.core.corpus.Corpus`` :
+Différence avec ``picarones.evaluation.corpus.Corpus`` :
 ``CorpusSpec`` est volontairement minimaliste — il décrit la
 **structure** d'un corpus (liste de documents + métadonnées
 contextuelles).  La logique de chargement, parsing, détection des

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.core.corpus import Corpus, Document
+from picarones.evaluation.corpus import Corpus, Document
 from picarones.measurements.narrative import (
     DetectorRegistry,
     Fact,
@@ -29,7 +29,7 @@ from picarones.measurements.runner import (
     _compute_document_result,
     run_benchmark,
 )
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
 
 class _FakeEngine(BaseOCREngine):

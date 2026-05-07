@@ -1,0 +1,125 @@
+# mkdocs configuration — Picarones
+#
+# Build local :
+#   pip install -e ".[docs]"
+#   mkdocs serve  # http://localhost:8000
+#   mkdocs build  # site statique dans site/
+#
+# La référence d'API est régénérée à chaque build depuis les
+# docstrings via mkdocstrings (handler python).
+site_name: Picarones — documentation
+site_description: Plateforme d'évaluation OCR/HTR pour documents patrimoniaux
+site_url: https://maribakulj.github.io/Picarones/
+repo_url: https://github.com/maribakulj/Picarones
+repo_name: maribakulj/Picarones
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: fr
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+            show_source: false
+            show_root_heading: false
+            show_root_full_path: true
+            show_submodules: false
+            members_order: source
+            heading_level: 2
+
+nav:
+  - Accueil: index.md
+  - Tutorials:
+      - tutorials/reading-a-report.md
+      - tutorials/writing-a-pipeline-module.md
+  - How-to:
+      - how-to/install.md
+      - how-to/cli-workflows.md
+  - Reference:
+      - reference/api-stable.md
+      - reference/views.md
+      - reference/normalization-profiles.md
+      - reference/reproducibility-snapshots.md
+      - reference/text-view.md
+      - reference/alto-view.md
+      - reference/comparing-views.md
+  - Explanation:
+      - explanation/architecture.md
+      - explanation/narrative-engine.md
+  - API:
+      - api/index.md
+      - api/domain.md
+      - api/pipeline.md
+      - api/evaluation.md
+      - api/adapters.md
+      - api/app.md
+  - Operations:
+      - operations/deployment-institutional.md
+      - operations/runbook.md
+      - operations/observability.md
+      - operations/data-retention-rgpd.md
+      - operations/release-process.md
+  - Security:
+      - security/threat-model.md
+  - Legal:
+      - legal/THIRD_PARTY_LICENSES.md
+      - legal/dpa-template.md
+  - Developer:
+      - developer/index.md
+      - developer/module-policy.md
+      - developer/extending-glossary.md
+      - developer/extending-i18n.md
+      - developer/doc-consistency.md
+  - Roadmap:
+      - roadmap/evolution-2026.md
+      - roadmap/rewrite-2026.md
+      - roadmap/backlog.md
+  - Audits:
+      - audits/institutional-readiness-2026-05.md
+      - audits/remediation-plan-2026-05.md
+  - Migration:
+      - migration/rewrite-status-s46.md
+      - migration/executor-equivalence.md
+  - Case studies:
+      - case-studies/README.md
+      - case-studies/01-registres-paroissiaux.md
+      - case-studies/02-edition-critique.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/maribakulj/Picarones

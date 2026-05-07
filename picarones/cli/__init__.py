@@ -33,7 +33,7 @@ import click
 from picarones import __version__
 
 if TYPE_CHECKING:
-    from picarones.engines.base import BaseOCREngine
+    from picarones.adapters.legacy_engines.base import BaseOCREngine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -51,14 +51,14 @@ def _setup_logging(verbose: bool) -> None:
 def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCREngine":
     """Instancie un moteur OCR par son nom (wrapper Click).
 
-    Délègue à :func:`picarones.engines.factory.engine_from_name`
-    (cercle 2) puis traduit toute ``ValueError`` en
+    Délègue à :func:`picarones.adapters.legacy_engines.factory.engine_from_name`
+    (couche adapters) puis traduit toute ``ValueError`` en
     ``click.BadParameter`` pour rester compatible avec les sous-modules
     CLI (``_workflows.py``, ``_robustness.py``) qui attrappent ce type
     d'exception. Les commandes CLI continuent donc à fonctionner sans
     aucune modification.
     """
-    from picarones.engines.factory import engine_from_name
+    from picarones.adapters.legacy_engines.factory import engine_from_name
 
     try:
         return engine_from_name(engine_name, lang=lang, psm=psm)
@@ -223,7 +223,7 @@ def report_cmd(results: str, output: str, lazy_images: bool, verbose: bool) -> N
     """
     _setup_logging(verbose)
 
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     click.echo(f"Chargement des résultats : {results}")
     try:
@@ -303,7 +303,7 @@ def demo_cmd(
         picarones demo --with-history --with-robustness --docs 8
     """
     from picarones.fixtures import generate_sample_benchmark
-    from picarones.report.generator import ReportGenerator
+    from picarones.reports_v2.html.generator import ReportGenerator
 
     click.echo(f"Génération des données fictives ({docs} documents, 3 moteurs)…")
     benchmark = generate_sample_benchmark(n_docs=docs)

@@ -26,7 +26,7 @@ class TestEarlyModernEnglish:
 
     @pytest.fixture
     def profile(self):
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         return get_builtin_profile("early_modern_english")
 
     def test_profile_exists(self, profile):
@@ -89,7 +89,7 @@ class TestMedievalEnglish:
 
     @pytest.fixture
     def profile(self):
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         return get_builtin_profile("medieval_english")
 
     def test_profile_exists(self, profile):
@@ -129,7 +129,7 @@ class TestSecretaryHand:
 
     @pytest.fixture
     def profile(self):
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         return get_builtin_profile("secretary_hand")
 
     def test_profile_exists(self, profile):
@@ -160,18 +160,18 @@ class TestBuiltinProfilesListing:
     """Vérifie que les 3 nouveaux profils sont bien accessibles."""
 
     def test_all_english_profiles_accessible(self):
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         for name in ("early_modern_english", "medieval_english", "secretary_hand"):
             p = get_builtin_profile(name)
             assert p.name == name
 
     def test_unknown_profile_raises_key_error(self):
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         with pytest.raises(KeyError):
             get_builtin_profile("unknown_lang_profile_xyz")
 
     def test_existing_profiles_still_work(self):
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         for name in ("medieval_french", "early_modern_french", "medieval_latin", "nfc", "caseless", "minimal"):
             p = get_builtin_profile(name)
             assert p.name == name
@@ -230,39 +230,39 @@ class TestI18nModule:
     """Vérifie le module picarones.i18n."""
 
     def test_get_labels_fr(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         labels = get_labels("fr")
         assert labels["tab_ranking"] == "Classement"
         assert labels["html_lang"] == "fr"
         assert labels["date_locale"] == "fr-FR"
 
     def test_get_labels_en(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         labels = get_labels("en")
         assert labels["tab_ranking"] == "Ranking"
         assert labels["html_lang"] == "en"
         assert labels["date_locale"] == "en-GB"
 
     def test_get_labels_fallback(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         # Langue inconnue → bascule sur fr
         labels = get_labels("de")
         assert labels["tab_ranking"] == "Classement"
 
     def test_all_fr_keys_present_in_en(self):
-        from picarones.i18n import TRANSLATIONS
+        from picarones.reports_v2.i18n import TRANSLATIONS
         fr_keys = set(TRANSLATIONS["fr"].keys())
         en_keys = set(TRANSLATIONS["en"].keys())
         missing = fr_keys - en_keys
         assert not missing, f"Clés présentes en FR mais absentes en EN : {missing}"
 
     def test_supported_langs(self):
-        from picarones.i18n import SUPPORTED_LANGS
+        from picarones.reports_v2.i18n import SUPPORTED_LANGS
         assert "fr" in SUPPORTED_LANGS
         assert "en" in SUPPORTED_LANGS
 
     def test_footer_labels(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         fr = get_labels("fr")
         en = get_labels("en")
         assert "footer_generated" in fr
@@ -270,7 +270,7 @@ class TestI18nModule:
         assert fr["footer_generated"] != en["footer_generated"]
 
     def test_hallucination_labels_translated(self):
-        from picarones.i18n import get_labels
+        from picarones.reports_v2.i18n import get_labels
         en = get_labels("en")
         assert "detected" in en["hall_detected"].lower()
         assert "⚠" in en["hall_detected"]
@@ -286,7 +286,7 @@ class TestEnglishReport:
     @pytest.fixture(scope="class")
     def english_html(self, tmp_path_factory):
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         tmp = tmp_path_factory.mktemp("report_en")
@@ -298,7 +298,7 @@ class TestEnglishReport:
     @pytest.fixture(scope="class")
     def french_html(self, tmp_path_factory):
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         tmp = tmp_path_factory.mktemp("report_fr")
@@ -357,14 +357,14 @@ class TestEnglishReport:
 
     def test_report_generator_default_lang_is_fr(self):
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=2, seed=1)
         gen = ReportGenerator(bm)
         assert gen.lang == "fr"
 
     def test_report_generator_lang_en(self):
         from picarones.fixtures import generate_sample_benchmark
-        from picarones.report.generator import ReportGenerator
+        from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=2, seed=1)
         gen = ReportGenerator(bm, lang="en")
         assert gen.lang == "en"

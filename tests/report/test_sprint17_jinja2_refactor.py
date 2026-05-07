@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from picarones import fixtures
-from picarones.report.generator import (
+from picarones.reports_v2.html.generator import (
     ReportGenerator,
     _build_jinja_env,
     _TEMPLATES_DIR,
@@ -138,14 +138,14 @@ class TestReportGeneration:
 
 class TestI18nFromJSON:
     def test_i18n_directory_exists_and_has_json(self):
-        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "report" / "i18n"
+        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "reports_v2" / "i18n"
         assert i18n_dir.is_dir()
         files = {p.name for p in i18n_dir.glob("*.json")}
         assert "fr.json" in files
         assert "en.json" in files
 
     def test_all_i18n_files_parse_as_json(self):
-        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "report" / "i18n"
+        i18n_dir = Path(__file__).parent.parent.parent / "picarones" / "reports_v2" / "i18n"
         for f in i18n_dir.glob("*.json"):
             data = json.loads(f.read_text(encoding="utf-8"))
             assert isinstance(data, dict)
@@ -153,7 +153,7 @@ class TestI18nFromJSON:
 
     def test_fr_and_en_have_same_keys(self):
         """Garde-fou contre les traductions manquantes."""
-        from picarones.i18n import TRANSLATIONS
+        from picarones.reports_v2.i18n import TRANSLATIONS
         fr_keys = set(TRANSLATIONS.get("fr", {}).keys())
         en_keys = set(TRANSLATIONS.get("en", {}).keys())
         missing_in_en = fr_keys - en_keys
@@ -162,7 +162,7 @@ class TestI18nFromJSON:
         assert not missing_in_fr, f"Clés manquantes en français : {missing_in_fr}"
 
     def test_translations_load_via_public_api(self):
-        from picarones.i18n import get_labels, SUPPORTED_LANGS
+        from picarones.reports_v2.i18n import get_labels, SUPPORTED_LANGS
         assert "fr" in SUPPORTED_LANGS
         assert "en" in SUPPORTED_LANGS
         fr = get_labels("fr")

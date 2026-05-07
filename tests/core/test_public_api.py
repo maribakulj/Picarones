@@ -72,7 +72,7 @@ def _assert_function(module_path: str, name: str):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 1. picarones.core.corpus — modèle Document/Corpus + GT multi-niveaux
+# 1. picarones.evaluation.corpus — modèle Document/Corpus + GT multi-niveaux (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -83,13 +83,13 @@ class TestCorpusApi:
         "TextGT", "AltoGT", "PageGT", "EntitiesGT", "ReadingOrderGT",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.corpus", name)
+        _assert_class("picarones.evaluation.corpus", name)
 
     def test_load_corpus_from_directory_exists(self):
-        _assert_function("picarones.core.corpus", "load_corpus_from_directory")
+        _assert_function("picarones.evaluation.corpus", "load_corpus_from_directory")
 
     def test_gt_suffixes_constant(self):
-        from picarones.core.corpus import GTLevel, GT_SUFFIXES
+        from picarones.evaluation.corpus import GTLevel, GT_SUFFIXES
 
         assert isinstance(GT_SUFFIXES, dict)
         # Chacun des 5 niveaux GT doit avoir un suffixe
@@ -99,7 +99,7 @@ class TestCorpusApi:
             )
 
     def test_gtlevel_values(self):
-        from picarones.core.corpus import GTLevel
+        from picarones.evaluation.corpus import GTLevel
 
         # Les 5 valeurs sont contractuelles — leur ordre/nom n'importe
         # pas, leur présence si.
@@ -108,25 +108,42 @@ class TestCorpusApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 2. picarones.core.modules — BaseModule + ArtifactType
+# 2. picarones.domain — BaseModule + ArtifactType (canoniques)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestModulesApi:
     def test_artifact_type_values(self):
-        from picarones.core.modules import ArtifactType
+        from picarones.domain.artifacts import ArtifactType
 
         names = {member.value for member in ArtifactType}
-        # ``IMAGE`` + 5 niveaux GT
-        assert names == {"image", "text", "alto", "page", "entities", "reading_order"}
+        # Phase 4-bis : ``ArtifactType`` canonique (``domain.artifacts``)
+        # — 10 valeurs.  L'ancien set legacy (``image, text, alto, page,
+        # entities, reading_order``) reste accessible via les aliases
+        # ``TEXT``/``ALTO``/``PAGE`` qui pointent vers les valeurs
+        # canoniques ``raw_text``/``alto_xml``/``page_xml``.  Les
+        # aliases n'apparaissent pas dans cette itération (Python
+        # masque les membres aliasés dans ``__members__`` itérable).
+        assert names == {
+            "image",
+            "raw_text",
+            "corrected_text",
+            "alto_xml",
+            "page_xml",
+            "canonical_document",
+            "entities",
+            "reading_order",
+            "alignment",
+            "confidences",
+        }
 
     def test_basemodule_is_abstract(self):
-        cls = _assert_class("picarones.core.modules", "BaseModule")
+        cls = _assert_class("picarones.domain.module_protocol", "BaseModule")
         # Doit avoir `process` abstrait
         assert "process" in cls.__abstractmethods__ or hasattr(cls, "process")
 
     def test_basemodule_class_attributes(self):
-        from picarones.core.modules import BaseModule
+        from picarones.domain.module_protocol import BaseModule
 
         # Contrat : ces attributs de classe sont lisibles depuis la base
         assert hasattr(BaseModule, "input_types")
@@ -138,7 +155,7 @@ class TestModulesApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 3. picarones.core.results — modèles de résultats
+# 3. picarones.evaluation.benchmark_result — modèles de résultats (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -147,7 +164,7 @@ class TestResultsApi:
         "DocumentResult", "EngineReport", "BenchmarkResult",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.results", name)
+        _assert_class("picarones.evaluation.benchmark_result", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -218,7 +235,7 @@ class TestRunnerApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 6. picarones.core.pipeline — banc d'essai pipelines
+# 6. picarones.evaluation.pipeline — banc d'essai pipelines (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -228,7 +245,7 @@ class TestPipelineRunnerApi:
         "StepResult", "PipelineResult", "PipelineRunner",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.pipeline", name)
+        _assert_class("picarones.evaluation.pipeline", name)
 
 
 class TestPipelineBenchmarkApi:
@@ -275,25 +292,25 @@ class TestPipelineSpecLoaderApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 7. picarones.core.metric_registry — registre typé
+# 7. picarones.evaluation.metric_registry — registre typé (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestMetricRegistryApi:
     def test_metric_spec_class(self):
-        _assert_class("picarones.core.metric_registry", "MetricSpec")
+        _assert_class("picarones.evaluation.metric_registry", "MetricSpec")
 
     @pytest.mark.parametrize("name", [
         "register_metric", "get_metric", "all_metrics",
         "select_metrics", "compute_at_junction",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.metric_registry", name)
+        _assert_function("picarones.evaluation.metric_registry", name)
 
     def test_register_metric_keyword_only(self):
         """``register_metric`` est exclusivement keyword-only sur ``name``,
         ``input_types`` etc. — décorateur factory."""
-        from picarones.core.metric_registry import register_metric
+        from picarones.evaluation.metric_registry import register_metric
         sig = inspect.signature(register_metric)
         for name in ["name", "input_types", "description"]:
             assert name in sig.parameters, (
@@ -302,7 +319,7 @@ class TestMetricRegistryApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 8. picarones.core.metric_hooks — profils + registre de hooks
+# 8. picarones.evaluation.metric_hooks — profils + registre de hooks (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -313,14 +330,14 @@ class TestMetricHooksApi:
         "PROFILE_FULL",
     ])
     def test_profile_constant_exists(self, profile_name):
-        from picarones.core import metric_hooks
+        from picarones.evaluation import metric_hooks
         assert hasattr(metric_hooks, profile_name), (
             f"Profil {profile_name} disparu"
         )
         assert isinstance(getattr(metric_hooks, profile_name), str)
 
     def test_known_profiles_set(self):
-        from picarones.core.metric_hooks import KNOWN_PROFILES
+        from picarones.evaluation.metric_hooks import KNOWN_PROFILES
 
         assert isinstance(KNOWN_PROFILES, frozenset)
         # Les 7 profils contractuels
@@ -330,7 +347,7 @@ class TestMetricHooksApi:
         "DocumentMetricHook", "CorpusMetricAggregator",
     ])
     def test_class_exists(self, name):
-        _assert_class("picarones.core.metric_hooks", name)
+        _assert_class("picarones.evaluation.metric_hooks", name)
 
     @pytest.mark.parametrize("name", [
         "validate_profile",
@@ -339,7 +356,7 @@ class TestMetricHooksApi:
         "run_document_hooks", "run_corpus_aggregators",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.core.metric_hooks", name)
+        _assert_function("picarones.evaluation.metric_hooks", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -403,16 +420,26 @@ class TestCercle1IsLean:
     # Tout module avec de la logique métier (calcul, orchestration)
     # appartient au Cercle 2 (``measurements/``) ou au Cercle 3
     # (``extras/``, ``report/``).
-    EXPECTED_CERCLE1 = {
-        "corpus.py", "facts.py", "metric_hooks.py", "metric_registry.py",
-        "metrics.py", "modules.py", "pipeline.py", "results.py",
-        "xml_utils.py",
-        # Sprint A3 (B-1) — déplacé depuis report/diff_utils.py pour
-        # respecter la règle Cercle 2 → Cercle 1. Pure logique de
-        # comparaison de séquences (difflib), zéro I/O, sans dépendance
-        # vers Cercles 2/3 — qualifié pour Cercle 1.
-        "diff_utils.py",
-    }
+    EXPECTED_CERCLE1: set[str] = set()
+    # Phase 1 du retrait du legacy a déplacé `facts.py`,
+    # `diff_utils.py` et `xml_utils.py` vers leurs canoniques
+    # (`domain/facts.py`, `evaluation/_diff_utils.py`,
+    # `formats/_xml_utils.py`).  Les fichiers `core/X.py`
+    # restent comme shims re-export avec DeprecationWarning
+    # (< 30 lignes), donc ne comptent plus comme "real_modules"
+    # au sens de ce test.
+    # Phase 4-bis a fait pareil pour `modules.py` (canonique :
+    # `domain/module_protocol.py` + `domain/artifacts.py`).
+    # Phase 4-ter a fait pareil pour `metric_registry.py`,
+    # `metric_hooks.py` (canonique : `evaluation/metric_*.py`),
+    # `metrics.py` (canonique : `evaluation/metric_result.py`)
+    # et `results.py` (canonique :
+    # `evaluation/benchmark_result.py`).
+    # Phase 4-quater a fait pareil pour `corpus.py`
+    # (canonique : `evaluation/corpus.py`).
+    # Phase 5.C.batch7 a fait pareil pour `pipeline.py`
+    # (canonique : `evaluation/pipeline.py`).  Désormais
+    # ``core/`` ne contient plus que des shims < 30 lignes.
 
     def test_cercle1_files_lean(self):
         from pathlib import Path
@@ -454,22 +481,29 @@ class TestApiStableDoc:
     def test_doc_exists(self):
         from pathlib import Path
 
-        path = Path(__file__).parent.parent.parent / "docs" / "api-stable.md"
-        assert path.exists(), "docs/api-stable.md manquant"
+        # S60 — la doc a migré sous ``docs/reference/`` (Diataxis).
+        path = (
+            Path(__file__).parent.parent.parent
+            / "docs"
+            / "reference"
+            / "api-stable.md"
+        )
+        assert path.exists(), "docs/reference/api-stable.md manquant"
         content = path.read_text(encoding="utf-8")
         # Présence des 14 sections (1 par module)
         for module in [
-            "picarones.core.corpus",
-            "picarones.core.modules",
-            "picarones.core.results",
+            "picarones.evaluation.corpus",
+            "picarones.domain.artifacts",
+            "picarones.domain.module_protocol",
+            "picarones.evaluation.benchmark_result",
             "picarones.measurements.metrics",
             "picarones.measurements.runner",
-            "picarones.core.pipeline",
+            "picarones.evaluation.pipeline",
             "picarones.measurements.pipeline_benchmark",
             "picarones.measurements.pipeline_comparison",
             "picarones.measurements.pipeline_spec_loader",
-            "picarones.core.metric_registry",
-            "picarones.core.metric_hooks",
+            "picarones.evaluation.metric_registry",
+            "picarones.evaluation.metric_hooks",
             "picarones.measurements.builtin_metrics",
             "picarones.measurements.alto_metrics",
             "picarones.web.jobs",
@@ -481,7 +515,12 @@ class TestApiStableDoc:
     def test_doc_mentions_stability_policy(self):
         from pathlib import Path
 
-        path = Path(__file__).parent.parent.parent / "docs" / "api-stable.md"
+        path = (
+            Path(__file__).parent.parent.parent
+            / "docs"
+            / "reference"
+            / "api-stable.md"
+        )
         content = path.read_text(encoding="utf-8")
         # Les sections clés du contrat
         assert "Politique de stabilité" in content

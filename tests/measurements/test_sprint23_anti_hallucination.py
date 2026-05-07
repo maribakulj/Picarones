@@ -38,7 +38,7 @@ from picarones.measurements.narrative import (
     select_facts,
 )
 from picarones.measurements.narrative.arbiter import DEFAULT_TYPE_ORDER
-from picarones.measurements.statistics import bootstrap_ci
+from picarones.evaluation.statistics import bootstrap_ci
 
 ROOT = Path(__file__).parent.parent.parent
 TEMPLATES_DIR = ROOT / "picarones" / "measurements" / "narrative" / "templates"

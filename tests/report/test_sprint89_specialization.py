@@ -15,14 +15,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.specialization import (
+from picarones.evaluation.metrics.specialization import (
     DEFAULT_THRESHOLDS,
     classify_specialization,
     compute_specialization_matrix,
     compute_specialization_score,
     top_specialized_pairs,
 )
-from picarones.report.specialization_render import (
+from picarones.reports_v2.html.renderers.specialization import (
     build_specialization_html,
 )
 
@@ -30,7 +30,7 @@ from picarones.report.specialization_render import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "report" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

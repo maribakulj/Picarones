@@ -23,7 +23,7 @@ import math
 
 import pytest
 
-from picarones.measurements.inter_engine import (
+from picarones.evaluation.metrics.inter_engine import (
     complementarity_gap,
     jensen_shannon_divergence,
     kl_divergence,
@@ -187,7 +187,7 @@ class TestOracleTokenRecall:
         }
         assert oracle_token_recall(ref, hyps) == pytest.approx(1.0)
         # Et chacun seul ne fait que la moitié
-        from picarones.measurements.inter_engine import complementarity_gap
+        from picarones.evaluation.metrics.inter_engine import complementarity_gap
         gap = complementarity_gap(ref, hyps)
         assert gap["best_single_recall"] == pytest.approx(0.5)
         assert gap["oracle_recall"] == pytest.approx(1.0)
