@@ -31,13 +31,13 @@ from typing import Any
 
 from picarones.core.corpus import Corpus, Document, GTLevel, TextGT
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.measurements.pipeline_benchmark import (
+from picarones.evaluation.pipeline_benchmark import (
     PipelineBenchmarkResult,
     StepAggregate,
     default_initial_inputs,
     run_pipeline_benchmark,
 )
-from picarones.core.pipeline import PipelineSpec, PipelineStep
+from picarones.evaluation.pipeline import PipelineSpec, PipelineStep
 
 
 # ──────────────────────────────────────────────────────────────────────────

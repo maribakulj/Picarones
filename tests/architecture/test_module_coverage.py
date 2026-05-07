@@ -73,6 +73,17 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     "specialization",
     "lexical_modernization",
     "robustness_projection",
+    # Phase 5.C.batch7 : 4 modules supplémentaires migrés vers
+    # ``evaluation/`` (``numerical_sequences``,
+    # ``pipeline_benchmark``, ``pipeline_comparison``) ou
+    # ``evaluation/metrics/`` (``numerical_sequences``).
+    # ``numerical_sequences_hooks`` n'est plus consommé en prod
+    # car son seul consommateur (le renderer) consomme désormais
+    # le canonique.
+    "numerical_sequences",
+    "numerical_sequences_hooks",
+    "pipeline_benchmark",
+    "pipeline_comparison",
 })
 
 

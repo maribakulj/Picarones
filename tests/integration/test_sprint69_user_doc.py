@@ -153,7 +153,7 @@ class TestCodeSnippets:
         # Les imports doivent pointer vers les vrais modules
         # picarones.core.* et picarones.report.*
         assert "from picarones.core.modules import" in doc
-        assert "from picarones.core.pipeline import" in doc
-        assert "from picarones.measurements.pipeline_benchmark import" in doc
-        assert "from picarones.measurements.pipeline_comparison import" in doc
-        assert "from picarones.report.pipeline_render import" in doc
+        assert "from picarones.evaluation.pipeline import" in doc
+        assert "from picarones.evaluation.pipeline_benchmark import" in doc
+        assert "from picarones.evaluation.pipeline_comparison import" in doc
+        assert "from picarones.reports_v2.html.renderers.pipeline import" in doc

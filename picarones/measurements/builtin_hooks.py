@@ -267,7 +267,7 @@ def _searchability_hook(*, ground_truth, hypothesis, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _numerical_sequences_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.numerical_sequences_hooks import (
+    from picarones.evaluation.metrics.numerical_sequences_hooks import (
         compute_numerical_sequence_metrics_adaptive,
     )
     return compute_numerical_sequence_metrics_adaptive(ground_truth, hypothesis)
@@ -567,7 +567,7 @@ def _aggregate_searchability(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_numerical_sequences(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.numerical_sequences_hooks import (
+    from picarones.evaluation.metrics.numerical_sequences_hooks import (
         aggregate_numerical_sequence_metrics,
     )
     return aggregate_numerical_sequence_metrics(

@@ -101,7 +101,7 @@ def build_pipeline_view_html(
     # Sous-section 1 : résumé + steps table
     if pipeline_benchmark is not None:
         try:
-            from picarones.report.pipeline_render import (
+            from picarones.reports_v2.html.renderers.pipeline import (
                 build_pipeline_steps_table_html,
                 build_pipeline_summary_html,
             )

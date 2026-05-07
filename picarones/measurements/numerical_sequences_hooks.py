@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from typing import Iterable, Optional
 
-from picarones.measurements.numerical_sequences import (
+from picarones.evaluation.metrics.numerical_sequences import (
     CATEGORIES,
     compute_numerical_sequence_metrics,
 )

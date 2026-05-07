@@ -21,11 +21,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.pipeline_benchmark import (
+from picarones.evaluation.pipeline_benchmark import (
     PipelineBenchmarkResult,
     StepAggregate,
 )
-from picarones.report.pipeline_render import (
+from picarones.reports_v2.html.renderers.pipeline import (
     build_pipeline_report_html,
     build_pipeline_steps_table_html,
     build_pipeline_summary_html,

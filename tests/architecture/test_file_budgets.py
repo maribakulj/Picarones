@@ -52,7 +52,9 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/report/generator.py": 500,                 # actuel 431
     # --- Fichiers métier larges.
     "picarones/measurements/robustness.py": 850,          # actuel 731
-    "picarones/report/pipeline_render.py": 815,           # actuel 707 (rétréci)
+    # Phase 5.C.batch7 : ``report/pipeline_render.py`` est désormais
+    # un shim ; canonique dans ``reports_v2/html/renderers/pipeline.py``.
+    "picarones/reports_v2/html/renderers/pipeline.py": 815,  # actuel 713
     # Phase 4-ter : ``core/results.py`` est désormais un shim
     # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (modèles
@@ -65,7 +67,9 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
-    "picarones/core/pipeline.py": 675,                    # actuel 571
+    # Phase 5.C.batch7 : ``core/pipeline.py`` est désormais un shim ;
+    # canonique dans ``evaluation/pipeline.py``.
+    "picarones/evaluation/pipeline.py": 700,              # actuel 622
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
     "picarones/measurements/levers.py": 675,              # actuel 561 (re-export S10)
@@ -115,7 +119,10 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/evaluation/corpus.py": 600,                # actuel 533
     "picarones/fixtures.py": 600,                         # actuel 510
     "picarones/measurements/inter_engine.py": 575,        # actuel 484
-    "picarones/measurements/roman_numerals.py": 575,      # actuel 478
+    # Phase 5.C.batch7 : ``measurements/roman_numerals.py`` est
+    # désormais un shim ; canonique dans
+    # ``evaluation/metrics/roman_numerals.py``.
+    "picarones/evaluation/metrics/roman_numerals.py": 575,  # actuel 484
     "picarones/extras/importers/htr_united.py": 575,      # actuel 473 (re-export S11)
     # Sprint A14-S11 — d\xc3\xa9plac\xc3\xa9s depuis extras/importers/, l'ancien
     # emplacement est d\xc3\xa9sormais un re-export.
@@ -128,7 +135,10 @@ FILE_BUDGETS: dict[str, int] = {
     # même budget pour la même raison historique (centralise les
     # hooks document/corpus, croissance maîtrisée).
     "picarones/evaluation/metric_hooks.py": 500,          # actuel 427
-    "picarones/measurements/numerical_sequences.py": 500, # actuel 422
+    # Phase 5.C.batch7 : ``measurements/numerical_sequences.py`` est
+    # désormais un shim ; canonique dans
+    # ``evaluation/metrics/numerical_sequences.py``.
+    "picarones/evaluation/metrics/numerical_sequences.py": 500,  # actuel 428
     "picarones/measurements/normalization.py": 500,       # actuel 420 (re-export S9)
     # Sprint A14-S9 — déplacé depuis measurements/normalization.py.
     # L'ancien emplacement est désormais un re-export ; le contenu

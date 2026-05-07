@@ -696,12 +696,11 @@ architecture vérifiée.
 - Batch 4 ✅ (cf. ci-dessous) — 5 renderers (188-321 LOC).
 - Batch 5 ✅ (cf. ci-dessous) — 5 renderers (148-314 LOC).
 - Batch 6 ✅ (cf. ci-dessous) — 2 renderers (``levers``, ``philological``).
-- Batch 7 (final) : ``pipeline_render`` (707 l) +
-  ``numerical_sequences_render`` (149 l).
-  Pré-requis : migration de ``measurements/pipeline_benchmark``,
-  ``measurements/pipeline_comparison``,
-  ``measurements/numerical_sequences``,
-  ``measurements/roman_numerals`` vers ``evaluation/metrics/``.
+- Batch 7 ✅ (cf. ci-dessous) — pré-requis migrés
+  (``roman_numerals``, ``numerical_sequences``,
+  ``pipeline_benchmark``, ``pipeline_comparison``,
+  ``core/pipeline``) puis 2 renderers
+  (``numerical_sequences``, ``pipeline``).
 - Phase 5.D : 5 vues (``views/*.py``).
 - Phase 5.E : ``generator.py``, ``comparison.py``,
   ``snapshot.py``, ``report_data/``, templates Jinja2.
@@ -885,6 +884,73 @@ Total : ~776 lignes relocalisées.
 
 **Acceptance batch 6** : 5019 tests passent, lint vert,
 architecture vérifiée.
+
+#### Phase 5.C.batch7 — Lot 7 : pré-requis + 2 derniers renderers (2026-05)
+
+Le batch 7 finalise Phase 5.C en migrant **d'abord** les
+modules de mesure dont dépendent les renderers
+``numerical_sequences`` et ``pipeline`` :
+
+| Source legacy                                  | Destination canonique                          |
+|------------------------------------------------|------------------------------------------------|
+| ``measurements/roman_numerals.py`` (478)       | ``evaluation/metrics/roman_numerals.py``       |
+| ``measurements/numerical_sequences.py`` (422)  | ``evaluation/metrics/numerical_sequences.py``  |
+| ``measurements/pipeline_benchmark.py`` (367)   | ``evaluation/pipeline_benchmark.py``           |
+| ``measurements/pipeline_comparison.py`` (301)  | ``evaluation/pipeline_comparison.py``          |
+| ``core/pipeline.py`` (607)                     | ``evaluation/pipeline.py``                     |
+
+Puis les 2 derniers renderers :
+
+| Source legacy                                  | Destination canonique                                |
+|------------------------------------------------|------------------------------------------------------|
+| ``report/numerical_sequences_render.py`` (149) | ``reports_v2/html/renderers/numerical_sequences.py`` |
+| ``report/pipeline_render.py`` (707)            | ``reports_v2/html/renderers/pipeline.py``            |
+
+Total : ~3031 lignes relocalisées dans ce batch.  7 nouveaux
+shims minimaux (< 25 lignes) avec ``DeprecationWarning``.
+
+État final de ``picarones/core/``
+---------------------------------
+
+Le répertoire ``picarones/core/`` est désormais **entièrement
+constitué de shims** (10 fichiers, tous < 30 lignes).  Aucun
+module Cercle 1 réel ne subsiste — les abstractions vivent dans
+``domain/`` (Pydantic immutable) et ``evaluation/`` (riche en
+behavior).  ``EXPECTED_CERCLE1`` du test
+``test_public_api.py::TestCercle1IsLean`` est désormais un set
+vide, documentant explicitement que la Phase 1 du retrait du
+legacy est complète au niveau ``core/``.
+
+Adaptations transverses
+-----------------------
+
+- Imports internes mis à jour entre modules canoniques
+  (``evaluation/metrics/numerical_sequences.py`` → canonique
+  ``roman_numerals``, ``evaluation/pipeline_comparison.py`` →
+  canonique ``pipeline_benchmark``, etc.).
+- ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à
+  ``"numerical_sequences"``, ``"numerical_sequences_hooks"``,
+  ``"pipeline_benchmark"``, ``"pipeline_comparison"``.
+- ``test_file_budgets.py`` : 4 entrées legacy retirées,
+  remplacées par les chemins canoniques.
+- ``test_public_api.py::EXPECTED_CERCLE1`` : ``pipeline.py``
+  retiré (set désormais vide).
+- ``docs/tutorials/writing-a-pipeline-module.md`` : tous les
+  imports mis à jour vers les chemins canoniques.
+
+**Cumul Phase 5.C** (batches 1-7) : **29 / 29 renderers migrés**
+(~8263 lignes au total).  Phase 5.C est terminée.
+
+**Acceptance batch 7** : 5019 tests passent, lint vert,
+architecture vérifiée (anti-cycles, file budgets,
+EXPECTED_CERCLE1 vide).
+
+Restantes pour Phase 5
+----------------------
+
+- Phase 5.D : 5 vues (``views/*.py``).
+- Phase 5.E : ``generator.py``, ``comparison.py``,
+  ``snapshot.py``, ``report_data/``, templates Jinja2.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

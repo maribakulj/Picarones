@@ -28,7 +28,7 @@ from typing import Any
 
 from picarones.core.corpus import Document, GTLevel, TextGT
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.core.pipeline import (
+from picarones.evaluation.pipeline import (
     PipelineResult,
     PipelineRunner,
     PipelineSpec,

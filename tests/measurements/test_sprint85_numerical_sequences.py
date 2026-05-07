@@ -16,7 +16,7 @@ Couvre :
 
 from __future__ import annotations
 
-from picarones.measurements.numerical_sequences import (
+from picarones.evaluation.metrics.numerical_sequences import (
     CATEGORIES,
     _detect_currencies,
     _detect_foliations,

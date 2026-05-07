@@ -66,7 +66,7 @@ def pipeline_run_cmd(
     import json as _json
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.measurements.pipeline_benchmark import run_pipeline_benchmark
+    from picarones.evaluation.pipeline_benchmark import run_pipeline_benchmark
     from picarones.measurements.pipeline_spec_loader import load_pipeline_spec_from_yaml
 
     spec = load_pipeline_spec_from_yaml(spec_path)
@@ -114,7 +114,7 @@ def pipeline_run_cmd(
         )
         click.echo(f"JSON exporté : {output_json}")
     if output_html is not None:
-        from picarones.report.pipeline_render import build_pipeline_report_html
+        from picarones.reports_v2.html.renderers.pipeline import build_pipeline_report_html
         Path(output_html).write_text(
             build_pipeline_report_html(bench, lang=lang),
             encoding="utf-8",
@@ -163,7 +163,7 @@ def pipeline_compare_cmd(
     """Compare N pipelines décrites dans SPECS_PATH sur le même corpus."""
     from picarones.evaluation.corpus import load_corpus_from_directory
     from picarones.domain.artifacts import ArtifactType
-    from picarones.measurements.pipeline_comparison import compare_pipelines
+    from picarones.evaluation.pipeline_comparison import compare_pipelines
     from picarones.measurements.pipeline_spec_loader import (
         load_comparison_specs_from_yaml,
     )
@@ -187,7 +187,7 @@ def pipeline_compare_cmd(
             shown = f"{value:.4f}" if value is not None else "N/A"
             click.echo(f"  {i}. {name}: {shown}")
     if output_html is not None:
-        from picarones.report.pipeline_render import (
+        from picarones.reports_v2.html.renderers.pipeline import (
             RankingSpec,
             build_pipeline_comparison_report_html,
         )

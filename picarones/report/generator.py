@@ -290,7 +290,7 @@ class ReportGenerator:
         from picarones.reports_v2.html.renderers.searchability import (
             build_searchability_summary_html,
         )
-        from picarones.report.numerical_sequences_render import (
+        from picarones.reports_v2.html.renderers.numerical_sequences import (
             build_numerical_sequences_html,
         )
         # Sprint 87 — A.II.2 : lisibilité (delta Flesch).

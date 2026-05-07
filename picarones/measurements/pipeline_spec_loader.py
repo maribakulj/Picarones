@@ -69,7 +69,7 @@ from typing import Any
 
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
-from picarones.core.pipeline import PipelineSpec, PipelineStep
+from picarones.evaluation.pipeline import PipelineSpec, PipelineStep
 
 logger = logging.getLogger(__name__)
 

@@ -18,7 +18,7 @@
 
 ```python
 from picarones.core.modules import BaseModule, ArtifactType
-from picarones.core.pipeline import (
+from picarones.evaluation.pipeline import (
     PipelineRunner, PipelineSpec, PipelineStep,
 )
 
@@ -150,7 +150,7 @@ class NERExtractor(BaseModule):
 ### 3.a Mono-document (Sprint 63)
 
 ```python
-from picarones.core.pipeline import (
+from picarones.evaluation.pipeline import (
     PipelineRunner, PipelineSpec, PipelineStep,
 )
 
@@ -178,7 +178,7 @@ que `Document.ground_truths` porte une `TextGT` (ou `AltoGT`,
 ### 3.b Corpus complet (Sprint 64)
 
 ```python
-from picarones.measurements.pipeline_benchmark import run_pipeline_benchmark
+from picarones.evaluation.pipeline_benchmark import run_pipeline_benchmark
 
 bench = run_pipeline_benchmark(spec, my_corpus)
 print(bench.n_pipelines_succeeded, "/", bench.n_docs)
@@ -203,7 +203,7 @@ bench = run_pipeline_benchmark(spec, corpus, initial_inputs_factory=my_factory)
 ### 3.c Comparer N pipelines (Sprint 65)
 
 ```python
-from picarones.measurements.pipeline_comparison import compare_pipelines
+from picarones.evaluation.pipeline_comparison import compare_pipelines
 
 comparison = compare_pipelines(
     [spec_baseline, spec_with_correcteur_a, spec_with_correcteur_b],
@@ -259,7 +259,7 @@ Sans `inputs_from`, `correct_b` aurait reçu la sortie de
 
 ```python
 from pathlib import Path
-from picarones.report.pipeline_render import build_pipeline_report_html
+from picarones.reports_v2.html.renderers.pipeline import build_pipeline_report_html
 
 bench = run_pipeline_benchmark(spec, corpus)
 Path("rapport_pipeline.html").write_text(
@@ -271,7 +271,7 @@ Path("rapport_pipeline.html").write_text(
 
 ```python
 from picarones.core.modules import ArtifactType
-from picarones.report.pipeline_render import (
+from picarones.reports_v2.html.renderers.pipeline import (
     RankingSpec, build_pipeline_comparison_report_html,
 )
 
