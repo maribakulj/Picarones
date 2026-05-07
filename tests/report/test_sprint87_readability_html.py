@@ -22,7 +22,7 @@ from picarones.measurements.readability_hooks import (
     compute_readability_metrics,
 )
 from picarones.core.results import DocumentResult, EngineReport
-from picarones.report.readability_render import (
+from picarones.reports_v2.html.renderers.readability import (
     build_readability_summary_html,
 )
 

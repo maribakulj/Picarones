@@ -287,18 +287,18 @@ class ReportGenerator:
             build_philological_profile_html,
         )
         # Sprint 86 — A.II.5 : recherchabilité fuzzy + séquences numériques.
-        from picarones.report.searchability_render import (
+        from picarones.reports_v2.html.renderers.searchability import (
             build_searchability_summary_html,
         )
         from picarones.report.numerical_sequences_render import (
             build_numerical_sequences_html,
         )
         # Sprint 87 — A.II.2 : lisibilité (delta Flesch).
-        from picarones.report.readability_render import (
+        from picarones.reports_v2.html.renderers.readability import (
             build_readability_summary_html,
         )
         # Sprint 89 — A.II.8b : spécialisation inter-moteurs.
-        from picarones.report.specialization_render import (
+        from picarones.reports_v2.html.renderers.specialization import (
             build_specialization_html,
         )
         # Chantier 3 (post-Sprint 97) — 3 vues thématiques composées.
@@ -310,10 +310,10 @@ class ReportGenerator:
         # Sprint « câblage des modules test-only » (mai 2026) — sections
         # qui consomment les nouvelles métriques calculées dans
         # ``report_data.extra_metrics``.
-        from picarones.report.marginal_cost_render import (
+        from picarones.reports_v2.html.renderers.marginal_cost import (
             build_marginal_cost_html,
         )
-        from picarones.report.rare_token_recall_render import (
+        from picarones.reports_v2.html.renderers.rare_token_recall import (
             build_rare_token_recall_html,
         )
         from picarones.report.taxonomy_cooccurrence_render import (

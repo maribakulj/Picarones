@@ -39,7 +39,7 @@ from picarones.measurements.searchability_hooks import (
 from picarones.report.numerical_sequences_render import (
     build_numerical_sequences_html,
 )
-from picarones.report.searchability_render import (
+from picarones.reports_v2.html.renderers.searchability import (
     build_searchability_summary_html,
 )
 

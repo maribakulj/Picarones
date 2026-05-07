@@ -642,25 +642,74 @@ via des shims minimaux (< 25 lignes) avec ``DeprecationWarning``
 architecture vérifiée (anti-cycles, file budgets).  Aucune
 régression sur les renderers thématiques (toujours legacy).
 
-**Reporté à Phase 5.C+** :
+#### Phase 5.C.batch1 — Lot 1 : 5 renderers les plus petits (2026-05)
 
-- 22 renderers thématiques (``baseline_render.py``,
-  ``calibration_render.py``, ..., ``worst_lines_render.py``).
-- 5 vues (``views/{advanced_taxonomy,diagnostics,economics,
-  pipeline,robustness}.py``).
-- ``generator.py``, ``comparison.py``, ``snapshot.py``.
-- 10 templates Jinja2 (``templates/{base.html.j2,
-  view_*.html,_*.html,_*.css,_*.js}``).
-- Sub-package ``report_data/`` (~9 modules).
+Première vague de migration des 22 renderers thématiques.  On
+relocalise verbatim, sans toucher au contrat avec
+``BenchmarkResult`` legacy — la convergence avec ``RunResult``
+canonique reste un sprint à part entière (5.D ou 5.E selon
+priorité).
 
-Ces composants consomment tous le ``BenchmarkResult`` legacy ;
-leur migration vers ``reports_v2/html/`` (qui consomme un
-``RunResult`` canonique) suppose l'écriture d'un convertisseur
-``BenchmarkResult → RunResult`` ou la duplication des renderers
-le temps de la transition.  Ce travail, qui requiert des
-décisions de design (faut-il plutôt enrichir ``RunResult`` ou
-adapter les renderers ?), est déféré à des sprints dédiés
-(probablement par lots de 5 renderers).
+Convention de nommage : ``picarones.report.<theme>_render`` →
+``picarones.reports_v2.html.renderers.<theme>``.  Le suffixe
+``_render`` est retiré (déjà implicite dans la position).
+
+**Migrations effectuées** :
+
+| Source legacy                            | Destination canonique                                |
+|------------------------------------------|------------------------------------------------------|
+| ``report/searchability_render.py`` (103) | ``reports_v2/html/renderers/searchability.py``       |
+| ``report/specialization_render.py`` (113)| ``reports_v2/html/renderers/specialization.py``      |
+| ``report/marginal_cost_render.py`` (111) | ``reports_v2/html/renderers/marginal_cost.py``       |
+| ``report/rare_token_recall_render.py`` (116)| ``reports_v2/html/renderers/rare_token_recall.py``|
+| ``report/readability_render.py`` (126)   | ``reports_v2/html/renderers/readability.py``         |
+
+Total : ~569 lignes relocalisées.  Les chemins ``report/X_render.py``
+deviennent des shims minimaux (< 20 lignes) avec
+``DeprecationWarning``.
+
+**Adaptations transverses** :
+
+- ``reports_v2/html/renderers/specialization.py`` import canonique
+  ``picarones.evaluation.metrics.specialization`` (au lieu du shim
+  legacy ``picarones.measurements.specialization``) pour respecter
+  la règle layer-dependencies (interdiction d'importer du legacy
+  depuis ``reports_v2/``).
+- ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à
+  ``"specialization"`` : son shim legacy n'a plus de consommateur
+  production (le renderer est désormais dans ``reports_v2/``).
+- 3 tests (``test_extra_metrics.py``,
+  ``test_sprint86_aii5_html.py``,
+  ``test_sprint87_readability_html.py``,
+  ``test_sprint89_specialization.py``) mis à jour pour pointer
+  vers les nouveaux chemins canoniques.
+- ``picarones/report/generator.py`` mis à jour pour importer les
+  5 renderers depuis ``reports_v2/html/renderers/``.
+
+**Acceptance batch 1** : 5019 tests passent, lint vert,
+architecture vérifiée.
+
+**Reporté aux batches suivants** :
+
+- Batch 2 (~5 renderers moyens, 150-200 LOC chacun) :
+  ``difficulty``, ``lexical_modernization``, ``numerical_sequences``,
+  ``multirun_stability``, ``throughput``.
+- Batch 3 (~5 renderers moyens) : ``longitudinal``,
+  ``module_audit``, ``ner``, ``image_predictive``,
+  ``incremental_comparison``.
+- Batch 4 (~5 renderers gros) : ``error_absorption``,
+  ``baseline``, ``inter_engine``, ``robustness_projection``,
+  ``stratification``.
+- Batch 5 (les 2 restants + plus gros) : ``calibration``,
+  ``worst_lines``, ``levers``, ``taxonomy_*`` (3 fichiers),
+  ``pipeline_dag``.
+- Batch 6 (les XXL) : ``pipeline_render`` (707 l),
+  ``philological_render`` (595 l).
+- Phase 5.D : 5 vues (``views/*.py``).
+- Phase 5.E : ``generator.py``, ``comparison.py``,
+  ``snapshot.py``, ``report_data/``, templates Jinja2.
+
+Effort restant estimé : 8-12 jours.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

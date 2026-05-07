@@ -180,7 +180,7 @@ class TestMarginalCost:
         assert compute_marginal_cost_section(engines_summary) is None
 
     def test_renderer_compatibility(self) -> None:
-        from picarones.report.marginal_cost_render import (
+        from picarones.reports_v2.html.renderers.marginal_cost import (
             build_marginal_cost_html,
         )
         engines_summary = [

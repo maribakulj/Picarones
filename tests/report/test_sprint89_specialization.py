@@ -22,7 +22,7 @@ from picarones.measurements.specialization import (
     compute_specialization_score,
     top_specialized_pairs,
 )
-from picarones.report.specialization_render import (
+from picarones.reports_v2.html.renderers.specialization import (
     build_specialization_html,
 )
 
