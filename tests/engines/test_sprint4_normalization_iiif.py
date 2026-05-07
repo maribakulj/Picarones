@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.normalization import (
+from picarones.evaluation.metrics.normalization import (
     NormalizationProfile,
     DEFAULT_DIPLOMATIC_PROFILE,
     _apply_diplomatic_table,
@@ -205,7 +205,7 @@ class TestDiplomaticCER:
         assert "diplomatic_profile_name" in d
 
     def test_cer_diplomatic_with_custom_profile(self):
-        from picarones.measurements.normalization import NormalizationProfile
+        from picarones.evaluation.metrics.normalization import NormalizationProfile
         profile = NormalizationProfile(
             name="test_profile",
             diplomatic_table={"ſ": "s"}

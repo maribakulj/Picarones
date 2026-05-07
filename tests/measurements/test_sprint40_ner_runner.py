@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 
 from picarones.evaluation.corpus import Corpus, Document, EntitiesGT, GTLevel, TextGT
-from picarones.measurements.ner_backends import (
+from picarones.evaluation.metrics.ner_backends import (
     SPACY_PROFILES,
     SpacyEntityExtractor,
     get_extractor,
@@ -49,7 +49,7 @@ class TestSpacyExtractor:
         """Sans spaCy installé, l'extracteur retourne [] avec un warning
         explicite et ne lève pas."""
         ext = SpacyEntityExtractor("fr_core_news_sm")
-        with caplog.at_level("WARNING", logger="picarones.measurements.ner_backends"):
+        with caplog.at_level("WARNING", logger="picarones.evaluation.metrics.ner_backends"):
             result = ext("Marie de Bourgogne en 1477.")
         # Sans spaCy, on a toujours [] et un warning
         if not is_spacy_available():

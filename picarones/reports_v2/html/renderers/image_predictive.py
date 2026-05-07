@@ -27,7 +27,7 @@ Module pur — l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.measurements.image_predictive import aggregate_corpus_predictive
+    from picarones.evaluation.metrics.image_predictive import aggregate_corpus_predictive
     from picarones.reports_v2.html.renderers.image_predictive import (
         build_image_predictive_html,
     )

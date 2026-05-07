@@ -71,7 +71,7 @@ class TestMacOSHiddenFilesFiltering:
 
 class TestExcludeCharsNormalization:
     def test_parse_exclude_chars_from_comma_string(self):
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
 
         result = _parse_exclude_chars("', -, –")
         assert "'" in result
@@ -79,7 +79,7 @@ class TestExcludeCharsNormalization:
         assert "–" in result
 
     def test_parse_exclude_chars_from_plain_string(self):
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
 
         result = _parse_exclude_chars(".,;:!?")
         assert "." in result
@@ -87,13 +87,13 @@ class TestExcludeCharsNormalization:
         assert "?" in result
 
     def test_parse_exclude_chars_empty(self):
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
 
         assert _parse_exclude_chars("") == frozenset()
         assert _parse_exclude_chars(None) == frozenset()
 
     def test_normalize_strips_excluded_chars(self):
-        from picarones.measurements.normalization import NormalizationProfile
+        from picarones.evaluation.metrics.normalization import NormalizationProfile
 
         profile = NormalizationProfile(
             name="test",
@@ -102,7 +102,7 @@ class TestExcludeCharsNormalization:
         assert profile.normalize("Bonjour, monde.") == "Bonjour monde"
 
     def test_sans_ponctuation_profile_exists(self):
-        from picarones.measurements.normalization import NORMALIZATION_PROFILES
+        from picarones.evaluation.metrics.normalization import NORMALIZATION_PROFILES
 
         assert "sans_ponctuation" in NORMALIZATION_PROFILES
         p = NORMALIZATION_PROFILES["sans_ponctuation"]
@@ -111,7 +111,7 @@ class TestExcludeCharsNormalization:
         assert "?" in p.exclude_chars
 
     def test_sans_apostrophes_profile_exists(self):
-        from picarones.measurements.normalization import NORMALIZATION_PROFILES
+        from picarones.evaluation.metrics.normalization import NORMALIZATION_PROFILES
 
         assert "sans_apostrophes" in NORMALIZATION_PROFILES
         p = NORMALIZATION_PROFILES["sans_apostrophes"]

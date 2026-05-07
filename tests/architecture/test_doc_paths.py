@@ -69,6 +69,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   ``docs/reference/api-stable.md`` a été migré vers les chemins
 #:   canoniques ``picarones.evaluation.{benchmark_result, corpus,
 #:   pipeline}``.
+#: - 88 (sprint « Lot D — measurements/X (34 shims) → evaluation/metrics »,
+#:   2026-05-07) : suppression des 34 shims plats de ``measurements/``.
+#:   Cinq nouveaux chemins cassés héritage : 4 dans ``docs/audits/*.md``
+#:   (intouchable) + 1 dans ``docs/roadmap/evolution-2026.md``
+#:   (plan stratégique historique).  Les docs actifs ``CLAUDE.md``,
+#:   ``README.md`` et ``SPECS.md`` ont été corrigés en place vers
+#:   ``picarones/formats/text/normalization.py``.
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
@@ -77,7 +84,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: - ``docs/migration/executor-equivalence.md`` : audit historique
 #:   d'équivalence executor (cite des chemins legacy à des fins
 #:   de comparaison).
-BROKEN_PATHS_BASELINE = 83
+BROKEN_PATHS_BASELINE = 88
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

@@ -385,7 +385,7 @@ class TestShortcuts:
 
 class TestRegistryIntegration:
     def test_metrics_registered(self) -> None:
-        import picarones.measurements.roman_numerals  # noqa: F401
+        import picarones.evaluation.metrics.roman_numerals  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

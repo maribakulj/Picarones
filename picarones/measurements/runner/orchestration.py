@@ -151,7 +151,7 @@ def run_benchmark(
     # éviter de re-résoudre N fois côté workers.
     norm_profile_obj = None
     if normalization_profile is not None:
-        from picarones.measurements.normalization import get_builtin_profile
+        from picarones.evaluation.metrics.normalization import get_builtin_profile
         norm_profile_obj = get_builtin_profile(normalization_profile)
 
     def _is_cancelled() -> bool:
@@ -435,7 +435,7 @@ def run_benchmark(
     inter_engine_payload: Optional[dict] = None
     if len(engine_reports) >= 2:
         try:
-            from picarones.measurements.inter_engine import compute_inter_engine_analysis
+            from picarones.evaluation.metrics.inter_engine import compute_inter_engine_analysis
 
             taxonomy_distros = {
                 report.engine_name: (

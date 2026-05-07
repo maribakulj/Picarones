@@ -61,46 +61,17 @@ MEASUREMENTS_DIR = PICARONES_DIR / "measurements"
 #: de fin de ligne ``noqa F401`` dans
 #: ``picarones/measurements/__init__.py``).
 TEST_ONLY_BASELINE: frozenset[str] = frozenset({
-    # Phase 5.C : modules ``measurements/X.py`` qui sont des shims
-    # vers ``evaluation/metrics/X``.  Leur unique consommateur
-    # production (le renderer ``report/X_render.py``) a été migré
-    # vers ``reports_v2/html/renderers/X.py`` qui importe le
-    # canonique directement (la règle layer-dependencies interdit
-    # d'importer un shim depuis ``reports_v2/``).  Tant que des
-    # tests ou un caller externe utilisent le chemin legacy, le
-    # shim reste en place ; les entrées ici sont retirées au plus
-    # tard à la version 2.0 quand les shims disparaîtront.
-    "specialization",
-    "lexical_modernization",
-    "robustness_projection",
-    # Phase 5.C.batch7 : 4 modules supplémentaires migrés vers
-    # ``evaluation/`` (``numerical_sequences``,
-    # ``pipeline_benchmark``, ``pipeline_comparison``) ou
-    # ``evaluation/metrics/`` (``numerical_sequences``).
-    # ``numerical_sequences_hooks`` n'est plus consommé en prod
-    # car son seul consommateur (le renderer) consomme désormais
-    # le canonique.
-    "numerical_sequences",
+    # Lot D — la majorité des entrées historiques (shims
+    # ``measurements/X.py`` vers ``evaluation/metrics/X``) ont été
+    # supprimées au Lot D, donc retirées de cette baseline.  Ne
+    # restent que les modules qui n'ont pas de canonique migré et
+    # dont le seul consommateur production est désormais hors
+    # ``picarones/`` (renderer canonique qui consomme le canonique
+    # directement, mais module legacy gardé pour les tests).
     "numerical_sequences_hooks",
     "pipeline_benchmark",
     "pipeline_comparison",
-    # Phase 5.D : 6 modules supplémentaires consommés uniquement
-    # par les 5 vues thématiques migrées vers
-    # ``reports_v2/html/views/``, qui importent désormais le
-    # canonique directement.
-    "taxonomy_comparison",
-    "incremental_comparison",
-    "levers",
-    "image_predictive",
-    "worst_lines",
-    "throughput",
-    # Phase 5.E : 3 modules supplémentaires consommés uniquement
-    # par les renderers/views/data migrés vers
-    # ``reports_v2/html/`` qui importent désormais le canonique
-    # directement.
     "statistics",
-    "pricing",
-    "difficulty",
 })
 
 

@@ -452,60 +452,60 @@ class TestCorrelationMatrix:
 
 class TestDifficultyScore:
     def test_returns_difficulty_score(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         ds = compute_difficulty_score("doc1", "maiſtre Froiſſart", [0.1, 0.2, 0.3])
-        from picarones.measurements.difficulty import DifficultyScore
+        from picarones.evaluation.metrics.difficulty import DifficultyScore
         assert isinstance(ds, DifficultyScore)
 
     def test_score_in_range(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         ds = compute_difficulty_score("doc1", "hello world", [0.1, 0.2])
         assert 0.0 <= ds.score <= 1.0
 
     def test_more_variance_higher_score(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         low_var  = compute_difficulty_score("doc1", "hello", [0.1, 0.1, 0.1])
         high_var = compute_difficulty_score("doc1", "hello", [0.0, 0.5, 1.0])
         assert high_var.score > low_var.score
 
     def test_bad_quality_image_harder(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         good_img = compute_difficulty_score("doc1", "hello", [0.1], image_quality_score=0.9)
         bad_img  = compute_difficulty_score("doc1", "hello", [0.1], image_quality_score=0.1)
         assert bad_img.score > good_img.score
 
     def test_special_chars_increase_difficulty(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         plain    = compute_difficulty_score("doc1", "hello world plain text", [0.1])
         heritage = compute_difficulty_score("doc1", "maiſtre Froiſſart ꝑ &", [0.1])
         assert heritage.score > plain.score
 
     def test_components_present(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         ds = compute_difficulty_score("doc1", "text", [0.1, 0.2])
         assert hasattr(ds, "variance_component")
         assert hasattr(ds, "quality_component")
         assert hasattr(ds, "density_component")
 
     def test_as_dict_has_doc_id(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         ds = compute_difficulty_score("folio_001", "text", [0.1])
         d = ds.as_dict()
         assert d["doc_id"] == "folio_001"
 
     def test_as_dict_rounded(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         ds = compute_difficulty_score("doc1", "text", [0.1])
         d = ds.as_dict()
         assert isinstance(d["score"], float)
 
     def test_no_engines_gives_low_variance(self):
-        from picarones.measurements.difficulty import compute_difficulty_score
+        from picarones.evaluation.metrics.difficulty import compute_difficulty_score
         ds = compute_difficulty_score("doc1", "text", [])
         assert ds.cer_variance == 0.0
 
     def test_difficulty_label(self):
-        from picarones.measurements.difficulty import difficulty_label
+        from picarones.evaluation.metrics.difficulty import difficulty_label
         assert difficulty_label(0.1)  == "Facile"
         assert difficulty_label(0.35) == "Modéré"
         assert difficulty_label(0.6)  == "Difficile"
@@ -518,7 +518,7 @@ class TestDifficultyScore:
 
 class TestAllDifficulties:
     def test_returns_dict(self):
-        from picarones.measurements.difficulty import compute_all_difficulties
+        from picarones.evaluation.metrics.difficulty import compute_all_difficulties
         r = compute_all_difficulties(
             ["doc1", "doc2"],
             {"doc1": "hello", "doc2": "world"},
@@ -527,7 +527,7 @@ class TestAllDifficulties:
         assert isinstance(r, dict)
 
     def test_all_docs_present(self):
-        from picarones.measurements.difficulty import compute_all_difficulties
+        from picarones.evaluation.metrics.difficulty import compute_all_difficulties
         r = compute_all_difficulties(
             ["d1", "d2", "d3"],
             {"d1": "a", "d2": "b", "d3": "c"},
@@ -536,7 +536,7 @@ class TestAllDifficulties:
         assert set(r.keys()) == {"d1", "d2", "d3"}
 
     def test_scores_in_range(self):
-        from picarones.measurements.difficulty import compute_all_difficulties
+        from picarones.evaluation.metrics.difficulty import compute_all_difficulties
         r = compute_all_difficulties(
             ["d1", "d2"],
             {"d1": "maiſtre Jean", "d2": "simple text"},
@@ -546,7 +546,7 @@ class TestAllDifficulties:
             assert 0.0 <= ds.score <= 1.0
 
     def test_with_image_quality(self):
-        from picarones.measurements.difficulty import compute_all_difficulties
+        from picarones.evaluation.metrics.difficulty import compute_all_difficulties
         r = compute_all_difficulties(
             ["d1"],
             {"d1": "text"},
@@ -558,12 +558,12 @@ class TestAllDifficulties:
         assert r["d1"].quality_component > 0.5
 
     def test_empty_corpus(self):
-        from picarones.measurements.difficulty import compute_all_difficulties
+        from picarones.evaluation.metrics.difficulty import compute_all_difficulties
         r = compute_all_difficulties([], {}, {})
         assert r == {}
 
     def test_missing_gt_handled(self):
-        from picarones.measurements.difficulty import compute_all_difficulties
+        from picarones.evaluation.metrics.difficulty import compute_all_difficulties
         r = compute_all_difficulties(
             ["d1"],
             {},  # GT manquante

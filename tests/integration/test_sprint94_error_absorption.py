@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.error_absorption import (
+from picarones.evaluation.metrics.error_absorption import (
     aggregate_error_absorption,
     compute_error_absorption,
 )

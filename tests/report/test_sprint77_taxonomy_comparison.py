@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.taxonomy_comparison import (
+from picarones.evaluation.metrics.taxonomy_comparison import (
     RECOVERABILITY,
     compare_taxonomies,
 )
@@ -91,7 +91,7 @@ class TestCompare:
 
     def test_recoverability_constant_complete(self) -> None:
         # Sanité : RECOVERABILITY couvre toutes les classes du module
-        from picarones.measurements.taxonomy import ERROR_CLASSES
+        from picarones.evaluation.metrics.taxonomy import ERROR_CLASSES
         for cls in ERROR_CLASSES:
             assert cls in RECOVERABILITY
 

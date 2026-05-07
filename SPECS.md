@@ -467,7 +467,7 @@ canonique (champ `reference`).
 
 ### 6.2 Profils de normalisation
 
-11 profils livrés (`picarones/measurements/normalization.py`,
+11 profils livrés (`picarones/formats/text/normalization.py`,
 exposés via `/api/normalization/profiles`) : `nfc`, `caseless`,
 `minimal`, `medieval_french`, `early_modern_french`,
 `medieval_latin`, `medieval_english`, `early_modern_english`,

@@ -21,7 +21,7 @@ from picarones.measurements.narrative.detectors import (
     detect_pareto_alternative,
 )
 from picarones.domain.facts import FactType
-from picarones.measurements.pricing import (
+from picarones.evaluation.metrics.pricing import (
     build_costs_for_benchmark,
     estimate_cost,
     load_pricing_database,
@@ -306,7 +306,7 @@ class TestReportIntegration:
 
     def test_pricing_yaml_is_packaged(self):
         """Garde-fou : le YAML doit être accessible depuis le package."""
-        from picarones.measurements.pricing import _DEFAULT_PRICING_PATH
+        from picarones.evaluation.metrics.pricing import _DEFAULT_PRICING_PATH
         assert Path(_DEFAULT_PRICING_PATH).exists()
 
     def test_english_locale_renders_pareto_labels(self, benchmark_result, tmp_path):

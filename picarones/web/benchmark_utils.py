@@ -208,7 +208,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 "total": total_steps,
             })
 
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
         result = run_benchmark(
@@ -316,7 +316,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
                 "total": total_steps,
             })
 
-        from picarones.measurements.normalization import _parse_exclude_chars
+        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
         result = run_benchmark(

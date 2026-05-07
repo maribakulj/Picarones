@@ -74,10 +74,9 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/evaluation/pipeline.py": 700,              # actuel 622
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
-    "picarones/measurements/levers.py": 675,              # actuel 561 (re-export S10)
-    # Sprint A14-S10 — déplacés depuis measurements/, l'ancien
-    # emplacement est désormais un re-export.  Le contenu canonique
-    # vit dans evaluation/metrics/.
+    # Sprint A14-S10 + Lot D — déplacés depuis measurements/.
+    # L'ancien emplacement (shim) a été supprimé au Lot D ; seul le
+    # canonique reste dans evaluation/metrics/.
     "picarones/evaluation/metrics/levers.py": 675,        # actuel 561
     "picarones/evaluation/metrics/inter_engine.py": 575,  # actuel 484
     "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
@@ -120,10 +119,9 @@ FILE_BUDGETS: dict[str, int] = {
     # (Document/Corpus/GTLevel + 5 payloads + load_corpus_from_directory).
     "picarones/evaluation/corpus.py": 600,                # actuel 533
     "picarones/fixtures.py": 600,                         # actuel 510
-    "picarones/measurements/inter_engine.py": 575,        # actuel 484
-    # Phase 5.C.batch7 : ``measurements/roman_numerals.py`` est
-    # désormais un shim ; canonique dans
-    # ``evaluation/metrics/roman_numerals.py``.
+    # Phase 5.C.batch7 + Lot D : le shim
+    # ``measurements/roman_numerals.py`` a été supprimé.  Seul le
+    # canonique ``evaluation/metrics/roman_numerals.py`` reste.
     "picarones/evaluation/metrics/roman_numerals.py": 575,  # actuel 484
     "picarones/extras/importers/htr_united.py": 575,      # actuel 473 (re-export S11)
     # Sprint A14-S11 — d\xc3\xa9plac\xc3\xa9s depuis extras/importers/, l'ancien
@@ -141,10 +139,8 @@ FILE_BUDGETS: dict[str, int] = {
     # désormais un shim ; canonique dans
     # ``evaluation/metrics/numerical_sequences.py``.
     "picarones/evaluation/metrics/numerical_sequences.py": 500,  # actuel 428
-    "picarones/measurements/normalization.py": 500,       # actuel 420 (re-export S9)
-    # Sprint A14-S9 — déplacé depuis measurements/normalization.py.
-    # L'ancien emplacement est désormais un re-export ; le contenu
-    # canonique vit ici.
+    # Sprint A14-S9 + Lot D — déplacé depuis measurements/normalization.py.
+    # Le shim a été supprimé au Lot D ; seul le canonique reste.
     "picarones/formats/text/normalization.py": 500,       # actuel 420
     # Phase 5.E : ``report/comparison.py`` est désormais un shim ;
     # canonique dans ``reports_v2/html/comparison.py``.

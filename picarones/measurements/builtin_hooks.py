@@ -97,7 +97,7 @@ def calibration_from_engine_result(
     normalisées à ``[0, 1]``. Les confidences négatives (Tesseract met
     -1 pour les non-mots) sont ignorées.
     """
-    from picarones.measurements.calibration import compute_calibration_metrics
+    from picarones.evaluation.metrics.calibration import compute_calibration_metrics
 
     if not token_confidences:
         return None
@@ -146,7 +146,7 @@ def calibration_from_engine_result(
     requires_success=True,
 )
 def _confusion_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.confusion import build_confusion_matrix
+    from picarones.evaluation.metrics.confusion import build_confusion_matrix
     return build_confusion_matrix(ground_truth, hypothesis).as_dict()
 
 
@@ -157,7 +157,7 @@ def _confusion_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _char_scores_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.char_scores import (
+    from picarones.evaluation.metrics.char_scores import (
         compute_diacritic_score,
         compute_ligature_score,
     )
@@ -173,7 +173,7 @@ def _char_scores_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _taxonomy_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.taxonomy import classify_errors
+    from picarones.evaluation.metrics.taxonomy import classify_errors
     return classify_errors(ground_truth, hypothesis).as_dict()
 
 
@@ -184,7 +184,7 @@ def _taxonomy_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _structure_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.structure import analyze_structure
+    from picarones.evaluation.metrics.structure import analyze_structure
     return analyze_structure(ground_truth, hypothesis).as_dict()
 
 
@@ -195,7 +195,7 @@ def _structure_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _line_metrics_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.line_metrics import compute_line_metrics
+    from picarones.evaluation.metrics.line_metrics import compute_line_metrics
     return compute_line_metrics(ground_truth, hypothesis).as_dict()
 
 
@@ -206,7 +206,7 @@ def _line_metrics_hook(*, ground_truth, hypothesis, **_):
     requires_success=True,
 )
 def _hallucination_hook(*, ground_truth, hypothesis, **_):
-    from picarones.measurements.hallucination import compute_hallucination_metrics
+    from picarones.evaluation.metrics.hallucination import compute_hallucination_metrics
     return compute_hallucination_metrics(ground_truth, hypothesis).as_dict()
 
 
@@ -230,7 +230,7 @@ def _calibration_hook(*, ground_truth, ocr_result, **_):
     # résultat OCR (pour comparer un échec OCR à la qualité image).
 )
 def _image_quality_hook(*, image_path, **_):
-    from picarones.measurements.image_quality import analyze_image_quality
+    from picarones.evaluation.metrics.image_quality import analyze_image_quality
     iq = analyze_image_quality(image_path)
     if iq.error is not None:
         return None
@@ -294,7 +294,7 @@ def _readability_hook(*, ground_truth, hypothesis, corpus_lang, **_):
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_confusion(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.confusion import (
+    from picarones.evaluation.metrics.confusion import (
         ConfusionMatrix, aggregate_confusion_matrices,
     )
     try:
@@ -321,7 +321,7 @@ def _aggregate_confusion(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_char_scores(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.char_scores import (
+    from picarones.evaluation.metrics.char_scores import (
         DiacriticScore,
         LigatureScore,
         aggregate_diacritic_scores,
@@ -351,7 +351,7 @@ def _aggregate_char_scores(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_taxonomy(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.taxonomy import TaxonomyResult, aggregate_taxonomy
+    from picarones.evaluation.metrics.taxonomy import TaxonomyResult, aggregate_taxonomy
     results = [
         TaxonomyResult.from_dict(dr.taxonomy)
         for dr in doc_results
@@ -368,7 +368,7 @@ def _aggregate_taxonomy(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_structure(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.structure import StructureResult, aggregate_structure
+    from picarones.evaluation.metrics.structure import StructureResult, aggregate_structure
     results = [
         StructureResult.from_dict(dr.structure)
         for dr in doc_results
@@ -385,7 +385,7 @@ def _aggregate_structure(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.image_quality import (
+    from picarones.evaluation.metrics.image_quality import (
         ImageQualityResult, aggregate_image_quality,
     )
     results = [
@@ -404,7 +404,7 @@ def _aggregate_image_quality(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.line_metrics import (
+    from picarones.evaluation.metrics.line_metrics import (
         LineMetrics, aggregate_line_metrics,
     )
     results = [
@@ -423,7 +423,7 @@ def _aggregate_line_metrics(doc_results: list) -> Optional[dict]:
     profiles=_STANDARD_PROFILES,
 )
 def _aggregate_hallucination(doc_results: list) -> Optional[dict]:
-    from picarones.measurements.hallucination import (
+    from picarones.evaluation.metrics.hallucination import (
         HallucinationMetrics, aggregate_hallucination_metrics,
     )
     results = [

@@ -22,7 +22,7 @@ import re
 
 import pytest
 
-from picarones.measurements.inter_engine import compute_inter_engine_analysis
+from picarones.evaluation.metrics.inter_engine import compute_inter_engine_analysis
 from picarones.measurements.narrative.detectors import detect_ensemble_opportunity
 from picarones.domain.facts import FactImportance, FactType
 from picarones.measurements.narrative.renderer import extract_numbers, render_fact

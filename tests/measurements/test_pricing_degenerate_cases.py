@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.pricing import (
+from picarones.evaluation.metrics.pricing import (
     EngineCost,
     PricingDefaults,
     build_costs_for_benchmark,

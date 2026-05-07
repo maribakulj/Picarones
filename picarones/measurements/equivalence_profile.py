@@ -42,7 +42,7 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-from picarones.measurements.normalization import (
+from picarones.evaluation.metrics.normalization import (
     DIPLOMATIC_EN_EARLY_MODERN,
     DIPLOMATIC_FR_EARLY_MODERN,
     DIPLOMATIC_LATIN_MEDIEVAL,

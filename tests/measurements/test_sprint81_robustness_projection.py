@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.robustness_projection import (
+from picarones.evaluation.metrics.robustness_projection import (
     _extract_quality_value,
     _interpolate_cer,
     aggregate_projection_per_engine,

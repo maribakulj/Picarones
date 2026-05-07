@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.specialization import (
+from picarones.evaluation.metrics.specialization import (
     DEFAULT_THRESHOLDS,
     classify_specialization,
     compute_specialization_matrix,

@@ -375,7 +375,7 @@ class TestRunnerSilentExceptions:
             "picarones.measurements.runner._compute_document_result",
             wraps=__import__("picarones.measurements.runner", fromlist=["_compute_document_result"])._compute_document_result,
         ):
-            with patch("picarones.measurements.confusion.build_confusion_matrix", side_effect=RuntimeError("crash test")):
+            with patch("picarones.evaluation.metrics.confusion.build_confusion_matrix", side_effect=RuntimeError("crash test")):
                 with caplog.at_level(logging.WARNING):
                     result = run_benchmark(corpus, [MockEngine()], show_progress=False)
 

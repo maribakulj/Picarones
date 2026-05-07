@@ -203,12 +203,13 @@ fiable.)
 
 ### 4.A Imports legacy dans les tests
 
-**91 fichiers** avec **472 statements** d'import depuis les
+**66 fichiers** avec **372 statements** d'import depuis les
 paquets legacy (``core``, ``measurements``, ``engines``,
-``llm``, ``pipelines``, ``report``, ``modules``) — Lots A, B et
-C terminés (cf. 4.D ci-dessous).  Le sous-paquet ``core/`` ne
-contient plus que ``diff_utils`` et ``xml_utils`` (à migrer en
-Lot G ou plus tard).
+``llm``, ``pipelines``, ``report``, ``modules``) — Lots A, B,
+C et D terminés (cf. 4.D ci-dessous).  Le sous-paquet
+``core/`` ne contient plus que ``diff_utils`` et ``xml_utils``,
+et ``measurements/`` est passé de 50+ shims à ~25 modules
+réellement présents.
 
 Top chemins consommés :
 
@@ -218,7 +219,7 @@ Top chemins consommés :
 | 18      | ``from picarones.measurements.metrics import MetricsResult``  |
 | 16      | ``from picarones.measurements.statistics import wilcoxon_test`` |
 | 13      | ``from picarones.measurements.metrics import compute_metrics`` |
-| 10      | ``from picarones.measurements.normalization import get_builtin_profile`` |
+| 10      | ``from picarones.measurements.robustness import degrade_image_bytes`` |
 
 **Pourquoi c'est important** : ces tests passent par les shims
 au lieu de pointer vers le canonique.  Tant que ces imports
@@ -228,8 +229,9 @@ existent, on **ne peut pas supprimer les shims** (le test casse).
 commit, avancer.  Shims supprimés dans les Lots A
 (``core.modules`` + ``core.facts``), B
 (``core.metric_registry`` + ``core.metric_hooks`` +
-``core.metrics``) et C (``core.results`` + ``core.corpus`` +
-``core.pipeline``) sur la branche
+``core.metrics``), C (``core.results`` + ``core.corpus`` +
+``core.pipeline``) et D (34 shims plats de ``measurements/``
+vers ``evaluation.metrics/``) sur la branche
 ``claude/migrate-core-to-domain-8ubIT``.
 
 ### 4.B Imports legacy en production (hors shims eux-mêmes)
@@ -284,9 +286,30 @@ L'ordre recommandé, par lots de symboles cohérents :
      migrées vers les chemins canoniques ; logger filter dans
      ``test_sprint32_multi_level_gt`` aligné sur
      ``picarones.evaluation.corpus``.
-4. **Lot D — evaluation/metrics/*** (~80 imports) :
-   - ``measurements.{difficulty, taxonomy, calibration, …}`` →
-     ``evaluation.metrics.{...}``
+4. ✅ **Lot D — evaluation/metrics/*** (~100 imports + 44
+   prod migrés, 34 shims supprimés en bloc) :
+   - ``measurements.{baseline_comparison, calibration,
+     char_scores, confusion, cost_projection, difficulty,
+     error_absorption, hallucination, image_predictive,
+     image_quality, incremental_comparison, inter_engine,
+     layout, levers, lexical_modernization, line_metrics,
+     longitudinal, marginal_cost, module_policy, ner_backends,
+     normalization, numerical_sequences, pricing, rare_tokens,
+     robustness_projection, roman_numerals, specialization,
+     structure, taxonomy, taxonomy_comparison,
+     taxonomy_cooccurrence, taxonomy_intra_doc, throughput,
+     worst_lines}`` → ``evaluation.metrics.{...}``.
+   - ``picarones/measurements/__init__.py`` réécrit pour
+     refléter la nouvelle composition (modules legacy
+     restants + `import picarones.evaluation.metrics`
+     unique pour déclencher les décorateurs).
+   - ``test_no_flat_files_in_measurements::WHITELIST_FLAT_FILES_S3``
+     réduit de 60 → 25 entrées.
+   - ``test_module_coverage::TEST_ONLY_BASELINE`` réduit
+     de 16 → 4 entrées.
+   - ``test_file_budgets::FILE_BUDGETS`` débarrassé des
+     entrées orphelines (inter_engine, levers,
+     normalization).
 5. **Lot E — adapters/legacy_***  (~50 imports) :
    - ``engines.*`` → ``adapters.legacy_engines.*``
    - ``modules.alto_text_to_mono_region`` →

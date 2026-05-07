@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.calibration import (
+from picarones.evaluation.metrics.calibration import (
     CalibrationBin,
     compute_calibration_metrics,
     expected_calibration_error,

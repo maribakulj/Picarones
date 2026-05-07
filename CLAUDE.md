@@ -118,7 +118,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **5080 passed, 12 skipped, 8 deselected, 0 failed**
+`pytest tests/` → **5040 passed, 12 skipped, 8 deselected, 0 failed**
 (post-S59).  Les deselected sont les markers `live` (5 tests d'intégration
 contre vraie API/binaire) + `network` (3 tests qui hit le réseau réel),
 opt-in en local via `pytest -m live` ou `pytest -m network`.  Le
@@ -156,7 +156,7 @@ correspondants (`test_sprint15_llm_pipeline_bugs.py`, `test_sprint8_escriptorium
   CI, Makefile et invocation directe produisent le même résultat. Le job
   `lint` du CI est bloquant — un F401 (import inutilisé) ou un E741
   (variable ambiguë) fait échouer la PR, par design.
-- **Les profils de normalisation** sont dans `picarones/measurements/normalization.py` — l'endpoint
+- **Les profils de normalisation** sont dans `picarones/formats/text/normalization.py` — l'endpoint
   `/api/normalization/profiles` doit les lire dynamiquement depuis ce fichier, pas depuis une
   liste statique.
 
@@ -248,7 +248,7 @@ Résumé express :
 
 1. `git branch --show-current` → `claude/repo-analysis-cukvm`.
 2. `git status` → working tree clean.
-3. `pytest tests/ -q --no-header --tb=line` → 5080 passed.
+3. `pytest tests/ -q --no-header --tb=line` → 5040 passed.
 4. `git log -1 --format=%B` → décrit la prochaine sub-phase.
 
 **Règles d'architecture critiques** (apprises à la dure) :
@@ -336,7 +336,7 @@ détecte, arbitre, rend.
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces, Python 3.11+
-- **Tests** : `pytest tests/ -q` → 5080 passed, 12 skipped, 24
+- **Tests** : `pytest tests/ -q` → 5040 passed, 12 skipped, 24
   deselected, 0 failed (au moment de la pause de session).
 - **Plan d'évolution actif** : [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md).
 - **Plan retrait du legacy (maître)** : [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md).

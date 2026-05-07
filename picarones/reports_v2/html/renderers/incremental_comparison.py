@@ -25,7 +25,7 @@ Module pur — l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.measurements.incremental_comparison import (
+    from picarones.evaluation.metrics.incremental_comparison import (
         PipelineRun, compare_isolated_effect,
     )
     from picarones.reports_v2.html.renderers.incremental_comparison import (

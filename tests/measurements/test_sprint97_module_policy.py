@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.module_policy import (
+from picarones.evaluation.metrics.module_policy import (
     AuditCheck,
     AuditResult,
     ModuleManifest,

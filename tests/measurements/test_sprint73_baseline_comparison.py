@@ -31,7 +31,7 @@ from typing import Any, Optional
 
 import pytest
 
-from picarones.measurements.baseline_comparison import (
+from picarones.evaluation.metrics.baseline_comparison import (
     compute_corpus_difficulty_percentile,
     compute_engine_baseline,
 )

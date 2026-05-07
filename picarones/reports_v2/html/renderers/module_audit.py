@@ -30,7 +30,7 @@ Module pur — l'utilisateur compose la liste depuis sa
 
 .. code-block:: python
 
-    from picarones.measurements.module_policy import audit_module
+    from picarones.evaluation.metrics.module_policy import audit_module
     from picarones.reports_v2.html.renderers.module_audit import build_module_audit_html
 
     audits = []

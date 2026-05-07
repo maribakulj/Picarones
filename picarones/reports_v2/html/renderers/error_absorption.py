@@ -31,7 +31,7 @@ l'utilisateur depuis son benchmark de pipeline composée :
 
 .. code-block:: python
 
-    from picarones.measurements.error_absorption import (
+    from picarones.evaluation.metrics.error_absorption import (
         compute_error_absorption, aggregate_error_absorption,
     )
     from picarones.reports_v2.html.renderers.error_absorption import (

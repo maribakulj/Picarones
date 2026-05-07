@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import inspect
 
-from picarones.measurements.normalization import (
+from picarones.evaluation.metrics.normalization import (
     NORMALIZATION_PROFILES,
     get_builtin_profile,
 )

@@ -299,7 +299,7 @@ client generation.
 
 Picarones ships **11 built-in normalization profiles** for historical
 text comparison (defined in
-[`picarones/measurements/normalization.py`](picarones/measurements/normalization.py),
+[`picarones/formats/text/normalization.py`](picarones/formats/text/normalization.py),
 exposed via `/api/normalization/profiles`):
 
 `nfc`, `caseless`, `minimal`, `medieval_french`,
@@ -395,7 +395,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~5080 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~5040 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

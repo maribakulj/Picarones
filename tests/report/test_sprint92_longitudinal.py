@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.longitudinal import (
+from picarones.evaluation.metrics.longitudinal import (
     compute_corpus_longitudinal,
     compute_engine_longitudinal,
     compute_linear_trend,

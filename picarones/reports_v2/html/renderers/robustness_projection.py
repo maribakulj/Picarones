@@ -21,7 +21,7 @@ l'utilisateur compose :
 .. code-block:: python
 
     from picarones.measurements.robustness import analyze_robustness
-    from picarones.measurements.robustness_projection import (
+    from picarones.evaluation.metrics.robustness_projection import (
         project_robustness_on_corpus,
         aggregate_projection_per_engine,
     )
