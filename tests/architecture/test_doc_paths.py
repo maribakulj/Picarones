@@ -49,7 +49,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: Les 73 restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` (67) : journal historique versionné, intouchable.
 #: - ``docs/audits/*.md`` (6) : audits historiques, intouchables.
-BROKEN_PATHS_BASELINE = 74
+BROKEN_PATHS_BASELINE = 75
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

@@ -33,7 +33,7 @@ import click
 from picarones import __version__
 
 if TYPE_CHECKING:
-    from picarones.engines.base import BaseOCREngine
+    from picarones.evaluation.engines.base import BaseOCREngine
 
 # ---------------------------------------------------------------------------
 # Helpers

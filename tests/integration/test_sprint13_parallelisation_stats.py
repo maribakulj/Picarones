@@ -101,7 +101,7 @@ class TestEngineExecutionMode:
 
     def test_base_engine_default_mode_is_io(self):
         """BaseOCREngine doit avoir execution_mode = 'io' par défaut."""
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
         assert BaseOCREngine.execution_mode == "io"
 
     def test_tesseract_engine_mode_is_cpu(self):
@@ -173,7 +173,7 @@ class TestRunnerTimeout:
         """Un document ayant dépassé le timeout doit avoir engine_error contenant 'timeout'."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
         import time
 
         class SlowEngine(BaseOCREngine):
@@ -202,7 +202,7 @@ class TestRunnerTimeout:
         """Un document timeout doit avoir CER = 1.0."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
         import time
 
         class SlowEngine(BaseOCREngine):
@@ -228,7 +228,7 @@ class TestRunnerTimeout:
         """Des documents rapides ne doivent pas être touchés par un timeout généreux."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class FastEngine(BaseOCREngine):
             @property
@@ -259,7 +259,7 @@ class TestRunnerPartialResults:
         """_save_partial_line doit être appelée pour chaque document traité."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
         # Sprint « découpage de runner.py » (mai 2026) : ``_save_partial_line``
         # vit désormais dans le sous-module ``runner.partial`` ; le ré-export
         # dans ``runner.__init__`` est une référence figée. Pour patcher
@@ -298,7 +298,7 @@ class TestRunnerPartialResults:
         """Le fichier .partial.json doit être supprimé après un benchmark réussi."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -362,7 +362,7 @@ class TestRunnerSilentExceptions:
         import logging
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -388,7 +388,7 @@ class TestRunnerSilentExceptions:
         import logging
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property

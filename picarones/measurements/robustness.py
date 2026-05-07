@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from picarones.evaluation.corpus import Corpus, Document
-    from picarones.engines.base import BaseOCREngine
+    from picarones.evaluation.engines.base import BaseOCREngine
 
 logger = logging.getLogger(__name__)
 

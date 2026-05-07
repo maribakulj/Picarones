@@ -923,7 +923,7 @@ class TestRunnerProgressCallback:
         """Le callback est appelé pour chaque document."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -944,7 +944,7 @@ class TestRunnerProgressCallback:
         """Le callback reçoit le nom du moteur."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property
@@ -965,7 +965,7 @@ class TestRunnerProgressCallback:
         """Une exception dans le callback ne plante pas le benchmark."""
         from picarones.core.corpus import load_corpus_from_directory
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
             @property

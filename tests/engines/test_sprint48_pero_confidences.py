@@ -243,7 +243,7 @@ class TestRunPipeline:
 class TestEndToEndWithRunner:
     def test_runner_picks_up_confidences(self) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.engines.base import EngineResult
+        from picarones.evaluation.engines.base import EngineResult
 
         ocr = EngineResult(
             engine_name="pero",

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.evaluation.engines.base import BaseOCREngine, EngineResult
 from picarones.engines.tesseract import TesseractEngine
 from picarones.engines.pero_ocr import PeroOCREngine
 

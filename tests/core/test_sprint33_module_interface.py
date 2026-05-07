@@ -28,7 +28,7 @@ import pytest
 
 from picarones.core.corpus import GTLevel
 from picarones.core.modules import ArtifactType, BaseModule
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.evaluation.engines.base import BaseOCREngine, EngineResult
 
 
 # ──────────────────────────────────────────────────────────────────────────

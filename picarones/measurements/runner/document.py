@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Optional
 
 from picarones.evaluation.benchmark_result import DocumentResult
-from picarones.engines.base import EngineResult
+from picarones.evaluation.engines.base import EngineResult
 from picarones.measurements.metrics import MetricsResult, compute_metrics
 
 

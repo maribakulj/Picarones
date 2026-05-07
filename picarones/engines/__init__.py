@@ -1,6 +1,6 @@
 """Adaptateurs moteurs OCR."""
 
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.evaluation.engines.base import BaseOCREngine, EngineResult
 from picarones.engines.factory import engine_from_name
 from picarones.engines.tesseract import TesseractEngine
 from picarones.engines.mistral_ocr import MistralOCREngine

@@ -36,7 +36,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.engines.base import BaseOCREngine
+from picarones.evaluation.engines.base import BaseOCREngine
 
 try:
     import numpy as np

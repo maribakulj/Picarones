@@ -40,7 +40,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.engines.base import BaseOCREngine
+from picarones.evaluation.engines.base import BaseOCREngine
 
 
 logger = logging.getLogger(__name__)

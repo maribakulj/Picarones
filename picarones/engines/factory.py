@@ -17,7 +17,7 @@ dépendance cercle 3 dans cercle 2.
 
 from __future__ import annotations
 
-from picarones.engines.base import BaseOCREngine
+from picarones.evaluation.engines.base import BaseOCREngine
 
 
 def engine_from_name(engine_name: str, lang: str = "fra", psm: int = 6) -> BaseOCREngine:

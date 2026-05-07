@@ -136,7 +136,7 @@ class TestExcludeCharsNormalization:
         """char_exclude doit être transmis à run_benchmark et réduire le CER."""
         from picarones.core.corpus import Corpus, Document
         from picarones.measurements.runner import run_benchmark
-        from picarones.engines.base import BaseOCREngine, EngineResult
+        from picarones.evaluation.engines.base import BaseOCREngine, EngineResult
 
         class MockEngine(BaseOCREngine):
             name = "mock"

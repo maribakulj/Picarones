@@ -310,7 +310,7 @@ class TestOCRLLMPipeline:
 
     def test_is_pipeline_flag(self):
         from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
-        from picarones.engines.base import BaseOCREngine
+        from picarones.evaluation.engines.base import BaseOCREngine
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.ZERO_SHOT,

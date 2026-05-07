@@ -21,7 +21,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from picarones.engines.base import BaseOCREngine, EngineResult
+from picarones.evaluation.engines.base import BaseOCREngine, EngineResult
 from picarones.llm.base import BaseLLMAdapter
 
 logger = logging.getLogger(__name__)

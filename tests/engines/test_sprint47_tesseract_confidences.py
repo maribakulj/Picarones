@@ -250,7 +250,7 @@ class TestEndToEndWithRunner:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     ) -> None:
         from picarones.measurements.runner import _compute_document_result
-        from picarones.engines.base import EngineResult
+        from picarones.evaluation.engines.base import EngineResult
 
         # Simulation : on appelle directement _compute_document_result
         # avec un EngineResult mocké qui porte des confidences. On
