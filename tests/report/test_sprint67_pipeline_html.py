@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.evaluation.pipeline_benchmark import (
+from picarones.pipeline.legacy_pipeline_benchmark import (
     PipelineBenchmarkResult,
     StepAggregate,
 )

@@ -69,7 +69,7 @@ from picarones.domain.facts import (
     FactImportance,
     FactType,
 )
-from picarones.evaluation.pipeline import (
+from picarones.pipeline.legacy_runner import (
     PipelineResult,
     PipelineRunner,
     PipelineSpec,

@@ -321,8 +321,31 @@ def run_benchmark(
                     processed_count += 1
 
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
             pbar.close()
+            # Sur Python 3.12+, ``ProcessPoolExecutor.shutdown(wait=False)``
+            # laisse les workers (sous-processus) vivants ; l'atexit
+            # ``_python_exit`` de ``concurrent.futures.process`` essaie
+            # ensuite de les joindre indéfiniment au shutdown global de
+            # l'interpréteur, ce qui hang la CI Ubuntu (exit code 124
+            # après timeout GNU 9 min).  Le ``ThreadPoolExecutor`` n'a
+            # pas ce problème (les threads daemon meurent avec le
+            # processus).
+            #
+            # ``cancel_futures=True`` continue d'annuler les futures en
+            # queue dans les deux cas ; ``wait=is_cpu_bound`` garantit
+            # que les workers ProcessPool en cours finissent leur batch
+            # et libèrent leurs sous-processus avant le retour.  Pas de
+            # changement de comportement pour les engines IO-bound (qui
+            # gardent leur shutdown rapide non-bloquant).
+            #
+            # Ce flow est exercé en CI via les tests web qui chargent le
+            # vrai ``TesseractEngine`` (``execution_mode="cpu"``) via
+            # ``engine_from_name("tesseract")`` — d'où la nécessité du
+            # fix dans le code de prod et pas seulement dans les tests.
+            executor.shutdown(
+                wait=is_cpu_bound,
+                cancel_futures=True,
+            )
 
         if _is_cancelled():
             logger.info(

@@ -4,15 +4,39 @@ Phase 5.C.batch7 — module relocalisé depuis
 ``picarones.core.pipeline`` vers ``picarones.evaluation.pipeline``.
 Shim ``picarones.core.pipeline`` retiré au Lot C (2026-05-07).
 
-Coexistence avec ``picarones.pipeline.executor``
+Phase 7.B.2 — module relocalisé une seconde fois
 ------------------------------------------------
-Le présent module porte le ``PipelineRunner`` historique
-(Sprint 63), riche en behavior, qui orchestre l'exécution
-mono-document.  Le module canonique
-``picarones.pipeline.executor`` (Sprint S6) propose un design
-différent (instance-based, immutable specs).  Les deux
-cohabitent volontairement ; un convertisseur explicite viendra
-quand un caller institutionnel l'exigera.
+``picarones.evaluation.pipeline`` → ``picarones.pipeline.legacy_runner``.
+La délégation à :class:`PipelineExecutor` (ci-dessous) exige d'importer
+la couche ``pipeline/``, ce que la règle d'architecture concentrique
+interdit à ``evaluation/`` (whitelist externe restreinte, pas de
+dépendance sortante vers une couche plus externe — cf. CLAUDE.md
+§ "architecture des couches").  Le module bridge legacy ↔ canonique
+vit donc dans la couche ``pipeline/``.  ``picarones.evaluation.pipeline``
+reste exposé en re-export shim le temps que les callers historiques
+migrent.
+
+Phase 7.B.2 — délégation au ``PipelineExecutor`` canonique
+----------------------------------------------------------
+Depuis 2026-05, ``PipelineRunner.run`` ne porte **plus** sa propre
+boucle d'exécution.  Le corps de la méthode délègue intégralement à
+:class:`picarones.pipeline.executor.PipelineExecutor` via le wrapper
+:class:`picarones.pipeline._legacy_module_adapter._BaseModuleAdapter`
+(créé en 7.B.1).  Le runner ne conserve que :
+
+1. La validation amont legacy (préservation des messages d'erreur
+   français du Sprint 63 — ``"étape N (X) demande Y qui n'est ni…"``).
+2. La traduction des résultats canoniques (``pipeline.types.StepResult``
+   Pydantic) vers les types legacy (``StepResult``, ``PipelineResult``
+   dataclass) attendus par les ~440 tests existants.
+3. Le calcul des ``junction_metrics`` aux jonctions GT-vs-sortie —
+   le canonique laisse cette responsabilité au caller (`MetricRegistry`
+   intégré au planner mais évaluation déférée).
+
+Cela élimine la duplication de moteur d'exécution (un seul code
+path) tout en préservant intégralement l'API publique du Sprint 63
+le temps que la sub-phase 7.C migre les tests vers le canonique
+direct, puis 7.D supprime le runner legacy.
 
 Sprint 63 — Étape 4 / axe B du plan d'évolution 2026 : démarrage du
 banc d'essai de pipelines.
@@ -63,14 +87,22 @@ Reporté à des sprints dédiés :
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from picarones.evaluation.corpus import Document, GTLevel
-from picarones.evaluation.metric_registry import compute_at_junction
+from picarones.evaluation.corpus import Document
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
+from picarones.pipeline._legacy_translator import (  # noqa: F401
+    # ``_artifact_type_to_gt_level`` et ``_gt_payload_to_value`` sont
+    # ré-exportés (alias avec préfixe ``_``) pour préserver l'API
+    # privée historique consommée par quelques tests intégration.
+    # Suppression en sub-phase 7.D avec le runner lui-même.
+    artifact_type_to_gt_level as _artifact_type_to_gt_level,
+    build_legacy_pipeline_result,
+    execute_legacy_spec_via_canonical,
+    gt_payload_to_value as _gt_payload_to_value,
+)
 
 # Sprint A3 (renforce la règle Cercle 1 → Cercle 1 uniquement) — la
 # cérémonie d'eager-load des métriques typées (Sprint 34) qui vivait
@@ -83,38 +115,12 @@ from picarones.domain.module_protocol import BaseModule
 logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# Conversion ArtifactType <-> GTLevel
-# ──────────────────────────────────────────────────────────────────────────
-
-
-#: Map ``ArtifactType`` canonique → ``GTLevel`` legacy.  Phase 4-bis :
-#: ``ArtifactType`` a été migré vers ``domain/artifacts.py`` qui
-#: distingue ``RAW_TEXT``/``CORRECTED_TEXT`` (vs ``TEXT`` legacy) et
-#: ``ALTO_XML``/``PAGE_XML`` (vs ``ALTO``/``PAGE`` legacy).  Les
-#: valeurs canoniques ne matchent donc plus celles de ``GTLevel``.
-#: Ce mapping explicite fait le pont — sera retiré en 2.0 quand
-#: ``GTLevel`` aura aussi été retiré au profit de la projection
-#: ``ArtifactType → niveau d'évaluation`` du rewrite.
-_ARTIFACT_TO_GT_LEVEL: dict[ArtifactType, GTLevel] = {
-    ArtifactType.RAW_TEXT: GTLevel.TEXT,
-    ArtifactType.CORRECTED_TEXT: GTLevel.TEXT,
-    ArtifactType.ALTO_XML: GTLevel.ALTO,
-    ArtifactType.PAGE_XML: GTLevel.PAGE,
-    ArtifactType.ENTITIES: GTLevel.ENTITIES,
-    ArtifactType.READING_ORDER: GTLevel.READING_ORDER,
-}
-
-
-def _artifact_type_to_gt_level(at: ArtifactType) -> Optional[GTLevel]:
-    """Retourne le ``GTLevel`` correspondant à un ``ArtifactType``.
-
-    ``IMAGE`` n'a pas de correspondance GT (on n'évalue pas une
-    image en sortie d'un module — c'est typiquement une entrée).
-    Les types ``CONFIDENCES``, ``ALIGNMENT``, ``CANONICAL_DOCUMENT``
-    n'ont pas non plus de niveau de GT direct dans le legacy.
-    """
-    return _ARTIFACT_TO_GT_LEVEL.get(at)
+# Phase 7.B.3 : ``_artifact_type_to_gt_level`` et ``_gt_payload_to_value``
+# ont migré vers :mod:`picarones.pipeline._legacy_translator` et sont
+# ré-exportés via les imports en tête de module pour préserver l'API
+# ``from picarones.pipeline.legacy_runner import _artifact_type_to_gt_level``
+# qui est utilisée par les anciens tests intégration (sera supprimée
+# en 7.D avec le runner lui-même).
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -387,6 +393,15 @@ class PipelineRunner:
     corpus-wide et l'agrégation par pipeline sont reportées à un
     sprint dédié.
 
+    Phase 7.B.2 — délégation au canonique
+    --------------------------------------
+    L'API publique (``run`` statique, types de retour ``PipelineResult``
+    et ``StepResult`` legacy, format des messages d'erreur en français)
+    est rigoureusement préservée pour rétrocompat.  Le corps de
+    ``run`` délègue à :class:`picarones.pipeline.executor.PipelineExecutor`
+    via :class:`_BaseModuleAdapter` — il n'y a plus de code de
+    boucle d'exécution dupliqué.
+
     Usage typique
     -------------
 
@@ -436,180 +451,31 @@ class PipelineRunner:
             pipeline_name=spec.name, doc_id=document.doc_id,
         )
 
-        # Validation amont : si la pipeline est statiquement
-        # invalide, on n'exécute aucune étape.
+        # Validation amont legacy : si la pipeline est statiquement
+        # invalide, on n'exécute aucune étape.  Cette validation
+        # produit des messages français spécifiques au Sprint 63
+        # (cf. ``PipelineSpec.validate``) que les tests vérifient ;
+        # le canonique a sa propre ``ValidationError`` au format
+        # différent — d'où la double validation tant que les tests
+        # legacy ne sont pas migrés (sub-phase 7.C).
         problems = spec.validate(tuple(initial_inputs.keys()))
         if problems:
             result.error = " ; ".join(problems)
             return result
 
-        # Sprint 66 — bag versionné : ``versioned[(type, src_step)]``
-        # contient l'artefact produit par ``src_step`` pour ``type``.
-        # ``src_step`` vaut ``"__initial__"`` pour les entrées
-        # initiales fournies par l'utilisateur.  ``latest[type]``
-        # désigne le nom de l'étape qui a produit la version la plus
-        # récente du type — utilisé en l'absence d'``inputs_from``
-        # explicite (rétrocompat Sprint 63).
-        versioned: dict[tuple[ArtifactType, str], Any] = {
-            (t, "__initial__"): v for t, v in initial_inputs.items()
-        }
-        latest: dict[ArtifactType, str] = {
-            t: "__initial__" for t in initial_inputs
-        }
-
-        pipeline_t0 = time.monotonic()
-        for step in spec.steps:
-            step_result = PipelineRunner._run_step(
-                step, versioned, latest, document,
-            )
-            result.steps.append(step_result)
-        result.total_duration_seconds = time.monotonic() - pipeline_t0
-        return result
-
-    @staticmethod
-    def _run_step(
-        step: PipelineStep,
-        versioned: dict[tuple[ArtifactType, str], Any],
-        latest: dict[ArtifactType, str],
-        document: Document,
-    ) -> StepResult:
-        # Sprint 66 — résolution des entrées : pour chaque type
-        # demandé, on consulte ``inputs_from`` ; sinon on prend la
-        # dernière version disponible (rétrocompat Sprint 63).
-        resolved: dict[ArtifactType, Any] = {}
-        missing: list[str] = []
-        for t in step.input_types:
-            src = step.inputs_from.get(t, latest.get(t))
-            if src is None:
-                missing.append(t.value)
-                continue
-            key = (t, src)
-            if key not in versioned:
-                # Référence explicite vers une étape qui n'a pas
-                # produit cet artefact (ex. l'étape source a échoué).
-                missing.append(f"{t.value}@{src}")
-                continue
-            resolved[t] = versioned[key]
-        if missing:
-            miss_str = ",".join(missing)
-            return StepResult(
-                step_name=step.name,
-                duration_seconds=0.0,
-                output_types=(),
-                error=f"entrée manquante : {miss_str}",
-            )
-        inputs_for_module = resolved
-        # Exécution chronométrée
-        t0 = time.monotonic()
-        try:
-            outputs = step.module.process(inputs_for_module)
-        except Exception as exc:  # noqa: BLE001
-            duration = time.monotonic() - t0
-            logger.warning(
-                "[pipeline_runner] étape '%s' a levé : %s",
-                step.name, exc,
-            )
-            return StepResult(
-                step_name=step.name,
-                duration_seconds=duration,
-                output_types=(),
-                error=f"{type(exc).__name__}: {exc}",
-            )
-        duration = time.monotonic() - t0
-
-        # Validation des sorties : le module est censé déclarer ses
-        # output_types, on vérifie qu'il les a tous produits.  Si
-        # ce n'est pas le cas, on remonte une erreur explicite mais
-        # on conserve les sorties effectivement présentes (utile
-        # pour le diagnostic).
-        if not isinstance(outputs, dict):
-            return StepResult(
-                step_name=step.name,
-                duration_seconds=duration,
-                output_types=(),
-                error=(
-                    f"le module a retourné {type(outputs).__name__}, "
-                    f"un dict[ArtifactType, Any] est attendu"
-                ),
-            )
-        produced = tuple(t for t in step.output_types if t in outputs)
-        missing_outputs = [t for t in step.output_types if t not in outputs]
-        error: Optional[str] = None
-        if missing_outputs:
-            miss_str = ",".join(t.value for t in missing_outputs)
-            error = f"sortie manquante : {miss_str}"
-
-        # Mise à jour du bag versionné : on stocke la sortie sous
-        # une clé (type, step.name) ET on met à jour ``latest`` pour
-        # que les étapes suivantes la récupèrent par défaut.
-        for t in produced:
-            versioned[(t, step.name)] = outputs[t]
-            latest[t] = step.name
-
-        # Évaluation aux jonctions : pour chaque type produit, si
-        # la GT du même niveau existe, on calcule les métriques.
-        junction_metrics: dict[str, dict[str, Any]] = {}
-        for at in produced:
-            gt_level = _artifact_type_to_gt_level(at)
-            if gt_level is None:
-                continue
-            gt_payload = document.get_gt(gt_level)
-            if gt_payload is None:
-                continue
-            try:
-                metrics = compute_at_junction(
-                    _gt_payload_to_value(gt_payload),
-                    outputs[at],
-                    (at, at),
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "[pipeline_runner] évaluation à la jonction %s "
-                    "a levé : %s",
-                    at.value, exc,
-                )
-                continue
-            if metrics:
-                junction_metrics[at.value] = metrics
-
-        # Phase 4-bis : double-clé pour rétrocompat.  Les tests
-        # legacy cherchent junction_metrics["text"] mais le runner
-        # peut produire junction_metrics["raw_text"] si l'enum est
-        # migré (ArtifactType.TEXT alias de RAW_TEXT, valeur
-        # "raw_text").  expand_legacy_keys ajoute la clé legacy
-        # ("text") à côté de la canonique ("raw_text") sans écraser.
-        from picarones.domain.artifacts import expand_legacy_keys
-        expand_legacy_keys(junction_metrics)
-
-        return StepResult(
-            step_name=step.name,
-            duration_seconds=duration,
-            output_types=produced,
-            junction_metrics=junction_metrics,
-            error=error,
+        canonical_result, registry = execute_legacy_spec_via_canonical(
+            spec, document, initial_inputs,
         )
-
-
-def _gt_payload_to_value(payload: Any) -> Any:
-    """Extrait la valeur exploitable d'un ``GTPayload`` typé.
-
-    Pour ``TextGT`` on veut juste la chaîne ; pour les autres
-    payloads on retourne le payload entier (la métrique sait quoi
-    en faire selon sa signature de types).
-    """
-    # Import paresseux pour éviter une dépendance cyclique
-    from picarones.evaluation.corpus import (
-        AltoGT, EntitiesGT, PageGT, ReadingOrderGT, TextGT,
-    )
-    if isinstance(payload, TextGT):
-        return payload.text
-    if isinstance(payload, EntitiesGT):
-        return payload.entities
-    if isinstance(payload, ReadingOrderGT):
-        return payload.region_order
-    if isinstance(payload, (AltoGT, PageGT)):
-        return payload
-    return payload
+        # ``build_legacy_pipeline_result`` reconstruit un PipelineResult
+        # legacy complet (steps + total_duration) ; on transfère ses
+        # champs sur l'instance ``result`` pour préserver le ``error``
+        # déjà vide (pas de validation amont qui aurait court-circuité).
+        rebuilt = build_legacy_pipeline_result(
+            spec, document, canonical_result, registry,
+        )
+        result.steps = rebuilt.steps
+        result.total_duration_seconds = rebuilt.total_duration_seconds
+        return result
 
 
 __all__ = [
