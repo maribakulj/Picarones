@@ -58,7 +58,10 @@ FILE_BUDGETS: dict[str, int] = {
     # même budget pour la même raison historique (modèles
     # BenchmarkResult/EngineReport/DocumentResult).
     "picarones/evaluation/benchmark_result.py": 750,      # actuel 702
-    "picarones/report/philological_render.py": 700,       # actuel 595 (rétréci)
+    # Phase 5.C : ``report/philological_render.py`` est désormais
+    # un shim (≤ 25 l).  Le contenu canonique vit dans
+    # ``reports_v2/html/renderers/philological.py``.
+    "picarones/reports_v2/html/renderers/philological.py": 700,  # actuel 601
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590

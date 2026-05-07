@@ -695,8 +695,13 @@ architecture vérifiée.
 - Batch 3 ✅ (cf. ci-dessous) — 5 renderers (173-222 LOC).
 - Batch 4 ✅ (cf. ci-dessous) — 5 renderers (188-321 LOC).
 - Batch 5 ✅ (cf. ci-dessous) — 5 renderers (148-314 LOC).
-- Batch 6 (XXL + restants) : ``pipeline_render`` (707 l),
-  ``philological_render`` (595 l), ``levers`` (284 l).
+- Batch 6 ✅ (cf. ci-dessous) — 2 renderers (``levers``, ``philological``).
+- Batch 7 (final) : ``pipeline_render`` (707 l) +
+  ``numerical_sequences_render`` (149 l).
+  Pré-requis : migration de ``measurements/pipeline_benchmark``,
+  ``measurements/pipeline_comparison``,
+  ``measurements/numerical_sequences``,
+  ``measurements/roman_numerals`` vers ``evaluation/metrics/``.
 - Phase 5.D : 5 vues (``views/*.py``).
 - Phase 5.E : ``generator.py``, ``comparison.py``,
   ``snapshot.py``, ``report_data/``, templates Jinja2.
@@ -843,15 +848,43 @@ migrés**, soit l'intégralité moins ``pipeline_render`` et
 ``philological_render`` (XXL) et ``levers`` (oublié dans le plan
 initial).  Reste batch 6 (3 renderers) puis Phase 5.D (5 vues).
 
-Wait — le compte exact : 22 originaux moins ``pipeline_render``,
-``philological_render`` et ``levers`` = 19 attendus.  Or on en a
-migré 20 + 5 = 25 dans 5 batches.  Vérification : on a fait
-batch 1 (5) + batch 2 (5) + batch 3 (5) + batch 4 (5) + batch 5 (5)
-= 25.  Le plan initial listait 22 renderers ; en pratique le
-``report/`` en contient ~28 (cf. ``ls report/*_render.py``) — la
-liste du plan était incomplète.  L'inventaire exact restant :
-``levers_render.py`` + ``pipeline_render.py`` +
-``philological_render.py`` à finir (3 renderers, ~1586 LOC).
+#### Phase 5.C.batch6 — Lot 6 : levers + philological (2026-05)
+
+Sixième vague.  Inclut le plus gros renderer non-bloqué
+(``philological``, 527 LOC) et ``levers`` (249 LOC).
+``pipeline_render`` (707 l) reporté à un batch 7 dédié car il
+dépend de ``measurements/pipeline_benchmark`` et
+``measurements/pipeline_comparison`` non encore migrés vers
+``evaluation/`` (rejetés par layer-dependencies).
+``numerical_sequences_render`` (149 l) reporté pour la même
+raison (dépendance vers ``measurements/numerical_sequences``
+qui dépend de ``measurements/roman_numerals``).
+
+**Migrations effectuées** :
+
+| Source legacy                               | Destination canonique                                |
+|---------------------------------------------|------------------------------------------------------|
+| ``report/levers_render.py`` (249)           | ``reports_v2/html/renderers/levers.py``              |
+| ``report/philological_render.py`` (527)     | ``reports_v2/html/renderers/philological.py``        |
+
+Total : ~776 lignes relocalisées.
+
+**Adaptations transverses** :
+
+- ``test_sprint82_levers.py`` : monkeypatch sur `_FORMATTERS`
+  pointe désormais vers le module canonique
+  ``picarones.reports_v2.html.renderers.levers``.
+- ``test_file_budgets.py`` : entrée
+  ``report/philological_render.py`` retirée, remplacée par
+  ``reports_v2/html/renderers/philological.py`` (budget
+  inchangé à 700).
+
+**Cumul Phase 5.C** (batches 1-6) : 27 / 29 renderers migrés
+(~5232 lignes).  2 renderers restants pour batch 7 :
+``pipeline_render`` (707) et ``numerical_sequences_render`` (149).
+
+**Acceptance batch 6** : 5019 tests passent, lint vert,
+architecture vérifiée.
 
 ### Phase 6 — Pipelines OCR+LLM (`pipelines/`)
 

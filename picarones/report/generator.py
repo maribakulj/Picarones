@@ -283,7 +283,7 @@ class ReportGenerator:
             build_stratified_ranking_html,
         )
         # Sprint 62 — profil philologique (6 sections adaptive).
-        from picarones.report.philological_render import (
+        from picarones.reports_v2.html.renderers.philological import (
             build_philological_profile_html,
         )
         # Sprint 86 — A.II.5 : recherchabilité fuzzy + séquences numériques.

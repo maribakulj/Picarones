@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.report.philological_render import (
+from picarones.reports_v2.html.renderers.philological import (
     build_abbreviations_section,
     build_early_modern_section,
     build_modern_archives_section,

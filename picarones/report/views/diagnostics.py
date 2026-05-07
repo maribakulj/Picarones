@@ -103,7 +103,7 @@ def build_diagnostics_view_html(
     # Sous-section 1 : leviers (calculés automatiquement)
     try:
         from picarones.measurements.levers import detect_levers
-        from picarones.report.levers_render import build_levers_section_html
+        from picarones.reports_v2.html.renderers.levers import build_levers_section_html
         levers = detect_levers(report_data)
         html = build_levers_section_html(levers, labels=labels)
         if html:
