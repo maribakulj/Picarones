@@ -196,7 +196,93 @@ Sinon le test ``test_readme_tables_consistent_with_code``
 
 ---
 
-## 4. Prochaine sub-phase à exécuter
+## 4. Inventaire actuel — quel legacy reste à migrer ?
+
+(Snapshot au moment de la pause de session, mesuré via AST,
+fiable.)
+
+### 4.A Imports legacy dans les tests
+
+**103 fichiers** avec **608 statements** d'import depuis les
+paquets legacy (``core``, ``measurements``, ``engines``,
+``llm``, ``pipelines``, ``report``, ``modules``).
+
+Top chemins consommés :
+
+| Imports | Chemin legacy                                                 |
+|---------|---------------------------------------------------------------|
+| 11      | ``from picarones.core.modules import ArtifactType``           |
+| 9       | ``from picarones.measurements.metrics import MetricsResult``  |
+| 9       | ``from picarones.core.modules import ArtifactType, BaseModule`` |
+| 9       | ``from picarones.core.metric_registry import …``              |
+| 6       | ``from picarones.core.facts import FactImportance, FactType`` |
+
+**Pourquoi c'est important** : ces tests passent par les shims
+au lieu de pointer vers le canonique.  Tant que ces imports
+existent, on **ne peut pas supprimer les shims** (le test casse).
+
+**Stratégie** : sed batch par chemin (ex : tous les
+``picarones.core.modules`` → ``picarones.domain.module_protocol``
++ ``picarones.domain.artifacts`` selon le symbole), valider
+les tests, commit, avancer.
+
+### 4.B Imports legacy en production (hors shims eux-mêmes)
+
+**12 fichiers** avec **41 statements** dans des paquets
+non-legacy qui pointent encore vers le legacy.  À résoudre
+sprint par sprint en migrant chaque caller.
+
+### 4.C Symboles legacy non tracés dans la table de parité
+
+**110 symboles** publics dans les paquets legacy ne sont pas
+encore dans
+``tests/architecture/test_legacy_canonical_parity.py::LEGACY_PARITY``.
+Répartition :
+
+- ``measurements/`` : 104
+- ``pipelines/`` : 6
+
+Le test ``test_no_untracked_legacy_symbol_above_baseline``
+autorise temporairement 110 (``BOOTSTRAP_BASELINE = 110``).
+À diminuer à chaque session.
+
+### 4.D Plan de bataille pour les imports tests
+
+L'ordre recommandé, par lots de symboles cohérents :
+
+1. **Lot A — domain** (~30 imports) :
+   - ``core.modules.{ArtifactType, BaseModule, ExecutionMode}``
+     → ``domain.{artifacts, module_protocol}``
+   - ``core.facts.*`` → ``domain.facts.*``
+2. **Lot B — evaluation/metric_*** (~50 imports) :
+   - ``core.metric_registry.*`` → ``evaluation.metric_registry.*``
+   - ``core.metric_hooks.*`` → ``evaluation.metric_hooks.*``
+   - ``core.metrics.*`` → ``evaluation.metric_result.*``
+3. **Lot C — evaluation/{benchmark_result, corpus, pipeline}** :
+   - ``core.results.*`` → ``evaluation.benchmark_result.*``
+   - ``core.corpus.*`` → ``evaluation.corpus.*``
+   - ``core.pipeline.*`` → ``evaluation.pipeline.*``
+4. **Lot D — evaluation/metrics/*** (~80 imports) :
+   - ``measurements.{difficulty, taxonomy, calibration, …}`` →
+     ``evaluation.metrics.{...}``
+5. **Lot E — adapters/legacy_***  (~50 imports) :
+   - ``engines.*`` → ``adapters.legacy_engines.*``
+   - ``modules.alto_text_to_mono_region`` →
+     ``adapters.legacy_modules.alto_text_to_mono_region``
+6. **Lot F — reports_v2** (~80 imports) :
+   - ``report.*_render`` → ``reports_v2.html.renderers.*``
+   - ``report.{generator, comparison, snapshot}`` →
+     ``reports_v2.html.*``
+7. **Lot G — measurements/runner et co.** (le plus complexe,
+   couplé à Phase 6 qui retire ``pipelines/``).
+
+À chaque lot : sed → tests → commit.  Les shims devenus
+orphelins après le lot peuvent être **supprimés** dans le même
+commit (principe « no shim survives its caller »).
+
+---
+
+## 5. Prochaine sub-phase à exécuter
 
 **Sub-phase 7.B.2** — refactoriser le corps de
 ``PipelineRunner.run`` dans
@@ -248,6 +334,21 @@ wrapper ``_BaseModuleAdapter`` créé en 7.B.1.
    fait + pointer vers la sub-phase 7.B.3 comme prochaine
    étape.
 
+### Alternative pragmatique
+
+Si le refactor 7.B.2 est trop gros pour une session,
+**commencer par le Lot A de la section 4.D** (migrer les ~30
+imports tests qui consomment ``core.modules`` et
+``core.facts`` vers leur canonique ``domain/``).  Cela vide
+une portion de la table de parité et permet de **supprimer les
+shims** ``core.modules.py`` et ``core.facts.py`` en bloc —
+résultat tangible et bien aligné avec le principe
+« suppression agressive ».
+
+Pareil pour Lots B-F : chaque lot est indépendant, fait
+progresser la migration, et démontre concrètement la
+suppression du legacy.
+
 ### Pièges anticipés pour 7.B.2
 
 - **Sémantique différente des inputs entre legacy et canonique** :
@@ -280,7 +381,7 @@ wrapper ``_BaseModuleAdapter`` créé en 7.B.1.
 
 ---
 
-## 5. Commande de démarrage de la nouvelle session
+## 6. Commande de démarrage de la nouvelle session
 
 Le user envoie simplement :
 
