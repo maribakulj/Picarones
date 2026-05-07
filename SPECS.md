@@ -299,7 +299,7 @@ Endpoint `POST /api/corpus/upload`. Validation Pillow
 ### 4.1 Architecture des adaptateurs
 
 Chaque moteur OCR est une classe Python qui hérite de
-`BaseOCREngine` (`picarones/engines/base.py`), elle-même héritière
+`BaseOCREngine` (`picarones/adapters/legacy_engines/base.py`), elle-même héritière
 de `BaseModule` (Sprint 33). Une instance déclare son
 `execution_mode` (`"io"` ou `"cpu"`) que le runner utilise pour
 choisir entre `ThreadPoolExecutor` (cloud APIs) et

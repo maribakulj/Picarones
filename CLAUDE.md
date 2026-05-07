@@ -22,11 +22,12 @@ domain → formats → evaluation → pipeline → adapters → app → reports_
 Règle d'import stricte : les dépendances vont uniquement de l'extérieur
 vers l'intérieur.  Vérifié par `tests/architecture/test_layer_dependencies.py`.
 
-**Arbo legacy (pré-rewrite)** — `picarones/{cli,web,engines,llm,
-pipelines,report,measurements,extras,modules,core}/` reste exécutable
-le temps que les callers externes (HuggingFace Space, scripts BnF)
-migrent.  Ne pas y ajouter de nouveau code.  Calendrier de retrait
-documenté dans le CHANGELOG.
+**Arbo legacy (pré-rewrite)** — `picarones/{cli,web,llm,pipelines,
+report,measurements,extras,core}/` reste exécutable le temps que
+les callers externes (HuggingFace Space, scripts BnF) migrent.
+Ne pas y ajouter de nouveau code.  Calendrier de retrait documenté
+dans le CHANGELOG.  Sous-paquets ``engines/`` et ``modules/``
+supprimés au Lot E (mai 2026).
 
 ---
 
@@ -110,7 +111,8 @@ picarones/
 ├── data/                       Tables indicatives (pricing.yaml)
 │
 # Arborescence legacy en cours de retrait (cf. docs/migration/) :
-# core/, measurements/, engines/, llm/, pipelines/, report/, modules/, web/, cli/, extras/
+# core/, measurements/, llm/, pipelines/, report/, web/, cli/, extras/
+# (engines/ et modules/ retirés au Lot E)
 └── fixtures.py                 Corpus de test fictifs
 ```
 
@@ -118,7 +120,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **5040 passed, 12 skipped, 8 deselected, 0 failed**
+`pytest tests/` → **5020 passed, 12 skipped, 8 deselected, 0 failed**
 (post-S59).  Les deselected sont les markers `live` (5 tests d'intégration
 contre vraie API/binaire) + `network` (3 tests qui hit le réseau réel),
 opt-in en local via `pytest -m live` ou `pytest -m network`.  Le
@@ -248,7 +250,7 @@ Résumé express :
 
 1. `git branch --show-current` → `claude/repo-analysis-cukvm`.
 2. `git status` → working tree clean.
-3. `pytest tests/ -q --no-header --tb=line` → 5040 passed.
+3. `pytest tests/ -q --no-header --tb=line` → 5020 passed.
 4. `git log -1 --format=%B` → décrit la prochaine sub-phase.
 
 **Règles d'architecture critiques** (apprises à la dure) :
@@ -336,7 +338,7 @@ détecte, arbitre, rend.
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces, Python 3.11+
-- **Tests** : `pytest tests/ -q` → 5040 passed, 12 skipped, 24
+- **Tests** : `pytest tests/ -q` → 5020 passed, 12 skipped, 24
   deselected, 0 failed (au moment de la pause de session).
 - **Plan d'évolution actif** : [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md).
 - **Plan retrait du legacy (maître)** : [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md).

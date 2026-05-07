@@ -66,11 +66,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 LEGACY_PACKAGES: tuple[str, ...] = (
     "core",
     "measurements",
-    "engines",
     "llm",
     "pipelines",
     "report",
-    "modules",
 )
 
 #: Combien de symboles legacy peuvent être absents de
@@ -152,39 +150,22 @@ LEGACY_PARITY: dict[str, ParityEntry] = {
     # transitoire et délègue progressivement à
     # ``PipelineExecutor`` (cf. pipeline-convergence-plan.md).
     # ──────────────────────────────────────────────────────────
-    # Phase 7.A — engines, modules
+    # Phase 7.A + Lot E — engines, modules
     # ──────────────────────────────────────────────────────────
-    "picarones.engines.base.BaseOCREngine": {
-        "canonical": "picarones.adapters.legacy_engines.base.BaseOCREngine",
-        "behavior_diff": (
-            "BaseOCREngine hérite de BaseModule legacy.  Sera "
-            "remplacé par BaseOCRAdapter (StepExecutor) en 7.D."
-        ),
-    },
-    "picarones.engines.base.EngineResult": {
-        "canonical": "picarones.adapters.legacy_engines.base.EngineResult",
-    },
-    "picarones.engines.tesseract.TesseractEngine": {
-        "canonical": "picarones.adapters.legacy_engines.tesseract.TesseractEngine",
-    },
-    "picarones.engines.pero_ocr.PeroOCREngine": {
-        "canonical": "picarones.adapters.legacy_engines.pero_ocr.PeroOCREngine",
-    },
-    "picarones.engines.mistral_ocr.MistralOCREngine": {
-        "canonical": "picarones.adapters.legacy_engines.mistral_ocr.MistralOCREngine",
-    },
-    "picarones.engines.google_vision.GoogleVisionEngine": {
-        "canonical": "picarones.adapters.legacy_engines.google_vision.GoogleVisionEngine",
-    },
-    "picarones.engines.azure_doc_intel.AzureDocIntelEngine": {
-        "canonical": "picarones.adapters.legacy_engines.azure_doc_intel.AzureDocIntelEngine",
-    },
-    "picarones.engines.factory.engine_from_name": {
-        "canonical": "picarones.adapters.legacy_engines.factory.engine_from_name",
-    },
-    "picarones.modules.alto_text_to_mono_region.TextToAltoMonoRegion": {
-        "canonical": "picarones.adapters.legacy_modules.alto_text_to_mono_region.TextToAltoMonoRegion",
-    },
+    # ``picarones/engines/`` et ``picarones/modules/`` ont été
+    # supprimés (Lot E de la migration legacy → adapters/legacy_*).
+    # Les classes (BaseOCREngine, EngineResult, TesseractEngine,
+    # PeroOCREngine, MistralOCREngine, GoogleVisionEngine,
+    # AzureDocIntelEngine, engine_from_name, TextToAltoMonoRegion)
+    # sont exposées depuis
+    # ``picarones.adapters.legacy_engines.{...}`` et
+    # ``picarones.adapters.legacy_modules.alto_text_to_mono_region``.
+    # Comme pour les Lots précédents, les entrées ont été retirées
+    # pour garder la table alignée avec l'arbre legacy réellement
+    # présent sur disque.
+    # Note 7.D : ces adapters legacy seront eux-mêmes refondus en
+    # ``BaseOCRAdapter (StepExecutor)`` lors de la convergence
+    # pipeline (cf. pipeline-convergence-plan.md).
 }
 
 

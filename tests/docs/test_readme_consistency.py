@@ -45,7 +45,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README_PATH = REPO_ROOT / "README.md"
-ENGINES_DIR = REPO_ROOT / "picarones" / "engines"
+ENGINES_DIR = REPO_ROOT / "picarones" / "adapters" / "legacy_engines"
 
 #: Marqueur HTML qui désactive un check sur la ligne. Format :
 #: ``<!-- doc-check: skip-engine -->``, ``skip-cli``, ``skip-endpoint``.

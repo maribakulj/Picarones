@@ -47,14 +47,12 @@ REWRITE_PACKAGES: tuple[str, ...] = (
 LEGACY_PACKAGES: tuple[str, ...] = (
     "core",
     "measurements",
-    "engines",
     "llm",
     "pipelines",
     "report",
     "web",
     "cli",
     "extras",
-    "modules",
 )
 
 #: Pattern qui matche un import déclaré dans le code source.

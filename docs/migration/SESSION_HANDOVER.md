@@ -310,10 +310,21 @@ L'ordre recommandé, par lots de symboles cohérents :
    - ``test_file_budgets::FILE_BUDGETS`` débarrassé des
      entrées orphelines (inter_engine, levers,
      normalization).
-5. **Lot E — adapters/legacy_***  (~50 imports) :
+5. ✅ **Lot E — adapters/legacy_*** (8 shims supprimés en bloc,
+   0 import à migrer) :
    - ``engines.*`` → ``adapters.legacy_engines.*``
    - ``modules.alto_text_to_mono_region`` →
      ``adapters.legacy_modules.alto_text_to_mono_region``
+   - Tous les callers tests + production avaient déjà été
+     migrés en amont (Lots A-D), donc le Lot E n'a fait que
+     supprimer les 8 shims orphelins.
+   - ``LEGACY_PACKAGES`` réduit (retrait d'``engines`` et
+     ``modules``) dans
+     ``test_no_legacy_imports_in_rewrite.py`` et
+     ``test_legacy_canonical_parity.py``.
+   - ``ENGINES_DIR`` dans
+     ``tests/docs/test_readme_consistency.py`` redirigé vers
+     ``picarones/adapters/legacy_engines/``.
 6. **Lot F — reports_v2** (~80 imports) :
    - ``report.*_render`` → ``reports_v2.html.renderers.*``
    - ``report.{generator, comparison, snapshot}`` →

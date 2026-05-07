@@ -76,6 +76,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   (plan stratégique historique).  Les docs actifs ``CLAUDE.md``,
 #:   ``README.md`` et ``SPECS.md`` ont été corrigés en place vers
 #:   ``picarones/formats/text/normalization.py``.
+#: - 94 (sprint « Lot E — engines/ + modules/ → adapters/legacy_* »,
+#:   2026-05-07) : suppression des 8 shims ``picarones/engines/`` et
+#:   ``picarones/modules/``.  Six nouveaux chemins cassés héritage :
+#:   5 dans ``CHANGELOG.md`` (intouchable) + 1 dans
+#:   ``docs/audits/remediation-plan-2026-05.md`` (intouchable) — les
+#:   audits citant ``aws_textract`` / ``kraken`` étaient déjà cassés
+#:   avant la migration (ces moteurs n'ont jamais été implémentés).
+#:   ``SPECS.md`` a été corrigé en place vers
+#:   ``picarones/adapters/legacy_engines/base.py``.
 #:
 #: Les chemins cassés restants sont **TOUS** dans :
 #: - ``CHANGELOG.md`` : journal historique versionné, intouchable.
@@ -84,7 +93,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: - ``docs/migration/executor-equivalence.md`` : audit historique
 #:   d'équivalence executor (cite des chemins legacy à des fins
 #:   de comparaison).
-BROKEN_PATHS_BASELINE = 88
+BROKEN_PATHS_BASELINE = 94
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (
