@@ -1,0 +1,91 @@
+
+<!-- ════ Vue 1 : Classement ════════════════════════════════════════ -->
+<div id="view-ranking" class="view active">
+  <div class="card">
+    <h2 data-i18n="h_ranking">Classement des moteurs</h2>
+    <div class="stat-row" id="ranking-stats"></div>
+    <div class="table-wrap">
+      <table id="ranking-table">
+        <thead>
+          <tr>
+            <th scope="col" data-col="rank" class="sortable sorted" data-dir="asc" data-i18n="col_rank">#<i class="sort-icon">↑</i></th>
+            <th scope="col" data-col="name" class="sortable" data-i18n="col_engine">Concurrent<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="cer"  class="sortable" data-glossary-key="cer" data-i18n="col_cer">CER exact<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="cer_diplomatic" class="sortable" id="th-cer-diplo" data-glossary-key="cer_diplomatic" data-i18n="col_cer_diplo">CER diplo.<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="wer"  class="sortable" data-glossary-key="wer" data-i18n="col_wer">WER<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="mer"  class="sortable" data-glossary-key="mer" data-i18n="col_mer">MER<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="wil"  class="sortable" data-glossary-key="wil" data-i18n="col_wil">WIL<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="ligature_score" class="sortable" id="th-ligatures" data-glossary-key="ligature_score" data-i18n="col_ligatures">Ligatures<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="diacritic_score" class="sortable" id="th-diacritics" data-glossary-key="diacritic_score" data-i18n="col_diacritics">Diacritiques<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="gini" class="sortable" id="th-gini" data-glossary-key="gini" data-i18n="col_gini">Gini<i class="sort-icon">↕</i></th>
+            <th scope="col" data-col="anchor_score" class="sortable" id="th-anchor" data-glossary-key="anchor_score" data-i18n="col_anchor">Ancrage<i class="sort-icon">↕</i></th>
+            <th scope="col" data-i18n="col_cer_median">CER médian</th>
+            <th scope="col" data-i18n="col_cer_min">CER min</th>
+            <th scope="col" data-i18n="col_cer_max">CER max</th>
+            <th scope="col" id="th-overnorm" data-i18n="col_overnorm">Sur-norm.</th>
+            <th scope="col" data-i18n="col_docs">Docs</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-tbody"></tbody>
+      </table>
+    </div>
+    <div class="stat-row" style="margin-top:.75rem">
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#16a34a"></span>CER &lt; 5 %
+      </div>
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#ca8a04"></span>5–15 %
+      </div>
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#ea580c"></span>15–30 %
+      </div>
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#dc2626"></span>&gt; 30 %
+      </div>
+    </div>
+
+    <!-- Sprint 46 — vue stratifiée par script_type (rapport adaptatif :
+         section omise quand aucune strate n'est disponible) -->
+    {% if stratified_ranking_html %}
+    {{ stratified_ranking_html }}
+    {% endif %}
+  </div>
+
+  <!-- ── Métriques robustes ────────────────────────────────────── -->
+  <div class="card" id="robust-metrics-card">
+    <h2 data-i18n="h_robust">Analyse robuste (sans hallucinations)</h2>
+    <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem" data-i18n="robust_desc">
+      Recalcule CER, WER, MER, WIL, Gini et ancrage en excluant les documents détectés comme hallucinés ou problématiques.
+      Cochez/décochez des documents dans la Galerie pour les exclure manuellement.
+    </p>
+    <div class="robust-controls">
+      <label>
+        <button class="robust-toggle" id="robust-cer-toggle" data-active="true"
+          onclick="toggleRobustCriterion('cer',this)">✓</button>
+        <span data-i18n="robust_cer_label">CER &gt; seuil :</span>
+        <input type="range" id="robust-cer" min="0" max="100" step="1" value="100"
+          oninput="document.getElementById('robust-cer-val').textContent=parseInt(this.value)+'%';_computeHallucinationExclusions();recalculateAll()">
+        <span id="robust-cer-val" class="slider-val">100%</span>
+      </label>
+      <label>
+        <button class="robust-toggle" id="robust-anchor-toggle" data-active="true"
+          onclick="toggleRobustCriterion('anchor',this)">✓</button>
+        <span data-i18n="robust_anchor_label">Ancrage &lt; seuil :</span>
+        <input type="range" id="robust-anchor" min="0" max="1" step="0.05" value="0.5"
+          oninput="document.getElementById('robust-anchor-val').textContent=parseFloat(this.value).toFixed(2);_computeHallucinationExclusions();recalculateAll()">
+        <span id="robust-anchor-val" class="slider-val">0.50</span>
+      </label>
+      <label>
+        <button class="robust-toggle" id="robust-ratio-toggle" data-active="true"
+          onclick="toggleRobustCriterion('ratio',this)">✓</button>
+        <span data-i18n="robust_ratio_label">Ratio longueur &gt; seuil :</span>
+        <input type="range" id="robust-ratio" min="1" max="3" step="0.1" value="1.5"
+          oninput="document.getElementById('robust-ratio-val').textContent=parseFloat(this.value).toFixed(1);_computeHallucinationExclusions();recalculateAll()">
+        <span id="robust-ratio-val" class="slider-val">1.5</span>
+      </label>
+    </div>
+    <div id="robust-summary" style="font-size:.85rem;font-weight:600;margin:.75rem 0;padding:.5rem .75rem;background:var(--bg);border-radius:.4rem;border:1px solid var(--border)"></div>
+    <div id="robust-table-wrap" class="table-wrap"></div>
+    <div id="robust-excluded-docs" style="margin-top:.75rem;font-size:.82rem"></div>
+  </div>
+</div>

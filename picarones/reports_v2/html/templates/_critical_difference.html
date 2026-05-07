@@ -1,0 +1,39 @@
+<!-- ── Critical Difference Diagram (Sprint 17) ─────────────────────── -->
+<section class="cdd-card" aria-labelledby="cdd-title">
+  <header class="cdd-header">
+    <h2 id="cdd-title" data-i18n="cdd_title">Test multi-moteurs — Friedman &amp; Nemenyi</h2>
+    <button type="button" class="cdd-info-btn" aria-label="Comment lire ce diagramme"
+            onclick="toggleCDDHelp()" title="Aide">?</button>
+  </header>
+
+  {% if friedman.error %}
+    <p class="cdd-note cdd-note-muted">{{ friedman.interpretation }}</p>
+  {% else %}
+    <p class="cdd-friedman">
+      <strong>Friedman</strong> :
+      Q = {{ "%.3f"|format(friedman.statistic) }},
+      df = {{ friedman.df }},
+      <em>n</em> = {{ friedman.n_blocks }} documents,
+      <em>k</em> = {{ friedman.n_engines }} moteurs,
+      p = {{ "%.4f"|format(friedman.p_value) }}
+      {% if friedman.significant %}
+        <span class="cdd-badge cdd-badge-sig" title="Différence globale significative">p &lt; 0,05</span>
+      {% else %}
+        <span class="cdd-badge cdd-badge-nsig" title="Pas de différence globale détectée">p ≥ 0,05</span>
+      {% endif %}
+    </p>
+    <div class="cdd-svg-wrapper">
+      {{ critical_difference_svg | safe }}
+    </div>
+  {% endif %}
+
+  <div id="cdd-help" class="cdd-help" hidden>
+    <p><strong data-i18n="cdd_help_title">Comment lire ce diagramme ?</strong></p>
+    <ul>
+      <li><span data-i18n="cdd_help_axis">L'axe horizontal montre le rang moyen de chaque moteur (1 = meilleur, k = pire).</span></li>
+      <li><span data-i18n="cdd_help_bars">Les barres horizontales épaisses relient les moteurs statistiquement <em>indiscernables</em> au seuil α = 0,05 (test post-hoc de Nemenyi).</span></li>
+      <li><span data-i18n="cdd_help_cd">La barre rouge <em>CD</em> en haut à gauche donne la distance critique de référence : deux moteurs dont les rangs moyens diffèrent de moins que <em>CD</em> ne peuvent pas être distingués.</span></li>
+      <li><span data-i18n="cdd_help_ref">Référence : Demšar (2006), <em>Statistical Comparisons of Classifiers over Multiple Data Sets</em>, JMLR 7:1-30.</span></li>
+    </ul>
+  </div>
+</section>
