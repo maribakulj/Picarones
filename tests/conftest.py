@@ -49,6 +49,31 @@ os.environ.pop("PICARONES_PUBLIC_MODE", None)
 os.environ.setdefault("PICARONES_RATE_LIMIT_PER_HOUR", "0")
 
 
+# (3) Désactivation préventive du thread daemon de tqdm.
+# Sur Python 3.12+ (ubuntu-latest en CI), le combo
+# ``tqdm._monitor`` + ``ProcessPoolExecutor`` (utilisé par
+# ``picarones.measurements.runner.orchestration`` pour les moteurs
+# CPU-bound : Tesseract, Pero OCR) provoque un hang du shutdown de
+# l'interpréteur après ``=== passed ===``.  Le ``_python_exit`` de
+# ``concurrent.futures.process`` essaie de joindre les workers du
+# pool, mais le thread monitor de tqdm bloque la sortie globale —
+# le hang dépasse le timeout GNU configuré dans ci.yml (9 min) et
+# le job échoue avec exit code 124.
+#
+# ``monitor_interval=0`` désactive le polling thread de tqdm, qui
+# n'est utile qu'à l'affichage interactif des progress bars (sans
+# valeur ajoutée en CI où stdout est captured).  Fix idiomatique
+# pour ce flake spécifique.
+try:
+    from tqdm import tqdm as _tqdm
+
+    _tqdm.monitor_interval = 0
+except ImportError:  # pragma: no cover
+    # tqdm est une dep de prod (cf. pyproject.toml) ; cette branche
+    # ne devrait jamais être atteinte en CI mais reste défensive.
+    pass
+
+
 def pytest_sessionfinish(session, exitstatus) -> None:  # noqa: ARG001
     """Diagnostic du shutdown de l'interpréteur.
 
