@@ -69,8 +69,6 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     # ``picarones/`` (renderer canonique qui consomme le canonique
     # directement, mais module legacy gardé pour les tests).
     "numerical_sequences_hooks",
-    "pipeline_benchmark",
-    "pipeline_comparison",
 })
 
 

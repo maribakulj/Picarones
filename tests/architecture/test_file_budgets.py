@@ -54,9 +54,7 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/reports_v2/html/generator.py": 550,        # actuel 471
     # --- Fichiers métier larges.
     "picarones/measurements/robustness.py": 850,          # actuel 731
-    # Phase 5.C.batch7 : ``report/pipeline_render.py`` est désormais
-    # un shim ; canonique dans ``reports_v2/html/renderers/pipeline.py``.
-    "picarones/reports_v2/html/renderers/pipeline.py": 815,  # actuel 713
+    # (Phase 7.D — ``reports_v2/html/renderers/pipeline.py`` supprimé.)
     # Phase 4-ter : ``core/results.py`` est désormais un shim
     # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (modèles
@@ -69,20 +67,8 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/measurements/history.py": 725,             # actuel 615
     "picarones/measurements/modern_archives.py": 700,     # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
-    # Phase 7.B.2 : le runner legacy a migré vers
-    # ``pipeline/legacy_runner.py`` parce qu'il importe désormais le
-    # ``PipelineExecutor`` canonique (couche pipeline) — interdit à
-    # ``evaluation/`` par la règle d'architecture concentrique.
-    # Phase 7.B.3 : les helpers de traduction ont été extraits vers
-    # ``pipeline/_legacy_translator.py`` (mutualisation avec
-    # legacy_pipeline_benchmark).  Le runner est revenu à ~490 LOC.
-    "picarones/pipeline/legacy_runner.py": 550,           # actuel 487
-    # Phase 7.B.3 : run_pipeline_benchmark consomme directement
-    # PipelineExecutor.run_plan (au lieu de passer par
-    # PipelineRunner.run) et planifie une fois pour tout le corpus.
-    # +150 LOC pour la conversion de spec + la boucle exécution +
-    # la branche de fallback validation amont.
-    "picarones/pipeline/legacy_pipeline_benchmark.py": 600,  # actuel 519
+    # (Phase 7.D — ``pipeline/legacy_runner.py`` et
+    # ``pipeline/legacy_pipeline_benchmark.py`` supprimés.)
     "picarones/extras/importers/iiif.py": 675,            # actuel 567
     "picarones/extras/importers/gallica.py": 675,         # actuel 563
     # Sprint A14-S10 + Lot D — déplacés depuis measurements/.

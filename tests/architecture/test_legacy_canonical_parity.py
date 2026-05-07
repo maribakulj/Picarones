@@ -73,7 +73,7 @@ LEGACY_PACKAGES: tuple[str, ...] = (
 #: :data:`LEGACY_PARITY` sans faire échouer le test.  À diminuer
 #: à chaque session de migration : on cible 0 quand le retrait
 #: est complet.
-BOOTSTRAP_BASELINE = 110
+BOOTSTRAP_BASELINE = 104
 
 
 # ──────────────────────────────────────────────────────────────────
