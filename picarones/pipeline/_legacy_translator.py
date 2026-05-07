@@ -183,8 +183,6 @@ def execute_legacy_spec_via_canonical(
     legacy_spec: "_LegacyPipelineSpec",
     document: Document,
     initial_inputs: dict[ArtifactType, Any],
-    *,
-    executor: PipelineExecutor | None = None,
 ) -> tuple[_CanonicalPipelineResult, _PayloadRegistry]:
     """Exécute ``legacy_spec`` via :class:`PipelineExecutor`.
 
@@ -195,13 +193,10 @@ def execute_legacy_spec_via_canonical(
     caller a besoin pour reconstruire les ``junction_metrics`` du
     contrat legacy).
 
-    Parameters
-    ----------
-    executor:
-        ``PipelineExecutor`` injecté.  Si ``None``, un nouvel executor
-        est instancié pour ce run.  Permet au caller corpus-wide
-        (``run_pipeline_benchmark``) de réutiliser le même planner
-        sur N documents (économise N-1 plans).
+    Mono-document.  Le caller corpus-wide
+    (``legacy_pipeline_benchmark.run_pipeline_benchmark``) n'utilise
+    PAS cette fonction : il a son propre flow qui plan une fois pour
+    tout le corpus.
     """
     registry = _PayloadRegistry()
     canonical_inputs = wrap_initial_inputs(
@@ -219,19 +214,10 @@ def execute_legacy_spec_via_canonical(
         code_version="legacy_runner",
         pipeline_name=legacy_spec.name,
     )
-    if executor is None:
-        executor = PipelineExecutor(adapter_resolver=resolver)
-        canonical_result = executor.run(
-            canonical_spec, document_ref, canonical_inputs, context,
-        )
-    else:
-        # Replacement du resolver de l'executor injecté par le nôtre,
-        # spécifique au document courant (registre par doc).
-        executor._resolver = resolver  # type: ignore[attr-defined]
-        plan = executor.plan(canonical_spec)
-        canonical_result = executor.run_plan(
-            plan, document_ref, canonical_inputs, context,
-        )
+    executor = PipelineExecutor(adapter_resolver=resolver)
+    canonical_result = executor.run(
+        canonical_spec, document_ref, canonical_inputs, context,
+    )
     return canonical_result, registry
 
 

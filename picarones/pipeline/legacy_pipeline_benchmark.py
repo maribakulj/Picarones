@@ -498,9 +498,12 @@ def _run_one_document_via_canonical(
         canonical_result = executor.run_plan(
             plan, document_ref, canonical_inputs, context,
         )
-    except PipelineSpecInvalid as exc:
-        # Ne devrait pas arriver puisque le plan a déjà été validé
-        # par le planner — mais on défend en profondeur.
+    except PipelineSpecInvalid as exc:  # pragma: no cover
+        # Branche défensive : ne devrait pas arriver puisque le plan
+        # a déjà été validé par le planner en amont (avant la boucle
+        # documents).  L'executor ne peut pas re-lever
+        # PipelineSpecInvalid à ``run_plan`` qui consomme un plan
+        # déjà validé — mais on défend en profondeur.
         return PipelineResult(
             pipeline_name=spec.name, doc_id=document.doc_id,
             error=f"executor_run_failed: {exc}",
