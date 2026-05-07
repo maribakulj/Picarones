@@ -26,11 +26,6 @@ Câblages adaptifs (suffixe ``_hooks``) :
 - :mod:`readability_hooks`, :mod:`searchability_hooks`,
   :mod:`numerical_sequences_hooks`, :mod:`philological_hooks`.
 
-Pipelines composées (axe B) :
-
-- :mod:`pipeline_benchmark`, :mod:`pipeline_comparison`,
-  :mod:`pipeline_spec_loader`.
-
 Auxiliaires :
 
 - :mod:`equivalence_profile`, :mod:`reliability`, :mod:`history`,
