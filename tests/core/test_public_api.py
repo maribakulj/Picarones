@@ -235,64 +235,13 @@ class TestRunnerApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 6. picarones.pipeline.legacy_runner — banc d'essai pipelines (legacy)
+# 6. (anciennement) ``picarones.pipeline.legacy_*`` — supprimé en Phase 7.D
 # ──────────────────────────────────────────────────────────────────────────
-# Phase 7.B.2 : ce module a migré depuis ``picarones.evaluation.pipeline``
-# vers ``picarones.pipeline.legacy_runner`` parce que sa délégation au
-# ``PipelineExecutor`` canonique l'oblige à importer la couche
-# ``pipeline/`` — interdit à ``evaluation/``.
-
-
-class TestPipelineRunnerApi:
-    @pytest.mark.parametrize("name", [
-        "PipelineStep", "PipelineSpec",
-        "StepResult", "PipelineResult", "PipelineRunner",
-    ])
-    def test_class_exists(self, name):
-        _assert_class("picarones.pipeline.legacy_runner", name)
-
-
-class TestPipelineBenchmarkApi:
-    @pytest.mark.parametrize("name", [
-        "StepAggregate", "PipelineBenchmarkResult",
-    ])
-    def test_class_exists(self, name):
-        _assert_class("picarones.measurements.pipeline_benchmark", name)
-
-    @pytest.mark.parametrize("name", [
-        "default_initial_inputs", "run_pipeline_benchmark",
-    ])
-    def test_function_exists(self, name):
-        _assert_function("picarones.measurements.pipeline_benchmark", name)
-
-
-class TestPipelineComparisonApi:
-    def test_pipeline_comparison_result(self):
-        _assert_class(
-            "picarones.measurements.pipeline_comparison", "PipelineComparisonResult",
-        )
-
-    def test_compare_pipelines(self):
-        _assert_function(
-            "picarones.measurements.pipeline_comparison", "compare_pipelines",
-        )
-
-
-class TestPipelineSpecLoaderApi:
-    def test_pipeline_spec_load_error(self):
-        cls = _assert_class(
-            "picarones.measurements.pipeline_spec_loader", "PipelineSpecLoadError",
-        )
-        assert issubclass(cls, ValueError)
-
-    @pytest.mark.parametrize("name", [
-        "load_pipeline_spec_from_yaml",
-        "load_pipeline_spec_from_dict",
-        "load_comparison_specs_from_yaml",
-        "load_comparison_specs_from_dict",
-    ])
-    def test_function_exists(self, name):
-        _assert_function("picarones.measurements.pipeline_spec_loader", name)
+# Les modules ``pipeline.legacy_runner``, ``legacy_pipeline_benchmark``,
+# ``legacy_pipeline_comparison`` et ``measurements.pipeline_spec_loader``
+# ont été supprimés en Phase 7.D (mai 2026). L'API canonique vit dans
+# ``picarones.pipeline.executor`` (``PipelineExecutor``) et
+# ``picarones.domain.pipeline_spec`` (``PipelineSpec``, ``PipelineStep``).
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -494,7 +443,7 @@ class TestApiStableDoc:
         )
         assert path.exists(), "docs/reference/api-stable.md manquant"
         content = path.read_text(encoding="utf-8")
-        # Présence des 14 sections (1 par module)
+        # Présence des sections (1 par module canonique)
         for module in [
             "picarones.evaluation.corpus",
             "picarones.domain.artifacts",
@@ -502,10 +451,6 @@ class TestApiStableDoc:
             "picarones.evaluation.benchmark_result",
             "picarones.measurements.metrics",
             "picarones.measurements.runner",
-            "picarones.pipeline.legacy_runner",
-            "picarones.pipeline.legacy_pipeline_benchmark",
-            "picarones.pipeline.legacy_pipeline_comparison",
-            "picarones.measurements.pipeline_spec_loader",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",
             "picarones.measurements.builtin_metrics",
