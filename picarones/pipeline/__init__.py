@@ -56,6 +56,10 @@ from picarones.pipeline.executor import (
     PipelineExecutor,
     PipelineSpecInvalid,
 )
+from picarones.pipeline.llm_pipeline_builder import (
+    OCRLLMPipelineMode,
+    make_ocr_llm_pipeline_spec,
+)
 from picarones.pipeline.planner import (
     ExecutionPlan,
     MetricJunction,
@@ -99,6 +103,9 @@ __all__ = [
     "PipelineExecutor",
     "PipelineSpecInvalid",
     "AdapterResolver",
+    # Builder OCR+LLM (Phase 6 volet 2)
+    "make_ocr_llm_pipeline_spec",
+    "OCRLLMPipelineMode",
     # Planner (S28)
     "PipelinePlanner",
     "PlanningError",
