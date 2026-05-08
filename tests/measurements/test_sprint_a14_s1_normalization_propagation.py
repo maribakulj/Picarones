@@ -19,14 +19,10 @@ from __future__ import annotations
 
 import inspect
 
+from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 from picarones.evaluation.metrics.normalization import (
     NORMALIZATION_PROFILES,
     get_builtin_profile,
-)
-from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
-from picarones.measurements.runner.document import _compute_document_result
-from picarones.measurements.runner.workers import (
-    _io_doc_worker,
 )
 
 
@@ -37,14 +33,6 @@ class TestRunBenchmarkSignature:
         assert "normalization_profile" in sig.parameters
         # Et avec une valeur par défaut sûre.
         assert sig.parameters["normalization_profile"].default is None
-
-    def test_io_worker_accepts_normalization_profile(self) -> None:
-        sig = inspect.signature(_io_doc_worker)
-        assert "normalization_profile" in sig.parameters
-
-    def test_compute_document_result_accepts_normalization_profile(self) -> None:
-        sig = inspect.signature(_compute_document_result)
-        assert "normalization_profile" in sig.parameters
 
 
 class TestProfileResolution:

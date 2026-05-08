@@ -101,10 +101,10 @@ def compute_metrics(reference, hypothesis, char_exclude=None) -> MetricsResult
 def aggregate_metrics(results: list) -> dict
 ```
 
-### `picarones.measurements.runner`
+### `picarones.app.services._legacy_runner_adapter`
 
 ```python
-def run_benchmark(
+def run_benchmark_via_service(
     corpus, engines,
     output_json=None,
     show_progress=True,
@@ -116,8 +116,15 @@ def run_benchmark(
     cancel_event=None,
     entity_extractor=None,
     profile="standard",
+    normalization_profile=None,
 ) -> BenchmarkResult
 ```
+
+Sprint D du plan v2.0 — adapter de compatibilité qui présente
+l'API mono-call historique de
+``measurements.runner.run_benchmark`` (supprimé en D.6.b) en
+s'appuyant en interne sur ``BenchmarkService`` (rewrite).
+Prouvé numériquement équivalent en D.1.e.
 
 ### `picarones.pipeline.legacy_runner`
 

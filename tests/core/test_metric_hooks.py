@@ -255,46 +255,6 @@ class TestRunDocumentHooks:
             ocr_result=_MockEngineResult(token_confidences=None),
         )
         assert called == []
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 4. Rétrocompat : runner expose toujours les helpers privés
-# ──────────────────────────────────────────────────────────────────────────
-
-
-class TestRunnerBackwardCompat:
-    """Les tests Sprint 13 et Sprint 42 importent directement depuis
-    ``picarones.measurements.runner``. Ces noms doivent rester disponibles
-    après le chantier 2."""
-
-    @pytest.mark.parametrize("name", [
-        "_aggregate_confusion",
-        "_aggregate_char_scores",
-        "_aggregate_taxonomy",
-        "_aggregate_structure",
-        "_aggregate_image_quality",
-        "_aggregate_line_metrics",
-        "_aggregate_hallucination",
-        "_aggregate_calibration",
-        "_calibration_from_engine_result",
-    ])
-    def test_helper_still_exported_from_runner(self, name):
-        # Skip si tqdm ou autres deps absents (sandbox minimaliste).
-        pytest.importorskip("tqdm")
-        from picarones.measurements import runner
-
-        assert hasattr(runner, name), (
-            f"runner.{name} a disparu — casse les tests Sprint 13/42 "
-            "qui font ``from picarones.measurements.runner import {name}``"
-        )
-        assert callable(getattr(runner, name))
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 5. Décorateurs : idempotence + erreurs sur conflit
-# ──────────────────────────────────────────────────────────────────────────
-
-
 class TestDecoratorIdempotence:
     def test_register_same_func_twice_is_silent(self):
         """Ré-import d'un module en test ne doit pas lever sur le

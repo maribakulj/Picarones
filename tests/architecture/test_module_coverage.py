@@ -69,6 +69,13 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     # ``picarones/`` (renderer canonique qui consomme le canonique
     # directement, mais module legacy gardé pour les tests).
     "numerical_sequences_hooks",
+    # Sprint D.6.b du plan v2.0 — le sous-package
+    # ``measurements.runner`` a été supprimé.  ``builtin_hooks``
+    # était son consommateur direct (registre des hooks de
+    # métriques) ; sans le runner, il n'a plus de consommateur
+    # production.  Suppression / migration prévue en Sprint E
+    # (migration des hooks vers ``evaluation/metric_hooks/``).
+    "builtin_hooks",
 })
 
 

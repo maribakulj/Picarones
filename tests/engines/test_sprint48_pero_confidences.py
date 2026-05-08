@@ -240,39 +240,6 @@ class TestRunPipeline:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-class TestEndToEndWithRunner:
-    def test_runner_picks_up_confidences(self) -> None:
-        from picarones.measurements.runner import _compute_document_result
-        from picarones.adapters.legacy_engines.base import EngineResult
-
-        ocr = EngineResult(
-            engine_name="pero",
-            image_path="/tmp/x.png",
-            text="alpha beta gamma",
-            duration_seconds=0.1,
-            # Confidence ∈ [0, 1] côté Pero (vs [0, 100] Tesseract) —
-            # le runner Sprint 42 normalise via le helper bag-of-words.
-            token_confidences=[
-                {"token": "alpha", "confidence": 0.95},
-                {"token": "beta",  "confidence": 0.95},
-                {"token": "gamma", "confidence": 0.95},
-            ],
-        )
-        dr = _compute_document_result(
-            doc_id="d1", image_path="/tmp/x.png",
-            ground_truth="alpha beta gamma",
-            ocr_result=ocr, char_exclude=None,
-        )
-        assert dr.calibration_metrics is not None
-        assert dr.calibration_metrics["overall_accuracy"] == 1.0
-        assert dr.calibration_metrics["overall_confidence"] == pytest.approx(0.95)
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 9. Pero absent — fallback gracieux côté pipeline réel
-# ──────────────────────────────────────────────────────────────────────────
-
-
 class TestPeroAbsent:
     def test_pipeline_missing_pero_raises(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,

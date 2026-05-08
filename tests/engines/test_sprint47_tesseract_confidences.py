@@ -245,43 +245,6 @@ class TestTokenFiltering:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-class TestEndToEndWithRunner:
-    def test_runner_picks_up_confidences_and_computes_calibration(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
-    ) -> None:
-        from picarones.measurements.runner import _compute_document_result
-        from picarones.adapters.legacy_engines.base import EngineResult
-
-        # Simulation : on appelle directement _compute_document_result
-        # avec un EngineResult mocké qui porte des confidences. On
-        # vérifie que la calibration_metrics est bien attachée.
-        ocr = EngineResult(
-            engine_name="tess",
-            image_path="/tmp/x.png",
-            text="alpha beta gamma",
-            duration_seconds=0.1,
-            token_confidences=[
-                {"token": "alpha", "confidence": 95.0},
-                {"token": "beta",  "confidence": 95.0},
-                {"token": "gamma", "confidence": 95.0},
-            ],
-        )
-        dr = _compute_document_result(
-            doc_id="d1", image_path="/tmp/x.png",
-            ground_truth="alpha beta gamma",
-            ocr_result=ocr, char_exclude=None,
-        )
-        assert dr.calibration_metrics is not None
-        # 3 tokens, tous corrects → accuracy = 1, conf = 0.95
-        assert dr.calibration_metrics["overall_accuracy"] == 1.0
-        assert dr.calibration_metrics["overall_confidence"] == pytest.approx(0.95)
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 7. pytesseract absent → fallback gracieux
-# ──────────────────────────────────────────────────────────────────────────
-
-
 class TestPytesseractAbsent:
     def test_extraction_returns_none_without_pytesseract(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,

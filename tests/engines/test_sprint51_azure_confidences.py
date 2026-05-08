@@ -250,29 +250,3 @@ class TestRunOverride:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-class TestEndToEndWithRunner:
-    def test_runner_picks_up_azure_confidences(self) -> None:
-        from picarones.measurements.runner import _compute_document_result
-        from picarones.adapters.legacy_engines.base import EngineResult
-
-        ocr = EngineResult(
-            engine_name="azure_doc_intel",
-            image_path="/tmp/x.png",
-            text="alpha beta gamma",
-            duration_seconds=0.1,
-            token_confidences=[
-                {"token": "alpha", "confidence": 0.97},
-                {"token": "beta",  "confidence": 0.93},
-                {"token": "gamma", "confidence": 0.95},
-            ],
-        )
-        dr = _compute_document_result(
-            doc_id="d1", image_path="/tmp/x.png",
-            ground_truth="alpha beta gamma",
-            ocr_result=ocr, char_exclude=None,
-        )
-        assert dr.calibration_metrics is not None
-        assert dr.calibration_metrics["overall_accuracy"] == 1.0
-        assert dr.calibration_metrics["overall_confidence"] == pytest.approx(
-            (0.97 + 0.93 + 0.95) / 3,
-        )

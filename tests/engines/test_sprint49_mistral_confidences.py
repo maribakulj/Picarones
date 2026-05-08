@@ -272,30 +272,3 @@ class TestRunOverride:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-class TestEndToEndWithRunner:
-    def test_runner_picks_up_mistral_confidences(self) -> None:
-        from picarones.measurements.runner import _compute_document_result
-        from picarones.adapters.legacy_engines.base import EngineResult
-
-        ocr = EngineResult(
-            engine_name="mistral_ocr",
-            image_path="/tmp/x.png",
-            text="alpha beta gamma",
-            duration_seconds=0.1,
-            token_confidences=[
-                {"token": "alpha", "confidence": 0.95},
-                {"token": "beta",  "confidence": 0.85},
-                {"token": "gamma", "confidence": 0.95},
-            ],
-        )
-        dr = _compute_document_result(
-            doc_id="d1", image_path="/tmp/x.png",
-            ground_truth="alpha beta gamma",
-            ocr_result=ocr, char_exclude=None,
-        )
-        assert dr.calibration_metrics is not None
-        assert dr.calibration_metrics["overall_accuracy"] == 1.0
-        # confidence moyenne = (0.95 + 0.85 + 0.95) / 3
-        assert dr.calibration_metrics["overall_confidence"] == pytest.approx(
-            (0.95 + 0.85 + 0.95) / 3,
-        )

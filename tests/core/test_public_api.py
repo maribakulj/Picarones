@@ -197,38 +197,38 @@ class TestMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 5. picarones.measurements.runner — run_benchmark
+# 5. picarones.app.services._legacy_runner_adapter — run_benchmark_via_service
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestRunnerApi:
-    def test_run_benchmark_exists(self):
-        try:
-            _assert_function("picarones.measurements.runner", "run_benchmark")
-        except ImportError as exc:
-            if "tqdm" in str(exc):
-                pytest.skip("tqdm non installé en sandbox")
-            raise
+    def test_run_benchmark_via_service_exists(self):
+        """Sprint D du plan v2.0 — l'adapter rewrite remplace
+        ``measurements.runner.run_benchmark`` (legacy supprimé en D.6)."""
+        _assert_function(
+            "picarones.app.services._legacy_runner_adapter",
+            "run_benchmark_via_service",
+        )
 
-    def test_run_benchmark_keyword_args(self):
+    def test_run_benchmark_via_service_keyword_args(self):
         """Les paramètres clés (corpus, engines, profile…) doivent rester
-        accessibles. Ajout d'un argument requis = breaking change."""
-        try:
-            from picarones.measurements.runner import run_benchmark
-        except ImportError as exc:
-            if "tqdm" in str(exc):
-                pytest.skip("tqdm non installé")
-            raise
-        sig = inspect.signature(run_benchmark)
+        accessibles dans l'adapter rewrite. Ajout d'un argument requis =
+        breaking change."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+        sig = inspect.signature(run_benchmark_via_service)
         params = sig.parameters
-        # Arguments contractuels — leur présence est garantie
+        # Arguments contractuels — leur présence est garantie pour
+        # rester compatible avec les callers historiques.
         for name in [
             "corpus", "engines", "output_json", "show_progress",
             "char_exclude", "max_workers", "timeout_seconds",
             "profile",
         ]:
             assert name in params, (
-                f"run_benchmark : argument '{name}' a disparu (signature : {sig})"
+                f"run_benchmark_via_service : argument '{name}' a disparu "
+                f"(signature : {sig})"
             )
 
 
@@ -448,7 +448,7 @@ class TestApiStableDoc:
             "picarones.domain.module_protocol",
             "picarones.evaluation.benchmark_result",
             "picarones.measurements.metrics",
-            "picarones.measurements.runner",
+            "picarones.app.services._legacy_runner_adapter",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",
             "picarones.measurements.builtin_metrics",
