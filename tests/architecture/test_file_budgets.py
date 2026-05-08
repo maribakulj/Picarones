@@ -76,7 +76,8 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/measurements/history.py": 725,             # actuel 615
     # Sprint E.1 du plan v2.0 — module migré vers ``evaluation/metrics/``.
     "picarones/evaluation/metrics/modern_archives.py": 700,  # actuel 599
-    "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
+    # Sprint E.4 du plan v2.0 — migré vers ``evaluation/metrics/``.
+    "picarones/evaluation/metrics/builtin_hooks.py": 700,  # actuel 590
     # (Phase 7.D — ``pipeline/legacy_runner.py`` et
     # ``pipeline/legacy_pipeline_benchmark.py`` supprimés.)
     # Phase 8 — importers IIIF/Gallica déplacés vers ``adapters/corpus/``.

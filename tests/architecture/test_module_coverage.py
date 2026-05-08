@@ -86,6 +86,12 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     # ``evaluation/metrics/text_metrics``.  Le shim n'a plus de
     # consommateur production (les 3 callers sont migrés).
     "metrics",
+    # Sprint E.4 du plan v2.0 — modules ``hooks`` migrés vers
+    # ``evaluation/metrics/`` ; les shims n'ont plus de consommateur
+    # production.
+    "philological_hooks",
+    "readability_hooks",
+    "searchability_hooks",
 })
 
 
