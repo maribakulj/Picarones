@@ -241,7 +241,7 @@ def alto_text_mer(reference_alto, hypothesis_alto) -> float
 def alto_text_wil(reference_alto, hypothesis_alto) -> float
 ```
 
-### `picarones.web.jobs`
+### `picarones.interfaces.web._legacy.jobs`
 
 Persistance des jobs benchmark (utilisé par l'interface web) :
 

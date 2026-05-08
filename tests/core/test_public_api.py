@@ -342,19 +342,19 @@ class TestAltoMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 11. picarones.web.jobs — JobStore (utilisé par web/)
+# 11. picarones.interfaces.web._legacy.jobs — JobStore (utilisé par web/)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestJobsApi:
     def test_job_store(self):
-        _assert_class("picarones.web.jobs", "JobStore")
+        _assert_class("picarones.interfaces.web._legacy.jobs", "JobStore")
 
     @pytest.mark.parametrize("name", [
         "get_default_store", "reset_default_store",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.web.jobs", name)
+        _assert_function("picarones.interfaces.web._legacy.jobs", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -453,7 +453,7 @@ class TestApiStableDoc:
             "picarones.evaluation.metric_hooks",
             "picarones.evaluation.metrics.builtin_metrics",
             "picarones.evaluation.metrics.alto_metrics",
-            "picarones.web.jobs",
+            "picarones.interfaces.web._legacy.jobs",
         ]:
             assert module in content, (
                 f"docs/api-stable.md ne mentionne pas {module}"

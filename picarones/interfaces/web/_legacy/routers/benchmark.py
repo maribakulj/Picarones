@@ -16,14 +16,14 @@ from typing import AsyncIterator, Callable, Optional
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from picarones.web import state
-from picarones.web.benchmark_utils import (
+from picarones.interfaces.web._legacy import state
+from picarones.interfaces.web._legacy.benchmark_utils import (
     run_benchmark_thread,
     run_benchmark_thread_v2,
     sse_format,
 )
-from picarones.web.models import BenchmarkRequest, BenchmarkRunRequest
-from picarones.web.security import (
+from picarones.interfaces.web._legacy.models import BenchmarkRequest, BenchmarkRunRequest
+from picarones.interfaces.web._legacy.security import (
     PathValidationError,
     assert_engines_allowed,
     assert_llm_provider_allowed,
@@ -32,7 +32,7 @@ from picarones.web.security import (
     validated_path,
     validated_prompt_filename,
 )
-from picarones.web.state import UPLOADS_DIR
+from picarones.interfaces.web._legacy.state import UPLOADS_DIR
 
 router = APIRouter()
 

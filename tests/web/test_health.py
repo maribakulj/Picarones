@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from picarones import __version__
-from picarones.web.app import app
+from picarones.interfaces.web._legacy.app import app
 
 
 @pytest.fixture

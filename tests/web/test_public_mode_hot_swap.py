@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.web.security import (
+from picarones.interfaces.web._legacy.security import (
     assert_engines_allowed,
     assert_llm_provider_allowed,
     is_public_mode,

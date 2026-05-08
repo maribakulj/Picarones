@@ -62,7 +62,7 @@ class TestWebModelProfileAlignment:
         Avant S1, le Literal n'en exposait que 8 — Pydantic rejetait
         donc 3 profils valides du runtime.
         """
-        from picarones.web.models import NormalizationProfileId
+        from picarones.interfaces.web._legacy.models import NormalizationProfileId
         from typing import get_args
         literals = set(get_args(NormalizationProfileId))
         runtime = set(NORMALIZATION_PROFILES.keys())

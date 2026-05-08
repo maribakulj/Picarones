@@ -25,12 +25,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.web.models import (
+from picarones.interfaces.web._legacy.models import (
     BenchmarkRequest,
     BenchmarkRunRequest,
     CompetitorConfig,
 )
-from picarones.web.state import BenchmarkJob, iso_now
+from picarones.interfaces.web._legacy.state import BenchmarkJob, iso_now
 
 
 def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
@@ -49,16 +49,16 @@ def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
 def _build_llm_adapter(comp: CompetitorConfig) -> Any:
     """Instancie un adaptateur LLM depuis la config d'un concurrent."""
     if comp.llm_provider == "openai":
-        from picarones.llm.openai_adapter import OpenAIAdapter
+        from picarones.adapters.llm.openai_adapter import OpenAIAdapter
         return OpenAIAdapter(model=comp.llm_model or None)
     elif comp.llm_provider == "anthropic":
-        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        from picarones.adapters.llm.anthropic_adapter import AnthropicAdapter
         return AnthropicAdapter(model=comp.llm_model or None)
     elif comp.llm_provider == "mistral":
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
         return MistralAdapter(model=comp.llm_model or None)
     elif comp.llm_provider == "ollama":
-        from picarones.llm.ollama_adapter import OllamaAdapter
+        from picarones.adapters.llm.ollama_adapter import OllamaAdapter
         return OllamaAdapter(model=comp.llm_model or None)
     else:
         raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
@@ -182,7 +182,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         # par le router (validated_path).  ``report_name`` est sanitizé
         # ici pour défense en profondeur (refuse ``../``, séparateurs,
         # caractères de contrôle) avant concaténation à output_dir.
-        from picarones.web.security import safe_report_name
+        from picarones.interfaces.web._legacy.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -299,7 +299,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         # par le router (validated_path).  ``report_name`` est sanitizé
         # ici pour défense en profondeur (refuse ``../``, séparateurs,
         # caractères de contrôle) avant concaténation à output_dir.
-        from picarones.web.security import safe_report_name
+        from picarones.interfaces.web._legacy.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"

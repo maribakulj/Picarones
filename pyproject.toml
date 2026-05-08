@@ -144,10 +144,10 @@ include = ["picarones*"]
 [tool.setuptools.package-data]
 picarones = [
     "prompts/*.txt",
-    "web/static/*.css",
-    "web/static/*.js",
-    "web/templates/*.j2",
-    "web/templates/*.html",
+    "interfaces/web/_legacy/static/*.css",
+    "interfaces/web/_legacy/static/*.js",
+    "interfaces/web/_legacy/templates/*.j2",
+    "interfaces/web/_legacy/templates/*.html",
     "report/templates/*.j2",
     "report/templates/*.html",
     "report/templates/*.css",

@@ -186,7 +186,7 @@ class TestCompareCLI:
 
 @pytest.fixture
 def client():
-    from picarones.web.app import app
+    from picarones.interfaces.web._legacy.app import app
     return TestClient(app)
 
 
@@ -261,9 +261,9 @@ class TestSynthesisPreviewEndpoint:
     def job_with_results(self, monkeypatch, tmp_path):
         """Crée un job 'complete' + JSON résultat sur disque."""
         from picarones import fixtures
-        from picarones.web.jobs import get_default_store, reset_default_store
-        from picarones.web import app as web_app
-        from picarones.web import state as web_state
+        from picarones.interfaces.web._legacy.jobs import get_default_store, reset_default_store
+        from picarones.interfaces.web._legacy import app as web_app
+        from picarones.interfaces.web._legacy import state as web_state
         # Isolate store
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()
@@ -296,9 +296,9 @@ class TestSynthesisPreviewEndpoint:
         assert r.status_code == 404
 
     def test_409_when_job_not_complete(self, monkeypatch, tmp_path):
-        from picarones.web.jobs import get_default_store, reset_default_store
-        from picarones.web import app as web_app
-        from picarones.web import state as web_state
+        from picarones.interfaces.web._legacy.jobs import get_default_store, reset_default_store
+        from picarones.interfaces.web._legacy import app as web_app
+        from picarones.interfaces.web._legacy import state as web_state
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()
         web_state.JOB_STORE = get_default_store()

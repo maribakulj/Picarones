@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Response
 
-from picarones.web.config_utils import (
+from picarones.interfaces.web._legacy.config_utils import (
     CONFIG_SCHEMA_VERSION,
     filter_config,
     upgrade_config,

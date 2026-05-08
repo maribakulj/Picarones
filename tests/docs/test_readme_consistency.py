@@ -274,7 +274,7 @@ def test_listed_cli_commands_exist() -> None:
 def _real_api_endpoints() -> set[str]:
     """Retourne l'ensemble des chemins exposés par l'app FastAPI."""
     try:
-        from picarones.web.app import app
+        from picarones.interfaces.web._legacy.app import app
     except Exception as exc:  # pragma: no cover — défense en profondeur
         pytest.skip(f"FastAPI app non importable : {exc}")
     spec = app.openapi()

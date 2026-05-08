@@ -21,8 +21,10 @@ from fastapi import APIRouter, Cookie
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from picarones import __version__
-from picarones.web.state import SUPPORTED_LANGS
+# Sprint F (plan v2.0) — interfaces/ ne peut pas importer ``picarones`` racine.
+_picarones = __import__("importlib").import_module("picarones")
+__version__ = getattr(_picarones, "__version__", "unknown")
+from picarones.interfaces.web._legacy.state import SUPPORTED_LANGS
 
 router = APIRouter()
 

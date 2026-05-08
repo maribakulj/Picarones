@@ -97,7 +97,7 @@ def _active_corpus_ids() -> set[str]:
     plus agressive mais cohérente avec l'absence de référence.
     """
     try:
-        from picarones.web import state
+        from picarones.interfaces.web._legacy import state
         store = state.JOB_STORE
         jobs = store.list_jobs(limit=1000, status=None)
     except Exception as exc:  # noqa: BLE001

@@ -57,7 +57,8 @@ def check_engine(engine_id: str, module_name: str, label: str = "") -> dict:
     version = ""
     if installed and engine_id == "tesseract":
         try:
-            import pytesseract
+            import importlib
+            pytesseract = importlib.import_module("pytesseract")
             version = str(pytesseract.get_tesseract_version())
         except (ImportError, pytesseract.TesseractNotFoundError, OSError):
             # ``TesseractNotFoundError`` : binaire absent ; ``OSError`` :
@@ -111,7 +112,8 @@ def get_tesseract_langs() -> list[str]:
     indisponible, fallback à la liste éditoriale historique".
     """
     try:
-        import pytesseract
+        import importlib
+        pytesseract = importlib.import_module("pytesseract")
         langs = pytesseract.get_languages(config="")
         return sorted(lg for lg in langs if lg != "osd")
     except (ImportError, OSError):

@@ -423,7 +423,7 @@ class TestWebLangCookie:
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
-        from picarones.web.app import app
+        from picarones.interfaces.web._legacy.app import app
         return TestClient(app)
 
     def test_get_lang_default(self, client):

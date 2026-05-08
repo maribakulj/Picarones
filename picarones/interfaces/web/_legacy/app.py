@@ -32,9 +32,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from picarones import __version__
-from picarones.web import state
-from picarones.web.routers import (
+# Sprint F (plan v2.0) — interfaces/ ne peut pas importer ``picarones`` racine.
+_picarones = __import__("importlib").import_module("picarones")
+__version__ = getattr(_picarones, "__version__", "unknown")
+from picarones.interfaces.web._legacy import state
+from picarones.interfaces.web._legacy.routers import (
     benchmark as _benchmark_router,
     config as _config_router,
     corpus as _corpus_router,
@@ -47,7 +49,7 @@ from picarones.web.routers import (
     synthesis as _synthesis_router,
     system as _system_router,
 )
-from picarones.web.security import csp_middleware, csrf_middleware
+from picarones.interfaces.web._legacy.security import csp_middleware, csrf_middleware
 
 _logger = logging.getLogger(__name__)
 

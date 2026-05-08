@@ -23,8 +23,8 @@ from typing import Any, Optional
 
 from fastapi import HTTPException, Request
 
-from picarones.web.jobs import JobStore, get_default_store
-from picarones.web.security import (
+from picarones.interfaces.web._legacy.jobs import JobStore, get_default_store
+from picarones.interfaces.web._legacy.security import (
     RateLimiter,
     get_max_concurrent_jobs,
     get_rate_limit_per_hour,

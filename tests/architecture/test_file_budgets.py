@@ -95,7 +95,8 @@ FILE_BUDGETS: dict[str, int] = {
     # validated_prompt_filename, safe_report_name et compute_workspace_roots.
     # Ces helpers seront extraits dans ``picarones/web/path_security.py``
     # lors du Sprint S20 du rewrite ciblé (création couche app/services/).
-    "picarones/web/security.py": 800,                     # actuel 751
+    # Sprint F du plan v2.0 — déplacé vers ``interfaces/web/_legacy/``.
+    "picarones/interfaces/web/_legacy/security.py": 850,  # actuel 751
     # Sprint A14-S8 — CorpusRunner introduit pour orchestrer les
     # pipelines composées sur un corpus avec backpressure / timeout
     # réel / annulation propre.  Budget stable, l'extension

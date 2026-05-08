@@ -14,9 +14,9 @@ from typing import Any
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
-from picarones.web.corpus_utils import analyze_corpus_dir, flatten_zip_to_dir
-from picarones.web.security import compute_browse_roots, validate_image_safe
-from picarones.web.state import IMAGE_EXTS, UPLOADS_DIR
+from picarones.interfaces.web._legacy.corpus_utils import analyze_corpus_dir, flatten_zip_to_dir
+from picarones.interfaces.web._legacy.security import compute_browse_roots, validate_image_safe
+from picarones.interfaces.web._legacy.state import IMAGE_EXTS, UPLOADS_DIR
 
 router = APIRouter()
 _logger = logging.getLogger(__name__)

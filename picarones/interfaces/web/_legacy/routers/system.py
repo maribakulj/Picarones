@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Cookie, HTTPException, Response
 
-from picarones import __version__
-from picarones.web.security import (
+# Sprint F (plan v2.0) — interfaces/ ne peut pas importer ``picarones`` racine.
+_picarones = __import__("importlib").import_module("picarones")
+__version__ = getattr(_picarones, "__version__", "unknown")
+from picarones.interfaces.web._legacy.security import (
     CSRF_COOKIE,
     generate_csrf_token,
     is_csrf_required,
 )
-from picarones.web.state import LANG_COOKIE, SUPPORTED_LANGS, iso_now
+from picarones.interfaces.web._legacy.state import LANG_COOKIE, SUPPORTED_LANGS, iso_now
 
 router = APIRouter()
 

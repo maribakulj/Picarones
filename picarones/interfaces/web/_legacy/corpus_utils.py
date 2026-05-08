@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 
 from picarones.formats._xml_utils import safe_parse_xml
-from picarones.web.state import IMAGE_EXTS
+from picarones.interfaces.web._legacy.state import IMAGE_EXTS
 
 # Garde-fous ZIP-bomb pour l'upload
 MAX_ZIP_TOTAL_SIZE = 500 * 1024 * 1024

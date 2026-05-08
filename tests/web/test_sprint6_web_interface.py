@@ -51,7 +51,7 @@ def tmp_corpus(tmp_path):
 
 @pytest.fixture
 def client():
-    from picarones.web.app import app
+    from picarones.interfaces.web._legacy.app import app
     return TestClient(app)
 
 
@@ -1545,7 +1545,7 @@ class TestFastAPICorpusUpload:
 
     def test_alto_text_extraction(self, alto_xml_bytes):
         """_detect_xml_gt extrait correctement le texte depuis un ALTO XML."""
-        from picarones.web.corpus_utils import detect_xml_gt as _detect_xml_gt
+        from picarones.interfaces.web._legacy.corpus_utils import detect_xml_gt as _detect_xml_gt
         result = _detect_xml_gt(alto_xml_bytes)
         assert result is not None
         fmt, text = result
@@ -1598,7 +1598,7 @@ class TestFastAPICorpusUpload:
 
     def test_page_text_extraction(self, page_xml_bytes):
         """_detect_xml_gt extrait correctement le texte depuis un PAGE XML."""
-        from picarones.web.corpus_utils import detect_xml_gt as _detect_xml_gt
+        from picarones.interfaces.web._legacy.corpus_utils import detect_xml_gt as _detect_xml_gt
         result = _detect_xml_gt(page_xml_bytes)
         assert result is not None
         fmt, text = result

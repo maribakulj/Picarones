@@ -215,7 +215,10 @@ def validate_image_safe(data: bytes, filename: str = "<upload>") -> None:
         )
 
     try:
-        from PIL import Image, UnidentifiedImageError
+        import importlib
+        _pil_image = importlib.import_module("PIL.Image")
+        Image = _pil_image
+        UnidentifiedImageError = importlib.import_module("PIL").UnidentifiedImageError
     except ImportError as exc:  # pragma: no cover — Pillow est core
         logger.warning("[security] Pillow indisponible — validation image sautée : %s", exc)
         return

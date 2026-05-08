@@ -144,7 +144,7 @@ def build_cli_table() -> str:
 
 
 def build_endpoints_table() -> str:
-    from picarones.web.app import app
+    from picarones.interfaces.web._legacy.app import app
 
     spec = app.openapi()
     rows = [
