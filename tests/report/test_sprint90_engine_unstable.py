@@ -21,8 +21,8 @@ import json
 import re
 from pathlib import Path
 
-from picarones.measurements.narrative import build_synthesis
-from picarones.measurements.narrative.detectors import detect_engine_unstable
+from picarones.reports_v2.narrative import build_synthesis
+from picarones.reports_v2.narrative.detectors import detect_engine_unstable
 from picarones.domain.facts import FactImportance, FactType
 from picarones.reports_v2.html.renderers.multirun_stability import (
     build_multirun_stability_html,
@@ -47,7 +47,7 @@ class TestFactType:
         assert FactType.ENGINE_UNSTABLE.value == "engine_unstable"
 
     def test_in_arbiter_fallback_order(self) -> None:
-        from picarones.measurements.narrative.arbiter import _FALLBACK_TYPE_ORDER
+        from picarones.reports_v2.narrative.arbiter import _FALLBACK_TYPE_ORDER
         assert FactType.ENGINE_UNSTABLE in _FALLBACK_TYPE_ORDER
 
 

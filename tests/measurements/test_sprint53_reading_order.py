@@ -184,7 +184,7 @@ class TestDetailedCounts:
 class TestRegistryIntegration:
     def test_metric_registered_for_reading_order_pair(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.measurements.reading_order  # noqa: F401
+        import picarones.evaluation.metrics.reading_order  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.READING_ORDER, ArtifactType.READING_ORDER),

@@ -63,7 +63,7 @@ class TestProfiles:
 class TestBuiltinHooksRegistration:
     def test_twelve_document_hooks_registered(self):
         # Import déclenche l'enregistrement via décorateurs.
-        import picarones.measurements.builtin_hooks  # noqa: F401
+        import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
         from picarones.evaluation.metric_hooks import _all_document_hook_names
 
         names = set(_all_document_hook_names())
@@ -76,7 +76,7 @@ class TestBuiltinHooksRegistration:
         assert expected.issubset(names), f"manquants : {expected - names}"
 
     def test_twelve_corpus_aggregators_registered(self):
-        import picarones.measurements.builtin_hooks  # noqa: F401
+        import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
         from picarones.evaluation.metric_hooks import _all_corpus_aggregator_names
 
         names = set(_all_corpus_aggregator_names())
@@ -89,7 +89,7 @@ class TestBuiltinHooksRegistration:
         assert expected.issubset(names), f"manquants : {expected - names}"
 
     def test_standard_profile_activates_all_hooks(self):
-        import picarones.measurements.builtin_hooks  # noqa: F401
+        import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
         from picarones.evaluation.metric_hooks import (
             select_corpus_aggregators, select_document_hooks,
         )
@@ -100,7 +100,7 @@ class TestBuiltinHooksRegistration:
         assert len(agg_hooks) == 12, [a.name for a in agg_hooks]
 
     def test_minimal_profile_activates_zero_hooks(self):
-        import picarones.measurements.builtin_hooks  # noqa: F401
+        import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
         from picarones.evaluation.metric_hooks import (
             select_corpus_aggregators, select_document_hooks,
         )
@@ -112,7 +112,7 @@ class TestBuiltinHooksRegistration:
         """Les attributs déclarés par les hooks doivent correspondre aux
         champs réels du DocumentResult — sinon le runner planterait à
         l'instanciation du dataclass."""
-        import picarones.measurements.builtin_hooks  # noqa: F401
+        import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
         from dataclasses import fields
 
         from picarones.evaluation.metric_hooks import select_document_hooks
@@ -126,7 +126,7 @@ class TestBuiltinHooksRegistration:
             )
 
     def test_aggregator_attribute_names_match_enginereport(self):
-        import picarones.measurements.builtin_hooks  # noqa: F401
+        import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
         from dataclasses import fields
 
         from picarones.evaluation.metric_hooks import select_corpus_aggregators

@@ -30,8 +30,8 @@ from picarones.evaluation.metrics.longitudinal import (
     compute_linear_trend,
     detect_change_point,
 )
-from picarones.measurements.narrative import build_synthesis
-from picarones.measurements.narrative.detectors import detect_regression_in_history
+from picarones.reports_v2.narrative import build_synthesis
+from picarones.reports_v2.narrative.detectors import detect_regression_in_history
 from picarones.domain.facts import FactImportance, FactType
 from picarones.reports_v2.html.renderers.longitudinal import build_longitudinal_html
 

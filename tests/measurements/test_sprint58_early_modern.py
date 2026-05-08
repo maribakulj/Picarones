@@ -271,7 +271,7 @@ class TestShortcut:
 class TestRegistryIntegration:
     def test_metric_registered(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.measurements.early_modern_typography  # noqa: F401
+        import picarones.evaluation.metrics.early_modern_typography  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

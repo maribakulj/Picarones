@@ -214,7 +214,7 @@ def run_document_hooks(profile, *, ground_truth, hypothesis, image_path, corpus_
 def run_corpus_aggregators(profile, document_results) -> dict
 ```
 
-### `picarones.measurements.builtin_metrics`
+### `picarones.evaluation.metrics.builtin_metrics`
 
 Métriques scalaires natives, enregistrées dans le registre typé :
 
@@ -228,7 +228,7 @@ def wil(reference, hypothesis) -> float
 def text_preservation_after_reconstruction(reference_text, hypothesis_alto) -> float
 ```
 
-### `picarones.measurements.alto_metrics`
+### `picarones.evaluation.metrics.alto_metrics`
 
 Métriques (ALTO, ALTO) + helper :
 

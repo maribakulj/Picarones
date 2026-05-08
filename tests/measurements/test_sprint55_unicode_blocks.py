@@ -187,7 +187,7 @@ class TestShortcut:
 class TestRegistryIntegration:
     def test_metric_registered_for_text_text(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.measurements.unicode_blocks  # noqa: F401
+        import picarones.evaluation.metrics.unicode_blocks  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

@@ -226,7 +226,7 @@ class TestFleschDelta:
 class TestRegistryIntegration:
     def test_flesch_metrics_registered_for_text_text(self) -> None:
         # Force l'import qui peuple le registre
-        import picarones.measurements.readability  # noqa: F401
+        import picarones.evaluation.metrics.readability  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.TEXT, ArtifactType.TEXT),

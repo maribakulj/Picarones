@@ -62,7 +62,6 @@ FILE_BUDGETS: dict[str, int] = {
     # canonique dans ``reports_v2/html/generator.py``.
     "picarones/reports_v2/html/generator.py": 550,        # actuel 471
     # --- Fichiers métier larges.
-    "picarones/measurements/robustness.py": 850,          # actuel 731
     # (Phase 7.D — ``reports_v2/html/renderers/pipeline.py`` supprimé.)
     # Phase 4-ter : ``core/results.py`` est désormais un shim
     # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
@@ -73,7 +72,6 @@ FILE_BUDGETS: dict[str, int] = {
     # un shim (≤ 25 l).  Le contenu canonique vit dans
     # ``reports_v2/html/renderers/philological.py``.
     "picarones/reports_v2/html/renderers/philological.py": 700,  # actuel 601
-    "picarones/measurements/history.py": 725,             # actuel 615
     # Sprint E.1 du plan v2.0 — module migré vers ``evaluation/metrics/``.
     "picarones/evaluation/metrics/modern_archives.py": 700,  # actuel 599
     # Sprint E.4 du plan v2.0 — migré vers ``evaluation/metrics/``.

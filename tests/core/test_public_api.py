@@ -311,7 +311,7 @@ class TestMetricHooksApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 9. picarones.measurements.builtin_metrics — CER/WER/MER/WIL natifs
+# 9. picarones.evaluation.metrics.builtin_metrics — CER/WER/MER/WIL natifs
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -321,24 +321,24 @@ class TestBuiltinMetricsApi:
         "text_preservation_after_reconstruction",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.measurements.builtin_metrics", name)
+        _assert_function("picarones.evaluation.metrics.builtin_metrics", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 10. picarones.measurements.alto_metrics — métriques (ALTO, ALTO)
+# 10. picarones.evaluation.metrics.alto_metrics — métriques (ALTO, ALTO)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestAltoMetricsApi:
     def test_extract_text_from_alto(self):
-        _assert_function("picarones.measurements.alto_metrics", "extract_text_from_alto")
+        _assert_function("picarones.evaluation.metrics.alto_metrics", "extract_text_from_alto")
 
     @pytest.mark.parametrize("name", [
         "alto_text_cer", "alto_text_wer",
         "alto_text_mer", "alto_text_wil",
     ])
     def test_alto_metric_function(self, name):
-        _assert_function("picarones.measurements.alto_metrics", name)
+        _assert_function("picarones.evaluation.metrics.alto_metrics", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -451,8 +451,8 @@ class TestApiStableDoc:
             "picarones.app.services._legacy_runner_adapter",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",
-            "picarones.measurements.builtin_metrics",
-            "picarones.measurements.alto_metrics",
+            "picarones.evaluation.metrics.builtin_metrics",
+            "picarones.evaluation.metrics.alto_metrics",
             "picarones.web.jobs",
         ]:
             assert module in content, (

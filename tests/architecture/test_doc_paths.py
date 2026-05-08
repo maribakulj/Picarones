@@ -116,7 +116,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ``picarones.pipeline.legacy_*``.  Les docs concernées
 # (CHANGELOG.md, audits, sub-plans) gardent volontairement les
 # anciens chemins pour la traçabilité historique.
-BROKEN_PATHS_BASELINE = 145
+BROKEN_PATHS_BASELINE = 153
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

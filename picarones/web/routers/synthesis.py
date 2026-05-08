@@ -98,7 +98,7 @@ def _build_synthesis_payload(job_id: str, lang: str, output_path: str) -> dict:
     except (OSError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=422, detail=f"Lecture JSON échouée : {exc}")
 
-    from picarones.measurements.narrative import build_synthesis
+    from picarones.reports_v2.narrative import build_synthesis
 
     synthesis = build_synthesis(report_json, lang=lang)
     return {

@@ -27,9 +27,9 @@ from pathlib import Path
 import pytest
 
 from picarones.evaluation.metric_result import MetricsResult
-from picarones.measurements.narrative.detectors import detect_stratification_recommended
+from picarones.reports_v2.narrative.detectors import detect_stratification_recommended
 from picarones.domain.facts import FactImportance, FactType
-from picarones.measurements.narrative.renderer import extract_numbers, render_fact
+from picarones.reports_v2.narrative.renderer import extract_numbers, render_fact
 from picarones.evaluation.benchmark_result import DocumentResult
 from picarones.reports_v2.html.generator import ReportGenerator
 from picarones.reports_v2.html.renderers.stratification import build_stratified_ranking_html
@@ -260,7 +260,7 @@ class TestTraceability:
             )
 
     def test_template_has_no_hardcoded_numbers(self) -> None:
-        from picarones.measurements.narrative.renderer import _load_templates
+        from picarones.reports_v2.narrative.renderer import _load_templates
         for lang in ("fr", "en"):
             tpl = _load_templates(lang).get("stratification_recommended", "")
             assert tpl, f"Template absent pour {lang}"

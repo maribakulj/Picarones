@@ -34,7 +34,7 @@ from picarones.domain.artifacts import ArtifactType
 # tests s'exécutent avec ce registre peuplé ; on n'utilise pas
 # ``_reset_registry_for_tests`` parce qu'on veut justement tester l'état
 # par défaut visible par le runner en production.
-import picarones.measurements.builtin_metrics  # noqa: F401
+import picarones.evaluation.metrics.builtin_metrics  # noqa: F401
 
 
 # ──────────────────────────────────────────────────────────────────────────

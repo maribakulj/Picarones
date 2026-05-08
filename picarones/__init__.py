@@ -81,7 +81,7 @@ from picarones.evaluation.metric_registry import (
 # ``wil`` + ~15 métriques philologiques + reading order + NER + ALTO.
 # Ce trigger remplace l'ancien import croisé Cercle 1 → Cercle 2 dans
 # ``core/pipeline.py`` (violation B-1/B-2 du même esprit).
-import picarones.measurements as _trigger_metric_registration  # noqa: F401, E402
+import picarones.evaluation.metrics as _trigger_metric_registration  # noqa: F401, E402
 
 __all__ = [
     "__version__",

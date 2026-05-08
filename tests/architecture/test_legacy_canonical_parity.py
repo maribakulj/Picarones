@@ -64,7 +64,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: Paquets legacy (cf. ``test_no_legacy_imports_in_rewrite``).
 LEGACY_PACKAGES: tuple[str, ...] = (
-    "measurements",
     "llm",
 )
 

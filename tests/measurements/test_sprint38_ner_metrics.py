@@ -255,7 +255,7 @@ class TestEntityValidation:
 class TestRegistryIntegration:
     def test_ner_f1_registered_for_entities_pair(self) -> None:
         # Force l'enregistrement
-        import picarones.measurements.ner  # noqa: F401
+        import picarones.evaluation.metrics.ner  # noqa: F401
 
         selected = select_metrics(
             (ArtifactType.ENTITIES, ArtifactType.ENTITIES),
@@ -264,7 +264,7 @@ class TestRegistryIntegration:
         assert "ner_f1" in names
 
     def test_compute_at_junction_uses_ner_f1(self) -> None:
-        import picarones.measurements.ner  # noqa: F401
+        import picarones.evaluation.metrics.ner  # noqa: F401
 
         ref = [{"label": "PER", "start": 0, "end": 5, "text": "Marie"}]
         hyp = [{"label": "PER", "start": 0, "end": 5, "text": "Marie"}]

@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from picarones.measurements.narrative import build_synthesis
-from picarones.measurements.narrative.detectors import (
+from picarones.reports_v2.narrative import build_synthesis
+from picarones.reports_v2.narrative.detectors import (
     detect_cost_outlier,
     detect_pareto_alternative,
 )
