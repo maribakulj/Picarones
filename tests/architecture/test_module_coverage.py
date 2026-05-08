@@ -92,6 +92,10 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     "philological_hooks",
     "readability_hooks",
     "searchability_hooks",
+    # Sprint E.5 du plan v2.0 — derniers shims (history,
+    # robustness) sans consommateur production direct.
+    "history",
+    "robustness",
 })
 
 

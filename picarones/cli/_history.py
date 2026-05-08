@@ -103,7 +103,7 @@ def history_cmd(
     """
     _setup_logging(verbose)
 
-    from picarones.measurements.history import BenchmarkHistory, generate_demo_history
+    from picarones.evaluation.metrics.history import BenchmarkHistory, generate_demo_history
 
     history = BenchmarkHistory(db)
 

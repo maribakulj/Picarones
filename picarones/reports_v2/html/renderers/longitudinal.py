@@ -24,7 +24,7 @@ Module pur — l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.measurements.history import BenchmarkHistory
+    from picarones.evaluation.metrics.history import BenchmarkHistory
     from picarones.evaluation.metrics.longitudinal import compute_corpus_longitudinal
     from picarones.reports_v2.html.renderers.longitudinal import build_longitudinal_html
 

@@ -320,7 +320,7 @@ def demo_cmd(
     # Suivi longitudinal
     if with_history:
         click.echo("\n── Démonstration suivi longitudinal ──────────────")
-        from picarones.measurements.history import BenchmarkHistory, generate_demo_history
+        from picarones.evaluation.metrics.history import BenchmarkHistory, generate_demo_history
         history = BenchmarkHistory(":memory:")
         generate_demo_history(history, n_runs=8)
         entries = history.query(engine="tesseract")
@@ -344,7 +344,7 @@ def demo_cmd(
     # Analyse de robustesse
     if with_robustness:
         click.echo("\n── Démonstration analyse de robustesse ───────────")
-        from picarones.measurements.robustness import generate_demo_robustness_report
+        from picarones.evaluation.metrics.robustness import generate_demo_robustness_report
         report = generate_demo_robustness_report(
             engine_names=["tesseract", "pero_ocr"]
         )

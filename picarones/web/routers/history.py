@@ -24,7 +24,7 @@ async def api_history_regressions(
     db_path: Optional[str] = Query(default=None, description="Chemin SQLite history"),
 ) -> dict:
     """Liste les régressions détectées dans l'historique longitudinal."""
-    from picarones.measurements.history import BenchmarkHistory
+    from picarones.evaluation.metrics.history import BenchmarkHistory
 
     try:
         history = BenchmarkHistory(db_path) if db_path else BenchmarkHistory()

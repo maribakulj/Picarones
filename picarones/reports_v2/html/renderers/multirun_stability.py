@@ -21,7 +21,7 @@ l'utilisateur compose :
 
 .. code-block:: python
 
-    from picarones.measurements.reliability import compute_multirun_stability
+    from picarones.evaluation.metrics.reliability import compute_multirun_stability
     from picarones.reports_v2.html.renderers.multirun_stability import (
         build_multirun_stability_html,
     )
