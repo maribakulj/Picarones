@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.searchability import (
+from picarones.evaluation.metrics.searchability import (
     compute_searchability,
     levenshtein_distance,
     searchability_recall_metric,

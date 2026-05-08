@@ -76,6 +76,11 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     # production.  Suppression / migration prévue en Sprint E
     # (migration des hooks vers ``evaluation/metric_hooks/``).
     "builtin_hooks",
+    # Sprint E.2 du plan v2.0 — module ``measurements.searchability``
+    # est devenu un shim après son déplacement vers
+    # ``evaluation/metrics/searchability``.  Le shim garde son entrée
+    # ici pour que le scanner ne crie pas tant qu'il existe.
+    "searchability",
 })
 
 

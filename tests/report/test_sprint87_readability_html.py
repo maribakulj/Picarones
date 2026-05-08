@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 from picarones.evaluation.metric_result import MetricsResult
-from picarones.measurements.readability_hooks import (
+from picarones.evaluation.metrics.readability_hooks import (
     aggregate_readability_metrics,
     compute_readability_metrics,
 )

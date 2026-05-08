@@ -30,7 +30,7 @@ import pytest
 
 from picarones.evaluation.metric_registry import select_metrics
 from picarones.domain.artifacts import ArtifactType
-from picarones.measurements.readability import (
+from picarones.evaluation.metrics.readability import (
     count_sentences,
     count_syllables,
     count_syllables_word,

@@ -33,7 +33,7 @@ import pytest
 
 from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
-from picarones.measurements.ner import Entity, compute_ner_metrics, ner_f1
+from picarones.evaluation.metrics.ner import Entity, compute_ner_metrics, ner_f1
 
 
 # ──────────────────────────────────────────────────────────────────────────

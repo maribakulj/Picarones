@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from picarones.measurements.numerical_sequences_hooks import (
+from picarones.evaluation.metrics.numerical_sequences_hooks import (
     aggregate_numerical_sequence_metrics,
     compute_numerical_sequence_metrics_adaptive,
 )
@@ -32,7 +32,7 @@ def _stub_metrics() -> MetricsResult:
         wer=0.0, wer_normalized=0.0, mer=0.0, wil=0.0,
         reference_length=0, hypothesis_length=0,
     )
-from picarones.measurements.searchability_hooks import (
+from picarones.evaluation.metrics.searchability_hooks import (
     aggregate_searchability_metrics,
     compute_searchability_metrics,
 )

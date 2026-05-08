@@ -25,7 +25,7 @@ import pytest
 
 from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
-from picarones.measurements.unicode_blocks import (
+from picarones.evaluation.metrics.unicode_blocks import (
     compute_unicode_block_accuracy,
     get_block,
     unicode_block_global_accuracy,

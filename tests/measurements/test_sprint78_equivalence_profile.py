@@ -23,7 +23,7 @@ Couvre :
 
 from __future__ import annotations
 
-from picarones.measurements.equivalence_profile import (
+from picarones.evaluation.metrics.equivalence_profile import (
     BUILTIN_EQUIVALENCES,
     EquivalenceRule,
     apply_selected_equivalences,
