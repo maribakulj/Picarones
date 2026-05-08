@@ -713,14 +713,14 @@ class TestAzureDocIntelEngine:
 class TestCLIImportIIIF:
 
     def test_import_group_exists(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         from click.testing import CliRunner
         runner = CliRunner()
         result = runner.invoke(cli, ["import", "--help"])
         assert result.exit_code == 0
 
     def test_import_iiif_command_exists(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         from click.testing import CliRunner
         runner = CliRunner()
         result = runner.invoke(cli, ["import", "iiif", "--help"])
@@ -728,7 +728,7 @@ class TestCLIImportIIIF:
         assert "manifest_url" in result.output.lower() or "MANIFEST_URL" in result.output
 
     def test_import_iiif_options(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         from click.testing import CliRunner
         runner = CliRunner()
         result = runner.invoke(cli, ["import", "iiif", "--help"])
@@ -736,7 +736,7 @@ class TestCLIImportIIIF:
         assert "--output" in result.output
 
     def test_import_iiif_requires_url(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         from click.testing import CliRunner
         runner = CliRunner()
         result = runner.invoke(cli, ["import", "iiif"])

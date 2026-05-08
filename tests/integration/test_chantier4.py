@@ -226,7 +226,7 @@ class TestCliWorkflows:
         from pathlib import Path
 
         cli_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "cli" / "_workflows.py"
+            Path(__file__).parent.parent.parent / "picarones" / "interfaces" / "cli" / "_legacy" / "_workflows.py"
         ).read_text(encoding="utf-8")
         # Vérification statique : les 3 commandes existent
         assert '@cli.command("diagnose")' in cli_src
@@ -239,7 +239,7 @@ class TestCliWorkflows:
     def test_workflows_map_correct_profile(self):
         from pathlib import Path
         cli_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "cli" / "_workflows.py"
+            Path(__file__).parent.parent.parent / "picarones" / "interfaces" / "cli" / "_legacy" / "_workflows.py"
         ).read_text(encoding="utf-8")
         # Chaque commande doit fixer le bon profil
         # diagnose → diagnostics, economics → economics, edition → philological
@@ -255,7 +255,7 @@ class TestCliWorkflows:
         from pathlib import Path
 
         cli_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "cli" / "_workflows.py"
+            Path(__file__).parent.parent.parent / "picarones" / "interfaces" / "cli" / "_legacy" / "_workflows.py"
         ).read_text(encoding="utf-8")
         tree = ast.parse(cli_src)
         funcs = {
@@ -269,7 +269,7 @@ class TestCliWorkflows:
         try:
             from click.testing import CliRunner
 
-            from picarones.cli import cli as cli_group
+            from picarones.interfaces.cli._legacy import cli as cli_group
         except ImportError:
             pytest.skip("click non installé")
 

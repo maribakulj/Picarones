@@ -226,7 +226,7 @@ def test_listed_engines_have_adapter() -> None:
 
 def _real_cli_commands() -> set[str]:
     """Retourne l'ensemble des commandes effectivement exposées."""
-    from picarones.cli import cli
+    from picarones.interfaces.cli._legacy import cli
 
     return set(cli.commands.keys())
 

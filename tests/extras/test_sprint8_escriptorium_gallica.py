@@ -544,12 +544,12 @@ class TestImportersInit:
 class TestCLIHistory:
 
     def test_history_command_exists(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         assert "history" in [cmd.name for cmd in cli.commands.values()]
 
     def test_history_demo_mode(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["history", "--demo", "--db", ":memory:"])
         assert result.exit_code == 0
@@ -557,7 +557,7 @@ class TestCLIHistory:
 
     def test_history_empty_db(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         import gc
         import tempfile
         import os
@@ -577,14 +577,14 @@ class TestCLIHistory:
 
     def test_history_with_regression_flag(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["history", "--demo", "--db", ":memory:", "--regression"])
         assert result.exit_code == 0
 
     def test_history_engine_filter(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, [
             "history", "--demo", "--db", ":memory:", "--engine", "tesseract"
@@ -593,7 +593,7 @@ class TestCLIHistory:
 
     def test_history_export_json(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         import tempfile
         import os
         runner = CliRunner()
@@ -618,12 +618,12 @@ class TestCLIHistory:
 class TestCLIRobustness:
 
     def test_robustness_command_exists(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         assert "robustness" in [cmd.name for cmd in cli.commands.values()]
 
     def test_robustness_demo_mode(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
             import os
@@ -635,7 +635,7 @@ class TestCLIRobustness:
 
     def test_robustness_invalid_degradation(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
             import os
@@ -648,7 +648,7 @@ class TestCLIRobustness:
 
     def test_robustness_shows_results(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
             import os
@@ -662,7 +662,7 @@ class TestCLIRobustness:
 
     def test_robustness_json_export(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
             import os
@@ -678,7 +678,7 @@ class TestCLIRobustness:
 
     def test_robustness_single_degradation_type(self):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         with runner.isolated_filesystem():
             import os

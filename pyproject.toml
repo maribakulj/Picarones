@@ -118,7 +118,7 @@ all = [
 ]
 
 [project.scripts]
-picarones = "picarones.cli:cli"
+picarones = "picarones.interfaces.cli._legacy:cli"
 
 # ──────────────────────────────────────────────────────────────────
 # Sprint A9 (M-5) — version dynamique via setuptools_scm.
@@ -153,7 +153,6 @@ picarones = [
     "report/templates/*.css",
     "report/templates/*.js",
     "report/i18n/*.json",
-    "measurements/narrative/templates/*.yaml",
     "data/*.yaml",
     "report/glossary/*.yaml",
 ]

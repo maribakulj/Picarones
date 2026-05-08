@@ -139,7 +139,12 @@ FILE_BUDGETS: dict[str, int] = {
     # _fallback_log}`` ont été supprimés au Lot I (mai 2026).
     "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
-    "picarones/cli/_workflows.py": 550,                   # actuel 469
+    # Sprint G du plan v2.0 — déplacé vers ``interfaces/cli/_legacy/``.
+    "picarones/interfaces/cli/_legacy/_workflows.py": 550,  # actuel 469
+    # ``__init__.py`` du legacy CLI — plus gros que les autres car il
+    # contient les commandes ``info``, ``engines``, ``metrics``,
+    # ``report``, ``demo``.
+    "picarones/interfaces/cli/_legacy/__init__.py": 500,    # actuel 396
     # Phase 4-ter : ``core/metric_hooks.py`` est désormais un shim
     # (≤ 80 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (centralise les

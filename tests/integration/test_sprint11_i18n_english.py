@@ -379,7 +379,7 @@ class TestDemoLangFlag:
 
     def test_demo_lang_en(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import demo_cmd
+        from picarones.interfaces.cli._legacy import demo_cmd
 
         runner = CliRunner()
         out_file = str(tmp_path / "demo_en.html")
@@ -394,7 +394,7 @@ class TestDemoLangFlag:
 
     def test_demo_lang_fr_default(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import demo_cmd
+        from picarones.interfaces.cli._legacy import demo_cmd
 
         runner = CliRunner()
         out_file = str(tmp_path / "demo_fr.html")
@@ -405,7 +405,7 @@ class TestDemoLangFlag:
 
     def test_demo_invalid_lang_rejected(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import demo_cmd
+        from picarones.interfaces.cli._legacy import demo_cmd
 
         runner = CliRunner()
         out_file = str(tmp_path / "demo_de.html")

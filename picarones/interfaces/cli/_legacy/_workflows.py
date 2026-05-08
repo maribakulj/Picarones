@@ -14,7 +14,7 @@ import sys
 
 import click
 
-from picarones.cli import cli, _engine_from_name, _setup_logging
+from picarones.interfaces.cli._legacy import cli, _engine_from_name, _setup_logging
 
 
 def _validate_cer_threshold(

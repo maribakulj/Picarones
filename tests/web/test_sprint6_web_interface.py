@@ -865,31 +865,31 @@ class TestFastAPIReportServe:
 class TestCLIServeCommand:
 
     def test_serve_command_registered(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         commands = cli.commands
         assert "serve" in commands
 
     def test_serve_help_text(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["serve", "--help"])
         assert result.exit_code == 0
         assert "serve" in result.output.lower() or "localhost" in result.output.lower()
 
     def test_serve_default_port_in_help(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["serve", "--help"])
         assert "8000" in result.output
 
     def test_serve_help_has_port_option(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["serve", "--help"])
         assert "--port" in result.output
 
     def test_serve_missing_uvicorn_exits_gracefully(self):
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         # Avec uvicorn installé, cela démarrerait le serveur — on teste juste que
         # la commande existe et est invocable (pas qu'elle démare le serveur)

@@ -128,7 +128,7 @@ class TestCliHelpMentionsFraction:
     """Le help texte CLI doit mentionner explicitement « fraction »."""
 
     def test_help_mentions_fraction(self) -> None:
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["run", "--help"])
         assert result.exit_code == 0
@@ -190,7 +190,7 @@ class TestMigrationGuard:
         à l'analyse Click (callback ``_validate_cer_threshold``).
         Une valeur invalide doit être rejetée à l'analyse, AVANT
         toute opération coûteuse."""
-        from picarones.cli import cli
+        from picarones.interfaces.cli._legacy import cli
         runner = CliRunner()
         result = runner.invoke(cli, [
             "run",
