@@ -26,7 +26,6 @@ from typing import Any
 
 import pytest
 
-from picarones.evaluation.corpus import GTLevel
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
 from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
@@ -244,26 +243,8 @@ class TestOCREngineAsModule:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 6. Cohérence ArtifactType / GTLevel
+# 6. Cohérence ArtifactType — niveaux de GT
 # ──────────────────────────────────────────────────────────────────────────
-
-
-class TestArtifactTypeGTLevelCoherence:
-    @pytest.mark.parametrize(
-        "level",
-        [
-            GTLevel.TEXT,
-            GTLevel.ALTO,
-            GTLevel.PAGE,
-            GTLevel.ENTITIES,
-            GTLevel.READING_ORDER,
-        ],
-    )
-    def test_each_gtlevel_maps_to_artifacttype(self, level: GTLevel) -> None:
-        """La conversion ``GTLevel → ArtifactType`` doit être triviale."""
-        assert ArtifactType(level.value) is not None
-
-    def test_image_has_no_gtlevel_counterpart(self) -> None:
-        """``IMAGE`` n'est pas une GT, c'est cohérent avec le plan."""
-        gt_values = {lvl.value for lvl in GTLevel}
-        assert ArtifactType.IMAGE.value not in gt_values
+# Phase 4 leftover : l'ancien test de cohérence GTLevel ↔ ArtifactType
+# a été supprimé en même temps que ``GTLevel`` (mai 2026) au profit
+# d'un usage direct d'``ArtifactType`` partout.

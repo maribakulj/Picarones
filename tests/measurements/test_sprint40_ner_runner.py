@@ -26,7 +26,8 @@ from pathlib import Path
 
 import pytest
 
-from picarones.evaluation.corpus import Corpus, Document, EntitiesGT, GTLevel, TextGT
+from picarones.domain.artifacts import ArtifactType
+from picarones.evaluation.corpus import Corpus, Document, EntitiesGT, TextGT
 from picarones.evaluation.metrics.ner_backends import (
     SPACY_PROFILES,
     SpacyEntityExtractor,
@@ -186,8 +187,8 @@ def _corpus_with_entities(tmp_path: Path) -> Corpus:
         image_path=image1,
         ground_truth="Marie de Bourgogne en 1477.",
         ground_truths={
-            GTLevel.TEXT: TextGT(text="Marie de Bourgogne en 1477."),
-            GTLevel.ENTITIES: EntitiesGT(entities=[
+            ArtifactType.RAW_TEXT: TextGT(text="Marie de Bourgogne en 1477."),
+            ArtifactType.ENTITIES: EntitiesGT(entities=[
                 {"label": "PER", "start": 0, "end": 17, "text": "Marie de Bourgogne"},
                 {"label": "DATE", "start": 21, "end": 25, "text": "1477"},
             ]),

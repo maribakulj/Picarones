@@ -47,7 +47,6 @@ __author__ = "Picarones contributors"
 from picarones.evaluation.corpus import (
     Corpus,
     Document,
-    GTLevel,
     TextGT,
     AltoGT,
     PageGT,
@@ -90,7 +89,6 @@ __all__ = [
     # Corpus
     "Corpus",
     "Document",
-    "GTLevel",
     "TextGT",
     "AltoGT",
     "PageGT",

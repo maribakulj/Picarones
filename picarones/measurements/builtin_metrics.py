@@ -132,7 +132,7 @@ def text_preservation_after_reconstruction(
     Parameters
     ----------
     reference_text:
-        Texte GT (niveau ``GTLevel.TEXT``).
+        Texte GT (niveau ``ArtifactType.RAW_TEXT``).
     hypothesis_alto:
         ALTO XML brut produit par un module de reconstruction (niveau
         ``ArtifactType.ALTO``).

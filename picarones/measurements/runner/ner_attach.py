@@ -31,7 +31,7 @@ def _attach_ner_metrics(
     crasher le NER.
     """
     try:
-        from picarones.evaluation.corpus import GTLevel
+        from picarones.domain.artifacts import ArtifactType
         from picarones.measurements.ner import compute_ner_metrics
     except ImportError as exc:
         logger.warning("[ner.attach] imports indisponibles : %s", exc)
@@ -43,10 +43,10 @@ def _attach_ner_metrics(
         if dr.engine_error is not None or not dr.hypothesis:
             continue
         doc = docs_by_id.get(dr.doc_id)
-        if doc is None or not doc.has_gt(GTLevel.ENTITIES):
+        if doc is None or not doc.has_gt(ArtifactType.ENTITIES):
             continue
         try:
-            gt_payload = doc.get_gt(GTLevel.ENTITIES)
+            gt_payload = doc.get_gt(ArtifactType.ENTITIES)
             gt_entities = list(gt_payload.entities) if gt_payload else []
             hyp_entities = entity_extractor(dr.hypothesis) or []
             dr.ner_metrics = compute_ner_metrics(gt_entities, hyp_entities)

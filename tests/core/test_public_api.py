@@ -79,7 +79,6 @@ def _assert_function(module_path: str, name: str):
 class TestCorpusApi:
     @pytest.mark.parametrize("name", [
         "Document", "Corpus",
-        "GTLevel",
         "TextGT", "AltoGT", "PageGT", "EntitiesGT", "ReadingOrderGT",
     ])
     def test_class_exists(self, name):
@@ -89,22 +88,21 @@ class TestCorpusApi:
         _assert_function("picarones.evaluation.corpus", "load_corpus_from_directory")
 
     def test_gt_suffixes_constant(self):
-        from picarones.evaluation.corpus import GTLevel, GT_SUFFIXES
+        from picarones.domain.artifacts import ArtifactType
+        from picarones.evaluation.corpus import GT_SUFFIXES
 
         assert isinstance(GT_SUFFIXES, dict)
-        # Chacun des 5 niveaux GT doit avoir un suffixe
-        for level in GTLevel:
+        # Chacun des 5 niveaux GT (ArtifactType) doit avoir un suffixe
+        for level in (
+            ArtifactType.RAW_TEXT,
+            ArtifactType.ALTO_XML,
+            ArtifactType.PAGE_XML,
+            ArtifactType.ENTITIES,
+            ArtifactType.READING_ORDER,
+        ):
             assert level in GT_SUFFIXES, (
                 f"GT_SUFFIXES manque le niveau {level}"
             )
-
-    def test_gtlevel_values(self):
-        from picarones.evaluation.corpus import GTLevel
-
-        # Les 5 valeurs sont contractuelles — leur ordre/nom n'importe
-        # pas, leur présence si.
-        names = {member.value for member in GTLevel}
-        assert names == {"text", "alto", "page", "entities", "reading_order"}
 
 
 # ──────────────────────────────────────────────────────────────────────────

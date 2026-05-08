@@ -11,7 +11,7 @@ Vérifie :
    ont l'ALTO doit refléter cette couverture dans
    ``Corpus.gt_level_coverage()``.
 4. Synchronisation TEXT entre champ ``ground_truth`` et
-   ``ground_truths[GTLevel.TEXT]`` dans les deux sens.
+   ``ground_truths[ArtifactType.RAW_TEXT]`` dans les deux sens.
 5. Robustesse : un fichier JSON cassé est dégradé en warning, le
    document reste chargé avec les niveaux qui ont fonctionné.
 """
@@ -23,12 +23,12 @@ from pathlib import Path
 
 import pytest
 
+from picarones.domain.artifacts import ArtifactType
 from picarones.evaluation.corpus import (
     AltoGT,
     Document,
     EntitiesGT,
     GT_SUFFIXES,
-    GTLevel,
     PageGT,
     ReadingOrderGT,
     TextGT,
@@ -71,16 +71,16 @@ class TestBackwardCompat:
             assert isinstance(doc.ground_truth, str)
             assert doc.ground_truth  # non vide
             # Le niveau TEXT est automatiquement peuplé
-            assert doc.has_gt(GTLevel.TEXT)
-            assert not doc.has_gt(GTLevel.ALTO)
-            assert not doc.has_gt(GTLevel.PAGE)
+            assert doc.has_gt(ArtifactType.RAW_TEXT)
+            assert not doc.has_gt(ArtifactType.ALTO_XML)
+            assert not doc.has_gt(ArtifactType.PAGE_XML)
 
     def test_document_dataclass_default_is_text_only(self) -> None:
         doc = Document(image_path=Path("/tmp/x.png"), ground_truth="abc")
 
         assert doc.ground_truth == "abc"
-        assert doc.gt_levels == {GTLevel.TEXT}
-        text_payload = doc.get_gt(GTLevel.TEXT)
+        assert doc.gt_levels == {ArtifactType.RAW_TEXT}
+        text_payload = doc.get_gt(ArtifactType.RAW_TEXT)
         assert isinstance(text_payload, TextGT)
         assert text_payload.text == "abc"
 
@@ -88,7 +88,7 @@ class TestBackwardCompat:
         """Construction par le nouveau format : le champ str est synchronisé."""
         doc = Document(
             image_path=Path("/tmp/x.png"),
-            ground_truths={GTLevel.TEXT: TextGT(text="hello")},
+            ground_truths={ArtifactType.RAW_TEXT: TextGT(text="hello")},
         )
         # Le post-init renseigne ground_truth depuis le dict
         assert doc.ground_truth == "hello"
@@ -97,7 +97,7 @@ class TestBackwardCompat:
         """Un corpus sans fichier ALTO/PAGE/JSON ne doit jamais lever."""
         _write_pair(tmp_path, "x", "y")
         corpus = load_corpus_from_directory(tmp_path)
-        assert corpus.available_gt_levels == {GTLevel.TEXT}
+        assert corpus.available_gt_levels == {ArtifactType.RAW_TEXT}
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -127,25 +127,25 @@ _PAGE_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
 class TestExtraLevelsDetection:
     def test_alto_detected(self, tmp_path: Path) -> None:
         _write_pair(tmp_path, "doc", "Bonjour")
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ALTO]}").write_text(_ALTO_SAMPLE, encoding="utf-8")
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ALTO_XML]}").write_text(_ALTO_SAMPLE, encoding="utf-8")
 
         corpus = load_corpus_from_directory(tmp_path)
         doc = corpus.documents[0]
 
-        assert doc.has_gt(GTLevel.ALTO)
-        alto = doc.get_gt(GTLevel.ALTO)
+        assert doc.has_gt(ArtifactType.ALTO_XML)
+        alto = doc.get_gt(ArtifactType.ALTO_XML)
         assert isinstance(alto, AltoGT)
         assert "TextBlock" in alto.xml_content
         assert alto.source_path is not None
 
     def test_page_detected(self, tmp_path: Path) -> None:
         _write_pair(tmp_path, "doc", "Salut")
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.PAGE]}").write_text(_PAGE_SAMPLE, encoding="utf-8")
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.PAGE_XML]}").write_text(_PAGE_SAMPLE, encoding="utf-8")
 
         corpus = load_corpus_from_directory(tmp_path)
         doc = corpus.documents[0]
 
-        page = doc.get_gt(GTLevel.PAGE)
+        page = doc.get_gt(ArtifactType.PAGE_XML)
         assert isinstance(page, PageGT)
         assert "TextRegion" in page.xml_content
 
@@ -157,14 +157,14 @@ class TestExtraLevelsDetection:
                 {"label": "DATE", "start": 21, "end": 25, "text": "1477"},
             ]
         }
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ENTITIES]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ENTITIES]}").write_text(
             json.dumps(entities), encoding="utf-8"
         )
 
         corpus = load_corpus_from_directory(tmp_path)
         doc = corpus.documents[0]
 
-        ent = doc.get_gt(GTLevel.ENTITIES)
+        ent = doc.get_gt(ArtifactType.ENTITIES)
         assert isinstance(ent, EntitiesGT)
         assert len(ent.entities) == 2
         assert ent.entities[0]["label"] == "PER"
@@ -173,45 +173,45 @@ class TestExtraLevelsDetection:
         """Le loader accepte aussi un tableau JSON brut."""
         _write_pair(tmp_path, "doc", "Texte.")
         ent_data = [{"label": "MISC", "start": 0, "end": 5, "text": "Texte"}]
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ENTITIES]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ENTITIES]}").write_text(
             json.dumps(ent_data), encoding="utf-8"
         )
 
         corpus = load_corpus_from_directory(tmp_path)
-        ent = corpus.documents[0].get_gt(GTLevel.ENTITIES)
+        ent = corpus.documents[0].get_gt(ArtifactType.ENTITIES)
         assert isinstance(ent, EntitiesGT)
         assert ent.entities[0]["label"] == "MISC"
 
     def test_reading_order_detected(self, tmp_path: Path) -> None:
         _write_pair(tmp_path, "doc", "Multi-colonnes.")
         ro = {"region_order": ["r_main", "r_marginalia", "r_footer"]}
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.READING_ORDER]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.READING_ORDER]}").write_text(
             json.dumps(ro), encoding="utf-8"
         )
 
         corpus = load_corpus_from_directory(tmp_path)
-        ro_payload = corpus.documents[0].get_gt(GTLevel.READING_ORDER)
+        ro_payload = corpus.documents[0].get_gt(ArtifactType.READING_ORDER)
         assert isinstance(ro_payload, ReadingOrderGT)
         assert ro_payload.region_order == ["r_main", "r_marginalia", "r_footer"]
 
     def test_all_four_extra_levels_simultaneously(self, tmp_path: Path) -> None:
         _write_pair(tmp_path, "doc", "Texte complet.")
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ALTO]}").write_text(_ALTO_SAMPLE, encoding="utf-8")
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.PAGE]}").write_text(_PAGE_SAMPLE, encoding="utf-8")
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ENTITIES]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ALTO_XML]}").write_text(_ALTO_SAMPLE, encoding="utf-8")
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.PAGE_XML]}").write_text(_PAGE_SAMPLE, encoding="utf-8")
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ENTITIES]}").write_text(
             json.dumps([{"label": "X", "start": 0, "end": 1, "text": "T"}]), encoding="utf-8"
         )
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.READING_ORDER]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.READING_ORDER]}").write_text(
             json.dumps(["r1"]), encoding="utf-8"
         )
 
         doc = load_corpus_from_directory(tmp_path).documents[0]
         assert doc.gt_levels == {
-            GTLevel.TEXT,
-            GTLevel.ALTO,
-            GTLevel.PAGE,
-            GTLevel.ENTITIES,
-            GTLevel.READING_ORDER,
+            ArtifactType.RAW_TEXT,
+            ArtifactType.ALTO_XML,
+            ArtifactType.PAGE_XML,
+            ArtifactType.ENTITIES,
+            ArtifactType.READING_ORDER,
         }
 
 
@@ -226,31 +226,34 @@ class TestPartialCoverage:
         _write_pair(tmp_path, "doc_001", "Premier")
         _write_pair(tmp_path, "doc_002", "Deuxième")
         _write_pair(tmp_path, "doc_003", "Troisième")
-        (tmp_path / f"doc_001{GT_SUFFIXES[GTLevel.ALTO]}").write_text(
+        (tmp_path / f"doc_001{GT_SUFFIXES[ArtifactType.ALTO_XML]}").write_text(
             _ALTO_SAMPLE, encoding="utf-8"
         )
 
         corpus = load_corpus_from_directory(tmp_path)
 
         coverage = corpus.gt_level_coverage()
-        assert coverage[GTLevel.TEXT] == 3
-        assert coverage[GTLevel.ALTO] == 1
+        assert coverage[ArtifactType.RAW_TEXT] == 3
+        assert coverage[ArtifactType.ALTO_XML] == 1
         # available_gt_levels = union sur tout le corpus
-        assert corpus.available_gt_levels == {GTLevel.TEXT, GTLevel.ALTO}
+        assert corpus.available_gt_levels == {ArtifactType.RAW_TEXT, ArtifactType.ALTO_XML}
         # Mais seul doc_001 expose ALTO
         doc_001 = next(d for d in corpus if d.doc_id == "doc_001")
         doc_002 = next(d for d in corpus if d.doc_id == "doc_002")
-        assert doc_001.has_gt(GTLevel.ALTO)
-        assert not doc_002.has_gt(GTLevel.ALTO)
+        assert doc_001.has_gt(ArtifactType.ALTO_XML)
+        assert not doc_002.has_gt(ArtifactType.ALTO_XML)
 
     def test_stats_exposes_coverage(self, tmp_path: Path) -> None:
         _write_pair(tmp_path, "a", "x")
         _write_pair(tmp_path, "b", "y")
-        (tmp_path / f"a{GT_SUFFIXES[GTLevel.ALTO]}").write_text(_ALTO_SAMPLE, encoding="utf-8")
+        (tmp_path / f"a{GT_SUFFIXES[ArtifactType.ALTO_XML]}").write_text(_ALTO_SAMPLE, encoding="utf-8")
 
         stats = load_corpus_from_directory(tmp_path).stats
-        assert stats["gt_level_coverage"]["text"] == 2
-        assert stats["gt_level_coverage"]["alto"] == 1
+        # Les clés de stats sont les valeurs de l'enum ArtifactType — depuis
+        # la convergence GTLevel → ArtifactType de Phase 4 leftover, ce
+        # sont ``raw_text`` et ``alto_xml`` (et non plus ``text``/``alto``).
+        assert stats["gt_level_coverage"]["raw_text"] == 2
+        assert stats["gt_level_coverage"]["alto_xml"] == 1
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -261,14 +264,14 @@ class TestPartialCoverage:
 class TestTextSync:
     def test_str_to_dict_sync(self) -> None:
         doc = Document(image_path=Path("/tmp/x.png"), ground_truth="aaa")
-        text_gt = doc.get_gt(GTLevel.TEXT)
+        text_gt = doc.get_gt(ArtifactType.RAW_TEXT)
         assert isinstance(text_gt, TextGT)
         assert text_gt.text == "aaa"
 
     def test_dict_to_str_sync(self) -> None:
         doc = Document(
             image_path=Path("/tmp/x.png"),
-            ground_truths={GTLevel.TEXT: TextGT(text="bbb")},
+            ground_truths={ArtifactType.RAW_TEXT: TextGT(text="bbb")},
         )
         assert doc.ground_truth == "bbb"
 
@@ -278,7 +281,7 @@ class TestTextSync:
         doc = Document(
             image_path=Path("/tmp/x.png"),
             ground_truth="canon",
-            ground_truths={GTLevel.TEXT: TextGT(text="autre")},
+            ground_truths={ArtifactType.RAW_TEXT: TextGT(text="autre")},
         )
         # Le champ str fourni explicitement n'est pas écrasé
         assert doc.ground_truth == "canon"
@@ -294,7 +297,7 @@ class TestRobustness:
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
         _write_pair(tmp_path, "doc", "Texte.")
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ENTITIES]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ENTITIES]}").write_text(
             "{ ceci n'est pas du JSON", encoding="utf-8"
         )
 
@@ -303,8 +306,8 @@ class TestRobustness:
 
         # Le document reste chargé avec son niveau TEXT
         doc = corpus.documents[0]
-        assert doc.has_gt(GTLevel.TEXT)
-        assert not doc.has_gt(GTLevel.ENTITIES)
+        assert doc.has_gt(ArtifactType.RAW_TEXT)
+        assert not doc.has_gt(ArtifactType.ENTITIES)
         # Et un warning explicite a été émis (cf. règle CLAUDE.md)
         assert any("entités" in rec.message.lower() for rec in caplog.records)
 
@@ -313,12 +316,12 @@ class TestRobustness:
     ) -> None:
         _write_pair(tmp_path, "doc", "Texte.")
         # JSON valide mais format inattendu (pas dict avec "entities", pas liste)
-        (tmp_path / f"doc{GT_SUFFIXES[GTLevel.ENTITIES]}").write_text(
+        (tmp_path / f"doc{GT_SUFFIXES[ArtifactType.ENTITIES]}").write_text(
             json.dumps({"foo": "bar"}), encoding="utf-8"
         )
 
         with caplog.at_level("WARNING", logger="picarones.evaluation.corpus"):
             corpus = load_corpus_from_directory(tmp_path)
 
-        assert not corpus.documents[0].has_gt(GTLevel.ENTITIES)
+        assert not corpus.documents[0].has_gt(ArtifactType.ENTITIES)
         assert any("format" in rec.message.lower() for rec in caplog.records)

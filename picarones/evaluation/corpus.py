@@ -9,7 +9,7 @@ Coexistence avec ``domain.corpus.CorpusSpec``
 ---------------------------------------------
 ``evaluation.corpus`` (le présent module) porte les types **riches
 en behavior** historiquement utilisés par le runner de
-``measurements/`` : ``Document``, ``Corpus``, ``GTLevel`` +
+``measurements/`` : ``Document``, ``Corpus``, ``ArtifactType`` +
 payloads ``TextGT``/``AltoGT``/``PageGT``/``EntitiesGT``/
 ``ReadingOrderGT`` chargés en mémoire, et la fonction
 ``load_corpus_from_directory``.
@@ -46,11 +46,11 @@ autres niveaux sont optionnels et permettront aux modules futurs
 contre la GT correspondante.
 
 Suffixes détectés automatiquement par ``load_corpus_from_directory`` :
-  - ``.gt.txt``                → ``GTLevel.TEXT``         (TextGT)
-  - ``.gt.alto.xml``           → ``GTLevel.ALTO``         (AltoGT)
-  - ``.gt.page.xml``           → ``GTLevel.PAGE``         (PageGT)
-  - ``.gt.entities.json``      → ``GTLevel.ENTITIES``     (EntitiesGT)
-  - ``.gt.reading_order.json`` → ``GTLevel.READING_ORDER`` (ReadingOrderGT)
+  - ``.gt.txt``                → ``ArtifactType.RAW_TEXT``         (TextGT)
+  - ``.gt.alto.xml``           → ``ArtifactType.ALTO_XML``         (AltoGT)
+  - ``.gt.page.xml``           → ``ArtifactType.PAGE_XML``         (PageGT)
+  - ``.gt.entities.json``      → ``ArtifactType.ENTITIES``     (EntitiesGT)
+  - ``.gt.reading_order.json`` → ``ArtifactType.READING_ORDER`` (ReadingOrderGT)
 
 Extensions d'images acceptées : .jpg, .jpeg, .png, .tif, .tiff, .bmp, .webp
 """
@@ -60,9 +60,10 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from typing import Any, Iterator, Optional, Union
+
+from picarones.domain.artifacts import ArtifactType
 
 logger = logging.getLogger(__name__)
 
@@ -71,24 +72,18 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".webp"}
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Niveaux de vérité terrain (Sprint 32 — Phase 0.1)
+# Vérité terrain multi-niveaux (Sprint 32 — Phase 0.1)
 # ──────────────────────────────────────────────────────────────────────────
-
-
-class GTLevel(str, Enum):
-    """Niveaux de vérité terrain qu'un document peut porter.
-
-    Le niveau ``TEXT`` est obligatoire ; les autres sont optionnels et ne
-    sont peuplés que si les fichiers correspondants sont présents dans le
-    corpus.  Une métrique ne s'applique qu'aux niveaux qu'elle déclare
-    consommer (cf. registre de métriques typé, Phase 0.3).
-    """
-
-    TEXT = "text"
-    ALTO = "alto"
-    PAGE = "page"
-    ENTITIES = "entities"
-    READING_ORDER = "reading_order"
+#
+# Phase 4 leftover (2026-05) — l'enum local ``GTLevel`` a été supprimé
+# au profit de ``picarones.domain.artifacts.ArtifactType`` (canonique
+# depuis Sprint A14).  Le mapping appliqué :
+#
+#     GTLevel.TEXT          → ArtifactType.RAW_TEXT
+#     GTLevel.ALTO          → ArtifactType.ALTO_XML
+#     GTLevel.PAGE          → ArtifactType.PAGE_XML
+#     GTLevel.ENTITIES      → ArtifactType.ENTITIES
+#     GTLevel.READING_ORDER → ArtifactType.READING_ORDER
 
 
 @dataclass
@@ -99,8 +94,8 @@ class TextGT:
     source_path: Optional[Path] = None
 
     @property
-    def level(self) -> GTLevel:
-        return GTLevel.TEXT
+    def level(self) -> ArtifactType:
+        return ArtifactType.RAW_TEXT
 
 
 @dataclass
@@ -113,8 +108,8 @@ class AltoGT:
     source_path: Optional[Path] = None
 
     @property
-    def level(self) -> GTLevel:
-        return GTLevel.ALTO
+    def level(self) -> ArtifactType:
+        return ArtifactType.ALTO_XML
 
 
 @dataclass
@@ -125,8 +120,8 @@ class PageGT:
     source_path: Optional[Path] = None
 
     @property
-    def level(self) -> GTLevel:
-        return GTLevel.PAGE
+    def level(self) -> ArtifactType:
+        return ArtifactType.PAGE_XML
 
 
 @dataclass
@@ -143,8 +138,8 @@ class EntitiesGT:
     source_path: Optional[Path] = None
 
     @property
-    def level(self) -> GTLevel:
-        return GTLevel.ENTITIES
+    def level(self) -> ArtifactType:
+        return ArtifactType.ENTITIES
 
 
 @dataclass
@@ -159,8 +154,8 @@ class ReadingOrderGT:
     source_path: Optional[Path] = None
 
     @property
-    def level(self) -> GTLevel:
-        return GTLevel.READING_ORDER
+    def level(self) -> ArtifactType:
+        return ArtifactType.READING_ORDER
 
 
 # Union des payloads — utilisée pour le typage des métriques
@@ -172,12 +167,12 @@ GTPayload = Union[TextGT, AltoGT, PageGT, EntitiesGT, ReadingOrderGT]
 # ──────────────────────────────────────────────────────────────────────────
 
 
-GT_SUFFIXES: dict[GTLevel, str] = {
-    GTLevel.TEXT: ".gt.txt",
-    GTLevel.ALTO: ".gt.alto.xml",
-    GTLevel.PAGE: ".gt.page.xml",
-    GTLevel.ENTITIES: ".gt.entities.json",
-    GTLevel.READING_ORDER: ".gt.reading_order.json",
+GT_SUFFIXES: dict[ArtifactType, str] = {
+    ArtifactType.RAW_TEXT: ".gt.txt",
+    ArtifactType.ALTO_XML: ".gt.alto.xml",
+    ArtifactType.PAGE_XML: ".gt.page.xml",
+    ArtifactType.ENTITIES: ".gt.entities.json",
+    ArtifactType.READING_ORDER: ".gt.reading_order.json",
 }
 
 
@@ -198,7 +193,7 @@ class Document:
     Le champ ``ground_truth: str`` reste le niveau ``TEXT`` historique et
     garantit la rétrocompatibilité stricte avec tout le code existant
     (runner, métriques, rapport, importers).  En complément, le champ
-    ``ground_truths: dict[GTLevel, GTPayload]`` peut porter des niveaux
+    ``ground_truths: dict[ArtifactType, GTPayload]`` peut porter des niveaux
     additionnels (ALTO, PAGE, ENTITIES, READING_ORDER).
 
     Les deux représentations restent synchronisées : si ``ground_truth``
@@ -214,7 +209,7 @@ class Document:
     ocr_text: Optional[str] = None
     """Texte OCR bruité pré-calculé (``None`` pour les corpus classiques sans ``.ocr.txt``)."""
     metadata: dict = field(default_factory=dict)
-    ground_truths: dict[GTLevel, GTPayload] = field(default_factory=dict)
+    ground_truths: dict[ArtifactType, GTPayload] = field(default_factory=dict)
     """GT multi-niveaux (Sprint 32).  Le niveau ``TEXT`` est synchronisé
     automatiquement avec le champ ``ground_truth`` ci-dessus."""
 
@@ -222,23 +217,23 @@ class Document:
         if not self.doc_id:
             self.doc_id = self.image_path.stem
         # Synchronise le niveau TEXT entre champ str et dict typé.
-        if GTLevel.TEXT in self.ground_truths:
-            text_payload = self.ground_truths[GTLevel.TEXT]
+        if ArtifactType.RAW_TEXT in self.ground_truths:
+            text_payload = self.ground_truths[ArtifactType.RAW_TEXT]
             if isinstance(text_payload, TextGT) and not self.ground_truth:
                 self.ground_truth = text_payload.text
         elif self.ground_truth:
-            self.ground_truths[GTLevel.TEXT] = TextGT(text=self.ground_truth)
+            self.ground_truths[ArtifactType.RAW_TEXT] = TextGT(text=self.ground_truth)
 
-    def has_gt(self, level: GTLevel) -> bool:
+    def has_gt(self, level: ArtifactType) -> bool:
         """``True`` si le document possède une GT au niveau demandé."""
         return level in self.ground_truths
 
-    def get_gt(self, level: GTLevel) -> Optional[GTPayload]:
+    def get_gt(self, level: ArtifactType) -> Optional[GTPayload]:
         """Retourne le payload GT au niveau demandé, ou ``None``."""
         return self.ground_truths.get(level)
 
     @property
-    def gt_levels(self) -> set[GTLevel]:
+    def gt_levels(self) -> set[ArtifactType]:
         """Niveaux de GT disponibles pour ce document."""
         return set(self.ground_truths.keys())
 
@@ -272,16 +267,16 @@ class Corpus:
         return sum(1 for doc in self.documents if doc.ocr_text is not None)
 
     @property
-    def available_gt_levels(self) -> set[GTLevel]:
+    def available_gt_levels(self) -> set[ArtifactType]:
         """Union des niveaux de GT présents dans au moins un document."""
-        levels: set[GTLevel] = set()
+        levels: set[ArtifactType] = set()
         for doc in self.documents:
             levels.update(doc.gt_levels)
         return levels
 
-    def gt_level_coverage(self) -> dict[GTLevel, int]:
+    def gt_level_coverage(self) -> dict[ArtifactType, int]:
         """Nombre de documents possédant chaque niveau de GT."""
-        coverage: dict[GTLevel, int] = {}
+        coverage: dict[ArtifactType, int] = {}
         for doc in self.documents:
             for level in doc.gt_levels:
                 coverage[level] = coverage.get(level, 0) + 1
@@ -313,21 +308,21 @@ class Corpus:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[GTLevel, GTPayload]:
+def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[ArtifactType, GTPayload]:
     """Détecte et charge les niveaux de GT additionnels présents à côté de l'image.
 
     Les erreurs de lecture/parse sont **dégradées en warning** (cf.
     CLAUDE.md : pas de ``except Exception: pass``) ; le document conserve
     alors les niveaux qui ont pu être chargés.
     """
-    extras: dict[GTLevel, GTPayload] = {}
+    extras: dict[ArtifactType, GTPayload] = {}
     stem = image_path.stem
 
     # ALTO
-    alto_path = image_path.with_name(stem + GT_SUFFIXES[GTLevel.ALTO])
+    alto_path = image_path.with_name(stem + GT_SUFFIXES[ArtifactType.ALTO_XML])
     if alto_path.exists():
         try:
-            extras[GTLevel.ALTO] = AltoGT(
+            extras[ArtifactType.ALTO_XML] = AltoGT(
                 xml_content=alto_path.read_text(encoding=encoding),
                 source_path=alto_path,
             )
@@ -335,10 +330,10 @@ def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[GTLevel, GTPa
             logger.warning("[corpus] ALTO ignoré pour %s : %s", image_path.name, exc)
 
     # PAGE
-    page_path = image_path.with_name(stem + GT_SUFFIXES[GTLevel.PAGE])
+    page_path = image_path.with_name(stem + GT_SUFFIXES[ArtifactType.PAGE_XML])
     if page_path.exists():
         try:
-            extras[GTLevel.PAGE] = PageGT(
+            extras[ArtifactType.PAGE_XML] = PageGT(
                 xml_content=page_path.read_text(encoding=encoding),
                 source_path=page_path,
             )
@@ -346,7 +341,7 @@ def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[GTLevel, GTPa
             logger.warning("[corpus] PAGE XML ignoré pour %s : %s", image_path.name, exc)
 
     # ENTITIES (JSON)
-    ent_path = image_path.with_name(stem + GT_SUFFIXES[GTLevel.ENTITIES])
+    ent_path = image_path.with_name(stem + GT_SUFFIXES[ArtifactType.ENTITIES])
     if ent_path.exists():
         try:
             payload = json.loads(ent_path.read_text(encoding=encoding))
@@ -361,7 +356,7 @@ def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[GTLevel, GTPa
                 )
                 entities = None
             if entities is not None:
-                extras[GTLevel.ENTITIES] = EntitiesGT(
+                extras[ArtifactType.ENTITIES] = EntitiesGT(
                     entities=entities,
                     source_path=ent_path,
                 )
@@ -369,7 +364,7 @@ def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[GTLevel, GTPa
             logger.warning("[corpus] entités ignorées pour %s : %s", image_path.name, exc)
 
     # READING_ORDER (JSON)
-    ro_path = image_path.with_name(stem + GT_SUFFIXES[GTLevel.READING_ORDER])
+    ro_path = image_path.with_name(stem + GT_SUFFIXES[ArtifactType.READING_ORDER])
     if ro_path.exists():
         try:
             payload = json.loads(ro_path.read_text(encoding=encoding))
@@ -384,7 +379,7 @@ def _load_extra_gt_levels(image_path: Path, encoding: str) -> dict[GTLevel, GTPa
                 )
                 region_order = None
             if region_order is not None:
-                extras[GTLevel.READING_ORDER] = ReadingOrderGT(
+                extras[ArtifactType.READING_ORDER] = ReadingOrderGT(
                     region_order=list(region_order),
                     source_path=ro_path,
                 )
@@ -456,7 +451,7 @@ def load_corpus_from_directory(
     )
 
     ocr_text_loaded = 0
-    extra_levels_loaded: dict[GTLevel, int] = {}
+    extra_levels_loaded: dict[ArtifactType, int] = {}
 
     for image_path in image_paths:
         gt_path = image_path.with_name(image_path.stem + gt_suffix)
@@ -483,8 +478,8 @@ def load_corpus_from_directory(
                 logger.warning("Impossible de lire %s : %s — OCR bruité ignoré.", ocr_path, exc)
 
         # GT multi-niveaux (Sprint 32) — détection automatique des fichiers additionnels
-        ground_truths: dict[GTLevel, GTPayload] = {
-            GTLevel.TEXT: TextGT(text=ground_truth, source_path=gt_path),
+        ground_truths: dict[ArtifactType, GTPayload] = {
+            ArtifactType.RAW_TEXT: TextGT(text=ground_truth, source_path=gt_path),
         }
         extras = _load_extra_gt_levels(image_path, encoding=encoding)
         ground_truths.update(extras)

@@ -46,7 +46,6 @@ from pathlib import Path
 PUBLIC_API_NAMES = (
     "Corpus",
     "Document",
-    "GTLevel",
     "TextGT",
     "AltoGT",
     "PageGT",
