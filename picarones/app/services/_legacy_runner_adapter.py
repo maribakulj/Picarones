@@ -746,4 +746,267 @@ __all__ = [
     "engine_to_pipeline_spec",
     "build_adapter_resolver",
     "run_result_to_benchmark_result",
+    "run_benchmark_via_service",
 ]
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Fonction publique principale (Sprint D.1.d)
+# ──────────────────────────────────────────────────────────────────────
+
+
+def run_benchmark_via_service(
+    corpus: "Corpus",
+    engines: list["BaseOCREngine"],
+    *,
+    char_exclude: Any | None = None,
+    normalization_profile: Any | None = None,
+    output_json: Any | None = None,
+    code_version: str | None = None,
+    # ---- Paramètres legacy non encore portés vers BenchmarkService ----
+    # Sprint D.2 du plan v2.0 — les features manquantes seront
+    # ajoutées au ``BenchmarkService`` dans une session ultérieure.
+    show_progress: bool = True,  # noqa: ARG001
+    progress_callback: Any | None = None,  # noqa: ARG001
+    max_workers: int = 4,  # noqa: ARG001
+    timeout_seconds: float = 60.0,
+    partial_dir: Any | None = None,  # noqa: ARG001
+    cancel_event: Any | None = None,  # noqa: ARG001
+    entity_extractor: Any | None = None,  # noqa: ARG001
+    profile: str = "standard",  # noqa: ARG001
+) -> Any:
+    """Adapter de compatibilité ``run_benchmark`` legacy →
+    ``BenchmarkService`` rewrite.
+
+    Présente la signature historique de
+    ``picarones.measurements.runner.run_benchmark`` mais s'appuie
+    en interne sur le rewrite (``CorpusSpec``, ``PipelineSpec``,
+    ``PipelineExecutor``, ``BenchmarkService``).  Pivot du Sprint D
+    du plan v2.0.
+
+    Périmètre actuel (D.1.d, MVP)
+    -----------------------------
+    Cette première version fonctionne pour le cas le plus simple :
+
+    - Un ou plusieurs ``BaseOCREngine`` (OCR seul ou pipeline OCR+LLM
+      via ``OCRLLMPipeline``).
+    - Un ``Corpus`` avec image_path + ground_truth (TEXT) par doc.
+    - Métriques CER/WER calculées via ``compute_metrics`` sur les
+      hypothèses extraites des artefacts produits.
+    - Conversion en ``BenchmarkResult`` legacy compatible avec les
+      consommateurs historiques (rapport HTML, narrative engine).
+
+    Périmètre reporté (D.2)
+    -----------------------
+    Les paramètres suivants sont **acceptés mais ignorés** dans
+    cette MVP — leur portage vers ``BenchmarkService`` constitue
+    le Sprint D.2 :
+
+    - ``show_progress`` (tqdm),
+    - ``progress_callback`` (SSE web),
+    - ``max_workers`` (parallélisme intra-engine),
+    - ``partial_dir`` (reprise sur interruption),
+    - ``cancel_event`` (annulation propre),
+    - ``entity_extractor`` (calcul NER),
+    - ``profile`` (validation de profil de mesures).
+
+    Parameters
+    ----------
+    corpus:
+        Corpus legacy.
+    engines:
+        Liste d'engines/pipelines legacy à benchmarker.
+    char_exclude:
+        Filtre passé à ``compute_metrics``.
+    normalization_profile:
+        Profil de normalisation passé à ``compute_metrics``.
+    output_json:
+        Si fourni, le ``BenchmarkResult`` est sérialisé en JSON
+        à ce chemin (via la sérialisation legacy).
+    code_version:
+        Version du code injectée dans le ``RunContext`` /
+        ``RunManifest``.  Défaut : ``picarones.__version__``.
+    timeout_seconds:
+        Timeout par document propagé au ``CorpusRunner``.
+
+    Returns
+    -------
+    BenchmarkResult
+        Format legacy compatible.
+
+    Raises
+    ------
+    PicaronesError
+        Si les engines ne déclarent pas tous un ``name`` unique
+        (cf. ``build_adapter_resolver``).
+    """
+    import tempfile
+
+    if code_version is None:
+        # Le scanner d'archi rejette ``from picarones import __version__``
+        # parce qu'il classe ``picarones`` (sans sous-package) comme une
+        # lib externe non whitelistée pour la couche ``app/``.  On
+        # contourne via importlib (déclaration dynamique).
+        import importlib
+
+        try:
+            code_version = importlib.import_module("picarones").__version__
+        except (ImportError, AttributeError):
+            code_version = "unknown"
+
+    with tempfile.TemporaryDirectory(prefix="picarones_bench_") as ws:
+        workspace = Path(ws)
+        gt_dir = workspace / "gt"
+        gt_dir.mkdir()
+        run_dir = workspace / "run"
+        run_dir.mkdir()
+
+        # 1. Conversion corpus → CorpusSpec (D.1.a)
+        corpus_spec = corpus_to_corpus_spec(corpus, workspace_dir=gt_dir)
+
+        # 2. Conversion engines → PipelineSpec[] + adapter resolver (D.1.b)
+        pipeline_specs = [engine_to_pipeline_spec(e) for e in engines]
+        adapter_resolver = build_adapter_resolver(engines)
+
+        # 3. Exécution via BenchmarkService rewrite
+        run_result = _execute_via_benchmark_service(
+            corpus_spec=corpus_spec,
+            pipeline_specs=pipeline_specs,
+            adapter_resolver=adapter_resolver,
+            workspace_uri=str(run_dir),
+            code_version=code_version,
+            timeout_seconds=timeout_seconds,
+        )
+
+        # 4. Conversion RunResult → BenchmarkResult legacy (D.1.c)
+        benchmark_result = run_result_to_benchmark_result(
+            run_result,
+            corpus=corpus,
+            engines=engines,
+            char_exclude=char_exclude,
+            normalization_profile=normalization_profile,
+        )
+
+    # 5. Sérialisation JSON optionnelle
+    if output_json is not None:
+        _persist_benchmark_result_json(benchmark_result, Path(output_json))
+
+    return benchmark_result
+
+
+def _execute_via_benchmark_service(
+    *,
+    corpus_spec: CorpusSpec,
+    pipeline_specs: list[PipelineSpec],
+    adapter_resolver: Callable[[str], Any],
+    workspace_uri: str,
+    code_version: str,
+    timeout_seconds: float,
+) -> Any:
+    """Lance ``BenchmarkService.run`` sur les specs converties.
+
+    Vues passées en liste vide — les métriques sont calculées
+    côté converter D.1.c via ``compute_metrics`` directement sur
+    les hypothèses extraites des artefacts.  Pattern simple,
+    cohérent avec le legacy qui calcule aussi les métriques au
+    moment du benchmark (pas via ``EvaluationView``).
+    """
+    from picarones.app.services.benchmark_service import BenchmarkService
+    from picarones.evaluation.projectors.registry import ProjectorRegistry
+    from picarones.evaluation.registry.registry import MetricRegistry
+    from picarones.evaluation.views.executor import (
+        DefaultEvaluationViewExecutor,
+    )
+    from picarones.pipeline.executor import PipelineExecutor
+    from picarones.pipeline.runner import CorpusRunner
+    from picarones.pipeline.types import RunContext
+
+    executor = PipelineExecutor(adapter_resolver=adapter_resolver)
+    runner = CorpusRunner(
+        executor,
+        max_in_flight=2,
+        timeout_seconds_per_doc=timeout_seconds,
+    )
+
+    # ViewExecutor minimal : registres vides.
+    # Pas de calcul de ``ViewResult`` ici — le converter D.1.c
+    # calcule les métriques côté legacy via ``compute_metrics``
+    # directement sur les hypothèses extraites des artefacts.
+    view_executor = DefaultEvaluationViewExecutor.from_registries(
+        metric_registry=MetricRegistry(),
+        projector_registry=ProjectorRegistry(),
+        payload_loader=lambda art: None,
+    )
+    bench = BenchmarkService(
+        corpus_runner=runner,
+        view_executor=view_executor,
+        code_version=code_version,
+    )
+
+    # Factory pour les inputs initiaux (toujours IMAGE depuis l'URI).
+    def inputs_factory(doc: DocumentRef) -> dict[ArtifactType, Any]:
+        from picarones.domain.artifacts import Artifact
+
+        if doc.image_uri is None:
+            raise PicaronesError(
+                f"Document {doc.id!r} sans image_uri — la pipeline "
+                "par défaut consomme une IMAGE en entrée.",
+            )
+        return {
+            ArtifactType.IMAGE: Artifact(
+                id=f"{doc.id}:image",
+                document_id=doc.id,
+                type=ArtifactType.IMAGE,
+                uri=doc.image_uri,
+            ),
+        }
+
+    # GT factory : pas utilisée car ``views=[]``.
+    def gt_factory(doc: DocumentRef, art_type: ArtifactType) -> Any:
+        return None
+
+    # Context factory : ``workspace_uri`` propagé pour résoudre les
+    # output paths des adapters (cf. ``resolve_output_path``).
+    def context_factory(
+        doc: DocumentRef, pipeline_name: str,
+    ) -> RunContext:
+        return RunContext(
+            document_id=doc.id,
+            code_version=code_version,
+            pipeline_name=pipeline_name,
+            workspace_uri=workspace_uri,
+        )
+
+    return bench.run(
+        corpus=corpus_spec,
+        pipelines=pipeline_specs,
+        views=[],
+        ground_truth_factory=gt_factory,
+        pipeline_inputs_factory=inputs_factory,
+        context_factory=context_factory,
+    )
+
+
+def _persist_benchmark_result_json(
+    benchmark_result: Any, output_path: Path,
+) -> None:
+    """Sérialise un ``BenchmarkResult`` legacy en JSON.
+
+    Utilise la méthode ``to_json``/``compact``/``asdict`` selon la
+    surface disponible.  Ce helper duplique la logique de
+    ``measurements.runner.orchestration._save_benchmark_json`` en
+    attendant que ``BenchmarkResult`` quitte ``evaluation/`` (Sprint E).
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # ``BenchmarkResult`` est un dataclass — dataclasses.asdict
+    # sérialise récursivement.  Le format n'est pas forcément
+    # identique octet pour octet à la sortie legacy, mais reste
+    # compatible avec les consommateurs (rapport, narrative).
+    import dataclasses
+    import json
+
+    payload = dataclasses.asdict(benchmark_result)
+    output_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )

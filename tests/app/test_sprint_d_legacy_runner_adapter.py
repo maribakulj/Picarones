@@ -827,3 +827,158 @@ class TestRunResultToBenchmarkResult:
             run_result_to_benchmark_result(
                 run_result, corpus=corpus, engines=[ocr],
             )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# run_benchmark_via_service (D.1.d) — E2E
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestRunBenchmarkViaService:
+    """Tests end-to-end de la fonction publique principale.
+
+    Couvre la chaîne D.1.a → D.1.b → D.1.c assemblée par D.1.d :
+    ``Corpus`` legacy → ``CorpusSpec`` → ``BenchmarkService.run`` →
+    ``RunResult`` → ``BenchmarkResult`` legacy.
+    """
+
+    def test_single_ocr_perfect_match(self, tmp_path: Path) -> None:
+        """OCR mock qui retourne le GT exact → CER 0, hypothesis = GT."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        img = tmp_path / "doc1.png"
+        img.write_bytes(b"\x89PNG fake")
+        doc = Document(
+            image_path=img,
+            ground_truth="bonjour le monde",
+            doc_id="doc1",
+        )
+        corpus = Corpus(name="t", documents=[doc])
+
+        ocr = _MockOCR(name="mock_ocr_perfect")
+        # Surcharge pour retourner exactement le GT.
+        ocr._run_ocr = lambda p: "bonjour le monde"
+
+        bm = run_benchmark_via_service(corpus, [ocr])
+
+        assert bm.corpus_name == "t"
+        assert bm.document_count == 1
+        assert len(bm.engine_reports) == 1
+        report = bm.engine_reports[0]
+        assert report.engine_name == "mock_ocr_perfect"
+        assert len(report.document_results) == 1
+        dr = report.document_results[0]
+        assert dr.hypothesis == "bonjour le monde"
+        assert dr.metrics.cer == pytest.approx(0.0)
+        assert dr.engine_error is None
+
+    def test_multiple_engines_multiple_docs(self, tmp_path: Path) -> None:
+        """2 engines × 2 docs → 2 reports × 2 document_results chacun."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        docs = []
+        for i in range(2):
+            img = tmp_path / f"doc{i}.png"
+            img.write_bytes(b"x")
+            docs.append(
+                Document(
+                    image_path=img,
+                    ground_truth=f"texte {i}",
+                    doc_id=f"doc{i}",
+                ),
+            )
+        corpus = Corpus(name="multi", documents=docs)
+
+        ocr_a = _MockOCR(name="engine_a")
+        ocr_a._run_ocr = lambda p: "texte 0" if "doc0" in str(p) else "texte 1"
+        ocr_b = _MockOCR(name="engine_b")
+        ocr_b._run_ocr = lambda p: "texte 0" if "doc0" in str(p) else "texte 1"
+
+        bm = run_benchmark_via_service(corpus, [ocr_a, ocr_b])
+
+        assert bm.document_count == 2
+        assert len(bm.engine_reports) == 2
+        for report in bm.engine_reports:
+            assert len(report.document_results) == 2
+            for dr in report.document_results:
+                assert dr.metrics.cer == pytest.approx(0.0)
+
+    def test_aggregation_present_in_engine_report(self, tmp_path: Path) -> None:
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        doc = Document(image_path=img, ground_truth="x", doc_id="d")
+        corpus = Corpus(name="t", documents=[doc])
+
+        ocr = _MockOCR()
+        ocr._run_ocr = lambda p: "x"
+        bm = run_benchmark_via_service(corpus, [ocr])
+
+        report = bm.engine_reports[0]
+        assert report.aggregated_metrics
+        cer_stats = report.aggregated_metrics.get("cer")
+        assert cer_stats is not None
+        assert cer_stats["mean"] == pytest.approx(0.0)
+
+    def test_output_json_persists_to_disk(self, tmp_path: Path) -> None:
+        """``output_json=path`` écrit le BenchmarkResult sérialisé."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        doc = Document(image_path=img, ground_truth="x", doc_id="d")
+        corpus = Corpus(name="t", documents=[doc])
+
+        ocr = _MockOCR()
+        ocr._run_ocr = lambda p: "x"
+        out_path = tmp_path / "result.json"
+
+        run_benchmark_via_service(corpus, [ocr], output_json=out_path)
+
+        assert out_path.exists()
+        content = json.loads(out_path.read_text(encoding="utf-8"))
+        assert content["corpus_name"] == "t"
+        assert content["document_count"] == 1
+        assert len(content["engine_reports"]) == 1
+
+    def test_legacy_params_accepted_but_ignored(self, tmp_path: Path) -> None:
+        """Les paramètres avancés (show_progress, callback, etc.) sont
+        acceptés sans erreur dans cette MVP — leur portage vers
+        BenchmarkService est Sprint D.2."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        doc = Document(image_path=img, ground_truth="x", doc_id="d")
+        corpus = Corpus(name="t", documents=[doc])
+
+        ocr = _MockOCR()
+        ocr._run_ocr = lambda p: "x"
+
+        # Tous les paramètres legacy passent sans lever.
+        bm = run_benchmark_via_service(
+            corpus,
+            [ocr],
+            show_progress=False,
+            progress_callback=lambda *a, **k: None,
+            max_workers=1,
+            timeout_seconds=10.0,
+            partial_dir=tmp_path / "partial",
+            cancel_event=None,
+            entity_extractor=None,
+            profile="standard",
+            char_exclude=frozenset(),
+            normalization_profile=None,
+        )
+        assert bm.engine_reports
