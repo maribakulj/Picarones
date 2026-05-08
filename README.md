@@ -200,6 +200,7 @@ For Docker, institutional deployment, or HuggingFace Spaces, see
 
 | Engine | Type | Installation |
 |--------|------|-------------|
+| **_step_executor** | Unknown | — |
 | **Azure Doc Intelligence** | Cloud API | `AZURE_DOC_INTEL_ENDPOINT` + `AZURE_DOC_INTEL_KEY` |
 | **Google Vision** | Cloud API | `GOOGLE_APPLICATION_CREDENTIALS` env var |
 | **Mistral OCR** | Cloud API | `MISTRAL_API_KEY` env var |
@@ -394,7 +395,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~4770 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~4790 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

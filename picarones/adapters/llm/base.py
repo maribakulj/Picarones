@@ -152,6 +152,47 @@ def log_http_error(
 from picarones.domain.errors import AdapterStepError
 
 
+def _substitute_prompt_variables(
+    template: str,
+    text: str,
+    image_b64: str | None,
+) -> str:
+    """Substitue les variables d'un template de prompt LLM.
+
+    Supporte deux conventions de nommage des variables :
+
+    - **Rewrite** (Sprint A14-S44) : ``{text}``.  Substitué par
+      ``str.format(text=text)``.
+    - **Legacy** (``OCRLLMPipeline``, Sprint A.2 du plan v2.0) :
+      ``{ocr_output}`` et ``{image_b64}``.  Substitués par
+      ``str.replace(...)`` — tolérant si une variable est absente
+      du template.
+
+    La convention est détectée automatiquement.  Si le template
+    contient ``{ocr_output}`` ou ``{image_b64}``, on applique le
+    format legacy ; sinon, on applique le format rewrite (qui
+    lèvera ``KeyError`` si une variable inattendue est utilisée,
+    comportement strict d'origine).
+
+    Parameters
+    ----------
+    template:
+        Template de prompt (chaîne avec variables ``{...}``).
+    text:
+        Texte OCR à injecter (substitue ``{text}`` ou ``{ocr_output}``).
+    image_b64:
+        Image encodée base64 sans préfixe (substitue ``{image_b64}``).
+        ``None`` → chaîne vide pour les modes texte-seul.
+    """
+    if "{ocr_output}" in template or "{image_b64}" in template:
+        return (
+            template
+            .replace("{ocr_output}", text)
+            .replace("{image_b64}", image_b64 or "")
+        )
+    return template.format(text=text)
+
+
 class LLMAdapterError(AdapterStepError):
     """Erreur typée pour un échec d'adapter LLM.
 
@@ -427,26 +468,38 @@ class BaseLLMAdapter(ABC):
                     image_path.read_bytes(),
                 ).decode("ascii")
 
-        # Priorité : override explicite via config > prompt par langue
-        # selon config["lang"] > FR par défaut.
-        custom_prompt = self.config.get("correction_prompt")
-        if custom_prompt is not None:
-            prompt_template = custom_prompt
+        # Priorité (Sprint A.2 du plan v2.0) :
+        # 1. ``params["prompt_template"]`` (override par le step lui-même —
+        #    permet à un caller qui construit une PipelineSpec d'injecter
+        #    un prompt personnalisé sans toucher à la config de l'adapter).
+        # 2. ``self.config["correction_prompt"]`` (override au constructeur
+        #    de l'adapter — pattern historique).
+        # 3. Prompt par langue selon ``self.config["lang"]``.
+        # 4. Fallback FR.
+        param_prompt = params.get("prompt_template") if params else None
+        if param_prompt is not None:
+            prompt_template = param_prompt
         else:
-            lang = (self.config.get("lang") or "fr").lower()
-            if lang not in self.DEFAULT_CORRECTION_PROMPTS:
-                logger.warning(
-                    "[%s] lang=%r non supportée par "
-                    "DEFAULT_CORRECTION_PROMPTS (%s) — fallback FR. "
-                    "Pour un corpus dans cette langue, fournir "
-                    "config['correction_prompt'] explicite.",
-                    self.name, lang,
-                    sorted(self.DEFAULT_CORRECTION_PROMPTS.keys()),
+            custom_prompt = self.config.get("correction_prompt")
+            if custom_prompt is not None:
+                prompt_template = custom_prompt
+            else:
+                lang = (self.config.get("lang") or "fr").lower()
+                if lang not in self.DEFAULT_CORRECTION_PROMPTS:
+                    logger.warning(
+                        "[%s] lang=%r non supportée par "
+                        "DEFAULT_CORRECTION_PROMPTS (%s) — fallback FR. "
+                        "Pour un corpus dans cette langue, fournir "
+                        "config['correction_prompt'] explicite.",
+                        self.name, lang,
+                        sorted(self.DEFAULT_CORRECTION_PROMPTS.keys()),
+                    )
+                prompt_template = self.DEFAULT_CORRECTION_PROMPTS.get(
+                    lang, self.DEFAULT_CORRECTION_PROMPTS["fr"],
                 )
-            prompt_template = self.DEFAULT_CORRECTION_PROMPTS.get(
-                lang, self.DEFAULT_CORRECTION_PROMPTS["fr"],
-            )
-        prompt = prompt_template.format(text=original_text)
+        prompt = _substitute_prompt_variables(
+            prompt_template, original_text, image_b64,
+        )
 
         result = self.complete(prompt, image_b64=image_b64)
         if not result.success:
