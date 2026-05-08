@@ -15,7 +15,7 @@ import zlib
 
 from picarones.evaluation.metric_result import MetricsResult
 from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
-from picarones.pipelines.over_normalization import detect_over_normalization
+from picarones.evaluation.metrics.over_normalization import detect_over_normalization
 # Sprint 5 — métriques avancées
 from picarones.evaluation.metrics.confusion import build_confusion_matrix
 from picarones.evaluation.metrics.char_scores import compute_ligature_score, compute_diacritic_score

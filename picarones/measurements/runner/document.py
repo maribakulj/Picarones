@@ -101,7 +101,7 @@ def _compute_document_result(
         }
         if ocr_intermediate is not None and ocr_result.success:
             try:
-                from picarones.pipelines.over_normalization import detect_over_normalization
+                from picarones.evaluation.metrics.over_normalization import detect_over_normalization
                 over_norm = detect_over_normalization(
                     ground_truth=ground_truth,
                     ocr_text=ocr_intermediate,

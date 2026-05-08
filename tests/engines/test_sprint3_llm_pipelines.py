@@ -22,7 +22,7 @@ import pytest
 class TestOverNormalization:
 
     def test_no_over_normalization(self):
-        from picarones.pipelines.over_normalization import detect_over_normalization
+        from picarones.evaluation.metrics.over_normalization import detect_over_normalization
         gt  = "nostre seigneur le roy"
         ocr = "noltre seigneur le roy"   # erreur OCR sur 'nostre'
         llm = "nostre seigneur le roy"   # LLM corrige → correct
@@ -31,7 +31,7 @@ class TestOverNormalization:
         assert result.over_normalized_count == 0
 
     def test_perfect_llm_no_over_norm(self):
-        from picarones.pipelines.over_normalization import detect_over_normalization
+        from picarones.evaluation.metrics.over_normalization import detect_over_normalization
         gt  = "nostre seigneur le roy"
         ocr = "nostre seigneur le roy"   # OCR correct
         llm = "nostre seigneur le roy"   # LLM conserve
@@ -40,7 +40,7 @@ class TestOverNormalization:
         assert result.total_correct_ocr_words == 4
 
     def test_over_normalization_detected(self):
-        from picarones.pipelines.over_normalization import detect_over_normalization
+        from picarones.evaluation.metrics.over_normalization import detect_over_normalization
         gt  = "nostre seigneur le roy"
         ocr = "nostre seigneur le roy"   # OCR correct
         llm = "notre seigneur le roy"    # LLM modifie 'nostre' → 'notre' : sur-normalisation
@@ -54,7 +54,7 @@ class TestOverNormalization:
         assert passage["llm"] == "notre"
 
     def test_over_normalization_score_formula(self):
-        from picarones.pipelines.over_normalization import detect_over_normalization
+        from picarones.evaluation.metrics.over_normalization import detect_over_normalization
         # 4 mots, OCR correct sur tous, LLM modifie 2 → score = 2/4 = 0.5
         gt  = "maistre jehan nostre dame"
         ocr = "maistre jehan nostre dame"
@@ -65,7 +65,7 @@ class TestOverNormalization:
         assert result.score == pytest.approx(0.5)
 
     def test_as_dict_keys(self):
-        from picarones.pipelines.over_normalization import detect_over_normalization
+        from picarones.evaluation.metrics.over_normalization import detect_over_normalization
         result = detect_over_normalization("foo bar", "foo baz", "foo baz")
         d = result.as_dict()
         assert "score" in d
@@ -74,12 +74,12 @@ class TestOverNormalization:
         assert "over_normalized_passages" in d
 
     def test_empty_texts(self):
-        from picarones.pipelines.over_normalization import detect_over_normalization
+        from picarones.evaluation.metrics.over_normalization import detect_over_normalization
         result = detect_over_normalization("", "", "")
         assert result.score == 0.0
 
     def test_aggregate_over_normalization(self):
-        from picarones.pipelines.over_normalization import (
+        from picarones.evaluation.metrics.over_normalization import (
             OverNormalizationResult,
             aggregate_over_normalization,
         )
