@@ -45,7 +45,7 @@ from picarones.evaluation.corpus import Corpus, Document
 from picarones.domain import Artifact, ArtifactType, DocumentRef
 from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.measurements.metrics import compute_metrics
-from picarones.measurements.runner import run_benchmark
+from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 from picarones.pipeline import (
     CorpusRunner,
     PipelineExecutor,
@@ -229,7 +229,7 @@ def _run_old_runner(
 ) -> tuple[float | None, float | None]:
     """Exécute l'ancien runner et retourne (mean_cer, mean_wer)."""
     engine = _FakeOCREngine(text_per_doc=hypothesis_per_doc)
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=corpus,
         engines=[engine],
         show_progress=False,

@@ -105,10 +105,10 @@ def mini_corpus(tmp_path: Path) -> Corpus:
 
 def test_runner_completes_all_docs_in_parallel(mini_corpus: Corpus) -> None:
     """Avec ``max_workers=4``, les 5 docs doivent tous finir."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     engine = _SlowMockEngine(sleep_seconds=0.02)
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=mini_corpus,
         engines=[engine],
         max_workers=4,
@@ -121,10 +121,10 @@ def test_runner_completes_all_docs_in_parallel(mini_corpus: Corpus) -> None:
 
 def test_runner_isolates_failing_doc_from_others(mini_corpus: Corpus) -> None:
     """Un fail sur un doc ne doit pas faire échouer les 4 autres."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     engine = _SlowMockEngine(sleep_seconds=0.02, fail_on={"doc_02"})
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=mini_corpus,
         engines=[engine],
         max_workers=4,
@@ -142,9 +142,9 @@ def test_runner_isolates_failing_doc_from_others(mini_corpus: Corpus) -> None:
 def test_runner_isolates_completely_broken_engine(mini_corpus: Corpus) -> None:
     """Un engine qui crashe sur tous les docs → tous les docs ont
     ``error`` non vide, mais le runner ne crashe pas."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=mini_corpus,
         engines=[_AlwaysCrashEngine()],
         max_workers=4,
@@ -161,14 +161,14 @@ def test_runner_isolates_completely_broken_engine(mini_corpus: Corpus) -> None:
 def test_runner_results_ordered_deterministically(mini_corpus: Corpus) -> None:
     """Avec parallélisme, les ``DocumentResult`` doivent rester triés
     de manière déterministe (par doc_id)."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     engine = _SlowMockEngine(sleep_seconds=0.02)
-    result1 = run_benchmark(
+    result1 = run_benchmark_via_service(
         corpus=mini_corpus, engines=[engine],
         max_workers=4, show_progress=False, timeout_seconds=10.0,
     )
-    result2 = run_benchmark(
+    result2 = run_benchmark_via_service(
         corpus=mini_corpus, engines=[engine],
         max_workers=4, show_progress=False, timeout_seconds=10.0,
     )
@@ -183,14 +183,14 @@ def test_runner_results_ordered_deterministically(mini_corpus: Corpus) -> None:
 def test_runner_respects_cancel_event(mini_corpus: Corpus) -> None:
     """``cancel_event.set()`` avant le démarrage doit produire un résultat
     propre (vide ou partiel) sans crasher."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     cancel = threading.Event()
     cancel.set()  # déjà annulé avant le démarrage
     engine = _SlowMockEngine(sleep_seconds=0.05)
     # Le runner ne doit pas lever ; il peut retourner un résultat
     # vide ou très partiel selon le moment où il vérifie l'event.
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=mini_corpus,
         engines=[engine],
         max_workers=2,
@@ -205,13 +205,13 @@ def test_runner_two_successive_runs_no_thread_leak(mini_corpus: Corpus) -> None:
     """Deux benchmarks successifs doivent fonctionner sans accumulation
     notable de threads (garde-fou contre les ProcessPool jamais fermés)."""
     import threading as _t
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     engine = _SlowMockEngine(sleep_seconds=0.01)
 
     threads_before = _t.active_count()
     for _ in range(2):
-        run_benchmark(
+        run_benchmark_via_service(
             corpus=mini_corpus, engines=[engine],
             max_workers=2, show_progress=False, timeout_seconds=5.0,
         )
@@ -227,10 +227,10 @@ def test_runner_two_successive_runs_no_thread_leak(mini_corpus: Corpus) -> None:
 def test_runner_respects_max_workers_one(mini_corpus: Corpus) -> None:
     """``max_workers=1`` → exécution séquentielle (pas de parallélisme).
     Les 5 docs doivent quand même tous finir."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     engine = _SlowMockEngine(sleep_seconds=0.01)
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=mini_corpus, engines=[engine],
         max_workers=1, show_progress=False, timeout_seconds=10.0,
     )
@@ -239,10 +239,10 @@ def test_runner_respects_max_workers_one(mini_corpus: Corpus) -> None:
 
 def test_runner_handles_empty_corpus(tmp_path: Path) -> None:
     """Corpus vide → benchmark vide, pas de crash."""
-    from picarones.measurements.runner import run_benchmark
+    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 
     empty = Corpus(documents=[], name="empty")
-    result = run_benchmark(
+    result = run_benchmark_via_service(
         corpus=empty, engines=[_SlowMockEngine()],
         max_workers=2, show_progress=False, timeout_seconds=5.0,
     )

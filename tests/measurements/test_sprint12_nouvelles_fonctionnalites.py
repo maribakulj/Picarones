@@ -132,10 +132,10 @@ class TestExcludeCharsNormalization:
         # CER devrait être 0 ou très faible maintenant (Bonjourmonde == Bonjourmonde)
         assert metrics_excl.cer == 0.0
 
-    def test_char_exclude_propagated_in_run_benchmark(self, tmp_path):
+    def test_char_exclude_propagated_in_run_benchmark_via_service(self, tmp_path):
         """char_exclude doit être transmis à run_benchmark et réduire le CER."""
         from picarones.evaluation.corpus import Corpus, Document
-        from picarones.measurements.runner import run_benchmark
+        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
         from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
         class MockEngine(BaseOCREngine):
@@ -149,10 +149,10 @@ class TestExcludeCharsNormalization:
         (tmp_path / "page.png").write_bytes(FAKE_PNG)
         corpus = Corpus(name="test", documents=[doc])
 
-        result_raw = run_benchmark(corpus, [MockEngine()])
+        result_raw = run_benchmark_via_service(corpus, [MockEngine()])
         cer_raw = result_raw.engine_reports[0].document_results[0].metrics.cer
 
-        result_excl = run_benchmark(corpus, [MockEngine()], char_exclude=frozenset([",", "!"]))
+        result_excl = run_benchmark_via_service(corpus, [MockEngine()], char_exclude=frozenset([",", "!"]))
         cer_excl = result_excl.engine_reports[0].document_results[0].metrics.cer
 
         assert cer_excl <= cer_raw

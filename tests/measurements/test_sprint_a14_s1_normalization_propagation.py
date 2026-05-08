@@ -23,7 +23,7 @@ from picarones.evaluation.metrics.normalization import (
     NORMALIZATION_PROFILES,
     get_builtin_profile,
 )
-from picarones.measurements.runner import run_benchmark
+from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 from picarones.measurements.runner.document import _compute_document_result
 from picarones.measurements.runner.workers import (
     _io_doc_worker,
@@ -33,7 +33,7 @@ from picarones.measurements.runner.workers import (
 class TestRunBenchmarkSignature:
     def test_run_benchmark_accepts_normalization_profile(self) -> None:
         """La signature publique doit exposer ``normalization_profile``."""
-        sig = inspect.signature(run_benchmark)
+        sig = inspect.signature(run_benchmark_via_service)
         assert "normalization_profile" in sig.parameters
         # Et avec une valeur par défaut sûre.
         assert sig.parameters["normalization_profile"].default is None

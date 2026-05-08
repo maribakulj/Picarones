@@ -868,6 +868,15 @@ def run_benchmark_via_service(
         pipeline_specs = [engine_to_pipeline_spec(e) for e in engines]
         adapter_resolver = build_adapter_resolver(engines)
 
+        # Mapping pipeline_name → engine.name pour préserver la
+        # sémantique legacy de ``progress_callback(engine_name, ...)``
+        # qui attend le nom de l'engine, pas celui de la pipeline
+        # (qui inclut le préfixe ``ocr_only_`` côté rewrite).
+        pipeline_to_engine_name = {
+            spec.name: engine.name
+            for spec, engine in zip(pipeline_specs, engines)
+        }
+
         # 3. Exécution via BenchmarkService rewrite
         run_result = _execute_via_benchmark_service(
             corpus_spec=corpus_spec,
@@ -878,6 +887,7 @@ def run_benchmark_via_service(
             timeout_seconds=timeout_seconds,
             progress_callback=progress_callback,
             cancel_event=cancel_event,
+            pipeline_to_engine_name=pipeline_to_engine_name,
         )
 
         # 4. Conversion RunResult → BenchmarkResult legacy (D.1.c)
@@ -906,6 +916,7 @@ def _execute_via_benchmark_service(
     timeout_seconds: float,
     progress_callback: Callable[[str, int, str], None] | None = None,
     cancel_event: Any | None = None,
+    pipeline_to_engine_name: dict[str, str] | None = None,
 ) -> Any:
     """Lance ``BenchmarkService.run`` sur les specs converties.
 
@@ -987,8 +998,16 @@ def _execute_via_benchmark_service(
             with counter_lock:
                 idx = counter_state["doc_idx"]
                 counter_state["doc_idx"] = idx + 1
+            # Sémantique legacy : ``progress_callback(engine.name, ...)``
+            # plutôt que le nom de la pipeline (qui inclut le préfixe
+            # ``ocr_only_``).  Le mapping est fourni par le caller.
+            engine_name = (
+                pipeline_to_engine_name.get(pipeline_name, pipeline_name)
+                if pipeline_to_engine_name is not None
+                else pipeline_name
+            )
             try:
-                progress_callback(pipeline_name, idx, doc.id)
+                progress_callback(engine_name, idx, doc.id)
             except Exception:  # noqa: BLE001
                 # Le legacy ignore silencieusement les erreurs du
                 # callback (un caller qui crashe ne doit pas faire

@@ -907,22 +907,22 @@ class TestRunnerProgressCallback:
     def test_callback_signature_accepted(self):
         """run_benchmark accepte un paramètre progress_callback."""
         import inspect
-        from picarones.measurements.runner import run_benchmark
-        sig = inspect.signature(run_benchmark)
+        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
+        sig = inspect.signature(run_benchmark_via_service)
         assert "progress_callback" in sig.parameters
 
     def test_callback_is_optional(self):
         """progress_callback est optionnel (valeur par défaut None)."""
         import inspect
-        from picarones.measurements.runner import run_benchmark
-        sig = inspect.signature(run_benchmark)
+        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
+        sig = inspect.signature(run_benchmark_via_service)
         param = sig.parameters["progress_callback"]
         assert param.default is None
 
     def test_callback_called_with_mock_engine(self, tmp_corpus):
         """Le callback est appelé pour chaque document."""
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.measurements.runner import run_benchmark
+        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
@@ -937,13 +937,13 @@ class TestRunnerProgressCallback:
         def my_callback(engine_name, doc_idx, doc_id):
             calls.append((engine_name, doc_idx, doc_id))
 
-        run_benchmark(corpus, [MockEngine()], progress_callback=my_callback)
+        run_benchmark_via_service(corpus, [MockEngine()], progress_callback=my_callback)
         assert len(calls) == len(corpus), f"Expected {len(corpus)} calls, got {len(calls)}"
 
     def test_callback_receives_engine_name(self, tmp_corpus):
         """Le callback reçoit le nom du moteur."""
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.measurements.runner import run_benchmark
+        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
@@ -958,13 +958,13 @@ class TestRunnerProgressCallback:
         def my_callback(engine_name, doc_idx, doc_id):
             engine_names.append(engine_name)
 
-        run_benchmark(corpus, [MockEngine()], progress_callback=my_callback)
+        run_benchmark_via_service(corpus, [MockEngine()], progress_callback=my_callback)
         assert all(n == "test_engine_name" for n in engine_names)
 
     def test_callback_exception_does_not_crash(self, tmp_corpus):
         """Une exception dans le callback ne plante pas le benchmark."""
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.measurements.runner import run_benchmark
+        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
         from picarones.adapters.legacy_engines.base import BaseOCREngine
 
         class MockEngine(BaseOCREngine):
@@ -980,7 +980,7 @@ class TestRunnerProgressCallback:
             raise RuntimeError("Callback error!")
 
         # Ne doit pas lever d'exception
-        result = run_benchmark(corpus, [MockEngine()], progress_callback=bad_callback)
+        result = run_benchmark_via_service(corpus, [MockEngine()], progress_callback=bad_callback)
         assert result is not None
 
 
