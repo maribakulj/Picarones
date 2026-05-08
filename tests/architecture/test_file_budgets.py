@@ -37,7 +37,7 @@ FILE_BUDGETS: dict[str, int] = {
     # pont OCRLLMPipeline (legacy) vers PipelineExecutor (rewrite).
     # Sera supprimé en Sprint C-D quand les callers consommeront des
     # PipelineSpec directement.
-    "picarones/pipelines/_executor_runner.py": 470,  # actuel 410
+    "picarones/adapters/legacy_pipelines/_executor_runner.py": 470,  # actuel 410
     # Sprint D.1 (plan v2.0) — adapter de compat run_benchmark legacy
     # → BenchmarkService rewrite.  Module transitoire qui sera
     # supprimé en D.6 avec measurements/runner/.

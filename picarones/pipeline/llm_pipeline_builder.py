@@ -30,7 +30,7 @@ Exemple de migration
 --------------------
 Code legacy ::
 
-    from picarones.pipelines import OCRLLMPipeline, PipelineMode
+    from picarones.adapters.legacy_pipelines import OCRLLMPipeline, PipelineMode
     from picarones.adapters.legacy_engines.tesseract import TesseractEngine
     from picarones.adapters.llm import OpenAIAdapter
 

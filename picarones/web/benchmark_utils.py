@@ -128,7 +128,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
     llm = _build_llm_adapter(comp)
 
-    from picarones.pipelines.base import OCRLLMPipeline
+    from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline
     prompt = comp.prompt_file or "correction_medieval_french.txt"
 
     if is_corpus_ocr:

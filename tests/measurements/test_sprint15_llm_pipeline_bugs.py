@@ -173,7 +173,7 @@ class TestPipelineEmptyLLMResponse:
 
     def _make_pipeline(self, llm_text: str):
         """Crée un pipeline dont le LLM retourne llm_text."""
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         from picarones.adapters.legacy_engines.base import BaseOCREngine
         from picarones.adapters.llm.base import BaseLLMAdapter
         from typing import Optional

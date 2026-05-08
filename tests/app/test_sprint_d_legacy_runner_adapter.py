@@ -393,7 +393,7 @@ class TestEngineToPipelineSpec:
             assert ch.isalnum() or ch in "_-"
 
     def test_ocr_llm_pipeline_text_only(self) -> None:
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
 
         ocr = _MockOCR(name="upstream_ocr")
         llm = _MockLLM(model="mock-1")
@@ -411,7 +411,7 @@ class TestEngineToPipelineSpec:
         assert "prompt_template" in spec.steps[1].params
 
     def test_ocr_llm_pipeline_zero_shot_no_ocr_step(self) -> None:
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
 
         llm = _MockLLM(model="vlm-1")
         pipeline = OCRLLMPipeline(
@@ -464,7 +464,7 @@ class TestBuildAdapterResolver:
         """Pour un OCRLLMPipeline, le resolver enregistre l'OCR
         sous-jacent (wrappé) et le LLM (qui est déjà StepExecutor),
         pas le pipeline lui-même."""
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
 
         ocr = _MockOCR(name="inner_ocr")
         llm = _MockLLM(model="mock-1")
@@ -484,7 +484,7 @@ class TestBuildAdapterResolver:
 
     def test_zero_shot_pipeline_only_registers_llm(self) -> None:
         """En zero_shot, ocr_engine=None → seul le LLM est enregistré."""
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
 
         llm = _MockLLM(model="vlm-1")
         pipeline = OCRLLMPipeline(
@@ -513,7 +513,7 @@ class TestEngineSpecResolverIntegration:
             assert executor is not None
 
     def test_pipeline_spec_resolvers_all_steps(self) -> None:
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
 
         ocr = _MockOCR(name="upstream")
         llm = _MockLLM(model="mock-1")
@@ -701,7 +701,7 @@ class TestRunResultToBenchmarkResult:
         run_result = _make_run_result(document_results=[rdr])
 
         # Pipeline OCR+LLM côté legacy
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
 
         ocr = _MockOCR(name="upstream_ocr")
         llm = _MockLLM(model="mock-1")

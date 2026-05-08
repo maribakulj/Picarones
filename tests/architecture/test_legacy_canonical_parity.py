@@ -66,14 +66,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 LEGACY_PACKAGES: tuple[str, ...] = (
     "measurements",
     "llm",
-    "pipelines",
 )
 
 #: Combien de symboles legacy peuvent être absents de
 #: :data:`LEGACY_PARITY` sans faire échouer le test.  À diminuer
 #: à chaque session de migration : on cible 0 quand le retrait
 #: est complet.
-BOOTSTRAP_BASELINE = 78
+BOOTSTRAP_BASELINE = 73
 
 
 # ──────────────────────────────────────────────────────────────────

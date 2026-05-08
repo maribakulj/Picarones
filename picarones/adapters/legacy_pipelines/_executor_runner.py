@@ -48,7 +48,7 @@ from picarones.pipeline import (
 )
 
 if TYPE_CHECKING:
-    from picarones.pipelines.base import OCRLLMPipeline
+    from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline
 
 
 logger = logging.getLogger("picarones.pipelines.base")

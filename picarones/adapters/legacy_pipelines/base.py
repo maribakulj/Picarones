@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
-from picarones.llm.base import BaseLLMAdapter
+from picarones.adapters.llm.base import BaseLLMAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,12 @@ class PipelineMode(str, Enum):
     """Le LLM reçoit uniquement l'image — aucun OCR amont."""
 
 
-# Répertoire de la bibliothèque de prompts intégrée
-_PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
+# Répertoire de la bibliothèque de prompts intégrée.
+# Sprint C du plan v2.0 : ce module a quitté ``picarones/pipelines/``
+# pour ``picarones/adapters/legacy_pipelines/``.  Le répertoire des
+# prompts vit toujours dans ``picarones/prompts/`` (top-level), donc
+# 3 niveaux au-dessus du ``__file__`` actuel.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
 
 def _load_prompt(prompt_path: str | Path) -> str:
@@ -261,7 +265,7 @@ class OCRLLMPipeline(BaseOCREngine):
         rewrite.  L'API publique (``EngineResult`` retourné, métadonnées,
         warnings) reste identique au comportement historique.
         """
-        from picarones.pipelines._executor_runner import (
+        from picarones.adapters.legacy_pipelines._executor_runner import (
             run_pipeline_via_executor,
         )
 
@@ -296,7 +300,7 @@ class OCRLLMPipeline(BaseOCREngine):
         -------
         EngineResult
         """
-        from picarones.pipelines._executor_runner import (
+        from picarones.adapters.legacy_pipelines._executor_runner import (
             run_pipeline_via_executor,
         )
 

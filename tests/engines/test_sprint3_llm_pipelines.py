@@ -141,13 +141,13 @@ class TestPromptsLibrary:
 class TestPipelineMode:
 
     def test_enum_values(self):
-        from picarones.pipelines.base import PipelineMode
+        from picarones.adapters.legacy_pipelines.base import PipelineMode
         assert PipelineMode.TEXT_ONLY.value == "text_only"
         assert PipelineMode.TEXT_AND_IMAGE.value == "text_and_image"
         assert PipelineMode.ZERO_SHOT.value == "zero_shot"
 
     def test_from_string(self):
-        from picarones.pipelines.base import PipelineMode
+        from picarones.adapters.legacy_pipelines.base import PipelineMode
         assert PipelineMode("text_only") == PipelineMode.TEXT_ONLY
 
 
@@ -219,7 +219,7 @@ class TestOCRLLMPipeline:
         return MockLLM()
 
     def test_load_builtin_prompt(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.TEXT_ONLY,
@@ -228,7 +228,7 @@ class TestOCRLLMPipeline:
         assert "{ocr_output}" in pipeline._prompt_template
 
     def test_prompt_substitution_text_only(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.TEXT_ONLY,
@@ -239,7 +239,7 @@ class TestOCRLLMPipeline:
         assert "{ocr_output}" not in built
 
     def test_auto_name_text_only(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         from picarones.adapters.legacy_engines.tesseract import TesseractEngine
         pipeline = OCRLLMPipeline(
             ocr_engine=TesseractEngine(),
@@ -250,7 +250,7 @@ class TestOCRLLMPipeline:
         assert "mock-v1" in pipeline.name
 
     def test_auto_name_zero_shot(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.ZERO_SHOT,
@@ -258,7 +258,7 @@ class TestOCRLLMPipeline:
         assert "zero-shot" in pipeline.name
 
     def test_custom_name(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.TEXT_ONLY,
@@ -267,7 +267,7 @@ class TestOCRLLMPipeline:
         assert pipeline.name == "mon_pipeline_custom"
 
     def test_pipeline_steps_without_ocr(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.ZERO_SHOT,
@@ -279,7 +279,7 @@ class TestOCRLLMPipeline:
 
     def test_pipeline_steps_with_ocr(self):
         from picarones.adapters.legacy_engines.tesseract import TesseractEngine
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             ocr_engine=TesseractEngine(),
             llm_adapter=self._mock_llm(),
@@ -291,7 +291,7 @@ class TestOCRLLMPipeline:
         assert steps[1]["type"] == "llm"
 
     def test_load_nonexistent_prompt_raises(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         with pytest.raises(FileNotFoundError):
             OCRLLMPipeline(
                 llm_adapter=self._mock_llm(),
@@ -300,7 +300,7 @@ class TestOCRLLMPipeline:
             )
 
     def test_text_only_requires_ocr_engine(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),
             mode=PipelineMode.TEXT_ONLY,
@@ -309,7 +309,7 @@ class TestOCRLLMPipeline:
             pipeline._run_ocr(Path("/nonexistent/image.jpg"))
 
     def test_is_pipeline_flag(self):
-        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
         from picarones.adapters.legacy_engines.base import BaseOCREngine
         pipeline = OCRLLMPipeline(
             llm_adapter=self._mock_llm(),

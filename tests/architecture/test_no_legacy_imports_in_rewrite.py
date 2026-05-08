@@ -47,7 +47,6 @@ REWRITE_PACKAGES: tuple[str, ...] = (
 LEGACY_PACKAGES: tuple[str, ...] = (
     "measurements",
     "llm",
-    "pipelines",
     "web",
     "cli",
     "extras",
