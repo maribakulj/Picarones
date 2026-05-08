@@ -19,13 +19,13 @@ Compatibilité
 
 Utilisation
 -----------
->>> from picarones.extras.importers.iiif import IIIFImporter
+>>> from picarones.adapters.corpus.iiif import IIIFImporter
 >>> importer = IIIFImporter("https://gallica.bnf.fr/ark:/12148/xxx/manifest.json")
 >>> corpus = importer.import_corpus(pages="1-10", output_dir="./corpus/")
 >>> print(f"{len(corpus)} documents téléchargés")
 
 Ou via la fonction de commodité :
->>> from picarones.extras.importers.iiif import import_iiif_manifest
+>>> from picarones.adapters.corpus.iiif import import_iiif_manifest
 >>> corpus = import_iiif_manifest("https://...", pages="1-5", output_dir="./corpus/")
 """
 
@@ -305,13 +305,10 @@ def _extract_v3_transcription(canvas: dict) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 # Chantier 4 (post-Sprint 97) — helpers HTTP factorisés dans
-# :mod:`picarones.extras.importers._http`. Ces noms restent disponibles
+# :mod:`picarones.adapters.corpus._http`. Ces noms restent disponibles
 # depuis ``iiif`` (rétrocompat des tests qui les importent
 # directement, ex. test_sprint4_normalization_iiif et test_chantier4).
-# On importe directement depuis le module pair (``extras.importers._http``)
-# plutôt que via le shim ``picarones.extras.importers._http`` pour éviter une
-# import circulaire au moment du chargement de ``picarones.importers``.
-from picarones.extras.importers._http import (  # noqa: F401
+from picarones.adapters.corpus._http import (  # noqa: F401
     download_url as _download_url,
     validate_http_url as _validate_url,
 )

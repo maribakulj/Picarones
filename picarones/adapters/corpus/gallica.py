@@ -15,7 +15,7 @@ API utilisées
 
 Usage
 -----
->>> from picarones.extras.importers.gallica import GallicaClient
+>>> from picarones.adapters.corpus.gallica import GallicaClient
 >>> client = GallicaClient()
 >>> results = client.search(title="Froissart", date_from=1380, date_to=1420, max_results=10)
 >>> corpus = client.import_document(results[0].ark, pages="1-5", include_gallica_ocr=True)
@@ -126,24 +126,24 @@ class GallicaClient:
 
     # Chantier 4 (post-Sprint 97) — fusion Gallica → IIIF :
     # ``_validate_url`` et le fetch HTTP sont désormais factorisés
-    # dans :mod:`picarones.extras.importers._http`. Avant ce chantier ces
+    # dans :mod:`picarones.adapters.corpus._http`. Avant ce chantier ces
     # 30 lignes étaient dupliquées avec :mod:`iiif`. Le polite
     # ``delay_between_requests`` reste ici (spécifique à la BnF).
 
     @staticmethod
     def _validate_url(url: str) -> None:
-        """Délègue à :func:`picarones.extras.importers._http.validate_http_url`."""
-        from picarones.extras.importers._http import validate_http_url
+        """Délègue à :func:`picarones.adapters.corpus._http.validate_http_url`."""
+        from picarones.adapters.corpus._http import validate_http_url
         validate_http_url(url)
 
     def _fetch_url(self, url: str) -> bytes:
         """Télécharge le contenu d'une URL avec respect du polite delay BnF.
 
-        Délègue à :func:`picarones.extras.importers._http.download_url` puis
+        Délègue à :func:`picarones.adapters.corpus._http.download_url` puis
         applique ``self.delay`` (par défaut 0.5 s) entre les requêtes
         pour respecter les conditions d'utilisation Gallica.
         """
-        from picarones.extras.importers._http import download_url
+        from picarones.adapters.corpus._http import download_url
         try:
             return download_url(
                 url,
@@ -395,7 +395,7 @@ class GallicaClient:
         Corpus
             Corpus avec images et OCR Gallica comme GT (si disponible).
         """
-        from picarones.extras.importers.iiif import IIIFImporter
+        from picarones.adapters.corpus.iiif import IIIFImporter
 
         manifest_url = f"{_GALLICA_BASE}/ark:/12148/{ark}/manifest.json"
         logger.info("Import Gallica ARK %s via IIIF : %s", ark, manifest_url)

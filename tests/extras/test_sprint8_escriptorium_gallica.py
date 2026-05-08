@@ -32,54 +32,54 @@ if TYPE_CHECKING:
 class TestEScriptoriumClient:
 
     def test_import_module(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         assert EScriptoriumClient is not None
 
     def test_init_attributes(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://escriptorium.example.org", token="tok123", timeout=60)
         assert client.base_url == "https://escriptorium.example.org"
         assert client.token == "tok123"
         assert client.timeout == 60
 
     def test_base_url_trailing_slash_stripped(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://escriptorium.example.org/", token="tok")
         assert not client.base_url.endswith("/")
 
     def test_headers_contain_token(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="mytoken")
         headers = client._headers()
         assert "Token mytoken" in headers.get("Authorization", "")
 
     def test_headers_contain_accept_json(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         headers = client._headers()
         assert "application/json" in headers.get("Accept", "")
 
     def test_test_connection_success(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         with patch.object(client, "_get", return_value={"results": [], "count": 0}):
             assert client.test_connection() is True
 
     def test_test_connection_failure(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="bad")
         with patch.object(client, "_get", side_effect=RuntimeError("403")):
             assert client.test_connection() is False
 
     def test_list_projects_empty(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         with patch.object(client, "_paginate", return_value=[]):
             projects = client.list_projects()
             assert projects == []
 
     def test_list_projects_parses_items(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient, EScriptoriumProject
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient, EScriptoriumProject
         client = EScriptoriumClient("https://example.org", token="tok")
         mock_data = [
             {"pk": 1, "name": "Projet Test", "slug": "projet-test",
@@ -94,7 +94,7 @@ class TestEScriptoriumClient:
             assert projects[0].document_count == 5
 
     def test_list_documents_with_project_filter(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         with patch.object(client, "_paginate", return_value=[]) as mock_pag:
             client.list_documents(project_pk=42)
@@ -102,7 +102,7 @@ class TestEScriptoriumClient:
             assert call_kwargs[0][1]["project"] == 42
 
     def test_list_parts_returns_list(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient, EScriptoriumPart
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient, EScriptoriumPart
         client = EScriptoriumClient("https://example.org", token="tok")
         mock_data = [
             {"pk": 10, "title": "f. 1r", "image": "https://example.org/img/1.jpg", "order": 0},
@@ -115,7 +115,7 @@ class TestEScriptoriumClient:
             assert parts[0].pk == 10
 
     def test_escriptorium_project_as_dict(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumProject
+        from picarones.adapters.corpus.escriptorium import EScriptoriumProject
         p = EScriptoriumProject(pk=1, name="Test", slug="test", owner="user", document_count=3)
         d = p.as_dict()
         assert d["pk"] == 1
@@ -130,25 +130,25 @@ class TestEScriptoriumClient:
 class TestEScriptoriumConnect:
 
     def test_connect_success(self):
-        from picarones.extras.importers.escriptorium import connect_escriptorium, EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import connect_escriptorium, EScriptoriumClient
         with patch.object(EScriptoriumClient, "test_connection", return_value=True):
             client = connect_escriptorium("https://example.org", token="tok")
             assert isinstance(client, EScriptoriumClient)
 
     def test_connect_failure_raises(self):
-        from picarones.extras.importers.escriptorium import connect_escriptorium, EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import connect_escriptorium, EScriptoriumClient
         with patch.object(EScriptoriumClient, "test_connection", return_value=False):
             with pytest.raises(RuntimeError, match="Impossible de se connecter"):
                 connect_escriptorium("https://example.org", token="bad")
 
     def test_connect_returns_client_with_correct_url(self):
-        from picarones.extras.importers.escriptorium import connect_escriptorium, EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import connect_escriptorium, EScriptoriumClient
         with patch.object(EScriptoriumClient, "test_connection", return_value=True):
             client = connect_escriptorium("https://myinstance.org", token="tok")
             assert "myinstance.org" in client.base_url
 
     def test_connect_timeout_passed(self):
-        from picarones.extras.importers.escriptorium import connect_escriptorium, EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import connect_escriptorium, EScriptoriumClient
         with patch.object(EScriptoriumClient, "test_connection", return_value=True):
             client = connect_escriptorium("https://example.org", token="tok", timeout=120)
             assert client.timeout == 120
@@ -189,14 +189,14 @@ class TestEScriptoriumExport:
         )
 
     def test_export_unknown_engine_raises(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         bm = self._make_benchmark("tesseract")
         with pytest.raises(ValueError, match="unknown_engine"):
             client.export_benchmark_as_layer(bm, doc_pk=1, engine_name="unknown_engine")
 
     def test_export_returns_count(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         bm = self._make_benchmark("tesseract")
         with patch.object(client, "_post", return_value={}):
@@ -206,7 +206,7 @@ class TestEScriptoriumExport:
             assert count == 1
 
     def test_export_layer_name_default(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         bm = self._make_benchmark("tesseract")
         calls = []
@@ -215,7 +215,7 @@ class TestEScriptoriumExport:
         assert calls[0]["name"] == "picarones_tesseract"
 
     def test_export_custom_layer_name(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         bm = self._make_benchmark("tesseract")
         calls = []
@@ -226,7 +226,7 @@ class TestEScriptoriumExport:
         assert calls[0]["name"] == "my_layer"
 
     def test_export_skips_error_docs(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         from picarones.evaluation.benchmark_result import BenchmarkResult, EngineReport, DocumentResult
         from picarones.evaluation.metric_result import MetricsResult
         metrics = MetricsResult(cer=0.1, wer=0.2, cer_nfc=0.1, cer_caseless=0.1,
@@ -244,7 +244,7 @@ class TestEScriptoriumExport:
         assert count == 1  # seul le doc sans erreur est exporté
 
     def test_export_with_part_mapping(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         bm = self._make_benchmark("tesseract")
         calls = []
@@ -256,7 +256,7 @@ class TestEScriptoriumExport:
         assert "999" in calls[0]
 
     def test_export_post_error_is_logged_not_raised(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumClient
+        from picarones.adapters.corpus.escriptorium import EScriptoriumClient
         client = EScriptoriumClient("https://example.org", token="tok")
         bm = self._make_benchmark("tesseract")
         with patch.object(client, "_post", side_effect=RuntimeError("500")):
@@ -264,7 +264,7 @@ class TestEScriptoriumExport:
         assert count == 0
 
     def test_document_result_as_dict_used(self):
-        from picarones.extras.importers.escriptorium import EScriptoriumDocument
+        from picarones.adapters.corpus.escriptorium import EScriptoriumDocument
         d = EScriptoriumDocument(pk=42, name="Doc", project="1", part_count=10,
                                  transcription_layers=["manual", "auto"])
         d_dict = d.as_dict()
@@ -279,22 +279,22 @@ class TestEScriptoriumExport:
 class TestGallicaRecord:
 
     def test_import_module(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         assert GallicaRecord is not None
 
     def test_ark_property(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         r = GallicaRecord(ark="12148/btv1b8453561w", title="Test")
         assert "12148/btv1b8453561w" in r.url
 
     def test_manifest_url(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         r = GallicaRecord(ark="12148/btv1b8453561w", title="Test")
         assert "manifest.json" in r.manifest_url
         assert "12148/btv1b8453561w" in r.manifest_url
 
     def test_as_dict_keys(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         r = GallicaRecord(ark="12148/btv1b8453561w", title="Froissart", creator="Froissart")
         d = r.as_dict()
         assert "ark" in d
@@ -303,12 +303,12 @@ class TestGallicaRecord:
         assert "url" in d
 
     def test_has_ocr_default_false(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         r = GallicaRecord(ark="12148/xxx", title="Test")
         assert r.has_ocr is False
 
     def test_has_ocr_true(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         r = GallicaRecord(ark="12148/xxx", title="Test", has_ocr=True)
         assert r.has_ocr is True
 
@@ -320,31 +320,31 @@ class TestGallicaRecord:
 class TestGallicaClient:
 
     def test_import_module(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         assert GallicaClient is not None
 
     def test_init_defaults(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         assert client.timeout == 30
         assert client.delay >= 0
 
     def test_search_returns_list(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         with patch.object(client, "_fetch_url", side_effect=RuntimeError("network")):
             results = client.search(title="Froissart", max_results=5)
             assert isinstance(results, list)
 
     def test_search_empty_on_network_error(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         with patch.object(client, "_fetch_url", side_effect=RuntimeError("timeout")):
             results = client.search(title="test")
             assert results == []
 
     def test_get_ocr_text_returns_string(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         with patch.object(client, "_fetch_url", return_value=b"Froissart transcription"):
             text = client.get_ocr_text("12148/btv1b8453561w", page=1)
@@ -352,7 +352,7 @@ class TestGallicaClient:
             assert "Froissart" in text
 
     def test_get_ocr_text_empty_on_html_response(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         html = b"<!DOCTYPE html><html><body>Page non disponible</body></html>"
         with patch.object(client, "_fetch_url", return_value=html):
@@ -360,14 +360,14 @@ class TestGallicaClient:
             assert text == ""
 
     def test_get_ocr_text_empty_on_error(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         with patch.object(client, "_fetch_url", side_effect=RuntimeError("404")):
             text = client.get_ocr_text("12148/xxx", page=99)
             assert text == ""
 
     def test_get_metadata_returns_dict(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
         <oai_dc:dc xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
@@ -383,14 +383,14 @@ class TestGallicaClient:
             assert meta["creator"] == "Jean Froissart"
 
     def test_get_metadata_on_error_returns_ark_dict(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         with patch.object(client, "_fetch_url", side_effect=RuntimeError("500")):
             meta = client.get_metadata("12148/xxx")
             assert meta == {"ark": "12148/xxx"}
 
     def test_parse_sru_empty_xml(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         xml = b"""<?xml version="1.0"?>
         <searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
@@ -401,13 +401,13 @@ class TestGallicaClient:
         assert records == []
 
     def test_parse_sru_invalid_xml_returns_empty(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0)
         records = client._parse_sru_response(b"not xml at all !!!", max_results=10)
         assert records == []
 
     def test_client_has_delay_attribute(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient(delay_between_requests=0.1)
         assert client.delay == 0.1
 
@@ -419,46 +419,46 @@ class TestGallicaClient:
 class TestGallicaSearchQuery:
 
     def test_build_query_title(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query(title="Froissart")
         assert "Froissart" in query
         assert "dc.title" in query
 
     def test_build_query_author(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query(author="Froissart")
         assert "dc.creator" in query
 
     def test_build_query_date_range(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query(date_from=1380, date_to=1420)
         assert "1380" in query
         assert "1420" in query
 
     def test_build_query_date_from_only(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query(date_from=1400)
         assert "1400" in query
         assert ">=" in query
 
     def test_build_query_ark(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query(ark="12148/btv1b8453561w")
         assert "12148/btv1b8453561w" in query
 
     def test_build_query_empty_returns_default(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query()
         assert len(query) > 0
 
     def test_build_query_combined(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         query = client._build_sru_query(title="Froissart", author="Jean", date_from=1380)
         assert "Froissart" in query
@@ -466,7 +466,7 @@ class TestGallicaSearchQuery:
         assert "1380" in query
 
     def test_search_gallica_function(self):
-        from picarones.extras.importers.gallica import search_gallica, GallicaClient
+        from picarones.adapters.corpus.gallica import search_gallica, GallicaClient
         with patch.object(GallicaClient, "search", return_value=[]):
             results = search_gallica(title="test")
             assert isinstance(results, list)
@@ -479,18 +479,18 @@ class TestGallicaSearchQuery:
 class TestGallicaOCR:
 
     def test_ocr_url_format(self):
-        from picarones.extras.importers import gallica as g
+        from picarones.adapters.corpus import gallica as g
         url = g._OCR_BRUT_TPL.format(ark="12148/btv1b8453561w", page=3)
         assert "12148/btv1b8453561w" in url
         assert "f3" in url
         assert "texteBrut" in url
 
     def test_import_gallica_document_function_exists(self):
-        from picarones.extras.importers.gallica import import_gallica_document
+        from picarones.adapters.corpus.gallica import import_gallica_document
         assert callable(import_gallica_document)
 
     def test_gallica_base_url(self):
-        from picarones.extras.importers import gallica as g
+        from picarones.adapters.corpus import gallica as g
         assert "gallica.bnf.fr" in g._GALLICA_BASE
 
     def test_ark_normalization_in_import(self):
@@ -502,13 +502,13 @@ class TestGallicaOCR:
         assert m.group(1) == "12148/btv1b8453561w"
 
     def test_iiif_manifest_url_pattern(self):
-        from picarones.extras.importers import gallica as g
+        from picarones.adapters.corpus import gallica as g
         url = g._IIIF_MANIFEST_TPL.format(ark="12148/btv1b8453561w")
         assert "manifest.json" in url
         assert "12148/btv1b8453561w" in url
 
     def test_gallica_record_url_structure(self):
-        from picarones.extras.importers.gallica import GallicaRecord
+        from picarones.adapters.corpus.gallica import GallicaRecord
         r = GallicaRecord(ark="12148/btv1b8453561w", title="Test")
         assert r.url.startswith("https://gallica.bnf.fr")
         assert "12148/btv1b8453561w" in r.url

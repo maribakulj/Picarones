@@ -69,14 +69,15 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
     # (Phase 7.D — ``pipeline/legacy_runner.py`` et
     # ``pipeline/legacy_pipeline_benchmark.py`` supprimés.)
-    "picarones/extras/importers/iiif.py": 675,            # actuel 567
-    "picarones/extras/importers/gallica.py": 675,         # actuel 563
+    # Phase 8 — importers IIIF/Gallica déplacés vers ``adapters/corpus/``.
+    "picarones/adapters/corpus/iiif.py": 675,             # actuel 567
+    "picarones/adapters/corpus/gallica.py": 675,          # actuel 563
     # Sprint A14-S10 + Lot D — déplacés depuis measurements/.
     # L'ancien emplacement (shim) a été supprimé au Lot D ; seul le
     # canonique reste dans evaluation/metrics/.
     "picarones/evaluation/metrics/levers.py": 675,        # actuel 561
     "picarones/evaluation/metrics/inter_engine.py": 575,  # actuel 484
-    "picarones/extras/importers/escriptorium.py": 650,    # actuel 553
+    "picarones/adapters/corpus/escriptorium.py": 650,     # actuel 553 (Phase 8)
     # Sprint A14-S1 — A.I.0 P0 : ajout de validated_path,
     # validated_prompt_filename, safe_report_name et compute_workspace_roots.
     # Ces helpers seront extraits dans ``picarones/web/path_security.py``

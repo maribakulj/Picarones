@@ -12,7 +12,7 @@ from picarones.evaluation.metrics.normalization import (
 )
 from picarones.evaluation.metric_result import aggregate_metrics, MetricsResult
 from picarones.measurements.metrics import compute_metrics
-from picarones.extras.importers.iiif import (
+from picarones.adapters.corpus.iiif import (
     IIIFManifestParser,
     parse_page_selector,
     _extract_label,

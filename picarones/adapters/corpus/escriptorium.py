@@ -24,7 +24,7 @@ Les endpoints principaux utilisés ici :
 
 Usage
 -----
->>> from picarones.extras.importers.escriptorium import EScriptoriumClient
+>>> from picarones.adapters.corpus.escriptorium import EScriptoriumClient
 >>> client = EScriptoriumClient("https://escriptorium.example.org", token="abc123")
 >>> projects = client.list_projects()
 >>> corpus = client.import_document(doc_id=42, transcription_layer="manual")
@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING, Optional
 # Émission du warning ``experimental`` à l'import. Phase C du chantier
 # de refonte — voir docstring du module ci-dessus.
 warnings.warn(
-    "picarones.extras.importers.escriptorium is experimental and may "
+    "picarones.adapters.corpus.escriptorium is experimental and may "
     "change or be removed without notice. Use at your own risk until "
     "an institutional use case validates the API.",
     category=UserWarning,

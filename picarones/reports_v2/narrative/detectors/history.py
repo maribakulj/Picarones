@@ -291,7 +291,7 @@ def detect_importer_fallback(benchmark_data: dict) -> list[Fact]:
     """Émet un Fact par incident d'importer en mode dégradé.
 
     Lit ``benchmark_data["importer_fallbacks"]`` (liste de dicts
-    produite par ``picarones.extras.importers.consume_fallback_log()``).
+    produite par ``picarones.adapters.corpus._fallback_log.consume_fallback_log()``).
     Si la clé est absente ou vide, le détecteur reste silencieux —
     typiquement le cas pour un benchmark qui n'utilise pas d'importer
     distant (corpus local).
