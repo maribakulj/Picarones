@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.early_modern_typography import (
+from picarones.evaluation.metrics.early_modern_typography import (
     AMPERSAND,
     DOTLESS_I,
     LIGATURES,

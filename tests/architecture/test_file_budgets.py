@@ -74,7 +74,8 @@ FILE_BUDGETS: dict[str, int] = {
     # ``reports_v2/html/renderers/philological.py``.
     "picarones/reports_v2/html/renderers/philological.py": 700,  # actuel 601
     "picarones/measurements/history.py": 725,             # actuel 615
-    "picarones/measurements/modern_archives.py": 700,     # actuel 599
+    # Sprint E.1 du plan v2.0 — module migré vers ``evaluation/metrics/``.
+    "picarones/evaluation/metrics/modern_archives.py": 700,  # actuel 599
     "picarones/measurements/builtin_hooks.py": 700,       # actuel 590
     # (Phase 7.D — ``pipeline/legacy_runner.py`` et
     # ``pipeline/legacy_pipeline_benchmark.py`` supprimés.)

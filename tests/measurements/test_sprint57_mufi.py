@@ -33,7 +33,7 @@ import pytest
 
 from picarones.evaluation.metric_registry import compute_at_junction, select_metrics
 from picarones.domain.artifacts import ArtifactType
-from picarones.measurements.mufi import (
+from picarones.evaluation.metrics.mufi import (
     compute_mufi_coverage,
     is_mufi_char,
     mufi_coverage,

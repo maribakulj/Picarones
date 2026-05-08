@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.measurements.abbreviations import (
+from picarones.evaluation.metrics.abbreviations import (
     ABBREVIATION_EXPANSIONS,
     abbreviation_expansion_score,
     abbreviation_strict_score,
