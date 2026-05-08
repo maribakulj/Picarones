@@ -130,6 +130,12 @@ class OCRLLMPipeline(BaseOCREngine):
     # Interface BaseOCREngine
     # ------------------------------------------------------------------
 
+    #: Sprint C du plan v2.0 : marqueur polymorphe que le runner
+    #: utilise pour ajouter ``pipeline_steps`` + ``prompt_template``
+    #: aux ``EngineReport.pipeline_info`` sans avoir à connaître le
+    #: type concret ``OCRLLMPipeline``.
+    is_pipeline: bool = True
+
     @property
     def name(self) -> str:
         return self._name
@@ -137,6 +143,21 @@ class OCRLLMPipeline(BaseOCREngine):
     def version(self) -> str:
         ocr_v = self.ocr_engine._safe_version() if self.ocr_engine else "—"
         return f"ocr={ocr_v}; llm={self.llm_adapter.model}"
+
+    @property
+    def pipeline_steps_info(self) -> list[dict]:
+        """Description structurée des étapes (Sprint C — API publique).
+
+        Substitut public à ``_build_steps_info()`` pour les callers
+        externes (notamment le runner) qui ont besoin de connaître la
+        composition de la pipeline pour la metadata du rapport.
+        """
+        return self._build_steps_info()
+
+    @property
+    def prompt_template(self) -> str:
+        """Template de prompt courant (Sprint C — API publique)."""
+        return self._prompt_template
 
     def _run_llm_step(
         self, image_path: Path, ocr_text: str,

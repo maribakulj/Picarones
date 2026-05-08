@@ -118,6 +118,13 @@ class BaseOCREngine(BaseModule):
     execution_mode: str = "io"
     """``"io"`` pour ThreadPoolExecutor (défaut), ``"cpu"`` pour ProcessPoolExecutor."""
 
+    #: ``True`` ssi l'engine est un pipeline composé (OCR+LLM ou VLM).
+    #: Sprint C du plan v2.0 : remplace le check legacy
+    #: ``isinstance(engine, OCRLLMPipeline)`` par un attribut polymorphe.
+    #: Les sous-classes "pipeline composé" (``OCRLLMPipeline``, et tout
+    #: futur composite) surchargent à ``True``.
+    is_pipeline: bool = False
+
     def __init__(self, config: Optional[dict] = None) -> None:
         self.config: dict = config or {}
         # Cache du dernier ``EngineResult`` produit par ``run()`` —

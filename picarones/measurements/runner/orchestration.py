@@ -516,13 +516,13 @@ def _build_pipeline_info(engine: BaseOCREngine, doc_results: list[DocumentResult
         "llm_provider": meta.get("llm_provider"),
     }
 
-    try:
-        from picarones.pipelines.base import OCRLLMPipeline
-        if isinstance(engine, OCRLLMPipeline):
-            info["pipeline_steps"] = engine._build_steps_info()
-            info["prompt_template"] = engine._prompt_template
-    except ImportError:
-        pass
+    # Sprint C du plan v2.0 : duck typing via ``is_pipeline`` au lieu
+    # de ``isinstance(engine, OCRLLMPipeline)``.  Découple le runner
+    # legacy de la classe ``OCRLLMPipeline`` — préparation à la
+    # suppression du sous-package ``picarones.pipelines/`` (Sprint D).
+    if getattr(engine, "is_pipeline", False):
+        info["pipeline_steps"] = engine.pipeline_steps_info
+        info["prompt_template"] = engine.prompt_template
 
     over_norm_results = [
         dr.pipeline_metadata.get("over_normalization")
