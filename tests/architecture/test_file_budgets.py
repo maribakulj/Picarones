@@ -38,6 +38,10 @@ FILE_BUDGETS: dict[str, int] = {
     # Sera supprimé en Sprint C-D quand les callers consommeront des
     # PipelineSpec directement.
     "picarones/pipelines/_executor_runner.py": 470,  # actuel 410
+    # Sprint D.1 (plan v2.0) — adapter de compat run_benchmark legacy
+    # → BenchmarkService rewrite.  Module transitoire qui sera
+    # supprimé en D.6 avec measurements/runner/.
+    "picarones/app/services/_legacy_runner_adapter.py": 575,  # actuel 498
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # statistics.py (1128 lignes) a été éclaté en sous-package

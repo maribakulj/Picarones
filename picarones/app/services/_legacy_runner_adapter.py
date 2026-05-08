@@ -34,15 +34,31 @@ quand toutes les briques seront en place.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
+from picarones.adapters.legacy_engines._step_executor import (
+    LegacyOCREngineExecutor,
+)
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef, GroundTruthRef
 from picarones.domain.errors import PicaronesError
+from picarones.domain.pipeline_spec import (
+    INITIAL_STEP_ID,
+    PipelineSpec,
+    PipelineStep,
+)
+from picarones.pipeline.llm_pipeline_builder import make_ocr_llm_pipeline_spec
 
 if TYPE_CHECKING:
+    from picarones.adapters.legacy_engines.base import BaseOCREngine
     from picarones.evaluation.corpus import Corpus, Document
+
+# Pas d'import direct de ``picarones.pipelines.base.OCRLLMPipeline`` ici —
+# l'invariant architectural ``test_layer_imports_are_legal[layer-app]``
+# interdit à ``app/`` de dépendre du legacy.  On consomme un
+# ``OCRLLMPipeline`` exclusivement par duck typing (``is_pipeline``,
+# ``ocr_engine``, ``llm_adapter``, ``mode``, ``prompt_template``).
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -199,8 +215,188 @@ def corpus_to_corpus_spec(
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Mapping BaseOCREngine → PipelineSpec
+# ──────────────────────────────────────────────────────────────────────
+
+
+def engine_to_pipeline_spec(engine: "BaseOCREngine") -> PipelineSpec:
+    """Convertit un ``BaseOCREngine`` legacy en ``PipelineSpec`` rewrite.
+
+    Deux cas :
+
+    - **OCRLLMPipeline** (``engine.is_pipeline = True``) : la spec
+      composée est construite via ``make_ocr_llm_pipeline_spec``
+      avec le mode (``text_only`` / ``text_and_image`` /
+      ``zero_shot``), l'OCR amont (s'il existe), le LLM, et le
+      template de prompt en ``llm_params``.
+    - **OCR seul** : spec mono-step (IMAGE → RAW_TEXT).  Le step
+      référencera ``engine.name`` ; le caller l'enregistre dans
+      l'adapter resolver via un ``LegacyOCREngineExecutor(engine)``.
+
+    Parameters
+    ----------
+    engine:
+        Instance d'un sous-classe de ``BaseOCREngine`` (Tesseract,
+        Pero, Mistral OCR, Google Vision, Azure DI) ou un
+        ``OCRLLMPipeline``.
+
+    Returns
+    -------
+    PipelineSpec
+        Spec immutable consommable par ``BenchmarkService``.
+    """
+    if getattr(engine, "is_pipeline", False):
+        return _ocr_llm_pipeline_to_spec(engine)
+    return _ocr_only_to_spec(engine)
+
+
+def _ocr_only_to_spec(engine: "BaseOCREngine") -> PipelineSpec:
+    """Spec mono-step : un OCR simple consommant IMAGE et produisant RAW_TEXT."""
+    name = engine.name
+    safe_name = _safe_pipeline_name(name)
+    return PipelineSpec(
+        name=f"ocr_only_{safe_name}",
+        description=f"OCR step seul ({name}) — IMAGE → RAW_TEXT.",
+        initial_inputs=(ArtifactType.IMAGE,),
+        steps=(
+            PipelineStep(
+                id="ocr",
+                kind="ocr",
+                adapter_name=name,
+                input_types=(ArtifactType.IMAGE,),
+                output_types=(ArtifactType.RAW_TEXT,),
+                inputs_from={ArtifactType.IMAGE: INITIAL_STEP_ID},
+            ),
+        ),
+    )
+
+
+def _ocr_llm_pipeline_to_spec(pipeline: Any) -> PipelineSpec:
+    """Spec composée pour un ``OCRLLMPipeline`` (3 modes)."""
+    mode = pipeline.mode.value
+    llm_name = _llm_adapter_name(pipeline.llm_adapter)
+    llm_params: dict[str, str | int | float | bool] = {
+        "prompt_template": pipeline.prompt_template,
+    }
+    if mode == "zero_shot":
+        return make_ocr_llm_pipeline_spec(
+            mode="zero_shot",
+            llm_adapter_name=llm_name,
+            llm_params=llm_params,
+        )
+    if pipeline.ocr_engine is None:
+        raise PicaronesError(
+            f"OCRLLMPipeline mode {mode!r} requiert un ocr_engine — "
+            "valeur None inattendue.",
+        )
+    return make_ocr_llm_pipeline_spec(
+        mode=mode,
+        ocr_adapter_name=pipeline.ocr_engine.name,
+        llm_adapter_name=llm_name,
+        llm_params=llm_params,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Adapter resolver
+# ──────────────────────────────────────────────────────────────────────
+
+
+def build_adapter_resolver(
+    engines: list["BaseOCREngine"],
+) -> Callable[[str], Any]:
+    """Construit un adapter resolver pour ``PipelineExecutor``.
+
+    Parcourt les engines fournis et associe leur ``name`` à un
+    ``StepExecutor`` valide :
+
+    - **OCR simple** (``BaseOCREngine``) → wrapped via
+      ``LegacyOCREngineExecutor`` (qui satisfait le contrat
+      ``StepExecutor``).
+    - **OCRLLMPipeline** → enregistre les deux sous-composants :
+      ``ocr_engine`` (wrapped) et ``llm_adapter`` (déjà
+      ``StepExecutor`` natif depuis Sprint A14-S44).  Le pipeline
+      lui-même n'est pas enregistré directement — sa spec
+      référence ses sous-steps par leur ``adapter_name``.
+
+    Le resolver retourné lève ``KeyError`` si un nom inconnu est
+    demandé.
+
+    Parameters
+    ----------
+    engines:
+        Liste d'engines/pipelines legacy à enregistrer.
+
+    Returns
+    -------
+    Callable[[str], Any]
+        Fonction ``resolver(name) -> step_executor``.
+
+    Raises
+    ------
+    PicaronesError
+        Si deux engines partagent le même ``name`` (collision).
+    """
+    name_to_executor: dict[str, Any] = {}
+
+    def _register(name: str, executor: Any) -> None:
+        existing = name_to_executor.get(name)
+        if existing is not None and existing is not executor:
+            raise PicaronesError(
+                f"Adapter resolver : nom {name!r} enregistré "
+                "deux fois avec des instances différentes — "
+                "collision impossible à résoudre.",
+            )
+        name_to_executor[name] = executor
+
+    for engine in engines:
+        if getattr(engine, "is_pipeline", False):
+            # OCRLLMPipeline : enregistrer ocr + llm sous-jacents.
+            ocr_engine = getattr(engine, "ocr_engine", None)
+            llm_adapter = getattr(engine, "llm_adapter", None)
+            if ocr_engine is not None:
+                _register(ocr_engine.name, LegacyOCREngineExecutor(ocr_engine))
+            if llm_adapter is not None:
+                _register(_llm_adapter_name(llm_adapter), llm_adapter)
+        else:
+            _register(engine.name, LegacyOCREngineExecutor(engine))
+
+    def resolver(name: str) -> Any:
+        if name not in name_to_executor:
+            raise KeyError(
+                f"adapter inconnu pour le resolver legacy : {name!r}.  "
+                f"Enregistrés : {sorted(name_to_executor.keys())!r}."
+            )
+        return name_to_executor[name]
+
+    return resolver
+
+
+# ──────────────────────────────────────────────────────────────────────
 # Helpers privés
 # ──────────────────────────────────────────────────────────────────────
+
+
+def _llm_adapter_name(llm_adapter: Any) -> str:
+    """Identifiant ``provider:model`` stable pour un adapter LLM/VLM.
+
+    Convention identique à celle utilisée par
+    ``picarones.pipelines._executor_runner`` (Sprint B) — les
+    adapter resolvers internes attendent ce format.
+    """
+    return f"{llm_adapter.name}:{llm_adapter.model}"
+
+
+def _safe_pipeline_name(name: str) -> str:
+    """Convertit un ``engine.name`` quelconque en suffixe identifiant
+    valide pour ``PipelineSpec.name`` (alphanum + ``_-``)."""
+    out: list[str] = []
+    for ch in name:
+        if ch.isalnum() or ch in "_-":
+            out.append(ch)
+        else:
+            out.append("_")
+    return "".join(out).strip("_") or "engine"
 
 
 def _safe_doc_id(doc_id: str) -> str:
@@ -297,4 +493,6 @@ def _payload_to_text(level: ArtifactType, payload: object) -> str:
 __all__ = [
     "document_to_document_ref",
     "corpus_to_corpus_spec",
+    "engine_to_pipeline_spec",
+    "build_adapter_resolver",
 ]

@@ -17,12 +17,20 @@ from pathlib import Path
 
 import pytest
 
+from picarones.adapters.legacy_engines._step_executor import (
+    LegacyOCREngineExecutor,
+)
+from picarones.adapters.legacy_engines.base import BaseOCREngine
+from picarones.adapters.llm.base import BaseLLMAdapter
 from picarones.app.services._legacy_runner_adapter import (
+    build_adapter_resolver,
     corpus_to_corpus_spec,
     document_to_document_ref,
+    engine_to_pipeline_spec,
 )
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.errors import PicaronesError
+from picarones.domain.pipeline_spec import INITIAL_STEP_ID
 from picarones.evaluation.corpus import (
     AltoGT,
     Corpus,
@@ -32,6 +40,43 @@ from picarones.evaluation.corpus import (
     ReadingOrderGT,
     TextGT,
 )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Mocks réutilisés pour D.1.b
+# ──────────────────────────────────────────────────────────────────────
+
+
+class _MockOCR(BaseOCREngine):
+    def __init__(self, name: str = "mock_ocr") -> None:
+        super().__init__(config={})
+        self._name = name
+
+    @property
+    def name(self) -> str:  # type: ignore[override]
+        return self._name
+
+    def version(self) -> str:
+        return "1.0"
+
+    def _run_ocr(self, image_path):
+        return "ocr text"
+
+
+class _MockLLM(BaseLLMAdapter):
+    def __init__(self, model: str = "mock-1") -> None:
+        super().__init__(model=model, config={})
+
+    @property
+    def name(self) -> str:
+        return "mock_llm"
+
+    @property
+    def default_model(self) -> str:
+        return "mock-1"
+
+    def _call(self, prompt, image_b64=None):
+        return "corrected"
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -312,3 +357,172 @@ class TestCorpusToCorpusSpec:
         corpus = Corpus(name="dup", documents=docs)
         with pytest.raises(CorpusSpecError, match="dupliqu"):
             corpus_to_corpus_spec(corpus, workspace_dir=tmp_path)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# engine_to_pipeline_spec
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestEngineToPipelineSpec:
+    def test_ocr_only_produces_single_step_spec(self) -> None:
+        ocr = _MockOCR(name="my_ocr")
+        spec = engine_to_pipeline_spec(ocr)
+        assert len(spec.steps) == 1
+        step = spec.steps[0]
+        assert step.id == "ocr"
+        assert step.kind == "ocr"
+        assert step.adapter_name == "my_ocr"
+        assert ArtifactType.IMAGE in step.input_types
+        assert ArtifactType.RAW_TEXT in step.output_types
+        assert step.inputs_from[ArtifactType.IMAGE] == INITIAL_STEP_ID
+
+    def test_ocr_only_initial_inputs_is_image(self) -> None:
+        ocr = _MockOCR()
+        spec = engine_to_pipeline_spec(ocr)
+        assert spec.initial_inputs == (ArtifactType.IMAGE,)
+
+    def test_ocr_only_name_is_safe(self) -> None:
+        """Un engine.name avec caractères spéciaux donne quand même un
+        spec.name conforme."""
+        ocr = _MockOCR(name="weird name (v2)")
+        spec = engine_to_pipeline_spec(ocr)
+        # Le nom de la spec ne doit contenir que des chars autorisés.
+        for ch in spec.name:
+            assert ch.isalnum() or ch in "_-"
+
+    def test_ocr_llm_pipeline_text_only(self) -> None:
+        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+
+        ocr = _MockOCR(name="upstream_ocr")
+        llm = _MockLLM(model="mock-1")
+        pipeline = OCRLLMPipeline(
+            ocr_engine=ocr,
+            llm_adapter=llm,
+            mode=PipelineMode.TEXT_ONLY,
+        )
+        spec = engine_to_pipeline_spec(pipeline)
+        # Spec composée : 2 steps (OCR + LLM).
+        assert len(spec.steps) == 2
+        assert spec.steps[0].adapter_name == "upstream_ocr"
+        assert spec.steps[1].adapter_name == "mock_llm:mock-1"
+        # Le step LLM hérite du prompt template via params.
+        assert "prompt_template" in spec.steps[1].params
+
+    def test_ocr_llm_pipeline_zero_shot_no_ocr_step(self) -> None:
+        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+
+        llm = _MockLLM(model="vlm-1")
+        pipeline = OCRLLMPipeline(
+            llm_adapter=llm,
+            mode=PipelineMode.ZERO_SHOT,
+        )
+        spec = engine_to_pipeline_spec(pipeline)
+        # Un seul step (VLM).
+        assert len(spec.steps) == 1
+        assert spec.steps[0].adapter_name == "mock_llm:vlm-1"
+        assert ArtifactType.RAW_TEXT in spec.steps[0].output_types
+
+
+# ──────────────────────────────────────────────────────────────────────
+# build_adapter_resolver
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestBuildAdapterResolver:
+    def test_single_ocr_engine_registered(self) -> None:
+        ocr = _MockOCR(name="my_ocr")
+        resolver = build_adapter_resolver([ocr])
+        step = resolver("my_ocr")
+        assert isinstance(step, LegacyOCREngineExecutor)
+
+    def test_unknown_name_raises_keyerror(self) -> None:
+        ocr = _MockOCR()
+        resolver = build_adapter_resolver([ocr])
+        with pytest.raises(KeyError, match="adapter inconnu"):
+            resolver("unknown_engine")
+
+    def test_multiple_engines_registered(self) -> None:
+        ocr_a = _MockOCR(name="engine_a")
+        ocr_b = _MockOCR(name="engine_b")
+        resolver = build_adapter_resolver([ocr_a, ocr_b])
+        step_a = resolver("engine_a")
+        step_b = resolver("engine_b")
+        assert isinstance(step_a, LegacyOCREngineExecutor)
+        assert isinstance(step_b, LegacyOCREngineExecutor)
+
+    def test_collision_on_same_name_raises(self) -> None:
+        """Deux engines avec le même name → PicaronesError (le resolver
+        ne peut pas distinguer les deux instances)."""
+        ocr_a = _MockOCR(name="dup")
+        ocr_b = _MockOCR(name="dup")  # même name, instance différente
+        with pytest.raises(PicaronesError, match="enregistré"):
+            build_adapter_resolver([ocr_a, ocr_b])
+
+    def test_pipeline_registers_subcomponents(self) -> None:
+        """Pour un OCRLLMPipeline, le resolver enregistre l'OCR
+        sous-jacent (wrappé) et le LLM (qui est déjà StepExecutor),
+        pas le pipeline lui-même."""
+        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+
+        ocr = _MockOCR(name="inner_ocr")
+        llm = _MockLLM(model="mock-1")
+        pipeline = OCRLLMPipeline(
+            ocr_engine=ocr,
+            llm_adapter=llm,
+            mode=PipelineMode.TEXT_ONLY,
+        )
+        resolver = build_adapter_resolver([pipeline])
+        # Les sous-composants sont disponibles…
+        assert isinstance(resolver("inner_ocr"), LegacyOCREngineExecutor)
+        assert resolver("mock_llm:mock-1") is llm
+        # …mais pas le pipeline lui-même par son nom (le resolver
+        # référence par adapter_name dans la spec, pas par engine).
+        with pytest.raises(KeyError):
+            resolver(pipeline.name)
+
+    def test_zero_shot_pipeline_only_registers_llm(self) -> None:
+        """En zero_shot, ocr_engine=None → seul le LLM est enregistré."""
+        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+
+        llm = _MockLLM(model="vlm-1")
+        pipeline = OCRLLMPipeline(
+            llm_adapter=llm,
+            mode=PipelineMode.ZERO_SHOT,
+        )
+        resolver = build_adapter_resolver([pipeline])
+        assert resolver("mock_llm:vlm-1") is llm
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Intégration : engine_to_pipeline_spec + build_adapter_resolver
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestEngineSpecResolverIntegration:
+    def test_spec_adapter_names_resolve(self) -> None:
+        """Tous les ``adapter_name`` de la spec produite par
+        ``engine_to_pipeline_spec`` doivent être résolvables par
+        ``build_adapter_resolver([engine])``."""
+        ocr = _MockOCR(name="resolved_ocr")
+        spec = engine_to_pipeline_spec(ocr)
+        resolver = build_adapter_resolver([ocr])
+        for step in spec.steps:
+            executor = resolver(step.adapter_name)
+            assert executor is not None
+
+    def test_pipeline_spec_resolvers_all_steps(self) -> None:
+        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+
+        ocr = _MockOCR(name="upstream")
+        llm = _MockLLM(model="mock-1")
+        pipeline = OCRLLMPipeline(
+            ocr_engine=ocr,
+            llm_adapter=llm,
+            mode=PipelineMode.TEXT_AND_IMAGE,
+        )
+        spec = engine_to_pipeline_spec(pipeline)
+        resolver = build_adapter_resolver([pipeline])
+        # Les 2 steps (OCR + LLM) doivent pouvoir être résolus.
+        for step in spec.steps:
+            assert resolver(step.adapter_name) is not None
