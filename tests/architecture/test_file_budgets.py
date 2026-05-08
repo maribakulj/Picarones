@@ -33,6 +33,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # n'ont pas besoin de budget — leur croissance est gérée par les tests
 # de couverture, pas par un seuil dur).
 FILE_BUDGETS: dict[str, int] = {
+    # Sprint B (plan v2.0) — helper d'exécution mono-document qui
+    # pont OCRLLMPipeline (legacy) vers PipelineExecutor (rewrite).
+    # Sera supprimé en Sprint C-D quand les callers consommeront des
+    # PipelineSpec directement.
+    "picarones/pipelines/_executor_runner.py": 470,  # actuel 410
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # statistics.py (1128 lignes) a été éclaté en sous-package

@@ -174,23 +174,42 @@ class TestPipelineEmptyLLMResponse:
     def _make_pipeline(self, llm_text: str):
         """Crée un pipeline dont le LLM retourne llm_text."""
         from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
-        from picarones.llm.base import LLMResult
+        from picarones.adapters.legacy_engines.base import BaseOCREngine
+        from picarones.adapters.llm.base import BaseLLMAdapter
+        from typing import Optional
 
-        mock_ocr = MagicMock()
-        mock_ocr.name = "mock_ocr"
-        mock_ocr.run.return_value = MagicMock(text="texte ocr brut", error=None, success=True)
-        mock_ocr._safe_version.return_value = "1.0"
+        # Sprint B (plan v2.0) : ``OCRLLMPipeline.run()`` délègue à
+        # ``PipelineExecutor`` qui appelle ``llm_adapter.execute()``.
+        # Les mocks doivent donc être de vraies sous-classes des
+        # contrats canoniques, pas de simples ``MagicMock``.
 
-        mock_llm = MagicMock()
-        mock_llm.name = "mock_llm"
-        mock_llm.model = "mock-model"
-        mock_llm.complete.return_value = LLMResult(
-            model_id="mock-model", text=llm_text, duration_seconds=0.1,
-        )
+        class _MockOCR(BaseOCREngine):
+            def __init__(self) -> None:
+                super().__init__(config={})
+            @property
+            def name(self) -> str:
+                return "mock_ocr"
+            def version(self) -> str:
+                return "1.0"
+            def _run_ocr(self, image_path) -> str:
+                return "texte ocr brut"
+
+        class _MockLLM(BaseLLMAdapter):
+            def __init__(self, fixed_text: str) -> None:
+                super().__init__(model="mock-model", config={})
+                self._fixed_text = fixed_text
+            @property
+            def name(self) -> str:
+                return "mock_llm"
+            @property
+            def default_model(self) -> str:
+                return "mock-model"
+            def _call(self, prompt: str, image_b64: Optional[str] = None) -> str:
+                return self._fixed_text
 
         return OCRLLMPipeline(
-            ocr_engine=mock_ocr,
-            llm_adapter=mock_llm,
+            ocr_engine=_MockOCR(),
+            llm_adapter=_MockLLM(llm_text),
             mode=PipelineMode.TEXT_ONLY,
             prompt="correction_medieval_french.txt",
         )

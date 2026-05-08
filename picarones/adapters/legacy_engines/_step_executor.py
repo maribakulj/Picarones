@@ -86,17 +86,27 @@ class LegacyOCREngineExecutor:
     output_types: frozenset = frozenset({ArtifactType.RAW_TEXT})
 
     def __init__(self, engine: BaseOCREngine) -> None:
-        if not isinstance(engine, BaseOCREngine):
+        # Duck-typing tolérant : on accepte un ``BaseOCREngine`` réel
+        # ou un mock qui expose ``run()`` et ``name``.  Cela permet
+        # aux tests existants (Sprint 15) qui injectent des
+        # ``MagicMock`` de continuer à fonctionner.
+        if not (
+            hasattr(engine, "run") and callable(engine.run)
+            and hasattr(engine, "name")
+        ):
             raise OCRAdapterError(
-                "LegacyOCREngineExecutor requires a BaseOCREngine instance ; "
-                f"got {type(engine).__name__}."
+                "LegacyOCREngineExecutor requires an object with ``run()`` "
+                f"and ``name`` ; got {type(engine).__name__}."
             )
         self._engine = engine
         # Le runner choisit ``ProcessPoolExecutor`` pour ``"cpu"``
         # (Tesseract/Pero) et ``ThreadPoolExecutor`` pour ``"io"``
         # (Mistral/Google/Azure).  On respecte le mode déclaré par
-        # l'engine.
+        # l'engine — ``"io"`` par défaut si l'engine ne le déclare pas
+        # (cas du mock).
         self.execution_mode: str = getattr(engine, "execution_mode", "io")
+        if not isinstance(self.execution_mode, str):
+            self.execution_mode = "io"
 
     @property
     def name(self) -> str:

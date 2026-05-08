@@ -86,6 +86,8 @@ def make_ocr_llm_pipeline_spec(
     description: str = "",
     ocr_step_id: str = "ocr",
     llm_step_id: str = "llm",
+    ocr_params: dict[str, str | int | float | bool] | None = None,
+    llm_params: dict[str, str | int | float | bool] | None = None,
 ) -> PipelineSpec:
     """Construit la ``PipelineSpec`` correspondant à un mode OCR+LLM.
 
@@ -110,6 +112,17 @@ def make_ocr_llm_pipeline_spec(
     ocr_step_id, llm_step_id:
         Identifiants des étapes (utiles pour les ``inputs_from``
         cross-pipeline).  Défauts : ``"ocr"`` et ``"llm"``.
+    ocr_params:
+        Paramètres dynamiques passés au step OCR au runtime
+        (Sprint B du plan v2.0).  Typiquement vide — la
+        configuration de l'adapter passe par son constructeur.
+        Format scalaire (``str``, ``int``, ``float``, ``bool``).
+    llm_params:
+        Paramètres dynamiques passés au step LLM/VLM au runtime.
+        Cas typique (Sprint B du plan v2.0) :
+        ``{"prompt_template": "Corrige : {ocr_output}"}`` permet à
+        un caller de spécifier un template legacy ou rewrite sans
+        toucher à la config de l'adapter.
 
     Returns
     -------
@@ -133,6 +146,7 @@ def make_ocr_llm_pipeline_spec(
             name=name or f"vlm_zero_shot_{_safe_name(llm_adapter_name)}",
             description=description,
             llm_step_id=llm_step_id,
+            llm_params=llm_params,
         )
 
     if mode not in ("text_only", "text_and_image"):
@@ -158,6 +172,8 @@ def make_ocr_llm_pipeline_spec(
         description=description,
         ocr_step_id=ocr_step_id,
         llm_step_id=llm_step_id,
+        ocr_params=ocr_params,
+        llm_params=llm_params,
     )
 
 
@@ -167,6 +183,7 @@ def _make_zero_shot_spec(
     name: str,
     description: str,
     llm_step_id: str,
+    llm_params: dict[str, str | int | float | bool] | None = None,
 ) -> PipelineSpec:
     """Spec ``zero_shot`` : un seul step VLM IMAGE → RAW_TEXT."""
     return PipelineSpec(
@@ -178,6 +195,7 @@ def _make_zero_shot_spec(
                 id=llm_step_id,
                 kind="zero_shot_transcription",
                 adapter_name=llm_adapter_name,
+                params=llm_params or {},
                 input_types=(ArtifactType.IMAGE,),
                 output_types=(ArtifactType.RAW_TEXT,),
                 inputs_from={ArtifactType.IMAGE: INITIAL_STEP_ID},
@@ -195,6 +213,8 @@ def _make_ocr_plus_llm_spec(
     description: str,
     ocr_step_id: str,
     llm_step_id: str,
+    ocr_params: dict[str, str | int | float | bool] | None = None,
+    llm_params: dict[str, str | int | float | bool] | None = None,
 ) -> PipelineSpec:
     """Spec à 2 steps : OCR (IMAGE → RAW_TEXT) + LLM (RAW_TEXT → CORRECTED_TEXT)."""
     llm_inputs_from: dict[ArtifactType, str] = {
@@ -215,6 +235,7 @@ def _make_ocr_plus_llm_spec(
                 id=ocr_step_id,
                 kind="ocr",
                 adapter_name=ocr_adapter_name,
+                params=ocr_params or {},
                 input_types=(ArtifactType.IMAGE,),
                 output_types=(ArtifactType.RAW_TEXT,),
                 inputs_from={ArtifactType.IMAGE: INITIAL_STEP_ID},
@@ -223,6 +244,7 @@ def _make_ocr_plus_llm_spec(
                 id=llm_step_id,
                 kind="post_correction",
                 adapter_name=llm_adapter_name,
+                params=llm_params or {},
                 input_types=tuple(llm_input_types),
                 output_types=(ArtifactType.CORRECTED_TEXT,),
                 inputs_from=llm_inputs_from,

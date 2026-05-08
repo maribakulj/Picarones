@@ -109,6 +109,7 @@ class TestLegacyOCREngineExecutor:
         )
 
     def test_rejects_non_engine(self) -> None:
+        # Duck-typing : un str n'a ni .run() ni .name → rejeté.
         with pytest.raises(OCRAdapterError):
             LegacyOCREngineExecutor("not an engine")  # type: ignore[arg-type]
 

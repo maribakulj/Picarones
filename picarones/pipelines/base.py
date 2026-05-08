@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import base64
 import logging
-import time
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -233,45 +232,19 @@ class OCRLLMPipeline(BaseOCREngine):
     # ------------------------------------------------------------------
 
     def run(self, image_path: str | Path) -> EngineResult:
-        """Exécute le pipeline et retourne un EngineResult enrichi de métadonnées."""
-        image_path = Path(image_path)
-        start = time.perf_counter()
+        """Exécute le pipeline et retourne un EngineResult enrichi de métadonnées.
 
-        ocr_intermediate: Optional[str] = None
-        try:
-            text, ocr_intermediate = self._run_ocr(image_path)
-            error = None
-        except Exception as exc:  # noqa: BLE001
-            text = ""
-            error = str(exc)
-            logger.warning(
-                "[%s] erreur pipeline pour '%s' : %s",
-                self._name, image_path.name, exc,
-            )
-
-        duration = time.perf_counter() - start
-
-        metadata: dict = {
-            "engine_version": self._safe_version(),
-            "pipeline_mode": self.mode.value,
-            "prompt_file": self.prompt_path,
-            "prompt_template": self._prompt_template,
-            "llm_model": self.llm_adapter.model,
-            "llm_provider": self.llm_adapter.name,
-            "pipeline_steps": self._build_steps_info(),
-            "is_pipeline": True,
-        }
-        if ocr_intermediate is not None:
-            metadata["ocr_intermediate"] = ocr_intermediate
-
-        return EngineResult(
-            engine_name=self.name,
-            image_path=str(image_path),
-            text=text,
-            duration_seconds=round(duration, 4),
-            error=error,
-            metadata=metadata,
+        Sprint B du plan v2.0 — délègue à
+        ``picarones.pipelines._executor_runner.run_pipeline_via_executor``
+        qui exécute la chaîne OCR+LLM via le ``PipelineExecutor`` du
+        rewrite.  L'API publique (``EngineResult`` retourné, métadonnées,
+        warnings) reste identique au comportement historique.
+        """
+        from picarones.pipelines._executor_runner import (
+            run_pipeline_via_executor,
         )
+
+        return run_pipeline_via_executor(self, Path(image_path))
 
     # ------------------------------------------------------------------
     # Post-correction avec OCR pré-calculé
@@ -285,6 +258,12 @@ class OCRLLMPipeline(BaseOCREngine):
         Utilisé quand le corpus contient des fichiers ``.ocr.txt`` : le
         texte OCR bruité est fourni directement, sans lancer de moteur OCR.
 
+        Sprint B du plan v2.0 — délègue à
+        ``picarones.pipelines._executor_runner.run_pipeline_via_executor``
+        avec ``ocr_text=ocr_text``.  La spec construite n'a qu'un seul
+        step LLM et reçoit ``RAW_TEXT`` directement dans ses
+        ``initial_inputs``.
+
         Parameters
         ----------
         image_path:
@@ -296,44 +275,12 @@ class OCRLLMPipeline(BaseOCREngine):
         -------
         EngineResult
         """
-        image_path = Path(image_path)
-        start = time.perf_counter()
+        from picarones.pipelines._executor_runner import (
+            run_pipeline_via_executor,
+        )
 
-        ocr_intermediate: Optional[str] = ocr_text
-        try:
-            text, _ = self._run_llm_step(image_path, ocr_text)
-            error = None
-        except Exception as exc:  # noqa: BLE001
-            text = ""
-            error = str(exc)
-            logger.warning(
-                "[%s] erreur pipeline (post-correction) pour '%s' : %s",
-                self._name, image_path.name, exc,
-            )
-
-        duration = time.perf_counter() - start
-
-        metadata: dict = {
-            "engine_version": self._safe_version(),
-            "pipeline_mode": self.mode.value,
-            "prompt_file": self.prompt_path,
-            "prompt_template": self._prompt_template,
-            "llm_model": self.llm_adapter.model,
-            "llm_provider": self.llm_adapter.name,
-            "pipeline_steps": self._build_steps_info(),
-            "is_pipeline": True,
-            "ocr_source": "corpus",  # distingue de "live"
-        }
-        if ocr_intermediate is not None:
-            metadata["ocr_intermediate"] = ocr_intermediate
-
-        return EngineResult(
-            engine_name=self.name,
-            image_path=str(image_path),
-            text=text,
-            duration_seconds=round(duration, 4),
-            error=error,
-            metadata=metadata,
+        return run_pipeline_via_executor(
+            self, Path(image_path), ocr_text=ocr_text,
         )
 
     # ------------------------------------------------------------------
