@@ -280,16 +280,7 @@ def run_result_to_benchmark_result(
         EngineReport,
     )
     from picarones.evaluation.metric_result import aggregate_metrics
-    # ``compute_metrics`` n'a pas encore d'équivalent dans
-    # ``evaluation/`` (migration en Sprint E du plan v2.0).  En
-    # attendant, on l'importe dynamiquement via ``importlib`` —
-    # explicitement permis par ``test_no_legacy_imports_in_rewrite``
-    # qui ne couvre pas les imports différés.  Ce détour disparaît
-    # quand ``compute_metrics`` aura été migré vers
-    # ``picarones.evaluation.metrics.text_metrics`` (Sprint E).
-    import importlib
-    _metrics_mod = importlib.import_module("picarones.measurements.metrics")
-    compute_metrics = _metrics_mod.compute_metrics
+    from picarones.evaluation.metrics.text_metrics import compute_metrics
 
     documents = list(corpus.documents)
     if len(documents) != len(run_result.document_results):

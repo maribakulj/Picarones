@@ -81,6 +81,11 @@ TEST_ONLY_BASELINE: frozenset[str] = frozenset({
     # ``evaluation/metrics/searchability``.  Le shim garde son entrée
     # ici pour que le scanner ne crie pas tant qu'il existe.
     "searchability",
+    # Sprint E.3 du plan v2.0 — module ``measurements.metrics`` est
+    # devenu un shim après son déplacement vers
+    # ``evaluation/metrics/text_metrics``.  Le shim n'a plus de
+    # consommateur production (les 3 callers sont migrés).
+    "metrics",
 })
 
 

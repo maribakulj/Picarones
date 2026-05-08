@@ -463,7 +463,7 @@ class RobustnessAnalyzer:
         -------
         RobustnessReport
         """
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
 
         docs = corpus.documents[:max_docs]
         curves: list[DegradationCurve] = []

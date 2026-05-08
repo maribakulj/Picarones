@@ -100,7 +100,7 @@ def cli() -> None:
 @click.option("--json-output", is_flag=True, default=False, help="Sortie en JSON")
 def metrics_cmd(reference: str, hypothesis: str, json_output: bool) -> None:
     """Calcule CER et WER entre deux fichiers texte."""
-    from picarones.measurements.metrics import compute_metrics
+    from picarones.evaluation.metrics.text_metrics import compute_metrics
 
     ref_text = Path(reference).read_text(encoding="utf-8").strip()
     hyp_text = Path(hypothesis).read_text(encoding="utf-8").strip()

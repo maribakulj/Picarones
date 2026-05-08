@@ -178,18 +178,10 @@ def compute_cer_with_equivalences(
     """Calcule le CER après application des équivalences sélectionnées
     sur les **deux** côtés (GT et hypothèse).
 
-    Utilise ``picarones.measurements.metrics.compute_metrics`` et extrait
-    le champ ``cer`` du résultat.
+    Utilise ``picarones.evaluation.metrics.text_metrics.compute_metrics``
+    (canonisé en Sprint E.3) et extrait le champ ``cer`` du résultat.
     """
-    # Sprint E.2 du plan v2.0 — ``compute_metrics`` n'a pas encore
-    # son canonique dans ``evaluation/`` (migration prévue en E.3).
-    # En attendant, on l'importe dynamiquement via ``importlib`` —
-    # explicitement permis par ``test_no_legacy_imports_in_rewrite``
-    # qui ne couvre pas les imports différés.
-    import importlib
-    compute_metrics = importlib.import_module(
-        "picarones.measurements.metrics",
-    ).compute_metrics
+    from picarones.evaluation.metrics.text_metrics import compute_metrics
 
     selected_list = list(selected_names)
     ref = apply_selected_equivalences(reference or "", selected_list)

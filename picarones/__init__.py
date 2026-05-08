@@ -12,7 +12,7 @@ Pour les implémentations (calcul de métriques, runner, adapters OCR…),
 utiliser les sous-packages explicites :
 
 >>> from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
->>> from picarones.measurements.metrics import compute_metrics
+>>> from picarones.evaluation.metrics.text_metrics import compute_metrics
 >>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
 
 Voir ``docs/explanation/architecture.md`` pour la cartographie complète des

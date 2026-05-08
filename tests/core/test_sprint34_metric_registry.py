@@ -171,7 +171,7 @@ class TestParityWithLegacy:
         ],
     )
     def test_cer_matches_compute_metrics(self, ref: str, hyp: str) -> None:
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
 
         legacy = compute_metrics(ref, hyp)
         registered = compute_at_junction(

@@ -166,24 +166,24 @@ class TestResultsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 4. picarones.measurements.metrics — métriques de base
+# 4. picarones.evaluation.metrics.text_metrics — métriques de base
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestMetricsApi:
     def test_metrics_result_class(self):
-        _assert_class("picarones.measurements.metrics", "MetricsResult")
+        _assert_class("picarones.evaluation.metrics.text_metrics", "MetricsResult")
 
     @pytest.mark.parametrize("name", [
         "compute_metrics", "aggregate_metrics",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.measurements.metrics", name)
+        _assert_function("picarones.evaluation.metrics.text_metrics", name)
 
     def test_compute_metrics_signature(self):
         """``compute_metrics(reference, hypothesis, char_exclude=None)`` est
         contractuel — les 2 premiers args sont positionnels, le 3ᵉ keyword."""
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         sig = inspect.signature(compute_metrics)
         params = list(sig.parameters.values())
         # Au moins 2 paramètres positionnels (reference, hypothesis)
@@ -447,7 +447,7 @@ class TestApiStableDoc:
             "picarones.domain.artifacts",
             "picarones.domain.module_protocol",
             "picarones.evaluation.benchmark_result",
-            "picarones.measurements.metrics",
+            "picarones.evaluation.metrics.text_metrics",
             "picarones.app.services._legacy_runner_adapter",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",

@@ -11,7 +11,7 @@ from picarones.evaluation.metrics.normalization import (
     get_builtin_profile,
 )
 from picarones.evaluation.metric_result import aggregate_metrics, MetricsResult
-from picarones.measurements.metrics import compute_metrics
+from picarones.evaluation.metrics.text_metrics import compute_metrics
 from picarones.adapters.corpus.iiif import (
     IIIFManifestParser,
     parse_page_selector,

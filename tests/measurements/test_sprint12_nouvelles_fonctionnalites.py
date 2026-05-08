@@ -119,7 +119,7 @@ class TestExcludeCharsNormalization:
         assert "\u2019" in p.exclude_chars  # apostrophe typographique
 
     def test_compute_metrics_with_char_exclude(self):
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
 
         ref = "Bonjour, monde!"
         hyp = "Bonjour monde"

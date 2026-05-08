@@ -93,7 +93,7 @@ class EngineReport:      # agrégat moteur sur tout le corpus
 class BenchmarkResult:   # résultat global multi-moteurs
 ```
 
-### `picarones.measurements.metrics`
+### `picarones.evaluation.metrics.text_metrics`
 
 ```python
 class MetricsResult:     # CER, WER, MER, WIL + variantes diplomatique/caseless

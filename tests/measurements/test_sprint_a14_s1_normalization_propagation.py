@@ -83,7 +83,7 @@ class TestNormalizationActuallyApplied:
         """Avec deux profils différents, le ``cer_diplomatic`` est
         différent sur la même paire de textes.  Si le profil n'était
         pas propagé, on aurait toujours la même valeur."""
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
 
         # Texte avec un ſ médiéval + un v moderne (la GT a l'ancienne
         # graphie, l'OCR la moderne).

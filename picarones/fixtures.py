@@ -240,7 +240,7 @@ def _png_to_data_uri(png_bytes: bytes) -> str:
 # ---------------------------------------------------------------------------
 
 def _make_metrics(reference: str, hypothesis: str) -> MetricsResult:
-    from picarones.measurements.metrics import compute_metrics
+    from picarones.evaluation.metrics.text_metrics import compute_metrics
     return compute_metrics(reference, hypothesis)
 
 

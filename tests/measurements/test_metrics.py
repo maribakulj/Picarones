@@ -3,7 +3,7 @@
 import pytest
 
 from picarones.evaluation.metric_result import aggregate_metrics, MetricsResult
-from picarones.measurements.metrics import compute_metrics
+from picarones.evaluation.metrics.text_metrics import compute_metrics
 
 
 class TestComputeMetrics:

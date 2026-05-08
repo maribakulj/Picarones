@@ -20,8 +20,8 @@ from unittest import mock
 
 
 from picarones.evaluation.metric_result import MetricsResult, aggregate_metrics
-from picarones.measurements import metrics as metrics_module
-from picarones.measurements.metrics import compute_metrics
+from picarones.evaluation.metrics import text_metrics as metrics_module
+from picarones.evaluation.metrics.text_metrics import compute_metrics
 
 
 class TestComputeMetricsErrorPath:

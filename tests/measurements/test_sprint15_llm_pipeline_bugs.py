@@ -20,13 +20,13 @@ class TestEmptyHypothesisMetrics:
     """compute_metrics doit retourner CER=1.0, pas 0.0, pour hypothèse vide."""
 
     def test_empty_hypothesis_cer_is_one(self):
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         result = compute_metrics("Bonjour le monde", "")
         assert result.cer == pytest.approx(1.0)
         assert result.error is None
 
     def test_empty_hypothesis_all_metrics_are_one(self):
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         result = compute_metrics("hello world", "")
         assert result.cer == pytest.approx(1.0)
         assert result.wer == pytest.approx(1.0)
@@ -34,13 +34,13 @@ class TestEmptyHypothesisMetrics:
         assert result.wil == pytest.approx(1.0)
 
     def test_whitespace_only_hypothesis_cer_is_one(self):
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         result = compute_metrics("Bonjour", "   \t\n")
         assert result.cer == pytest.approx(1.0)
 
     def test_none_hypothesis_guarded(self):
         """compute_metrics ne doit pas planter si hypothesis=None."""
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         # None ne sera jamais passé en pratique, mais on teste la robustesse
         # via une chaîne vide (le runner convertit None → "")
         result = compute_metrics("test", "")
@@ -48,19 +48,19 @@ class TestEmptyHypothesisMetrics:
 
     def test_both_empty_cer_is_zero(self):
         """Référence ET hypothèse vides → CER=0.0 (pas d'erreur à mesurer)."""
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         result = compute_metrics("", "")
         assert result.cer == pytest.approx(0.0)
 
     def test_empty_reference_nonempty_hypothesis(self):
         """Référence vide avec hypothèse non vide → CER=1.0 (comportement existant)."""
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         result = compute_metrics("", "something")
         assert result.cer == pytest.approx(1.0)
 
     def test_normal_case_unchanged(self):
         """Un cas normal ne doit pas être affecté par le guard."""
-        from picarones.measurements.metrics import compute_metrics
+        from picarones.evaluation.metrics.text_metrics import compute_metrics
         result = compute_metrics("abcd", "abce")
         assert result.cer == pytest.approx(0.25)
         assert result.error is None

@@ -44,7 +44,7 @@ import pytest
 from picarones.evaluation.corpus import Corpus, Document
 from picarones.domain import Artifact, ArtifactType, DocumentRef
 from picarones.adapters.legacy_engines.base import BaseOCREngine
-from picarones.measurements.metrics import compute_metrics
+from picarones.evaluation.metrics.text_metrics import compute_metrics
 from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
 from picarones.pipeline import (
     CorpusRunner,
