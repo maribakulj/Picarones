@@ -264,8 +264,10 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.measurements.runner import run_benchmark
 
         # Charger le corpus
         job.add_event("log", {"message": f"Chargement du corpus : {req.corpus_path}"})
@@ -329,7 +331,10 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
-        result = run_benchmark(
+        # Sprint D.4 du plan v2.0 — migration ``run_benchmark_thread``
+        # (legacy v1) vers ``run_benchmark_via_service`` (rewrite),
+        # cohérent avec la migration v2 (Sprint D.3).
+        result = run_benchmark_via_service(
             corpus=corpus,
             engines=ocr_engines,
             output_json=output_json,
