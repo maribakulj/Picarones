@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -982,3 +983,149 @@ class TestRunBenchmarkViaService:
             normalization_profile=None,
         )
         assert bm.engine_reports
+
+
+# ──────────────────────────────────────────────────────────────────────
+# D.1.e — Équivalence numérique legacy vs rewrite
+# ──────────────────────────────────────────────────────────────────────
+
+
+class _DeterministicOCR(BaseOCREngine):
+    """OCR engine mock dont la sortie dépend uniquement du nom de fichier.
+
+    Permet aux tests d'équivalence de produire des hypothèses identiques
+    via les deux runners (legacy vs rewrite) — sans dépendance à un
+    binaire externe (Tesseract, Pero) qui ne tournerait pas en CI.
+    """
+
+    def __init__(self, name: str, hypotheses: dict[str, str]) -> None:
+        super().__init__(config={})
+        self._name = name
+        self._hypotheses = hypotheses
+
+    @property
+    def name(self) -> str:  # type: ignore[override]
+        return self._name
+
+    def version(self) -> str:
+        return "1.0.0"
+
+    def _run_ocr(self, image_path) -> str:
+        return self._hypotheses.get(Path(image_path).stem, "")
+
+
+def _build_test_corpus(tmp_path: Path) -> Corpus:
+    """Petit corpus de 3 docs avec des GT variés (parfait, partiel, vide)."""
+    docs = []
+    for i, gt in enumerate([
+        "bonjour le monde",       # doc0
+        "lorem ipsum dolor sit",  # doc1
+        "",                        # doc2 — GT vide
+    ]):
+        img = tmp_path / f"doc{i}.png"
+        img.write_bytes(b"\x89PNG fake")
+        docs.append(
+            Document(image_path=img, ground_truth=gt, doc_id=f"doc{i}"),
+        )
+    return Corpus(name="equiv_test", documents=docs)
+
+
+def _hypotheses_for_test(corpus: Corpus) -> dict[str, str]:
+    """Variantes des GT — perfait, 1 erreur, 2 erreurs, vide."""
+    return {
+        "doc0": "bonjour le monde",     # CER 0
+        "doc1": "lorem ipsum dolar sit",  # CER ~ 1/22 (1 erreur)
+        "doc2": "spurious",              # CER 1.0 (GT vide)
+    }
+
+
+class TestEquivalenceLegacyVsRewrite:
+    """Vérifie que ``run_benchmark`` legacy et ``run_benchmark_via_service``
+    produisent des métriques identiques sur les mêmes inputs."""
+
+    def _run_both(
+        self, tmp_path: Path,
+    ) -> tuple[Any, Any]:
+        """Lance les deux runners sur le même corpus + engine,
+        retourne ``(legacy_result, rewrite_result)``."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+        from picarones.measurements.runner import run_benchmark
+
+        corpus = _build_test_corpus(tmp_path)
+        hypotheses = _hypotheses_for_test(corpus)
+        # Deux instances distinctes — les engines mocks ne sont pas
+        # thread-safe partagés.  Chaque runner reçoit la sienne.
+        legacy_engine = _DeterministicOCR("equiv_ocr", hypotheses)
+        rewrite_engine = _DeterministicOCR("equiv_ocr", hypotheses)
+
+        legacy_result = run_benchmark(
+            corpus,
+            [legacy_engine],
+            show_progress=False,
+            max_workers=1,
+        )
+        rewrite_result = run_benchmark_via_service(
+            corpus,
+            [rewrite_engine],
+        )
+        return legacy_result, rewrite_result
+
+    def test_corpus_name_matches(self, tmp_path: Path) -> None:
+        legacy, rewrite = self._run_both(tmp_path)
+        assert legacy.corpus_name == rewrite.corpus_name
+        assert legacy.document_count == rewrite.document_count
+
+    def test_engine_count_matches(self, tmp_path: Path) -> None:
+        legacy, rewrite = self._run_both(tmp_path)
+        assert len(legacy.engine_reports) == len(rewrite.engine_reports)
+
+    def test_engine_name_and_version_match(self, tmp_path: Path) -> None:
+        legacy, rewrite = self._run_both(tmp_path)
+        for lr, rr in zip(legacy.engine_reports, rewrite.engine_reports):
+            assert lr.engine_name == rr.engine_name
+            assert lr.engine_version == rr.engine_version
+
+    def test_per_document_hypothesis_matches(self, tmp_path: Path) -> None:
+        legacy, rewrite = self._run_both(tmp_path)
+        for lr, rr in zip(legacy.engine_reports, rewrite.engine_reports):
+            for ld, rd in zip(lr.document_results, rr.document_results):
+                assert ld.doc_id == rd.doc_id
+                assert ld.ground_truth == rd.ground_truth
+                assert ld.hypothesis == rd.hypothesis
+
+    def test_per_document_cer_matches(self, tmp_path: Path) -> None:
+        """Critère central : les CER doc-par-doc sont identiques au
+        round près (les deux runners utilisent ``compute_metrics``)."""
+        legacy, rewrite = self._run_both(tmp_path)
+        for lr, rr in zip(legacy.engine_reports, rewrite.engine_reports):
+            for ld, rd in zip(lr.document_results, rr.document_results):
+                assert ld.metrics.cer == pytest.approx(rd.metrics.cer)
+                assert ld.metrics.wer == pytest.approx(rd.metrics.wer)
+                assert ld.metrics.mer == pytest.approx(rd.metrics.mer)
+                assert ld.metrics.wil == pytest.approx(rd.metrics.wil)
+
+    def test_aggregated_metrics_match(self, tmp_path: Path) -> None:
+        """Les agrégats par engine (cer.mean, wer.mean, etc.) doivent
+        coïncider — les deux runners utilisent ``aggregate_metrics``."""
+        legacy, rewrite = self._run_both(tmp_path)
+        for lr, rr in zip(legacy.engine_reports, rewrite.engine_reports):
+            for key in ("cer", "wer", "mer", "wil"):
+                lstats = lr.aggregated_metrics.get(key)
+                rstats = rr.aggregated_metrics.get(key)
+                if lstats is None or rstats is None:
+                    continue
+                # Ces dicts sont {mean, median, min, max, stdev}.
+                for stat_name in ("mean", "median", "min", "max"):
+                    assert lstats[stat_name] == pytest.approx(rstats[stat_name]), (
+                        f"Différence sur aggregated_metrics[{key!r}][{stat_name!r}] : "
+                        f"legacy={lstats[stat_name]} rewrite={rstats[stat_name]}"
+                    )
+
+    def test_engine_error_field_matches(self, tmp_path: Path) -> None:
+        legacy, rewrite = self._run_both(tmp_path)
+        for lr, rr in zip(legacy.engine_reports, rewrite.engine_reports):
+            for ld, rd in zip(lr.document_results, rr.document_results):
+                # None de chaque côté pour un OCR mock qui ne lève pas.
+                assert ld.engine_error == rd.engine_error
