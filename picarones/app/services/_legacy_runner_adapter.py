@@ -215,6 +215,256 @@ def corpus_to_corpus_spec(
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Mapping RunResult (rewrite) → BenchmarkResult (legacy)
+# ──────────────────────────────────────────────────────────────────────
+
+
+def run_result_to_benchmark_result(
+    run_result: Any,
+    *,
+    corpus: "Corpus",
+    engines: list["BaseOCREngine"],
+    char_exclude: Any | None = None,
+    normalization_profile: Any | None = None,
+) -> Any:
+    """Transpose un ``RunResult`` rewrite en ``BenchmarkResult`` legacy.
+
+    Le mapping est en **transposition** :
+
+    - **Rewrite** ``RunResult`` : itère par document puis par
+      pipeline.  ``run_result.document_results[i].pipeline_results[j]``.
+    - **Legacy** ``BenchmarkResult`` : itère par engine puis par
+      document.  ``benchmark_result.engine_reports[j].document_results[i]``.
+
+    Pour chaque couple ``(engine, document)``, le converter :
+
+    1. Récupère le ``PipelineResult`` correspondant depuis
+       ``RunDocumentResult.pipeline_results``.
+    2. Lit le texte produit final (``CORRECTED_TEXT`` prioritaire,
+       sinon ``RAW_TEXT``) depuis l'``Artifact.uri``.
+    3. Lit l'``ocr_intermediate`` (RAW_TEXT) si le pipeline a un
+       step OCR amont.
+    4. Calcule les métriques CER/WER via ``compute_metrics``.
+    5. Construit un ``DocumentResult`` legacy avec ``engine_error``
+       extrait des ``step_results``.
+    6. Aggrège les métriques par engine via ``aggregate_metrics``.
+    7. Reconstitue ``pipeline_info`` pour les engines pipeline
+       (mode, prompt, llm_model, llm_provider, pipeline_steps).
+
+    Parameters
+    ----------
+    run_result:
+        ``RunResult`` produit par ``BenchmarkService.run``.
+    corpus:
+        Corpus legacy d'origine — sert à récupérer le ``ground_truth``
+        et l'``image_path`` pour chaque document, dans le même ordre
+        que ``run_result.document_results``.
+    engines:
+        Liste d'engines legacy dans l'ordre où leurs specs ont été
+        passées à ``BenchmarkService.run`` (l'ordre détermine
+        l'index dans ``RunDocumentResult.pipeline_results``).
+    char_exclude:
+        Filtre passé à ``compute_metrics``.  ``None`` par défaut.
+    normalization_profile:
+        Profil de normalisation passé à ``compute_metrics``.
+
+    Returns
+    -------
+    BenchmarkResult
+        Format legacy compatible avec les consommateurs historiques
+        (rapport HTML, persistance JSON, narrative engine).
+    """
+    from picarones.evaluation.benchmark_result import (
+        BenchmarkResult,
+        DocumentResult,
+        EngineReport,
+    )
+    from picarones.evaluation.metric_result import aggregate_metrics
+    # ``compute_metrics`` n'a pas encore d'équivalent dans
+    # ``evaluation/`` (migration en Sprint E du plan v2.0).  En
+    # attendant, on l'importe dynamiquement via ``importlib`` —
+    # explicitement permis par ``test_no_legacy_imports_in_rewrite``
+    # qui ne couvre pas les imports différés.  Ce détour disparaît
+    # quand ``compute_metrics`` aura été migré vers
+    # ``picarones.evaluation.metrics.text_metrics`` (Sprint E).
+    import importlib
+    _metrics_mod = importlib.import_module("picarones.measurements.metrics")
+    compute_metrics = _metrics_mod.compute_metrics
+
+    documents = list(corpus.documents)
+    if len(documents) != len(run_result.document_results):
+        raise PicaronesError(
+            f"Mismatch documents : corpus={len(documents)} vs "
+            f"run_result={len(run_result.document_results)}.",
+        )
+
+    engine_reports: list[Any] = []
+
+    for engine_idx, engine in enumerate(engines):
+        doc_results: list[Any] = []
+        for doc_idx, document in enumerate(documents):
+            run_doc = run_result.document_results[doc_idx]
+            if engine_idx >= len(run_doc.pipeline_results):
+                # Plus d'engines que de pipeline_results — incohérence.
+                continue
+            pipeline_result = run_doc.pipeline_results[engine_idx]
+
+            text_final, ocr_intermediate = _extract_text_outputs(
+                pipeline_result=pipeline_result,
+            )
+            engine_error = _extract_first_error(pipeline_result)
+            duration = float(pipeline_result.duration_seconds)
+
+            metrics = compute_metrics(
+                document.ground_truth,
+                text_final,
+                normalization_profile=normalization_profile,
+                char_exclude=char_exclude,
+            )
+
+            pipeline_metadata = _build_pipeline_metadata(
+                engine=engine,
+                ocr_intermediate=ocr_intermediate,
+            )
+
+            doc_results.append(
+                DocumentResult(
+                    doc_id=document.doc_id,
+                    image_path=str(document.image_path),
+                    ground_truth=document.ground_truth,
+                    hypothesis=text_final,
+                    metrics=metrics,
+                    duration_seconds=round(duration, 4),
+                    engine_error=engine_error,
+                    ocr_intermediate=ocr_intermediate,
+                    pipeline_metadata=pipeline_metadata,
+                ),
+            )
+
+        aggregated = aggregate_metrics([d.metrics for d in doc_results])
+        pipeline_info = _build_pipeline_info(engine)
+
+        engine_reports.append(
+            EngineReport(
+                engine_name=engine.name,
+                engine_version=_safe_engine_version(engine),
+                engine_config=getattr(engine, "config", {}) or {},
+                document_results=doc_results,
+                aggregated_metrics=aggregated,
+                pipeline_info=pipeline_info,
+            ),
+        )
+
+    return BenchmarkResult(
+        corpus_name=corpus.name,
+        corpus_source=str(corpus.source_path) if corpus.source_path else None,
+        document_count=len(documents),
+        engine_reports=engine_reports,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Helpers privés du converter RunResult → BenchmarkResult
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _extract_text_outputs(pipeline_result: Any) -> tuple[str, str | None]:
+    """Extrait ``(text_final, ocr_intermediate)`` du PipelineResult.
+
+    - ``text_final`` : ``CORRECTED_TEXT`` prioritaire (post-correction
+      LLM), sinon ``RAW_TEXT`` (OCR seul ou VLM zero-shot).
+    - ``ocr_intermediate`` : ``RAW_TEXT`` quand un ``CORRECTED_TEXT``
+      coexiste — ce qui correspond au texte OCR avant correction LLM.
+      ``None`` si pas de pipeline composé.
+    """
+    corrected_text: str | None = None
+    raw_text: str | None = None
+    for art in pipeline_result.artifacts:
+        if art.uri is None:
+            continue
+        if art.type == ArtifactType.CORRECTED_TEXT and corrected_text is None:
+            try:
+                corrected_text = Path(art.uri).read_text(encoding="utf-8")
+            except OSError:
+                corrected_text = ""
+        elif art.type == ArtifactType.RAW_TEXT and raw_text is None:
+            try:
+                raw_text = Path(art.uri).read_text(encoding="utf-8")
+            except OSError:
+                raw_text = ""
+
+    if corrected_text is not None:
+        return corrected_text, raw_text
+    if raw_text is not None:
+        return raw_text, None
+    return "", None
+
+
+def _extract_first_error(pipeline_result: Any) -> str | None:
+    """Retourne le ``error`` du premier step en échec, ou ``None``."""
+    for step in pipeline_result.step_results:
+        err = getattr(step, "error", None)
+        if err:
+            return str(err)
+    return None
+
+
+def _build_pipeline_metadata(
+    *,
+    engine: Any,
+    ocr_intermediate: str | None,
+) -> dict:
+    """Reconstitue les ``pipeline_metadata`` legacy pour un DocumentResult."""
+    if not getattr(engine, "is_pipeline", False):
+        return {}
+    metadata: dict = {
+        "pipeline_mode": getattr(engine, "mode", None),
+        "is_pipeline": True,
+    }
+    # mode peut être un Enum — sérialise sa value.
+    mode = metadata["pipeline_mode"]
+    if mode is not None and hasattr(mode, "value"):
+        metadata["pipeline_mode"] = mode.value
+    llm_adapter = getattr(engine, "llm_adapter", None)
+    if llm_adapter is not None:
+        metadata["llm_model"] = llm_adapter.model
+        metadata["llm_provider"] = llm_adapter.name
+    if ocr_intermediate is not None:
+        metadata["ocr_intermediate"] = ocr_intermediate
+    return metadata
+
+
+def _build_pipeline_info(engine: Any) -> dict:
+    """Reconstitue ``EngineReport.pipeline_info`` pour un engine pipeline."""
+    if not getattr(engine, "is_pipeline", False):
+        return {}
+    info: dict = {
+        "pipeline_steps": getattr(engine, "pipeline_steps_info", []),
+        "prompt_template": getattr(engine, "prompt_template", ""),
+    }
+    llm_adapter = getattr(engine, "llm_adapter", None)
+    if llm_adapter is not None:
+        info["llm_model"] = llm_adapter.model
+        info["llm_provider"] = llm_adapter.name
+    mode = getattr(engine, "mode", None)
+    if mode is not None and hasattr(mode, "value"):
+        info["mode"] = mode.value
+    prompt_path = getattr(engine, "prompt_path", None)
+    if prompt_path is not None:
+        info["prompt_file"] = prompt_path
+    return info
+
+
+def _safe_engine_version(engine: Any) -> str:
+    """Retourne ``engine.version()`` ou ``"unknown"`` en cas d'erreur."""
+    try:
+        v = engine.version()
+        return str(v) if v else "unknown"
+    except Exception:  # noqa: BLE001
+        return "unknown"
+
+
+# ──────────────────────────────────────────────────────────────────────
 # Mapping BaseOCREngine → PipelineSpec
 # ──────────────────────────────────────────────────────────────────────
 
@@ -495,4 +745,5 @@ __all__ = [
     "corpus_to_corpus_spec",
     "engine_to_pipeline_spec",
     "build_adapter_resolver",
+    "run_result_to_benchmark_result",
 ]

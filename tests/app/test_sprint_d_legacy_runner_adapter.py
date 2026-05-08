@@ -27,6 +27,7 @@ from picarones.app.services._legacy_runner_adapter import (
     corpus_to_corpus_spec,
     document_to_document_ref,
     engine_to_pipeline_spec,
+    run_result_to_benchmark_result,
 )
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.errors import PicaronesError
@@ -526,3 +527,303 @@ class TestEngineSpecResolverIntegration:
         # Les 2 steps (OCR + LLM) doivent pouvoir être résolus.
         for step in spec.steps:
             assert resolver(step.adapter_name) is not None
+
+
+# ──────────────────────────────────────────────────────────────────────
+# run_result_to_benchmark_result (D.1.c)
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _make_pipeline_result(
+    *,
+    pipeline_name: str,
+    document_id: str,
+    text_final: str,
+    workspace_dir: Path,
+    artifact_type: ArtifactType = ArtifactType.RAW_TEXT,
+    duration: float = 0.5,
+    step_error: str | None = None,
+):
+    """Fabrique un PipelineResult fictif pour les tests."""
+    from picarones.domain.artifacts import Artifact
+    from picarones.pipeline.types import PipelineResult, StepResult
+
+    out_path = workspace_dir / f"{document_id}_{artifact_type.value}.txt"
+    out_path.write_text(text_final, encoding="utf-8")
+    artifact = Artifact(
+        id=f"{document_id}:step:{artifact_type.value}",
+        document_id=document_id,
+        type=artifact_type,
+        uri=str(out_path),
+        produced_by_step="step",
+    )
+    step = StepResult(
+        step_id="step",
+        succeeded=step_error is None,
+        duration_seconds=duration,
+        error=step_error,
+        produced_artifacts={artifact_type.value: artifact.id},
+    )
+    return PipelineResult(
+        pipeline_name=pipeline_name,
+        document_id=document_id,
+        step_results=(step,),
+        succeeded=step_error is None,
+        duration_seconds=duration,
+        artifacts=(artifact,),
+    )
+
+
+def _make_run_result(
+    *,
+    document_results,
+):
+    """Fabrique un RunResult fictif autour de RunDocumentResult."""
+    from picarones.app.results import RunResult
+    from picarones.domain.run_manifest import RunManifest, utcnow
+
+    now = utcnow()
+    manifest = RunManifest(
+        run_id="test-run",
+        corpus_name="test",
+        n_documents=len(document_results),
+        code_version="test",
+        started_at=now,
+        completed_at=now,
+    )
+    return RunResult(manifest=manifest, document_results=tuple(document_results))
+
+
+class TestRunResultToBenchmarkResult:
+    def test_single_engine_single_doc(self, tmp_path: Path) -> None:
+        """Un OCR seul, un doc — la conversion produit un BenchmarkResult
+        avec 1 EngineReport et 1 DocumentResult."""
+        from picarones.app.results import RunDocumentResult
+
+        ocr = _MockOCR(name="my_ocr")
+        img = tmp_path / "d1.png"
+        img.write_bytes(b"x")
+        doc = Document(
+            image_path=img,
+            ground_truth="bonjour le monde",
+            doc_id="d1",
+        )
+        corpus = Corpus(name="test", documents=[doc])
+
+        # Pipeline a produit RAW_TEXT="bonjour le monde" → CER=0
+        pr = _make_pipeline_result(
+            pipeline_name="ocr_only_my_ocr",
+            document_id="d1",
+            text_final="bonjour le monde",
+            workspace_dir=tmp_path,
+        )
+        rdr = RunDocumentResult(
+            document_id="d1",
+            pipeline_results=(pr,),
+        )
+        run_result = _make_run_result(document_results=[rdr])
+
+        bm = run_result_to_benchmark_result(
+            run_result, corpus=corpus, engines=[ocr],
+        )
+        assert bm.corpus_name == "test"
+        assert bm.document_count == 1
+        assert len(bm.engine_reports) == 1
+        report = bm.engine_reports[0]
+        assert report.engine_name == "my_ocr"
+        assert report.engine_version == "1.0"
+        assert len(report.document_results) == 1
+        dr = report.document_results[0]
+        assert dr.doc_id == "d1"
+        assert dr.ground_truth == "bonjour le monde"
+        assert dr.hypothesis == "bonjour le monde"
+        # Texte identique → CER 0 (parfait).
+        assert dr.metrics.cer == pytest.approx(0.0)
+        # Pas d'erreur engine.
+        assert dr.engine_error is None
+        # OCR seul → pas d'ocr_intermediate, pas de pipeline_metadata.
+        assert dr.ocr_intermediate is None
+        assert dr.pipeline_metadata == {}
+
+    def test_corrected_text_takes_precedence_over_raw_text(
+        self, tmp_path: Path,
+    ) -> None:
+        """Un pipeline OCR+LLM produit RAW_TEXT (intermediate) ET
+        CORRECTED_TEXT (final).  Le converter prend CORRECTED_TEXT
+        comme hypothèse et expose RAW_TEXT en ocr_intermediate."""
+        from picarones.app.results import RunDocumentResult
+        from picarones.domain.artifacts import Artifact
+        from picarones.pipeline.types import PipelineResult, StepResult
+
+        # Construit manuellement un PipelineResult avec 2 artifacts
+        # (RAW_TEXT + CORRECTED_TEXT).
+        raw_path = tmp_path / "raw.txt"
+        raw_path.write_text("texte ocr brut", encoding="utf-8")
+        corr_path = tmp_path / "corr.txt"
+        corr_path.write_text("texte ocr corrigé", encoding="utf-8")
+        raw_art = Artifact(
+            id="d1:ocr:raw_text",
+            document_id="d1",
+            type=ArtifactType.RAW_TEXT,
+            uri=str(raw_path),
+            produced_by_step="ocr",
+        )
+        corr_art = Artifact(
+            id="d1:llm:corrected_text",
+            document_id="d1",
+            type=ArtifactType.CORRECTED_TEXT,
+            uri=str(corr_path),
+            produced_by_step="llm",
+        )
+        ocr_step = StepResult(
+            step_id="ocr",
+            succeeded=True,
+            duration_seconds=0.3,
+            produced_artifacts={ArtifactType.RAW_TEXT.value: "d1:ocr:raw_text"},
+        )
+        llm_step = StepResult(
+            step_id="llm",
+            succeeded=True,
+            duration_seconds=0.7,
+            produced_artifacts={
+                ArtifactType.CORRECTED_TEXT.value: "d1:llm:corrected_text",
+            },
+        )
+        pr = PipelineResult(
+            pipeline_name="composed",
+            document_id="d1",
+            step_results=(ocr_step, llm_step),
+            succeeded=True,
+            duration_seconds=1.0,
+            artifacts=(raw_art, corr_art),
+        )
+        rdr = RunDocumentResult(document_id="d1", pipeline_results=(pr,))
+        run_result = _make_run_result(document_results=[rdr])
+
+        # Pipeline OCR+LLM côté legacy
+        from picarones.pipelines.base import OCRLLMPipeline, PipelineMode
+
+        ocr = _MockOCR(name="upstream_ocr")
+        llm = _MockLLM(model="mock-1")
+        pipeline = OCRLLMPipeline(
+            ocr_engine=ocr,
+            llm_adapter=llm,
+            mode=PipelineMode.TEXT_ONLY,
+        )
+        img = tmp_path / "d1.png"
+        img.write_bytes(b"x")
+        doc = Document(
+            image_path=img,
+            ground_truth="texte ocr corrigé",
+            doc_id="d1",
+        )
+        corpus = Corpus(name="test", documents=[doc])
+
+        bm = run_result_to_benchmark_result(
+            run_result, corpus=corpus, engines=[pipeline],
+        )
+        dr = bm.engine_reports[0].document_results[0]
+        # CORRECTED_TEXT a précédence comme hypothèse.
+        assert dr.hypothesis == "texte ocr corrigé"
+        # RAW_TEXT est exposé en ocr_intermediate.
+        assert dr.ocr_intermediate == "texte ocr brut"
+        # CER 0 (texte identique à la GT).
+        assert dr.metrics.cer == pytest.approx(0.0)
+        # pipeline_metadata présent (engine est un pipeline).
+        assert dr.pipeline_metadata.get("is_pipeline") is True
+        assert dr.pipeline_metadata.get("pipeline_mode") == "text_only"
+        assert dr.pipeline_metadata.get("llm_model") == "mock-1"
+        assert dr.pipeline_metadata.get("llm_provider") == "mock_llm"
+
+    def test_step_error_propagated_to_engine_error(
+        self, tmp_path: Path,
+    ) -> None:
+        from picarones.app.results import RunDocumentResult
+
+        ocr = _MockOCR()
+        img = tmp_path / "d1.png"
+        img.write_bytes(b"x")
+        doc = Document(image_path=img, ground_truth="x", doc_id="d1")
+        corpus = Corpus(name="t", documents=[doc])
+
+        pr = _make_pipeline_result(
+            pipeline_name="ocr_only",
+            document_id="d1",
+            text_final="",
+            workspace_dir=tmp_path,
+            step_error="OCR failed",
+        )
+        rdr = RunDocumentResult(document_id="d1", pipeline_results=(pr,))
+        run_result = _make_run_result(document_results=[rdr])
+
+        bm = run_result_to_benchmark_result(
+            run_result, corpus=corpus, engines=[ocr],
+        )
+        dr = bm.engine_reports[0].document_results[0]
+        assert dr.engine_error == "OCR failed"
+
+    def test_engine_report_aggregates_metrics(self, tmp_path: Path) -> None:
+        """Les métriques agrégées par engine sont calculées via
+        ``aggregate_metrics``."""
+        from picarones.app.results import RunDocumentResult
+
+        ocr = _MockOCR(name="agg_ocr")
+        # Deux documents, hypothèses parfaites.
+        docs = []
+        prs = []
+        for i in range(2):
+            img = tmp_path / f"d{i}.png"
+            img.write_bytes(b"x")
+            docs.append(Document(image_path=img, ground_truth=f"texte {i}", doc_id=f"d{i}"))
+            prs.append(_make_pipeline_result(
+                pipeline_name="ocr_only_agg_ocr",
+                document_id=f"d{i}",
+                text_final=f"texte {i}",
+                workspace_dir=tmp_path,
+            ))
+        corpus = Corpus(name="t", documents=docs)
+        rdrs = [
+            RunDocumentResult(document_id=f"d{i}", pipeline_results=(prs[i],))
+            for i in range(2)
+        ]
+        run_result = _make_run_result(document_results=rdrs)
+
+        bm = run_result_to_benchmark_result(
+            run_result, corpus=corpus, engines=[ocr],
+        )
+        report = bm.engine_reports[0]
+        assert len(report.document_results) == 2
+        assert report.aggregated_metrics  # non-vide
+        # CER moyen = 0 sur deux documents parfaits — l'agrégateur
+        # produit un dict ``{mean, median, min, max, stdev}`` par
+        # famille de métrique.
+        cer_stats = report.aggregated_metrics.get("cer")
+        assert cer_stats is not None
+        assert cer_stats["mean"] == pytest.approx(0.0)
+        assert report.aggregated_metrics.get("document_count") == 2
+
+    def test_mismatch_documents_raises(self, tmp_path: Path) -> None:
+        from picarones.app.results import RunDocumentResult
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        corpus = Corpus(
+            name="t",
+            documents=[
+                Document(image_path=img, ground_truth="a", doc_id="d1"),
+                Document(image_path=img, ground_truth="b", doc_id="d2"),
+            ],
+        )
+        # run_result a 1 doc, corpus en a 2 → incohérent.
+        pr = _make_pipeline_result(
+            pipeline_name="x", document_id="d1", text_final="x",
+            workspace_dir=tmp_path,
+        )
+        rdr = RunDocumentResult(document_id="d1", pipeline_results=(pr,))
+        run_result = _make_run_result(document_results=[rdr])
+
+        ocr = _MockOCR()
+        with pytest.raises(PicaronesError, match="Mismatch"):
+            run_result_to_benchmark_result(
+                run_result, corpus=corpus, engines=[ocr],
+            )
