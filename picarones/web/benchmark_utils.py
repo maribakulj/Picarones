@@ -152,8 +152,10 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.measurements.runner import run_benchmark
 
         corpus = load_corpus_from_directory(req.corpus_path)
         job.total_docs = len(corpus)
@@ -211,7 +213,15 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
-        result = run_benchmark(
+        # Sprint D.3 du plan v2.0 — délègue à
+        # ``run_benchmark_via_service`` (rewrite) qui présente la même
+        # signature et a été prouvé numériquement équivalent au runner
+        # legacy via ``TestEquivalenceLegacyVsRewrite`` (Sprint D.1.e).
+        # Les paramètres ``profile``, ``partial_dir``,
+        # ``entity_extractor``, ``max_workers`` ne sont pas encore
+        # portés vers ``BenchmarkService`` (Sprint D.2.b-f) — leur
+        # absence n'affecte pas le runner web qui ne les utilise pas.
+        result = run_benchmark_via_service(
             corpus=corpus,
             engines=engines,
             output_json=output_json,

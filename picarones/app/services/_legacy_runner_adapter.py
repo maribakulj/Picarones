@@ -763,15 +763,15 @@ def run_benchmark_via_service(
     normalization_profile: Any | None = None,
     output_json: Any | None = None,
     code_version: str | None = None,
+    show_progress: bool = True,  # noqa: ARG001
+    progress_callback: Callable[[str, int, str], None] | None = None,
+    timeout_seconds: float = 60.0,
+    cancel_event: Any | None = None,
     # ---- Paramètres legacy non encore portés vers BenchmarkService ----
     # Sprint D.2 du plan v2.0 — les features manquantes seront
     # ajoutées au ``BenchmarkService`` dans une session ultérieure.
-    show_progress: bool = True,  # noqa: ARG001
-    progress_callback: Any | None = None,  # noqa: ARG001
     max_workers: int = 4,  # noqa: ARG001
-    timeout_seconds: float = 60.0,
     partial_dir: Any | None = None,  # noqa: ARG001
-    cancel_event: Any | None = None,  # noqa: ARG001
     entity_extractor: Any | None = None,  # noqa: ARG001
     profile: str = "standard",  # noqa: ARG001
 ) -> Any:
@@ -876,6 +876,8 @@ def run_benchmark_via_service(
             workspace_uri=str(run_dir),
             code_version=code_version,
             timeout_seconds=timeout_seconds,
+            progress_callback=progress_callback,
+            cancel_event=cancel_event,
         )
 
         # 4. Conversion RunResult → BenchmarkResult legacy (D.1.c)
@@ -902,6 +904,8 @@ def _execute_via_benchmark_service(
     workspace_uri: str,
     code_version: str,
     timeout_seconds: float,
+    progress_callback: Callable[[str, int, str], None] | None = None,
+    cancel_event: Any | None = None,
 ) -> Any:
     """Lance ``BenchmarkService.run`` sur les specs converties.
 
@@ -967,15 +971,50 @@ def _execute_via_benchmark_service(
 
     # Context factory : ``workspace_uri`` propagé pour résoudre les
     # output paths des adapters (cf. ``resolve_output_path``).
+    # Sprint D.2.a : le hook ``progress_callback`` est appelé ici —
+    # ``context_factory`` est invoqué une fois par (doc, pipeline)
+    # AVANT l'exécution effective, ce qui correspond à la sémantique
+    # legacy de ``progress_callback(engine_name, doc_idx, doc_id)``.
+    import threading
+
+    counter_lock = threading.Lock()
+    counter_state = {"doc_idx": 0}
+
     def context_factory(
         doc: DocumentRef, pipeline_name: str,
     ) -> RunContext:
+        if progress_callback is not None:
+            with counter_lock:
+                idx = counter_state["doc_idx"]
+                counter_state["doc_idx"] = idx + 1
+            try:
+                progress_callback(pipeline_name, idx, doc.id)
+            except Exception:  # noqa: BLE001
+                # Le legacy ignore silencieusement les erreurs du
+                # callback (un caller qui crashe ne doit pas faire
+                # tomber le benchmark).  Même contrat ici.
+                pass
         return RunContext(
             document_id=doc.id,
             code_version=code_version,
             pipeline_name=pipeline_name,
             workspace_uri=workspace_uri,
         )
+
+    # Sprint D.2.a — propagation du cancel_event au CorpusRunner.
+    # Note : ``BenchmarkService.run`` boucle pipeline × document en
+    # interne et appelle ``corpus_runner.run`` une fois par pipeline.
+    # Le ``cancel_event`` doit être passé à chaque appel — on le
+    # fait via un wrapping minimal en re-construisant le runner avec
+    # le cancel_event capturé.
+    if cancel_event is not None:
+        original_run = runner.run
+
+        def _runner_run_with_cancel(*args: Any, **kwargs: Any) -> Any:
+            kwargs.setdefault("cancel_event", cancel_event)
+            return original_run(*args, **kwargs)
+
+        runner.run = _runner_run_with_cancel  # type: ignore[method-assign]
 
     return bench.run(
         corpus=corpus_spec,

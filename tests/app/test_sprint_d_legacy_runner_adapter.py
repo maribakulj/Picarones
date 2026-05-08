@@ -1129,3 +1129,111 @@ class TestEquivalenceLegacyVsRewrite:
             for ld, rd in zip(lr.document_results, rr.document_results):
                 # None de chaque côté pour un OCR mock qui ne lève pas.
                 assert ld.engine_error == rd.engine_error
+
+
+# ──────────────────────────────────────────────────────────────────────
+# D.2.a — progress_callback dans run_benchmark_via_service
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestProgressCallback:
+    """Sprint D.2.a — le ``progress_callback`` legacy est appelé pour
+    chaque document avant son exécution, exactement comme dans
+    ``measurements.runner.run_benchmark``."""
+
+    def test_callback_called_once_per_doc(self, tmp_path: Path) -> None:
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        calls: list[tuple[str, int, str]] = []
+
+        def cb(engine_name: str, doc_idx: int, doc_id: str) -> None:
+            calls.append((engine_name, doc_idx, doc_id))
+
+        docs = []
+        for i in range(3):
+            img = tmp_path / f"d{i}.png"
+            img.write_bytes(b"x")
+            docs.append(Document(
+                image_path=img, ground_truth="x", doc_id=f"d{i}",
+            ))
+        corpus = Corpus(name="cb_test", documents=docs)
+        ocr = _MockOCR(name="cb_ocr")
+        ocr._run_ocr = lambda p: "x"
+
+        run_benchmark_via_service(corpus, [ocr], progress_callback=cb)
+
+        assert len(calls) == 3
+        # Chaque call référence un doc_id distinct.
+        doc_ids = {c[2] for c in calls}
+        assert doc_ids == {"d0", "d1", "d2"}
+
+    def test_callback_receives_pipeline_name(self, tmp_path: Path) -> None:
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        calls: list[tuple[str, int, str]] = []
+
+        def cb(engine_name: str, doc_idx: int, doc_id: str) -> None:
+            calls.append((engine_name, doc_idx, doc_id))
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        corpus = Corpus(
+            name="t",
+            documents=[Document(image_path=img, ground_truth="x", doc_id="d")],
+        )
+        ocr = _MockOCR(name="my_engine_xyz")
+        ocr._run_ocr = lambda p: "x"
+
+        run_benchmark_via_service(corpus, [ocr], progress_callback=cb)
+
+        assert len(calls) == 1
+        # Le pipeline_name reflète le nom de l'engine (via le builder
+        # ``ocr_only_<safe_name>``).
+        assert "my_engine_xyz" in calls[0][0]
+
+    def test_callback_exception_does_not_crash_benchmark(
+        self, tmp_path: Path,
+    ) -> None:
+        """Un callback qui lève ne doit pas faire tomber le benchmark
+        — comportement identique au runner legacy."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        def cb_raises(engine_name: str, doc_idx: int, doc_id: str) -> None:
+            raise RuntimeError("callback failed")
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        corpus = Corpus(
+            name="t",
+            documents=[Document(image_path=img, ground_truth="x", doc_id="d")],
+        )
+        ocr = _MockOCR()
+        ocr._run_ocr = lambda p: "x"
+
+        # Ne lève pas — le callback est isolé.
+        bm = run_benchmark_via_service(corpus, [ocr], progress_callback=cb_raises)
+        assert bm.engine_reports
+
+    def test_no_callback_runs_silently(self, tmp_path: Path) -> None:
+        """Sans ``progress_callback``, le benchmark fonctionne
+        normalement (cas par défaut)."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+
+        img = tmp_path / "d.png"
+        img.write_bytes(b"x")
+        corpus = Corpus(
+            name="t",
+            documents=[Document(image_path=img, ground_truth="x", doc_id="d")],
+        )
+        ocr = _MockOCR()
+        ocr._run_ocr = lambda p: "x"
+        bm = run_benchmark_via_service(corpus, [ocr])
+        assert bm.engine_reports
