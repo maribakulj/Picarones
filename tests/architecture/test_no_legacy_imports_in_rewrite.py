@@ -122,7 +122,7 @@ def test_rewrite_modules_dont_import_from_legacy() -> None:
     1. Le code legacy importé existe en équivalent dans le rewrite
        → migrer l'import.
     2. Il n'existe pas encore → la fonctionnalité doit être inscrite
-       au plan ``docs/migration/legacy-retirement-plan.md`` comme
+       au plan ``docs/archives/migration/legacy-retirement-plan.md`` comme
        bloquante avant le retrait du paquet legacy concerné.
     """
     offenders: list[tuple[str, int, str]] = []
@@ -146,7 +146,7 @@ def test_rewrite_modules_dont_import_from_legacy() -> None:
             f"{sample}{more}\n\n"
             "Soit migrer l'import vers l'équivalent rewrite, soit "
             "inscrire la fonctionnalité manquante dans "
-            "``docs/migration/legacy-retirement-plan.md`` comme "
+            "``docs/archives/migration/legacy-retirement-plan.md`` comme "
             "bloquante.",
         )
 

@@ -15,8 +15,8 @@ This guide covers:
 
 Two JSON files store all UI strings:
 
-- `picarones/report/i18n/fr.json` — French (canonical)
-- `picarones/report/i18n/en.json` — English
+- `picarones/reports/html/i18n/fr.json` — French (canonical)
+- `picarones/reports/html/i18n/en.json` — English
 
 Both files **must have the exact same set of keys** — any drift
 fails `tests/report/test_a11y_level_aa.py::test_i18n_fr_en_have_same_keys`.
@@ -53,14 +53,14 @@ appropriate BCP-47 code (e.g. `de-DE`, `es-ES`, `it-IT`).
 
 1. Copy `fr.json` to `<lang>.json` (e.g. `de.json`) and translate
    every value. Keep the keys identical.
-2. Add the language to `picarones/web/state.SUPPORTED_LANGS`:
+2. Add the language to `picarones/interfaces/web/state.SUPPORTED_LANGS`:
    ```python
    SUPPORTED_LANGS = frozenset({"fr", "en", "de"})
    ```
-3. Add the same key in `picarones/report/glossary/<lang>.yaml`
+3. Add the same key in `picarones/reports/html/glossary/<lang>.yaml`
    with translated definitions (cf. [`extending-glossary.en.md`](extending-glossary.en.md)).
 4. Add `<lang>` to the narrative templates:
-   `picarones/measurements/narrative/templates/<lang>.yaml`.
+   `picarones/evaluation/metrics/narrative/templates/<lang>.yaml`.
 5. Add the language switcher entry in the report header (if any).
 
 ## Tests

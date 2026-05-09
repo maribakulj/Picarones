@@ -14,8 +14,8 @@ panel with the entry's full content.
 
 The glossary lives in **two YAML files** that must stay in sync:
 
-- `picarones/report/glossary/fr.yaml`
-- `picarones/report/glossary/en.yaml`
+- `picarones/reports/html/glossary/fr.yaml`
+- `picarones/reports/html/glossary/en.yaml`
 
 Each entry has the following schema:
 
@@ -51,7 +51,7 @@ your_metric_key:
 
 The `?` icon is rendered automatically when a `<th>` carries the
 `data-glossary-key="your_metric_key"` attribute. See for example
-`picarones/report/templates/view_ranking.html` line ~13.
+`picarones/reports/html/templates/view_ranking.html` line ~13.
 
 ## Tests
 

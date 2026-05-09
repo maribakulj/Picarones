@@ -1,7 +1,7 @@
 # Étendre le glossaire contextuel
 
 Le glossaire affiché dans le panneau latéral du rapport est défini en
-YAML, une entrée par terme, dans `picarones/report/glossary/{lang}.yaml`.
+YAML, une entrée par terme, dans `picarones/reports/html/glossary/{lang}.yaml`.
 
 ## Ajouter un terme
 
@@ -30,7 +30,7 @@ Tous les champs (`title`, `definition`, `measures`, `usage`, `limits`,
 
 ## Brancher l'entrée à une colonne du rapport
 
-Dans `picarones/report/templates/view_ranking.html` (ou un autre fichier
+Dans `picarones/reports/html/templates/view_ranking.html` (ou un autre fichier
 de vue), ajoutez l'attribut `data-glossary-key` sur l'en-tête de
 colonne :
 
@@ -59,13 +59,13 @@ Au démarrage du rapport, `injectGlossaryButtons()` parcourt tous les
 
 ## Ajouter une langue
 
-Créez `picarones/report/glossary/de.yaml` avec la même structure que
+Créez `picarones/reports/html/glossary/de.yaml` avec la même structure que
 `fr.yaml`. Le loader le détecte automatiquement via
 `Path.glob("*.yaml")`.
 
 Pour qu'un utilisateur puisse choisir cette langue :
 
-1. Ajouter `picarones/report/i18n/de.json` (traductions de l'interface).
+1. Ajouter `picarones/reports/html/i18n/de.json` (traductions de l'interface).
 2. Aucune modification de code requise — `load_glossary("de")` marchera.
 
 ## Tests

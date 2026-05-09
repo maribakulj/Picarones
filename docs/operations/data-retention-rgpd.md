@@ -54,7 +54,7 @@ export PICARONES_REPORTS_RETENTION_DAYS=180
 
 ### Uploads anciens (Sprint A11)
 
-Le module `picarones.web.maintenance` exécute une tâche
+Le module `picarones.interfaces.web.maintenance` exécute une tâche
 asyncio en arrière-plan qui scanne `uploads/` toutes les 6 heures
 et supprime les sous-dossiers dont :
 

@@ -331,7 +331,7 @@ picarones/
 
 Legacy paths (`core/, measurements/, engines/, llm/, pipelines/,
 report/, modules/`) still present as shims, in active retirement
-(see `docs/migration/`).  Strict 8-layer architecture: imports flow
+(see `docs/archives/migration/`).  Strict 8-layer architecture: imports flow
 outer → inner. Enforced by
 `tests/architecture/test_layer_dependencies.py`. See
 [`docs/explanation/architecture.md`](docs/explanation/architecture.md)

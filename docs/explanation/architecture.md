@@ -18,7 +18,7 @@ le temps :
 | **Legacy** | Transitionnel | Reste exécutable le temps que les callers externes (HuggingFace Space, scripts BnF, notebooks de chercheurs) migrent. |
 
 Le retrait du legacy est calendrier dans le CHANGELOG ; cf. aussi
-`docs/migration/rewrite-status-s46.md`.
+`docs/archiv../archives/migration/rewrite-status-s46.md`.
 
 ## Arbo canonique — 8 cercles concentriques
 
@@ -185,6 +185,6 @@ publication scientifique.
 L'évolution de l'architecture est documentée :
 
 - Plans : [`docs/roadmap/evolution-2026.md`](../roadmap/evolution-2026.md)
-- État du rewrite : [`docs/migration/rewrite-status-s46.md`](../migration/rewrite-status-s46.md)
+- État du rewrite : [`docs/archiv../archives/migration/rewrite-status-s46.md`](../archives/migration/rewrite-status-s46.md)
 - Audits institutionnels : [`docs/audits/`](../audits/)
 - Politique d'API publique : [`docs/reference/api-stable.md`](../reference/api-stable.md)

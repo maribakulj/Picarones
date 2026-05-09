@@ -69,7 +69,7 @@ Activée si :
 
 Sous-sections :
 - **Throughput effectif** : pages/h **utilisable** (intégrant 5 s/erreur
-  HTR-United), depuis `picarones.core.throughput`.
+  HTR-United), depuis `picarones.domain.throughput`.
 
 #### Vue « Taxonomie avancée » (`build_advanced_taxonomy_view_html`)
 
@@ -91,7 +91,7 @@ un bench standard) ou si données opt-in fournies.
 
 Sous-sections :
 - **Leviers d'amélioration** : factuels (jamais prescriptifs), depuis
-  `picarones.core.levers`.
+  `picarones.domain.levers`.
 - **Comparaison historique** (opt-in) : encart « ce corpus est-il habituel ? ».
 - **Profil d'image du corpus** (opt-in) : complexité paléographique +
   homogénéité.

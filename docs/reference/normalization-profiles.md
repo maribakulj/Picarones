@@ -83,7 +83,7 @@ diagramme miroir leader vs runner-up, classes par récupérabilité
 
 Identique à `standard` côté hooks. Déclenche la vue HTML « Diagnostic
 approfondi » avec **leviers d'amélioration** factuels (jamais
-prescriptifs) calculés par `picarones.core.levers.detect_levers()`.
+prescriptifs) calculés par `picarones.domain.levers.detect_levers()`.
 
 ```bash
 picarones diagnose --corpus ./corpus --engines tess,pero

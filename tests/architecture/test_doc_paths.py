@@ -133,7 +133,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # la migration de l'exemple de docstring dans ``robustness.py``
 # vers ``adapters.ocr.tesseract`` cassent quelques refs dans des
 # audits historiques (CHANGELOG, docs/audits/).
-BROKEN_PATHS_BASELINE = 169
+# Sprint H.9 : -7 — nettoyage massif de ~17 fichiers ``docs/`` qui
+# pointaient vers les paquets supprimés (``picarones.measurements.*``
+# / ``picarones.core.*`` / ``picarones.engines.*`` / ``picarones.cli.*``
+# / ``picarones.web.*`` / ``picarones.report.*`` / etc.) re-pointent
+# désormais vers les chemins canoniques.  ``docs/migration/`` archivée
+# vers ``docs/archives/migration/`` (les refs internes y restent
+# intentionnellement, c'est de l'historique).
+BROKEN_PATHS_BASELINE = 162
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

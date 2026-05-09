@@ -69,7 +69,7 @@ input — the anti-hallucination test would catch it.
 `picarones/reports/narrative/detectors/__init__.py`:
 
 ```python
-from picarones.measurements.narrative.detectors.quality import (
+from picarones.evaluation.metrics.narrative.detectors.quality import (
     # ...
     detect_your_new_fact,
 )

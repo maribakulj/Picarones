@@ -1,7 +1,7 @@
 # Commandes CLI Picarones
 
 Picarones expose **15 commandes/groupes** Click dans le package
-[`picarones/cli/`](../picarones/cli/). Le découpage en sous-modules
+[`picarones/interfaces/cli/`](../picarones/interfaces/cli/). Le découpage en sous-modules
 (chantier 5) est transparent : toutes les commandes restent
 accessibles via `picarones <cmd>` après `pip install -e .`.
 
@@ -183,9 +183,9 @@ pour découvrir la sortie sans corpus réel.
 
 ## Code source
 
-- [`picarones/interfaces/cli/_legacy/__init__.py`](../picarones/interfaces/cli/_legacy/__init__.py) — groupe
+- [`picarones/interfaces/cli/__init__.py`](../picarones/interfaces/cli/__init__.py) — groupe
   Click + helpers + commandes simples.
-- [`picarones/interfaces/cli/_legacy/_workflows.py`](../picarones/interfaces/cli/_legacy/_workflows.py) —
+- [`picarones/interfaces/cli/_workflows.py`](../picarones/interfaces/cli/_workflows.py) —
   run, diagnose, economics, edition, compare + helper `_run_workflow`.
 - Voir aussi [`docs/reference/normalization-profiles.md`](profiles.md) et
   [`docs/reference/views.md`](views.md).
