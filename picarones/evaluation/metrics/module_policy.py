@@ -281,8 +281,15 @@ def audit_module(
             declared_out = [
                 getattr(t, "value", str(t)) for t in attr_out
             ]
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        # Best-effort : si l'introspection échoue (module manifest
+        # mal formé), on retombe sur les listes vides ``declared_in``
+        # / ``declared_out`` initialisées plus haut.  Audit Sprint S7
+        # plutôt que ``pass`` silencieux.
+        logger.debug(
+            "[module_policy] introspection input/output_types échouée : %s",
+            exc,
+        )
     # Comparaison case-insensitive : on accepte "TEXT" ou "text"
     # côté manifest, le contrat sémantique est le même.
     #

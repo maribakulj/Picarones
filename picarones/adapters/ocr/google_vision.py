@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import urllib.error
 import urllib.request
@@ -48,6 +49,8 @@ from typing import Any
 
 from picarones.adapters._retry import call_with_retry
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
+
+logger = logging.getLogger(__name__)
 from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
 
@@ -270,8 +273,14 @@ class GoogleVisionAdapter(BaseOCRAdapter):
             body = ""
             try:
                 body = exc.read().decode("utf-8")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as read_exc:  # noqa: BLE001
+                # Best-effort : si on ne peut pas lire le body de
+                # l'erreur HTTP, on lève quand même avec le code
+                # d'erreur seul.  Audit S7 — pas de ``pass`` silencieux.
+                logger.debug(
+                    "[%s] body de l'erreur HTTP illisible : %s",
+                    self.name, read_exc,
+                )
             raise OCRAdapterError(
                 f"{self.name} : Google Vision API erreur {exc.code} : {body}",
             ) from exc

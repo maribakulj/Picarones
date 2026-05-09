@@ -124,11 +124,12 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/storage/job_store.py": 500,       # actuel 421
     # Sprint A14-S41 — artifacts_index.jsonl séparé.
     "picarones/app/services/benchmark_service.py": 470,   # actuel 400
-    # Sprint A14-S44 — BaseLLMAdapter implémente le contrat StepExecutor
+    # ``BaseLLMAdapter`` implémente le contrat ``StepExecutor``
     # (input_types, output_types, execute) en plus de complete().
-    # S59 ajout du descripteur ``_DeprecatedAttribute`` + alias rétrocompat
-    # ``DEFAULT_CORRECTION_PROMPT`` + warning lang fallback (M6).
-    "picarones/adapters/llm/base.py": 560,                # actuel 486
+    # Sprint S7 — descripteur ``_DeprecatedAttribute`` + alias
+    # ``DEFAULT_CORRECTION_PROMPT`` (singulier) supprimés (period
+    # de deprecation expirée à v2.0).
+    "picarones/adapters/llm/base.py": 520,                # actuel ~440
     # Phase 4-quater : ``core/corpus.py`` est désormais un shim
     # (≤ 30 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique

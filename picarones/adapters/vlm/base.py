@@ -32,7 +32,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from picarones.adapters.llm.base import BaseLLMAdapter, _DeprecatedAttribute
+from picarones.adapters.llm.base import BaseLLMAdapter
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.domain.errors import AdapterStepError
 
@@ -148,16 +148,6 @@ class BaseVLMAdapter(BaseLLMAdapter):
             "transcriptum, sine ulla glossa."
         ),
     }
-
-    #: Alias rétrocompat (FR uniquement) pour les sous-classes
-    #: externes qui lisaient l'ancienne API singulière.  L'accès
-    #: déclenche un ``DeprecationWarning``.  Sera supprimé en 2.0.
-    DEFAULT_TRANSCRIPTION_PROMPT = _DeprecatedAttribute(
-        DEFAULT_TRANSCRIPTION_PROMPTS["fr"],
-        "BaseVLMAdapter.DEFAULT_TRANSCRIPTION_PROMPT is deprecated "
-        "and will be removed in 2.0.  Use "
-        "DEFAULT_TRANSCRIPTION_PROMPTS[lang] (lang ∈ {fr, en, la}).",
-    )
 
     def execute(
         self,

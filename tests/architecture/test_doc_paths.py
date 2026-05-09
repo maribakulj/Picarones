@@ -140,7 +140,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # désormais vers les chemins canoniques.  ``docs/migration/`` archivée
 # vers ``docs/archives/migration/`` (les refs internes y restent
 # intentionnellement, c'est de l'historique).
-BROKEN_PATHS_BASELINE = 162
+# Sprint S7 : +1 — suppression du shim ``picarones/pipeline/spec.py``
+# (deprecation period 1.x → 2.0 expirée).  Quelques refs historiques
+# au shim subsistent dans ``CHANGELOG.md`` / ``docs/audits/``.
+BROKEN_PATHS_BASELINE = 163
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (
