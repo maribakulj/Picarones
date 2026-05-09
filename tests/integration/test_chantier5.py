@@ -214,5 +214,3 @@ class TestCliPackage:
             f"commande '{cmd_name}' manquante après le chantier 5 — "
             f"commandes présentes : {sorted(cli.commands.keys())}"
         )
-
-
