@@ -24,7 +24,7 @@ import re
 
 import pytest
 
-from picarones.fixtures import generate_sample_benchmark
+from picarones.evaluation.synthetic import generate_sample_benchmark
 from picarones.reports_v2.html.generator import ReportGenerator
 
 

@@ -98,7 +98,7 @@ class TestMistralAdapterLogging:
 
     def test_warning_on_empty_response(self, caplog):
         """Un WARNING doit être émis si le LLM retourne une chaîne vide."""
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
 
         fake_mod, _ = self._make_mock_mistral_module("")
         adapter = MistralAdapter(model="ministral-3b-latest")
@@ -115,7 +115,7 @@ class TestMistralAdapterLogging:
 
     def test_no_warning_on_normal_response(self, caplog):
         """Aucun WARNING ne doit être émis pour une réponse normale."""
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
 
         fake_mod, _ = self._make_mock_mistral_module("Texte OCR corrigé")
         adapter = MistralAdapter(model="ministral-3b-latest")
@@ -128,7 +128,7 @@ class TestMistralAdapterLogging:
 
     def test_warning_on_none_response_content(self, caplog):
         """WARNING doit être émis si message.content est None."""
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
 
         fake_mod, _ = self._make_mock_mistral_module(None)
         adapter = MistralAdapter(model="ministral-3b-latest")
@@ -141,12 +141,12 @@ class TestMistralAdapterLogging:
 
     def test_text_only_models_set_exists(self):
         """La liste des modèles text-only doit contenir ministral-3b."""
-        from picarones.llm.mistral_adapter import _TEXT_ONLY_MODELS
+        from picarones.adapters.llm.mistral_adapter import _TEXT_ONLY_MODELS
         assert "ministral-3b-latest" in _TEXT_ONLY_MODELS
 
     def test_image_ignored_for_text_only_model(self, caplog):
         """L'image doit être ignorée (avec WARNING) pour un modèle text-only."""
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
 
         fake_mod, mock_client = self._make_mock_mistral_module("résultat")
         adapter = MistralAdapter(model="ministral-3b-latest")

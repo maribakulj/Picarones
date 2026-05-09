@@ -651,7 +651,7 @@ class TestAggregateImageQuality:
 class TestFixturesSprint5:
 
     def test_doc_result_has_confusion_matrix(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             for dr in er.document_results:
@@ -661,7 +661,7 @@ class TestFixturesSprint5:
                 break
 
     def test_doc_result_has_char_scores(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             dr = er.document_results[0]
@@ -670,7 +670,7 @@ class TestFixturesSprint5:
             assert "diacritic" in dr.char_scores
 
     def test_doc_result_has_taxonomy(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             dr = er.document_results[0]
@@ -679,7 +679,7 @@ class TestFixturesSprint5:
             assert "total_errors" in dr.taxonomy
 
     def test_doc_result_has_structure(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             dr = er.document_results[0]
@@ -687,7 +687,7 @@ class TestFixturesSprint5:
             assert "gt_line_count" in dr.structure
 
     def test_doc_result_has_image_quality(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             dr = er.document_results[0]
@@ -695,14 +695,14 @@ class TestFixturesSprint5:
             assert "quality_score" in dr.image_quality
 
     def test_engine_report_has_aggregated_confusion(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             assert er.aggregated_confusion is not None
             assert "matrix" in er.aggregated_confusion
 
     def test_engine_report_has_aggregated_char_scores(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             assert er.aggregated_char_scores is not None
@@ -710,7 +710,7 @@ class TestFixturesSprint5:
             assert "diacritic" in er.aggregated_char_scores
 
     def test_engine_report_ligature_score_property(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             score = er.ligature_score
@@ -718,7 +718,7 @@ class TestFixturesSprint5:
             assert 0.0 <= score <= 1.0
 
     def test_engine_report_diacritic_score_property(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             score = er.diacritic_score
@@ -726,21 +726,21 @@ class TestFixturesSprint5:
             assert 0.0 <= score <= 1.0
 
     def test_engine_report_has_aggregated_taxonomy(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             assert er.aggregated_taxonomy is not None
             assert "total_errors" in er.aggregated_taxonomy
 
     def test_engine_report_has_aggregated_structure(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             assert er.aggregated_structure is not None
             assert "mean_reading_order_score" in er.aggregated_structure
 
     def test_engine_report_has_aggregated_image_quality(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for er in bm.engine_reports:
             assert er.aggregated_image_quality is not None
@@ -748,7 +748,7 @@ class TestFixturesSprint5:
 
     def test_bad_engine_has_more_errors(self):
         """L'ancien moteur doit avoir plus d'erreurs taxonomiques que pero_ocr."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         pero = next(er for er in bm.engine_reports if er.engine_name == "pero_ocr")
         bad = next(er for er in bm.engine_reports if er.engine_name == "ancien_moteur")
@@ -758,7 +758,7 @@ class TestFixturesSprint5:
 class TestReportSprint5:
 
     def test_report_data_has_ligature_score(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
@@ -766,7 +766,7 @@ class TestReportSprint5:
             assert "ligature_score" in eng, f"ligature_score manquant pour {eng['name']}"
 
     def test_report_data_has_diacritic_score(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
@@ -774,7 +774,7 @@ class TestReportSprint5:
             assert "diacritic_score" in eng
 
     def test_report_data_has_aggregated_taxonomy(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
@@ -782,7 +782,7 @@ class TestReportSprint5:
             assert "aggregated_taxonomy" in eng
 
     def test_report_data_has_aggregated_image_quality(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
@@ -790,7 +790,7 @@ class TestReportSprint5:
             assert "aggregated_image_quality" in eng
 
     def test_html_has_characters_tab(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
@@ -799,7 +799,7 @@ class TestReportSprint5:
         assert "Caractères" in html
 
     def test_html_has_ligatures_column(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
@@ -808,7 +808,7 @@ class TestReportSprint5:
         assert "Ligatures" in html
 
     def test_html_has_diacritiques_column(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
@@ -817,7 +817,7 @@ class TestReportSprint5:
         assert "Diacritiques" in html
 
     def test_html_has_scatter_plot(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
@@ -826,7 +826,7 @@ class TestReportSprint5:
         assert "chart-quality-cer" in html
 
     def test_html_has_taxonomy_chart(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
@@ -835,7 +835,7 @@ class TestReportSprint5:
         assert "chart-taxonomy" in html
 
     def test_html_has_confusion_heatmap(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
@@ -844,7 +844,7 @@ class TestReportSprint5:
         assert "confusion-heatmap" in html or "matrice de confusion" in html.lower()
 
     def test_doc_results_have_image_quality_in_report(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
@@ -854,7 +854,7 @@ class TestReportSprint5:
         assert has_iq, "Aucun document result n'a de données image_quality"
 
     def test_json_export_contains_sprint5_data(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         import json
         bm = generate_sample_benchmark()
         out = tmp_path / "results.json"

@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.fixtures import generate_sample_benchmark
+from picarones.evaluation.synthetic import generate_sample_benchmark
 from picarones.reports_v2.html.generator import ReportGenerator
 from picarones.reports_v2.html.renderers.ner import (
     build_ner_per_category_html,

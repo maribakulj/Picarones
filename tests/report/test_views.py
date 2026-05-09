@@ -344,7 +344,7 @@ class TestGeneratorWiring:
         approche fragile (passait sur n'importe quelle occurrence dans
         une docstring) et trop liée à la forme du code.
         """
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
 
         bench = generate_sample_benchmark()

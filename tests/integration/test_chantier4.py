@@ -23,7 +23,7 @@ import pytest
 
 class TestNormalizeLlmContent:
     def test_str_passes_through(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content("hello") == "hello"
         # Idempotence : retourne l'objet exact pour str
@@ -31,18 +31,18 @@ class TestNormalizeLlmContent:
         assert normalize_llm_content(s) is s
 
     def test_none_returns_empty(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content(None) == ""
 
     def test_empty_string_passes(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content("") == ""
 
     def test_list_of_chunks_with_text_attr(self):
         """Cas Mistral SDK : list[ContentChunk]. Sprint 15 fix."""
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         class MockChunk:
             def __init__(self, text):
@@ -53,18 +53,18 @@ class TestNormalizeLlmContent:
 
     def test_list_of_dicts_with_text_key(self):
         """Cas Anthropic SDK : list[dict] avec clé 'text'."""
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         result = normalize_llm_content([{"text": "a"}, {"text": "b"}])
         assert result == "ab"
 
     def test_list_of_strings(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content(["foo", "bar"]) == "foobar"
 
     def test_mixed_list(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         class MockChunk:
             def __init__(self, text):
@@ -76,12 +76,12 @@ class TestNormalizeLlmContent:
         assert result == "abc"
 
     def test_none_in_list_skipped(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content([None, "a", None, "b"]) == "ab"
 
     def test_object_with_text_attribute(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         class TextHolder:
             text = "hello"
@@ -90,7 +90,7 @@ class TestNormalizeLlmContent:
 
 class TestLogHttpError:
     def test_401_logs_invalid_key(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         class FakeExc(Exception):
             status_code = 401
@@ -102,7 +102,7 @@ class TestLogHttpError:
                    for r in caplog.records)
 
     def test_429_logs_rate_limit(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         class FakeExc(Exception):
             status_code = 429
@@ -113,7 +113,7 @@ class TestLogHttpError:
                    for r in caplog.records)
 
     def test_5xx_logs_server_error(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         class FakeExc(Exception):
             status_code = 503
@@ -124,7 +124,7 @@ class TestLogHttpError:
                    for r in caplog.records)
 
     def test_no_status_code_logs_generic(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         with caplog.at_level("WARNING"):
             log_http_error("Foo", "bar", ValueError("random"))
@@ -136,20 +136,20 @@ class TestLlmAdaptersInheritEnvVar:
     """Le chantier 4 a ajouté ``api_key_env_var`` aux 3 adapters cloud."""
 
     def test_mistral_declares_env_var(self):
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
         assert MistralAdapter.api_key_env_var == "MISTRAL_API_KEY"
 
     def test_openai_declares_env_var(self):
-        from picarones.llm.openai_adapter import OpenAIAdapter
+        from picarones.adapters.llm.openai_adapter import OpenAIAdapter
         assert OpenAIAdapter.api_key_env_var == "OPENAI_API_KEY"
 
     def test_anthropic_declares_env_var(self):
-        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        from picarones.adapters.llm.anthropic_adapter import AnthropicAdapter
         assert AnthropicAdapter.api_key_env_var == "ANTHROPIC_API_KEY"
 
     def test_ollama_no_env_var(self):
         """Ollama est local — pas de clé API."""
-        from picarones.llm.ollama_adapter import OllamaAdapter
+        from picarones.adapters.llm.ollama_adapter import OllamaAdapter
         assert OllamaAdapter.api_key_env_var is None
 
 

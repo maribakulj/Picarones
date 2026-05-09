@@ -324,14 +324,14 @@ class TestFixturesVLM:
     """Tests pour le moteur VLM fictif dans picarones.fixtures."""
 
     def test_generate_sample_benchmark_has_vlm_engine(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         engine_names = [r.engine_name for r in bm.engine_reports]
         assert any("vision" in name.lower() or "vlm" in name.lower() or "zero-shot" in name.lower()
                    for name in engine_names)
 
     def test_vlm_engine_has_hallucination_metrics(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         vlm_report = next(
             (r for r in bm.engine_reports
@@ -343,7 +343,7 @@ class TestFixturesVLM:
         assert "anchor_score_mean" in vlm_report.aggregated_hallucination
 
     def test_all_engines_have_line_metrics(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         for report in bm.engine_reports:
             assert report.aggregated_line_metrics is not None, \
@@ -351,7 +351,7 @@ class TestFixturesVLM:
             assert "gini_mean" in report.aggregated_line_metrics
 
     def test_all_documents_have_line_metrics(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         for report in bm.engine_reports:
             for dr in report.document_results:
@@ -360,7 +360,7 @@ class TestFixturesVLM:
                 assert "gini" in dr.line_metrics
 
     def test_all_documents_have_hallucination_metrics(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         for report in bm.engine_reports:
             for dr in report.document_results:
@@ -370,7 +370,7 @@ class TestFixturesVLM:
 
     def test_vlm_engine_has_valid_hallucination_aggregation(self):
         """Le moteur VLM doit avoir des métriques d'hallucination agrégées valides."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=6, seed=42)
         vlm_report = next(
             (r for r in bm.engine_reports if r.pipeline_info.get("is_vlm")),
@@ -396,7 +396,7 @@ class TestReportSprint10:
     @pytest.fixture(scope="class")
     def html_report(self, tmp_path_factory):
         """Génère un rapport HTML de démonstration."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         tmp = tmp_path_factory.mktemp("report")

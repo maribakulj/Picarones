@@ -191,7 +191,7 @@ class TestSnapshotAll:
 @pytest.fixture(scope="module")
 def generated_report_html(tmp_path_factory) -> str:
     """Génère un rapport démo et retourne son contenu HTML."""
-    from picarones import fixtures
+    from picarones.evaluation import synthetic as fixtures
     from picarones.evaluation.metrics.normalization import get_builtin_profile
     from picarones.reports_v2.html.generator import ReportGenerator
 

@@ -514,7 +514,7 @@ class TestAntiHallucinationTraceability:
 
 @pytest.fixture(scope="module")
 def benchmark_result():
-    from picarones import fixtures
+    from picarones.evaluation import synthetic as fixtures
     return fixtures.generate_sample_benchmark(n_docs=8)
 
 

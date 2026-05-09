@@ -130,7 +130,9 @@ FILE_BUDGETS: dict[str, int] = {
     # même budget pour la même raison historique
     # (Document/Corpus/GTLevel + 5 payloads + load_corpus_from_directory).
     "picarones/evaluation/corpus.py": 600,                # actuel 533
-    "picarones/fixtures.py": 600,                         # actuel 510
+    # Sprint H.1 du plan v2.0 — ``fixtures.py`` migré vers
+    # ``evaluation/synthetic.py``.
+    "picarones/evaluation/synthetic.py": 600,             # actuel 510
     # Phase 5.C.batch7 + Lot D : le shim
     # ``measurements/roman_numerals.py`` a été supprimé.  Seul le
     # canonique ``evaluation/metrics/roman_numerals.py`` reste.

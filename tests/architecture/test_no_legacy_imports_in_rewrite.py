@@ -44,12 +44,7 @@ REWRITE_PACKAGES: tuple[str, ...] = (
 #: Paquets legacy.  Importables uniquement depuis l'intérieur du
 #: legacy lui-même (ou depuis les tests, qui valident la migration
 #: en cours).
-LEGACY_PACKAGES: tuple[str, ...] = (
-    "llm",
-    "web",
-    "cli",
-    "extras",
-)
+LEGACY_PACKAGES: tuple[str, ...] = ()
 
 #: Pattern qui matche un import déclaré dans le code source.
 #:

@@ -125,7 +125,7 @@ class TestEntryStructure:
 
 @pytest.fixture(scope="module")
 def benchmark_result():
-    from picarones import fixtures
+    from picarones.evaluation import synthetic as fixtures
     return fixtures.generate_sample_benchmark(n_docs=5)
 
 
@@ -224,7 +224,7 @@ class TestNoPrescriptionGuards:
 
     def test_warning_message_is_visible(self, tmp_path):
         from picarones.reports_v2.html.generator import ReportGenerator
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         bench = fixtures.generate_sample_benchmark(n_docs=3)
         out = tmp_path / "r.html"
         ReportGenerator(bench).generate(out)
@@ -235,7 +235,7 @@ class TestNoPrescriptionGuards:
 
     def test_default_weights_are_empty_in_js_state(self, tmp_path):
         from picarones.reports_v2.html.generator import ReportGenerator
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         bench = fixtures.generate_sample_benchmark(n_docs=3)
         out = tmp_path / "r.html"
         ReportGenerator(bench).generate(out)

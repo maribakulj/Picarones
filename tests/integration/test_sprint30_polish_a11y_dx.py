@@ -205,7 +205,7 @@ class TestChangelogAndSpecsUpdated:
 
 class TestGeneratedReportCarriesA11y:
     def test_generated_html_embeds_tier_helpers(self, tmp_path):
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         from picarones.reports_v2.html.generator import ReportGenerator
 
         b = fixtures.generate_sample_benchmark(n_docs=4)

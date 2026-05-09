@@ -158,43 +158,43 @@ class TestPipelineMode:
 class TestLLMAdapters:
 
     def test_openai_adapter_structure(self):
-        from picarones.llm.openai_adapter import OpenAIAdapter
+        from picarones.adapters.llm.openai_adapter import OpenAIAdapter
         adapter = OpenAIAdapter(model="gpt-4o")
         assert adapter.name == "openai"
         assert adapter.model == "gpt-4o"
 
     def test_anthropic_adapter_structure(self):
-        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        from picarones.adapters.llm.anthropic_adapter import AnthropicAdapter
         adapter = AnthropicAdapter()
         assert adapter.name == "anthropic"
         assert "claude" in adapter.model.lower()
 
     def test_mistral_adapter_structure(self):
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
         adapter = MistralAdapter()
         assert adapter.name == "mistral"
         assert "mistral" in adapter.model.lower()
 
     def test_ollama_adapter_structure(self):
-        from picarones.llm.ollama_adapter import OllamaAdapter
+        from picarones.adapters.llm.ollama_adapter import OllamaAdapter
         adapter = OllamaAdapter(model="llama3")
         assert adapter.name == "ollama"
         assert adapter.model == "llama3"
 
     def test_ollama_custom_base_url(self):
-        from picarones.llm.ollama_adapter import OllamaAdapter
+        from picarones.adapters.llm.ollama_adapter import OllamaAdapter
         adapter = OllamaAdapter(config={"base_url": "http://myserver:11434"})
         assert adapter._base_url == "http://myserver:11434"
 
     def test_llm_result_dataclass(self):
-        from picarones.llm.base import LLMResult
+        from picarones.adapters.llm.base import LLMResult
         r = LLMResult(model_id="gpt-4o", text="bonjour", duration_seconds=1.2)
         assert r.success is True
         r_err = LLMResult(model_id="gpt-4o", text="", duration_seconds=0.1, error="fail")
         assert r_err.success is False
 
     def test_missing_api_key_raises(self):
-        from picarones.llm.openai_adapter import OpenAIAdapter
+        from picarones.adapters.llm.openai_adapter import OpenAIAdapter
         adapter = OpenAIAdapter()
         adapter._api_key = None  # simuler clé manquante
         with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
@@ -209,7 +209,7 @@ class TestOCRLLMPipeline:
 
     def _mock_llm(self, response: str = "texte corrigé"):
         """Crée un adaptateur LLM mock qui retourne toujours la même réponse."""
-        from picarones.llm.base import BaseLLMAdapter
+        from picarones.adapters.llm.base import BaseLLMAdapter
         class MockLLM(BaseLLMAdapter):
             @property
             def name(self): return "mock"
@@ -327,7 +327,7 @@ class TestFixturesPipeline:
 
     @pytest.fixture(scope="class")
     def benchmark(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         return generate_sample_benchmark(n_docs=3, seed=42)
 
     def test_pipeline_engine_present(self, benchmark):
@@ -385,7 +385,7 @@ class TestReportWithPipeline:
 
     @pytest.fixture(scope="class")
     def report_data(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         images_b64 = bm.metadata.get("_images_b64", {})
@@ -432,7 +432,7 @@ class TestReportWithPipeline:
             assert "over_normalization" in pipeline_er
 
     def test_html_contains_pipeline_tag(self, tmp_path):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         out = tmp_path / "report.html"

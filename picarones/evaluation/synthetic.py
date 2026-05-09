@@ -1,7 +1,7 @@
 """Données de test réalistes pour valider le rapport HTML sans moteurs OCR installés.
 
 Usage :
-    from picarones.fixtures import generate_sample_benchmark
+    from picarones.evaluation.synthetic import generate_sample_benchmark
     bm = generate_sample_benchmark()
     bm.to_json("sample_results.json")
 """

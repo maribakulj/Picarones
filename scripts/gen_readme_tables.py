@@ -126,7 +126,7 @@ _CLI_DESCRIPTIONS: dict[str, str] = {
 
 
 def build_cli_table() -> str:
-    from picarones.cli import cli
+    from picarones.interfaces.cli._legacy import cli
 
     rows = [
         "| Command | Description |",

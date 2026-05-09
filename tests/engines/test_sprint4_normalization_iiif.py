@@ -752,7 +752,7 @@ class TestFixturesDiplomaticCER:
 
     def test_gt_texts_contain_medieval_graphies(self):
         """Les textes GT de démo doivent contenir des graphies médiévales."""
-        from picarones.fixtures import _GT_TEXTS
+        from picarones.evaluation.synthetic import _GT_TEXTS
         all_gt = " ".join(_GT_TEXTS)
         # Les GT doivent contenir au moins ſ, & ou æ/œ
         has_medieval_chars = any(c in all_gt for c in ["ſ", "&", "æ", "œ"])
@@ -760,7 +760,7 @@ class TestFixturesDiplomaticCER:
 
     def test_benchmark_results_have_diplomatic_cer(self):
         """Les résultats du benchmark fictif doivent inclure le CER diplomatique."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark()
         for engine_report in bm.engine_reports:
             for doc_result in engine_report.document_results:
@@ -790,7 +790,7 @@ class TestReportDiplomaticCER:
 
     def test_report_data_has_cer_diplomatic(self):
         """_build_report_data doit inclure cer_diplomatic dans engines_summary."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import _build_report_data
 
         bm = generate_sample_benchmark()
@@ -805,7 +805,7 @@ class TestReportDiplomaticCER:
 
     def test_html_contains_cer_diplo_column(self, tmp_path):
         """Le HTML généré doit contenir la colonne CER diplo."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark()
@@ -818,7 +818,7 @@ class TestReportDiplomaticCER:
 
     def test_html_contains_medieval_graphie_indicator(self, tmp_path):
         """Le rapport doit mentionner les graphies médiévales (ſ=s ou u=v)."""
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark()

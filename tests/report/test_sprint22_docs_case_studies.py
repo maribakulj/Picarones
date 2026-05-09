@@ -110,7 +110,7 @@ class TestDeveloperDocs:
 
 @pytest.fixture(scope="module")
 def benchmark_result():
-    from picarones import fixtures
+    from picarones.evaluation import synthetic as fixtures
     return fixtures.generate_sample_benchmark(n_docs=5)
 
 
@@ -142,7 +142,7 @@ class TestEndToEnd:
     de la chaîne après tous les sprints de la phase 0."""
 
     def test_small_corpus_renders(self, tmp_path):
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         from picarones.reports_v2.html.generator import ReportGenerator
         bench = fixtures.generate_sample_benchmark(n_docs=2)
         out = tmp_path / "small.html"
@@ -150,7 +150,7 @@ class TestEndToEnd:
         assert out.stat().st_size > 50_000  # Chart.js inline minimum
 
     def test_large_corpus_renders(self, tmp_path):
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         from picarones.reports_v2.html.generator import ReportGenerator
         bench = fixtures.generate_sample_benchmark(n_docs=20)
         out = tmp_path / "large.html"
@@ -158,7 +158,7 @@ class TestEndToEnd:
         assert out.stat().st_size > 50_000
 
     def test_english_locale_full_render(self, tmp_path):
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         from picarones.reports_v2.html.generator import ReportGenerator
         bench = fixtures.generate_sample_benchmark(n_docs=5)
         out = tmp_path / "en.html"

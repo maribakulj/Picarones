@@ -514,30 +514,6 @@ class TestGallicaOCR:
         assert "12148/btv1b8453561w" in r.url
 
 
-# ===========================================================================
-# TestImportersInit
-# ===========================================================================
-
-class TestImportersInit:
-
-    def test_escriptorium_client_exported(self):
-        from picarones.extras.importers import EScriptoriumClient
-        assert EScriptoriumClient is not None
-
-    def test_gallica_client_exported(self):
-        from picarones.extras.importers import GallicaClient
-        assert GallicaClient is not None
-
-    def test_search_gallica_exported(self):
-        from picarones.extras.importers import search_gallica
-        assert callable(search_gallica)
-
-    def test_connect_escriptorium_exported(self):
-        from picarones.extras.importers import connect_escriptorium
-        assert callable(connect_escriptorium)
-
-
-# ===========================================================================
 # TestCLIHistory (tests Click runner)
 # ===========================================================================
 

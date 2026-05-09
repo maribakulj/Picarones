@@ -260,7 +260,7 @@ class TestSynthesisPreviewEndpoint:
     @pytest.fixture
     def job_with_results(self, monkeypatch, tmp_path):
         """Crée un job 'complete' + JSON résultat sur disque."""
-        from picarones import fixtures
+        from picarones.evaluation import synthetic as fixtures
         from picarones.interfaces.web._legacy.jobs import get_default_store, reset_default_store
         from picarones.interfaces.web._legacy import app as web_app
         from picarones.interfaces.web._legacy import state as web_state

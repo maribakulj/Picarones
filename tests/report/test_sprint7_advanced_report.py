@@ -25,7 +25,7 @@ import pytest
 
 @pytest.fixture
 def sample_benchmark_s7():
-    from picarones.fixtures import generate_sample_benchmark
+    from picarones.evaluation.synthetic import generate_sample_benchmark
     return generate_sample_benchmark(n_docs=8, seed=7)
 
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones import fixtures
+from picarones.evaluation import synthetic as fixtures
 from picarones.reports_v2.html.generator import (
     ReportGenerator,
     _build_jinja_env,

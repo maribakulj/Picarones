@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.fixtures import generate_sample_benchmark
+from picarones.evaluation.synthetic import generate_sample_benchmark
 from picarones.reports_v2.html.data import build_report_data
 from picarones.reports_v2.html.data.extra_metrics import (
     compute_marginal_cost_section,

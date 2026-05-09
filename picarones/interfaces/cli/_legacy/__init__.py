@@ -315,7 +315,7 @@ def demo_cmd(
     # ``test_layer_imports_are_legal[layer-interfaces]``.
     import importlib
     generate_sample_benchmark = importlib.import_module(
-        "picarones.fixtures",
+        "picarones.evaluation.synthetic",
     ).generate_sample_benchmark
     from picarones.reports_v2.html.generator import ReportGenerator
 

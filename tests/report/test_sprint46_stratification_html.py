@@ -276,7 +276,7 @@ class TestTraceability:
 
 class TestReportIntegration:
     def test_section_absent_without_strata(self, tmp_path: Path) -> None:
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bench = generate_sample_benchmark()
         bench.doc_strata = None  # force absence
         out = tmp_path / "report.html"
@@ -285,7 +285,7 @@ class TestReportIntegration:
         assert "stratified-ranking" not in html
 
     def test_section_present_with_strata(self, tmp_path: Path) -> None:
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bench = generate_sample_benchmark()
         # La fixture peuple image_quality.script_type ; on extrait
         # manuellement comme le ferait le runner.
@@ -304,7 +304,7 @@ class TestReportIntegration:
         assert "<details" in html
 
     def test_french_locale_uses_french_labels(self, tmp_path: Path) -> None:
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bench = generate_sample_benchmark()
         strata_map = {}
         for r in bench.engine_reports:
@@ -320,7 +320,7 @@ class TestReportIntegration:
         assert "Médiane CER" in html
 
     def test_english_locale_uses_english_labels(self, tmp_path: Path) -> None:
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bench = generate_sample_benchmark()
         strata_map = {}
         for r in bench.engine_reports:

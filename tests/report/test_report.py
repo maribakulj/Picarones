@@ -3,7 +3,7 @@
 import json
 import pytest
 
-from picarones.fixtures import generate_sample_benchmark
+from picarones.evaluation.synthetic import generate_sample_benchmark
 from picarones.reports_v2.html.generator import ReportGenerator, _build_report_data, _cer_color
 
 

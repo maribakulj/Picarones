@@ -93,7 +93,7 @@ class OCRLLMPipeline(BaseOCREngine):
 
     Examples
     --------
-    >>> from picarones.llm import OpenAIAdapter
+    >>> from picarones.adapters.llm import OpenAIAdapter
     >>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
     >>> pipeline = OCRLLMPipeline(
     ...     ocr_engine=TesseractEngine({"lang": "fra"}),

@@ -285,7 +285,7 @@ class TestEnglishReport:
 
     @pytest.fixture(scope="class")
     def english_html(self, tmp_path_factory):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark(n_docs=3, seed=42)
@@ -297,7 +297,7 @@ class TestEnglishReport:
 
     @pytest.fixture(scope="class")
     def french_html(self, tmp_path_factory):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark(n_docs=3, seed=42)
@@ -356,14 +356,14 @@ class TestEnglishReport:
         assert len(data["engines"]) == 5
 
     def test_report_generator_default_lang_is_fr(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=2, seed=1)
         gen = ReportGenerator(bm)
         assert gen.lang == "fr"
 
     def test_report_generator_lang_en(self):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         from picarones.reports_v2.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=2, seed=1)
         gen = ReportGenerator(bm, lang="en")

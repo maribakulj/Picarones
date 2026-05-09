@@ -122,7 +122,7 @@ class TestBenchmarkHistory:
         assert len(data["runs"]) == 1
 
     def test_record_benchmark_result(self, db):
-        from picarones.fixtures import generate_sample_benchmark
+        from picarones.evaluation.synthetic import generate_sample_benchmark
         bm = generate_sample_benchmark(n_docs=3, seed=0)
         run_id = db.record(bm)
         assert isinstance(run_id, str)
@@ -351,7 +351,7 @@ class TestDegradationFunctions:
 
     def _make_png(self) -> bytes:
         """Génère un PNG minimal valide (10×10 pixels)."""
-        from picarones.fixtures import _make_placeholder_png
+        from picarones.evaluation.synthetic import _make_placeholder_png
         return _make_placeholder_png(40, 30)
 
     def test_degrade_image_bytes_imports(self):
