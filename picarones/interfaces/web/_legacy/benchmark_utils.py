@@ -85,38 +85,52 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
             "(pour la post-correction ou le zero-shot)"
         )
 
+    # Sprint H.2.b.4 — instanciation OCR via la factory canonique
+    # ``ocr_adapter_from_name`` (retourne ``BaseOCRAdapter``) au lieu
+    # des constructeurs ``BaseOCREngine`` legacy.  Les adapters
+    # canoniques ont des kwargs nommés (pas de dict ``config``) — la
+    # conversion se fait ici en respectant les noms historiques des
+    # champs ``CompetitorConfig.ocr_model``.
     ocr = None
     if not is_corpus_ocr:
-        from picarones.adapters.legacy_engines.tesseract import TesseractEngine
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
+        from picarones.adapters.ocr.factory import ocr_adapter_from_name
 
-        if engine_id == "tesseract":
-            ocr = TesseractEngine(config={"lang": comp.ocr_model or "fra", "psm": 6})
-        elif engine_id == "mistral_ocr":
-            ocr = MistralOCREngine(config={"model": comp.ocr_model or "mistral-ocr-latest"})
-        elif engine_id == "google_vision":
-            try:
-                from picarones.adapters.legacy_engines.google_vision import GoogleVisionEngine
-                ocr = GoogleVisionEngine(
-                    config={"detection_type": comp.ocr_model or "document_text_detection"},
+        try:
+            if engine_id == "tesseract":
+                ocr = ocr_adapter_from_name(
+                    "tesseract",
+                    lang=comp.ocr_model or "fra",
+                    psm=6,
                 )
-            except ImportError as exc:
-                raise RuntimeError("Google Vision non disponible.") from exc
-        elif engine_id == "azure_doc_intel":
-            try:
-                from picarones.adapters.legacy_engines.azure_doc_intel import AzureDocIntelEngine
-                ocr = AzureDocIntelEngine(
-                    config={"model": comp.ocr_model or "prebuilt-document"},
+            elif engine_id == "mistral_ocr":
+                ocr = ocr_adapter_from_name(
+                    "mistral_ocr",
+                    model=comp.ocr_model or "mistral-ocr-latest",
                 )
-            except ImportError as exc:
-                raise RuntimeError("Azure Document Intelligence non disponible.") from exc
-        else:
-            raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+            elif engine_id == "google_vision":
+                ocr = ocr_adapter_from_name(
+                    "google_vision",
+                    feature_type=(
+                        (comp.ocr_model or "DOCUMENT_TEXT_DETECTION").upper()
+                    ),
+                )
+            elif engine_id == "azure_doc_intel":
+                ocr = ocr_adapter_from_name(
+                    "azure_doc_intel",
+                    model_id=comp.ocr_model or "prebuilt-read",
+                )
+            else:
+                raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+        except ValueError as exc:
+            # Adapter indisponible (dépendance optionnelle absente)
+            # → message utilisateur, comme avant la migration.
+            raise RuntimeError(str(exc)) from exc
 
         if not comp.llm_provider:
             return ocr
 
-    # Pipeline OCR+LLM (live ou post-correction)
+    # Pipeline OCR+LLM (live ou post-correction) — ``OCRLLMPipelineConfig``
+    # canonique remplace l'ex-``OCRLLMPipeline`` legacy.
     mode_map = {
         "text_only": "text_only",
         "post_correction_text": "text_only",
@@ -128,7 +142,8 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
     llm = _build_llm_adapter(comp)
 
-    from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline
+    from picarones.pipeline.llm_pipeline_config import OCRLLMPipelineConfig
+
     prompt = comp.prompt_file or "correction_medieval_french.txt"
 
     if is_corpus_ocr:
@@ -136,11 +151,11 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     else:
         pipeline_name = comp.name or f"{engine_id} → {comp.llm_model or comp.llm_provider}"
 
-    return OCRLLMPipeline(
-        ocr_engine=ocr,
+    return OCRLLMPipelineConfig(
+        ocr_adapter=ocr,
         llm_adapter=llm,
         mode=mode,
-        prompt=prompt,
+        prompt_template=prompt,
         pipeline_name=pipeline_name,
     )
 
@@ -278,14 +293,19 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         if job.status == "cancelled":
             return
 
-        # Instancier les moteurs via la factory cercle 2 (pas de
-        # dépendance ``click`` dans le code web).
-        from picarones.adapters.legacy_engines.factory import engine_from_name
+        # Sprint H.2.b.4 — instanciation via la factory canonique
+        # ``ocr_adapter_from_name`` (retourne ``BaseOCRAdapter``).
+        from picarones.adapters.ocr.factory import ocr_adapter_from_name
 
         ocr_engines = []
         for engine_name in req.engines:
             try:
-                eng = engine_from_name(engine_name, lang=req.lang, psm=6)
+                if engine_name.lower() in {"tesseract", "tess"}:
+                    eng = ocr_adapter_from_name(
+                        engine_name, lang=req.lang, psm=6,
+                    )
+                else:
+                    eng = ocr_adapter_from_name(engine_name)
                 ocr_engines.append(eng)
                 job.add_event("log", {"message": f"Moteur chargé : {engine_name}"})
             except Exception as exc:

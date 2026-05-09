@@ -427,7 +427,7 @@ def _build_pipeline_metadata(
         "pipeline_mode": getattr(engine, "mode", None),
         "is_pipeline": True,
     }
-    # mode peut être un Enum — sérialise sa value.
+    # mode peut être un Enum (legacy) ou une string (canonique).
     mode = metadata["pipeline_mode"]
     if mode is not None and hasattr(mode, "value"):
         metadata["pipeline_mode"] = mode.value
@@ -470,8 +470,9 @@ def _build_pipeline_info(engine: Any) -> dict:
         info["llm_model"] = llm_adapter.model
         info["llm_provider"] = llm_adapter.name
     mode = getattr(engine, "mode", None)
-    if mode is not None and hasattr(mode, "value"):
-        info["mode"] = mode.value
+    if mode is not None:
+        # Tolère enum (legacy ``PipelineMode.X``) ou string (canonique).
+        info["mode"] = mode.value if hasattr(mode, "value") else mode
     prompt_path = getattr(engine, "prompt_path", None)
     if prompt_path is not None:
         info["prompt_file"] = prompt_path
@@ -603,8 +604,14 @@ def _ocr_only_to_spec(engine: "BaseOCREngine") -> PipelineSpec:
 
 
 def _ocr_llm_pipeline_to_spec(pipeline: Any) -> PipelineSpec:
-    """Spec composée pour un ``OCRLLMPipeline`` (3 modes)."""
-    mode = pipeline.mode.value
+    """Spec composée pour un ``OCRLLMPipeline`` legacy ou un
+    ``OCRLLMPipelineConfig`` canonique (3 modes).
+
+    Tolère ``pipeline.mode`` en enum (legacy ``PipelineMode.TEXT_ONLY``)
+    ou en string (canonique ``"text_only"``).
+    """
+    mode_attr = pipeline.mode
+    mode = mode_attr.value if hasattr(mode_attr, "value") else mode_attr
     llm_name = _llm_adapter_name(pipeline.llm_adapter)
     llm_params: dict[str, str | int | float | bool] = {
         "prompt_template": pipeline.prompt_template,
@@ -687,11 +694,18 @@ def build_adapter_resolver(
             # BaseOCRAdapter : déjà StepExecutor, pas de wrapping.
             _register(engine.name, engine)
         elif getattr(engine, "is_pipeline", False):
-            # OCRLLMPipeline : enregistrer ocr + llm sous-jacents.
+            # OCRLLMPipeline (legacy) ou OCRLLMPipelineConfig
+            # (canonique) : enregistrer ocr + llm sous-jacents.
             ocr_engine = getattr(engine, "ocr_engine", None)
             llm_adapter = getattr(engine, "llm_adapter", None)
             if ocr_engine is not None:
-                _register(ocr_engine.name, LegacyOCREngineExecutor(ocr_engine))
+                if _is_canonical_adapter(ocr_engine):
+                    # BaseOCRAdapter : déjà StepExecutor.
+                    _register(ocr_engine.name, ocr_engine)
+                else:
+                    _register(
+                        ocr_engine.name, LegacyOCREngineExecutor(ocr_engine),
+                    )
             if llm_adapter is not None:
                 _register(_llm_adapter_name(llm_adapter), llm_adapter)
         else:
