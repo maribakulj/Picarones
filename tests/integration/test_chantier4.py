@@ -165,7 +165,9 @@ class TestHttpHelpers:
 
     def test_validate_http_url_accepts_http(self):
         from picarones.adapters.corpus._http import validate_http_url
-        validate_http_url("http://localhost:8080/x")
+        # Sprint S1.6 : ``localhost`` désormais refusé (anti-SSRF).
+        # On utilise un hostname public valide à la place.
+        validate_http_url("http://example.org/x")
 
     @pytest.mark.parametrize("scheme", ["file", "ftp", "data", "javascript", "ssh"])
     def test_validate_http_url_rejects_other_schemes(self, scheme):
