@@ -16,10 +16,12 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from picarones.adapters.legacy_engines.base import BaseOCREngine
+from picarones.adapters.ocr.base import BaseOCRAdapter
+from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.app.services._legacy_partial_store import (
     _delete_partial,
     _load_partial,
@@ -40,20 +42,43 @@ from picarones.evaluation.metric_result import MetricsResult
 # ──────────────────────────────────────────────────────────────────────
 
 
-class _MockOCR(BaseOCREngine):
+class _MockOCR(BaseOCRAdapter):
+    """Adapter canonique minimal pour les tests.
+
+    Compat ergonomique avec le pattern legacy : un test peut faire
+    ``ocr._run_ocr = lambda p: "..."`` après construction pour
+    customiser la sortie ; le mock l'invoque depuis ``execute()``.
+    Sans override, retourne ``"ocr text"`` par défaut.
+    """
+
     def __init__(self, name: str = "mock_ocr") -> None:
-        super().__init__(config={})
         self._name = name
 
     @property
-    def name(self) -> str:  # type: ignore[override]
+    def name(self) -> str:
         return self._name
 
-    def version(self) -> str:
-        return "1.0"
+    def execute(self, inputs, params, context):
+        from pathlib import Path
 
-    def _run_ocr(self, image_path):
-        return "ocr text"
+        out_dir = Path(context.workspace_uri)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{context.document_id}_mock.txt"
+        runtime_override = getattr(self, "_run_ocr", None)
+        if callable(runtime_override):
+            text = runtime_override(out_path)
+        else:
+            text = "ocr text"
+        out_path.write_text(text, encoding="utf-8")
+        return {
+            ArtifactType.RAW_TEXT: Artifact(
+                id=f"{context.document_id}:{self._name}:raw_text",
+                document_id=context.document_id,
+                type=ArtifactType.RAW_TEXT,
+                produced_by_step="ocr",
+                uri=str(out_path),
+            ),
+        }
 
 
 def _make_doc_result(doc_id: str, hyp: str = "h", cer: float = 0.1) -> DocumentResult:

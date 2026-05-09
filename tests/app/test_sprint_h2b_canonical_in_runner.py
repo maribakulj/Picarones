@@ -1,27 +1,20 @@
-"""Sprint H.2.b — preuve : ``run_benchmark_via_service`` accepte
-des ``BaseOCRAdapter`` canoniques au même titre que les ``BaseOCREngine``
-legacy.
+"""Sprint H.2.b — ``run_benchmark_via_service`` consomme des
+``BaseOCRAdapter`` canoniques.
 
 Vérifie que :
 
 - ``engine_to_pipeline_spec`` produit une ``PipelineSpec`` valide pour
   un ``BaseOCRAdapter`` canonique.
 - ``build_adapter_resolver`` enregistre directement le ``BaseOCRAdapter``
-  (pas de wrapping ``LegacyOCREngineExecutor``).
+  (pas de wrapping intermédiaire).
 - Bout-en-bout : un ``PrecomputedTextAdapter`` consommé par
   ``run_benchmark_via_service`` produit un ``BenchmarkResult`` valide.
-- Mélange canonique + legacy dans la même liste fonctionne (étape de
-  migration progressive des callers).
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from picarones.adapters.legacy_engines._step_executor import (
-    LegacyOCREngineExecutor,
-)
-from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.adapters.ocr import (
     BaseOCRAdapter,
     PrecomputedTextAdapter,
@@ -68,25 +61,6 @@ class _MockCanonicalOCR(BaseOCRAdapter):
                 uri=str(out_path),
             ),
         }
-
-
-class _MockLegacyOCR(BaseOCREngine):
-    """Engine legacy minimal pour tester la coexistence."""
-
-    def __init__(self, name: str = "mock_legacy", text: str = "legacy") -> None:
-        super().__init__(config={})
-        self._name = name
-        self._text = text
-
-    @property
-    def name(self) -> str:  # type: ignore[override]
-        return self._name
-
-    def version(self) -> str:
-        return "1.0"
-
-    def _run_ocr(self, image_path):
-        return self._text
 
 
 def _make_corpus(tmp_path: Path, n: int = 1) -> Corpus:
@@ -147,24 +121,6 @@ class TestBuildAdapterResolverCanonical:
         registered = resolver("my_ocr")
         # L'instance retournée est l'adapter lui-même, pas un wrapper.
         assert registered is adapter
-        assert not isinstance(registered, LegacyOCREngineExecutor)
-
-    def test_legacy_engine_still_wrapped(self) -> None:
-        engine = _MockLegacyOCR(name="legacy_ocr")
-        resolver = build_adapter_resolver([engine])
-
-        registered = resolver("legacy_ocr")
-        assert isinstance(registered, LegacyOCREngineExecutor)
-
-    def test_mixed_canonical_and_legacy(self) -> None:
-        adapter = _MockCanonicalOCR(name="canon")
-        engine = _MockLegacyOCR(name="legacy")
-        resolver = build_adapter_resolver([adapter, engine])
-
-        # Canonical : direct.
-        assert resolver("canon") is adapter
-        # Legacy : wrapped.
-        assert isinstance(resolver("legacy"), LegacyOCREngineExecutor)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -204,18 +160,17 @@ class TestRunBenchmarkWithCanonical:
         bm = run_benchmark_via_service(corpus, [adapter])
         assert bm.engine_reports[0].engine_version == "unknown"
 
-    def test_mixed_canonical_and_legacy_run(self, tmp_path: Path) -> None:
-        """Migration progressive : un caller peut passer un mix de
-        canoniques et de legacy dans la même liste."""
+    def test_multiple_canonical_run(self, tmp_path: Path) -> None:
+        """Plusieurs adapters canoniques dans la même liste."""
         corpus = _make_corpus(tmp_path)
-        canonical = _MockCanonicalOCR(name="canon")
-        legacy = _MockLegacyOCR(name="legacy", text="text from mock")
+        a = _MockCanonicalOCR(name="canon_a")
+        b = _MockCanonicalOCR(name="canon_b")
 
-        bm = run_benchmark_via_service(corpus, [canonical, legacy])
+        bm = run_benchmark_via_service(corpus, [a, b])
 
         assert len(bm.engine_reports) == 2
         engine_names = {r.engine_name for r in bm.engine_reports}
-        assert engine_names == {"canon", "legacy"}
+        assert engine_names == {"canon_a", "canon_b"}
 
     def test_canonical_with_partial_dir(self, tmp_path: Path) -> None:
         """Le chemin resumable (D.2.b) marche aussi avec des

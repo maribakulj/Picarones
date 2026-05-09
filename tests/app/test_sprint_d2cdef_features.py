@@ -20,12 +20,13 @@ from pathlib import Path
 
 import pytest
 
-from picarones.adapters.legacy_engines.base import BaseOCREngine
 from picarones.adapters.llm.base import BaseLLMAdapter
+from picarones.adapters.ocr.base import BaseOCRAdapter
 from picarones.app.services._legacy_runner_adapter import (
     _aggregate_ner_metrics,
     run_benchmark_via_service,
 )
+from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.evaluation.corpus import (
     Corpus,
     Document,
@@ -34,25 +35,35 @@ from picarones.evaluation.corpus import (
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Mocks
+# Mocks (canoniques)
 # ──────────────────────────────────────────────────────────────────────
 
 
-class _MockOCR(BaseOCREngine):
+class _MockOCR(BaseOCRAdapter):
     def __init__(self, name: str = "mock_ocr", text: str = "ocr") -> None:
-        super().__init__(config={})
         self._name = name
         self._text = text
 
     @property
-    def name(self) -> str:  # type: ignore[override]
+    def name(self) -> str:
         return self._name
 
-    def version(self) -> str:
-        return "1.0"
+    def execute(self, inputs, params, context):
+        from pathlib import Path
 
-    def _run_ocr(self, image_path):
-        return self._text
+        out_dir = Path(context.workspace_uri)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{context.document_id}_mock.txt"
+        out_path.write_text(self._text, encoding="utf-8")
+        return {
+            ArtifactType.RAW_TEXT: Artifact(
+                id=f"{context.document_id}:{self._name}:raw_text",
+                document_id=context.document_id,
+                type=ArtifactType.RAW_TEXT,
+                produced_by_step="ocr",
+                uri=str(out_path),
+            ),
+        }
 
 
 class _MockLLM(BaseLLMAdapter):
@@ -161,18 +172,17 @@ class TestOverNormalization:
         """Pipeline OCR+LLM en mode ``text_only`` : le LLM reçoit le
         texte OCR et le corrige.  ``over_normalization`` doit
         apparaître dans pipeline_metadata."""
-        from picarones.adapters.legacy_pipelines.base import (
-            OCRLLMPipeline,
-            PipelineMode,
+        from picarones.pipeline.llm_pipeline_config import (
+            OCRLLMPipelineConfig,
         )
 
         corpus = _make_simple_corpus(tmp_path)
         ocr = _MockOCR(name="upstream_ocr", text="texto 0")  # 1 erreur
         llm = _MockLLM(model="m1", text="texte 0")  # corrige bien
-        pipeline = OCRLLMPipeline(
-            ocr_engine=ocr,
+        pipeline = OCRLLMPipelineConfig(
+            ocr_adapter=ocr,
             llm_adapter=llm,
-            mode=PipelineMode.TEXT_ONLY,
+            mode="text_only",
         )
 
         bm = run_benchmark_via_service(corpus, [pipeline])
@@ -190,16 +200,15 @@ class TestOverNormalization:
         """Pipeline zero-shot : le VLM reçoit l'image directement, pas
         d'OCR amont, donc pas d'``ocr_intermediate`` et pas
         d'``over_normalization``."""
-        from picarones.adapters.legacy_pipelines.base import (
-            OCRLLMPipeline,
-            PipelineMode,
+        from picarones.pipeline.llm_pipeline_config import (
+            OCRLLMPipelineConfig,
         )
 
         corpus = _make_simple_corpus(tmp_path)
         llm = _MockLLM(model="vlm-1", text="texte 0")
-        pipeline = OCRLLMPipeline(
+        pipeline = OCRLLMPipelineConfig(
             llm_adapter=llm,
-            mode=PipelineMode.ZERO_SHOT,
+            mode="zero_shot",
         )
 
         bm = run_benchmark_via_service(corpus, [pipeline])

@@ -164,86 +164,9 @@ class TestMistralAdapterLogging:
                    if rec.levelno >= logging.WARNING)
 
 
-# ---------------------------------------------------------------------------
-# Bug 1 — OCRLLMPipeline : WARNING quand le LLM retourne texte vide
-# ---------------------------------------------------------------------------
-
-class TestPipelineEmptyLLMResponse:
-    """Le pipeline doit loguer un WARNING si le LLM retourne un texte vide."""
-
-    def _make_pipeline(self, llm_text: str):
-        """Crée un pipeline dont le LLM retourne llm_text."""
-        from picarones.adapters.legacy_pipelines.base import OCRLLMPipeline, PipelineMode
-        from picarones.adapters.legacy_engines.base import BaseOCREngine
-        from picarones.adapters.llm.base import BaseLLMAdapter
-        from typing import Optional
-
-        # Sprint B (plan v2.0) : ``OCRLLMPipeline.run()`` délègue à
-        # ``PipelineExecutor`` qui appelle ``llm_adapter.execute()``.
-        # Les mocks doivent donc être de vraies sous-classes des
-        # contrats canoniques, pas de simples ``MagicMock``.
-
-        class _MockOCR(BaseOCREngine):
-            def __init__(self) -> None:
-                super().__init__(config={})
-            @property
-            def name(self) -> str:
-                return "mock_ocr"
-            def version(self) -> str:
-                return "1.0"
-            def _run_ocr(self, image_path) -> str:
-                return "texte ocr brut"
-
-        class _MockLLM(BaseLLMAdapter):
-            def __init__(self, fixed_text: str) -> None:
-                super().__init__(model="mock-model", config={})
-                self._fixed_text = fixed_text
-            @property
-            def name(self) -> str:
-                return "mock_llm"
-            @property
-            def default_model(self) -> str:
-                return "mock-model"
-            def _call(self, prompt: str, image_b64: Optional[str] = None) -> str:
-                return self._fixed_text
-
-        return OCRLLMPipeline(
-            ocr_engine=_MockOCR(),
-            llm_adapter=_MockLLM(llm_text),
-            mode=PipelineMode.TEXT_ONLY,
-            prompt="correction_medieval_french.txt",
-        )
-
-    def test_warning_on_empty_llm_output(self, tmp_path, caplog):
-        """WARNING doit être logu si le LLM retourne une chaîne vide."""
-        # Créer une fausse image
-        img_path = tmp_path / "test.png"
-        img_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
-
-        pipeline = self._make_pipeline("")
-        with caplog.at_level(logging.WARNING, logger="picarones.pipelines.base"):
-            result = pipeline.run(img_path)
-
-        assert result.text == ""
-        assert any(
-            "vide" in rec.message.lower() or "empty" in rec.message.lower()
-            for rec in caplog.records
-            if rec.levelno >= logging.WARNING
-        ), f"WARNING attendu, messages : {[r.message for r in caplog.records]}"
-
-    def test_no_warning_on_normal_llm_output(self, tmp_path, caplog):
-        """Aucun WARNING ne doit être émis pour une sortie LLM normale."""
-        img_path = tmp_path / "test.png"
-        img_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
-
-        pipeline = self._make_pipeline("Texte corrigé par le LLM")
-        with caplog.at_level(logging.WARNING, logger="picarones.pipelines.base"):
-            result = pipeline.run(img_path)
-
-        assert result.text == "Texte corrigé par le LLM"
-        assert not any(
-            "vide" in rec.message.lower()
-            for rec in caplog.records
-            if rec.levelno >= logging.WARNING
-        )
+# Section retirée au sprint H.2.c : ``OCRLLMPipeline.run()`` n'existe
+# plus (OCRLLMPipeline supprimé avec ``adapters/legacy_pipelines/``).
+# Le warning « LLM retourne texte vide » est désormais émis directement
+# par les adapters LLM (``picarones.adapters.llm.base.BaseLLMAdapter``) ;
+# il est testé dans ``tests/adapters/llm/`` au niveau adapter.
 

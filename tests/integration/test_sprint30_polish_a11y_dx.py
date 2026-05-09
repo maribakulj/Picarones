@@ -63,52 +63,12 @@ class TestI18nCache:
         assert info_after.currsize == 0
 
 
-# ---------------------------------------------------------------------------
-# 2. _safe_version log la stacktrace en DEBUG
-# ---------------------------------------------------------------------------
-
-class TestSafeVersionLogsDebug:
-    def test_exception_in_version_does_not_propagate(self):
-        from picarones.adapters.legacy_engines.base import BaseOCREngine
-
-        class BrokenEngine(BaseOCREngine):
-            @property
-            def name(self) -> str:
-                return "broken"
-
-            def version(self) -> str:
-                raise RuntimeError("désolé je suis cassé")
-
-            def _run_ocr(self, image_path) -> str:
-                return ""
-
-        eng = BrokenEngine()
-        # Ne doit pas lever
-        v = eng._safe_version()
-        assert v == "unknown"
-
-    def test_stacktrace_emitted_at_debug_level(self, caplog):
-        from picarones.adapters.legacy_engines.base import BaseOCREngine
-
-        class BrokenEngine(BaseOCREngine):
-            @property
-            def name(self) -> str:
-                return "broken"
-
-            def version(self) -> str:
-                raise RuntimeError("oops")
-
-            def _run_ocr(self, image_path) -> str:
-                return ""
-
-        eng = BrokenEngine()
-        with caplog.at_level(logging.DEBUG, logger="picarones.adapters.legacy_engines.base"):
-            eng._safe_version()
-        # Le log debug doit mentionner la classe + l'exception
-        assert any(
-            "BrokenEngine" in r.message and "oops" in r.message
-            for r in caplog.records
-        ), f"Records: {[r.message for r in caplog.records]}"
+# Section retirée au sprint H.2.d : ``BaseOCREngine._safe_version()``
+# n'existe plus (BaseOCREngine supprimé avec ``adapters/legacy_engines/``).
+# Le contrat équivalent côté canonique (``BaseOCRAdapter`` n'a pas de
+# ``version()``) est testé dans
+# ``tests/app/test_sprint_h2b_canonical_in_runner.py`` via
+# ``test_canonical_adapter_version_unknown``.
 
 
 # ---------------------------------------------------------------------------

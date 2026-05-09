@@ -133,26 +133,51 @@ class TestExcludeCharsNormalization:
         assert metrics_excl.cer == 0.0
 
     def test_char_exclude_propagated_in_run_benchmark_via_service(self, tmp_path):
-        """char_exclude doit être transmis à run_benchmark et réduire le CER."""
+        """char_exclude doit être transmis à run_benchmark et réduire le CER.
+
+        Sprint H.2.b — mock migré ``BaseOCREngine`` → ``BaseOCRAdapter``
+        (canonique).  La propagation de ``char_exclude`` traverse le
+        runner adapter inchangée.
+        """
+        from picarones.adapters.ocr.base import BaseOCRAdapter
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
+        from picarones.domain.artifacts import Artifact, ArtifactType
         from picarones.evaluation.corpus import Corpus, Document
-        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
-        from picarones.adapters.legacy_engines.base import BaseOCREngine, EngineResult
 
-        class MockEngine(BaseOCREngine):
-            name = "mock"
-            version = "0.0"
+        class MockAdapter(BaseOCRAdapter):
+            @property
+            def name(self) -> str:
+                return "mock"
 
-            def _run_ocr(self, image_path):
-                return EngineResult(text="Bonjour monde", success=True)
+            def execute(self, inputs, params, context):
+                from pathlib import Path
+
+                out_dir = Path(context.workspace_uri)
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out_path = out_dir / f"{context.document_id}_mock.txt"
+                out_path.write_text("Bonjour monde", encoding="utf-8")
+                return {
+                    ArtifactType.RAW_TEXT: Artifact(
+                        id=f"{context.document_id}:mock:raw_text",
+                        document_id=context.document_id,
+                        type=ArtifactType.RAW_TEXT,
+                        produced_by_step="ocr",
+                        uri=str(out_path),
+                    ),
+                }
 
         doc = Document(image_path=tmp_path / "page.png", ground_truth="Bonjour, monde!")
         (tmp_path / "page.png").write_bytes(FAKE_PNG)
         corpus = Corpus(name="test", documents=[doc])
 
-        result_raw = run_benchmark_via_service(corpus, [MockEngine()])
+        result_raw = run_benchmark_via_service(corpus, [MockAdapter()])
         cer_raw = result_raw.engine_reports[0].document_results[0].metrics.cer
 
-        result_excl = run_benchmark_via_service(corpus, [MockEngine()], char_exclude=frozenset([",", "!"]))
+        result_excl = run_benchmark_via_service(
+            corpus, [MockAdapter()], char_exclude=frozenset([",", "!"]),
+        )
         cer_excl = result_excl.engine_reports[0].document_results[0].metrics.cer
 
         assert cer_excl <= cer_raw

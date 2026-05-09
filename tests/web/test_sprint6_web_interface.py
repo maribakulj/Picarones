@@ -919,68 +919,90 @@ class TestRunnerProgressCallback:
         param = sig.parameters["progress_callback"]
         assert param.default is None
 
+    def _make_mock_adapter(self, name: str = "mock"):
+        """Sprint H.2.b — mock canonique ``BaseOCRAdapter``."""
+        from picarones.adapters.ocr.base import BaseOCRAdapter
+        from picarones.domain.artifacts import Artifact, ArtifactType
+
+        class _MockAdapter(BaseOCRAdapter):
+            def __init__(self, n: str) -> None:
+                self._n = n
+
+            @property
+            def name(self) -> str:
+                return self._n
+
+            def execute(self, inputs, params, context):
+                from pathlib import Path
+
+                out_dir = Path(context.workspace_uri)
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out_path = out_dir / f"{context.document_id}_mock.txt"
+                out_path.write_text("texte mock", encoding="utf-8")
+                return {
+                    ArtifactType.RAW_TEXT: Artifact(
+                        id=f"{context.document_id}:{self._n}:raw_text",
+                        document_id=context.document_id,
+                        type=ArtifactType.RAW_TEXT,
+                        produced_by_step="ocr",
+                        uri=str(out_path),
+                    ),
+                }
+
+        return _MockAdapter(name)
+
     def test_callback_called_with_mock_engine(self, tmp_corpus):
         """Le callback est appelé pour chaque document."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
-        from picarones.adapters.legacy_engines.base import BaseOCREngine
-
-        class MockEngine(BaseOCREngine):
-            @property
-            def name(self): return "mock"
-            @property
-            def version(self): return "0.0.1"
-            def _run_ocr(self, image_path): return "texte mock"
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
         calls = []
+
         def my_callback(engine_name, doc_idx, doc_id):
             calls.append((engine_name, doc_idx, doc_id))
 
-        run_benchmark_via_service(corpus, [MockEngine()], progress_callback=my_callback)
+        run_benchmark_via_service(
+            corpus, [self._make_mock_adapter()], progress_callback=my_callback,
+        )
         assert len(calls) == len(corpus), f"Expected {len(corpus)} calls, got {len(calls)}"
 
     def test_callback_receives_engine_name(self, tmp_corpus):
         """Le callback reçoit le nom du moteur."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
-        from picarones.adapters.legacy_engines.base import BaseOCREngine
-
-        class MockEngine(BaseOCREngine):
-            @property
-            def name(self): return "test_engine_name"
-            @property
-            def version(self): return "0.0.1"
-            def _run_ocr(self, image_path): return "texte"
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
         engine_names = []
+
         def my_callback(engine_name, doc_idx, doc_id):
             engine_names.append(engine_name)
 
-        run_benchmark_via_service(corpus, [MockEngine()], progress_callback=my_callback)
+        run_benchmark_via_service(
+            corpus, [self._make_mock_adapter("test_engine_name")],
+            progress_callback=my_callback,
+        )
         assert all(n == "test_engine_name" for n in engine_names)
 
     def test_callback_exception_does_not_crash(self, tmp_corpus):
         """Une exception dans le callback ne plante pas le benchmark."""
+        from picarones.app.services._legacy_runner_adapter import (
+            run_benchmark_via_service,
+        )
         from picarones.evaluation.corpus import load_corpus_from_directory
-        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
-        from picarones.adapters.legacy_engines.base import BaseOCREngine
-
-        class MockEngine(BaseOCREngine):
-            @property
-            def name(self): return "mock"
-            @property
-            def version(self): return "0.0.1"
-            def _run_ocr(self, image_path): return "texte"
 
         corpus = load_corpus_from_directory(str(tmp_corpus))
 
         def bad_callback(engine_name, doc_idx, doc_id):
             raise RuntimeError("Callback error!")
 
-        # Ne doit pas lever d'exception
-        result = run_benchmark_via_service(corpus, [MockEngine()], progress_callback=bad_callback)
+        result = run_benchmark_via_service(
+            corpus, [self._make_mock_adapter()], progress_callback=bad_callback,
+        )
         assert result is not None
 
 
@@ -1235,105 +1257,10 @@ class TestFastAPIEnginesExtended:
         assert "LLM" in mistral_llm["label"]
 
 
-# ===========================================================================
-# TestMistralOCRNativeAPI  — mistral-ocr-latest routing
-# ===========================================================================
-
-class TestMistralOCRNativeAPI:
-
-    def test_engine_has_native_api_method(self):
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
-        assert hasattr(eng, "_run_ocr_native_api")
-
-    def test_engine_has_vision_api_method(self):
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine(config={"model": "pixtral-12b-2409"})
-        assert hasattr(eng, "_run_ocr_vision_api")
-
-    def test_model_name_stored(self):
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
-        assert eng._model == "mistral-ocr-latest"
-
-    def test_pixtral_model_stored(self):
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine(config={"model": "pixtral-large-latest"})
-        assert "pixtral" in eng._model.lower()
-
-    def test_engine_name_unchanged(self):
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
-        assert eng.name == "mistral_ocr"
-
-    def test_version_returns_model_name(self):
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
-        assert eng.version() == "mistral-ocr-latest"
-
-    def test_default_model_is_mistral_ocr_latest(self):
-        """Sans config explicite, le modèle par défaut doit être mistral-ocr-latest."""
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        eng = MistralOCREngine()
-        assert eng._model == "mistral-ocr-latest"
-
-    def test_mistral_ocr_latest_routes_to_native_api(self, tmp_path, monkeypatch):
-        """mistral-ocr-latest doit appeler _run_ocr_native_api, pas _run_ocr_vision_api."""
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
-        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
-        # Créer une fausse image
-        img = tmp_path / "page.jpg"
-        img.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
-        native_called = []
-        vision_called = []
-        # Sprint 49 — _run_ocr_native_api retourne maintenant
-        # ``(text, raw_response_dict)`` pour permettre l'extraction
-        # des confidences ; on aligne le mock.
-        def fake_native(url):
-            native_called.append(url)
-            return "texte extrait via OCR natif", {}
-        def fake_vision(url):
-            vision_called.append(url)
-            return "texte extrait via vision"
-        monkeypatch.setattr(eng, "_run_ocr_native_api", fake_native)
-        monkeypatch.setattr(eng, "_run_ocr_vision_api", fake_vision)
-        result = eng._run_ocr(img)
-        assert native_called, "_run_ocr_native_api aurait dû être appelée"
-        assert not vision_called, "_run_ocr_vision_api ne doit pas être appelée pour mistral-ocr-latest"
-        assert result == "texte extrait via OCR natif"
-
-    def test_pixtral_model_routes_to_vision_api(self, tmp_path, monkeypatch):
-        """pixtral-12b-2409 doit appeler _run_ocr_vision_api, pas _run_ocr_native_api."""
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        monkeypatch.setenv("MISTRAL_API_KEY", "test-key")
-        eng = MistralOCREngine(config={"model": "pixtral-12b-2409"})
-        img = tmp_path / "page.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
-        native_called = []
-        vision_called = []
-        def fake_native(url):
-            native_called.append(url)
-            return "natif"
-        def fake_vision(url):
-            vision_called.append(url)
-            return "vision"
-        monkeypatch.setattr(eng, "_run_ocr_native_api", fake_native)
-        monkeypatch.setattr(eng, "_run_ocr_vision_api", fake_vision)
-        result = eng._run_ocr(img)
-        assert vision_called, "_run_ocr_vision_api aurait dû être appelée"
-        assert not native_called, "_run_ocr_native_api ne doit pas être appelée pour pixtral"
-        assert result == "vision"
-
-    def test_no_api_key_raises(self, tmp_path, monkeypatch):
-        """Sans clé API, _run_ocr doit lever RuntimeError."""
-        from picarones.adapters.legacy_engines.mistral_ocr import MistralOCREngine
-        monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
-        eng = MistralOCREngine(config={"model": "mistral-ocr-latest"})
-        img = tmp_path / "page.jpg"
-        img.write_bytes(b"\xff\xd8\xff")
-        with pytest.raises(RuntimeError, match="MISTRAL_API_KEY"):
-            eng._run_ocr(img)
+# Section retirée au sprint H.2.d : ``MistralOCREngine`` (legacy)
+# n'existe plus.  Les tests équivalents pour ``MistralOCRAdapter``
+# (canonique) vivent dans ``tests/adapters/ocr/test_sprint_a14_s32_mistral_ocr_adapter.py``
+# et ``tests/adapters/ocr/test_sprint_a14_s53_mistral_normalize.py``.
 
 
 # ===========================================================================
