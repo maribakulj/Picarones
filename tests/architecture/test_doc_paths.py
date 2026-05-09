@@ -121,12 +121,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # doc-consistency, SESSION_HANDOVER.
 # Sprint H.2.d : +1 — suppression de ``adapters/legacy_engines/``.
 # Sprint H.4 : +3 — suppression des stubs canoniques
-# ``interfaces/cli/{run,report,import_corpus}.py`` (références dans
-# audits/migration historiques uniquement) et promotion de
+# ``interfaces/cli/{run,report,import_corpus}.py`` et promotion de
 # ``interfaces/{cli,web}/_legacy/`` vers ``interfaces/{cli,web}/``
 # (les anciens chemins ``_legacy/`` apparaissent dans CHANGELOG +
-# audits, intouchables).
-BROKEN_PATHS_BASELINE = 165
+# audits historiques, intouchables).
+# Sprint H.6 : +2 — la section CHANGELOG 2.0 référence
+# ``picarones/cli/__init__.py`` et ``picarones/engines/tesseract.py``
+# dans le bloc « Migration depuis 1.x » (intouchables : c'est
+# justement le but du bloc).
+BROKEN_PATHS_BASELINE = 167
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

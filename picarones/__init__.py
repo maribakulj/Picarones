@@ -13,7 +13,7 @@ utiliser les sous-packages explicites :
 
 >>> from picarones.app.services.benchmark_runner import run_benchmark_via_service
 >>> from picarones.evaluation.metrics.text_metrics import compute_metrics
->>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+>>> from picarones.adapters.ocr.tesseract import TesseractAdapter
 
 Voir ``docs/explanation/architecture.md`` pour la cartographie complète des
 3 cercles, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
@@ -35,7 +35,7 @@ except ImportError:
         from importlib.metadata import version as _get_version
         __version__ = _get_version("picarones")
     except Exception:  # noqa: BLE001
-        __version__ = "1.0.0"
+        __version__ = "2.0.0"
 
 __author__ = "Picarones contributors"
 
