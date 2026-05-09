@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from picarones.adapters.ocr.azure_doc_intel import AzureDocIntelAdapter
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
+from picarones.adapters.ocr.factory import ocr_adapter_from_name
 from picarones.adapters.ocr.google_vision import GoogleVisionAdapter
 from picarones.adapters.ocr.mistral_ocr import MistralOCRAdapter
 from picarones.adapters.ocr.pero_ocr import PeroOCRAdapter
@@ -36,4 +37,5 @@ __all__ = [
     "PeroOCRAdapter",
     "PrecomputedTextAdapter",
     "TesseractAdapter",
+    "ocr_adapter_from_name",
 ]

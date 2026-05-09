@@ -1,23 +1,18 @@
-"""Factory : instancier un moteur OCR à partir de son nom court.
+"""Factory legacy : instancier un ``BaseOCREngine`` à partir de son nom court.
 
 Phase 7.A — module relocalisé depuis ``picarones.engines.factory``
-vers ``picarones.adapters.legacy_engines.factory``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
+vers ``picarones.adapters.legacy_engines.factory``.
 
-Vit en cercle 2 (``picarones.adapters.legacy_engines``) parce que c'est de la logique de
-catalogue OCR — le CLI (cercle 3) et l'API web (cercle 3) la consomment
-tous les deux. Auparavant ce helper était défini dans
-``picarones.cli`` puis importé par ``picarones.web.benchmark_utils`` —
-violation de la règle d'imports inward-only.
-
-Cette factory ne dépend d'aucune brique cercle 3 (pas de ``click``,
-pas de FastAPI). Les erreurs sont signalées via ``ValueError``, le CLI
-les retraduit en ``click.BadParameter`` et l'API web les convertit en
-warning utilisateur.
+Sprint H.2.b du plan v2.0 — équivalent canonique disponible :
+``picarones.adapters.ocr.factory.ocr_adapter_from_name`` retourne
+des ``BaseOCRAdapter`` (StepExecutor Protocol) directement
+consommables par ``PipelineExecutor`` sans ``LegacyOCREngineExecutor``.
+Les nouveaux callers doivent utiliser la factory canonique.  Cette
+factory ne sera supprimée qu'avec ``BaseOCREngine`` lui-même
+(H.2.d).
 
 Discipline : ne pas importer ``click`` ici, sous peine de remonter une
-dépendance cercle 3 dans cercle 2.
+dépendance interfaces dans la couche adapters.
 """
 
 from __future__ import annotations
