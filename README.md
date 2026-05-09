@@ -214,8 +214,8 @@ engines): GPT-4o, Claude, Mistral Large, Ollama (local). See
 
 The `Engine` table is regenerated automatically by
 `scripts/gen_readme_tables.py` — adding a new adapter under
-`picarones/adapters/legacy_engines/` makes the next CI run update
-this table or fail.
+`picarones/adapters/ocr/` makes the next CI run update this table
+or fail.
 
 ---
 

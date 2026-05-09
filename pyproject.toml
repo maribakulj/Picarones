@@ -40,8 +40,8 @@ dependencies = [
     "numpy>=1.24.0",
     "jinja2>=3.1.0",
     # XML parsing sécurisé contre les attaques XXE / Billion Laughs.
-    # Utilisé par ``picarones.web.corpus_utils`` pour le parsing ALTO/PAGE
-    # quand un utilisateur uploade un corpus XML.
+    # Utilisé par ``picarones.interfaces.web.corpus_utils`` pour le parsing
+    # ALTO/PAGE quand un utilisateur uploade un corpus XML.
     "defusedxml>=0.7.1",
 ]
 
@@ -144,17 +144,19 @@ include = ["picarones*"]
 [tool.setuptools.package-data]
 picarones = [
     "prompts/*.txt",
-    "interfaces/web/_legacy/static/*.css",
-    "interfaces/web/_legacy/static/*.js",
-    "interfaces/web/_legacy/templates/*.j2",
-    "interfaces/web/_legacy/templates/*.html",
-    "report/templates/*.j2",
-    "report/templates/*.html",
-    "report/templates/*.css",
-    "report/templates/*.js",
-    "report/i18n/*.json",
     "data/*.yaml",
-    "report/glossary/*.yaml",
+    "interfaces/web/static/*.css",
+    "interfaces/web/static/*.js",
+    "interfaces/web/templates/*.html",
+    "interfaces/web/templates/*.j2",
+    "reports/_helpers/vendor/*.js",
+    "reports/glossary/*.yaml",
+    "reports/html/templates/*.css",
+    "reports/html/templates/*.html",
+    "reports/html/templates/*.j2",
+    "reports/html/templates/*.js",
+    "reports/i18n/*.json",
+    "reports/narrative/templates/*.yaml",
 ]
 
 [tool.pytest.ini_options]
@@ -224,14 +226,9 @@ exclude_lines = [
 # Sprint A1 (M-4) — type-checking gradient.
 #
 # Stratégie : ``picarones.domain`` est en mode ``strict`` car c'est la
-# couche 1 du rewrite (types purs, Pydantic + stdlib only) — l'API
-# publique stable et la base de l'architecture concentrique. Les autres
-# couches passent en mode permissif (``ignore_missing_imports`` + pas
-# de strict) — au fur et à mesure des sprints suivants, on monte le
-# niveau (Sprint A11 resserre `picarones.measurements`).
-# Note : avant les Lots A-G de la migration legacy → rewrite, ce strict
-# ciblait ``picarones.core`` ; ce paquet a été entièrement supprimé,
-# son contenu est désormais dans ``domain/``, ``evaluation/`` et ``formats/``.
+# couche 1 (types purs, Pydantic + stdlib only) — l'API publique stable
+# et la base de l'architecture concentrique. Les autres couches passent
+# en mode permissif (``ignore_missing_imports`` + pas de strict).
 # ──────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.11"

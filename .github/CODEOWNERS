@@ -7,8 +7,8 @@
 # Politique :
 # - Tout fichier de l'arbre a au moins un mainteneur désigné (catch-all
 #   en première ligne).
-# - Les sous-packages ``core/`` et ``measurements/`` ont une revue
-#   renforcée car ils définissent les contrats de l'API publique.
+# - Les couches 1-2 (``domain/``, ``formats/``) ont une revue
+#   renforcée car elles définissent les contrats de l'API publique.
 # - Les guides développeur et la doc institutionnelle ont une revue
 #   ciblée sur la cohérence éditoriale (cf. GOVERNANCE.md).
 #
@@ -22,29 +22,31 @@
 *                                       @maribakulj
 
 # ──────────────────────────────────────────────────────────────────
-# Cercle 1 — abstractions pures (API publique stable).
+# Couches 1-2 — types purs + parsing (API publique stable).
 # Toute modification ici peut casser des consommateurs externes :
 # revue prioritaire, tests anti-régression renforcés.
 # ──────────────────────────────────────────────────────────────────
-/picarones/core/                        @maribakulj
-/docs/api-stable.md                     @maribakulj
+/picarones/domain/                      @maribakulj
+/picarones/formats/                     @maribakulj
+/docs/reference/api-stable.md           @maribakulj
 
 # ──────────────────────────────────────────────────────────────────
-# Cercle 2 — métriques et orchestration.
+# Couches 3-4 — métriques et orchestration.
 # ──────────────────────────────────────────────────────────────────
-/picarones/measurements/                @maribakulj
-/picarones/engines/                     @maribakulj
-/picarones/llm/                         @maribakulj
-/picarones/pipelines/                   @maribakulj
-/picarones/modules/                     @maribakulj
+/picarones/evaluation/                  @maribakulj
+/picarones/pipeline/                    @maribakulj
 
 # ──────────────────────────────────────────────────────────────────
-# Cercle 3 — rapport, web, CLI, extras.
+# Couches 5-6 — adapters externes + services applicatifs.
 # ──────────────────────────────────────────────────────────────────
-/picarones/report/                      @maribakulj
-/picarones/web/                         @maribakulj
-/picarones/cli/                         @maribakulj
-/picarones/extras/                      @maribakulj
+/picarones/adapters/                    @maribakulj
+/picarones/app/                         @maribakulj
+
+# ──────────────────────────────────────────────────────────────────
+# Couches 7-8 — rapports + interfaces utilisateur (CLI, web).
+# ──────────────────────────────────────────────────────────────────
+/picarones/reports/                     @maribakulj
+/picarones/interfaces/                  @maribakulj
 
 # ──────────────────────────────────────────────────────────────────
 # Documentation, gouvernance, sécurité, accessibilité.
