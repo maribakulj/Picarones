@@ -40,8 +40,19 @@ async def api_history_regressions(
     else:
         try:
             entries = history.query(limit=10000)
-            targets = sorted({e.engine for e in entries if e.engine})
-        except Exception:  # noqa: BLE001
+            # Sprint S4 — fix : ``HistoryEntry`` expose
+            # ``engine_name``, pas ``engine`` (typo masquée par
+            # l'``except`` générique).  Avant ce fix, l'endpoint
+            # sans param ``engine`` retournait toujours 0
+            # régression — bug silencieux découvert par les tests
+            # ``test_s4_history_router.py``.
+            targets = sorted(
+                {e.engine_name for e in entries if e.engine_name}
+            )
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning(
+                "[regressions] énumération des moteurs échouée : %s", exc,
+            )
             targets = []
 
     out: list[dict[str, Any]] = []
