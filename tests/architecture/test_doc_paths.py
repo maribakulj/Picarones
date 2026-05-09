@@ -117,16 +117,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # (CHANGELOG.md, audits, sub-plans) gardent volontairement les
 # anciens chemins pour la traçabilité historique.
 # Sprint H.5 : -11 broken paths — fix des refs actives dans
-# docs/how-to/cli-workflows.md (cli/ → interfaces/cli/_legacy/,
-# extras/importers/_http.py → adapters/corpus/_http.py),
-# docs/explanation/narrative-engine{.,en}.md (measurements/narrative/
-# → reports/narrative/, fixtures.py → evaluation/synthetic.py),
-# docs/reference/normalization-profiles.md (measurements/builtin_hooks
-# → evaluation/metrics/builtin_hooks), docs/developer/doc-consistency.md
-# (engines/, cli/, web/ → leurs nouveaux chemins),
-# docs/migration/SESSION_HANDOVER.md (refonte section 5 pour pointer
-# vers H.2.b-d/H.4/H.6 au lieu de l'ex sub-phase 7.B.2 obsolète).
-BROKEN_PATHS_BASELINE = 161
+# docs/how-to/cli-workflows.md, narrative-engine, normalization-profiles,
+# doc-consistency, SESSION_HANDOVER.
+# Sprint H.2.d : +1 — la suppression de ``adapters/legacy_engines/``
+# et ``adapters/legacy_pipelines/`` casse 1 ref active de plus dans
+# les docs migration restantes (la majorité des refs cassées
+# pointaient déjà vers ces paquets dans CHANGELOG/audits historiques,
+# d'où l'impact limité).
+BROKEN_PATHS_BASELINE = 162
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

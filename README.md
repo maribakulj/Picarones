@@ -200,7 +200,6 @@ For Docker, institutional deployment, or HuggingFace Spaces, see
 
 | Engine | Type | Installation |
 |--------|------|-------------|
-| **_step_executor** | Unknown | — |
 | **Azure Doc Intelligence** | Cloud API | `AZURE_DOC_INTEL_ENDPOINT` + `AZURE_DOC_INTEL_KEY` |
 | **Google Vision** | Cloud API | `GOOGLE_APPLICATION_CREDENTIALS` env var |
 | **Mistral OCR** | Cloud API | `MISTRAL_API_KEY` env var |

@@ -37,9 +37,11 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-from picarones.adapters.legacy_engines._step_executor import (
-    LegacyOCREngineExecutor,
-)
+# Sprint H.2.c.1 — ``LegacyOCREngineExecutor`` n'est plus consommé :
+# tous les callers passent désormais des ``BaseOCRAdapter`` canoniques
+# (déjà ``StepExecutor`` natifs).  L'import est retiré ; le code path
+# legacy de ``build_adapter_resolver`` est désormais inaccessible et
+# peut être supprimé en H.2.c.2.
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef, GroundTruthRef
@@ -52,7 +54,6 @@ from picarones.domain.pipeline_spec import (
 from picarones.pipeline.llm_pipeline_builder import make_ocr_llm_pipeline_spec
 
 if TYPE_CHECKING:
-    from picarones.adapters.legacy_engines.base import BaseOCREngine
     from picarones.evaluation.corpus import Corpus, Document
 
 logger = logging.getLogger(__name__)
@@ -516,26 +517,22 @@ def _is_canonical_adapter(engine: Any) -> bool:
 def engine_to_pipeline_spec(engine: Any) -> PipelineSpec:
     """Convertit un engine en ``PipelineSpec`` rewrite.
 
-    Trois cas :
+    Deux cas (Sprint H.2.c — le path legacy ``BaseOCREngine`` a
+    été retiré) :
 
-    - **BaseOCRAdapter** (canonique, Sprint H.2.b) : spec mono-step
-      consommant ``engine.input_types`` et produisant
-      ``engine.output_types``.  Pas de wrapping nécessaire — l'adapter
-      est déjà un ``StepExecutor``.
-    - **OCRLLMPipeline** (``engine.is_pipeline = True``) : la spec
-      composée est construite via ``make_ocr_llm_pipeline_spec``
+    - **BaseOCRAdapter** (canonique) : spec mono-step consommant
+      ``engine.input_types`` et produisant ``engine.output_types``.
+    - **OCRLLMPipelineConfig** (``engine.is_pipeline = True``) : la
+      spec composée est construite via ``make_ocr_llm_pipeline_spec``
       avec le mode (``text_only`` / ``text_and_image`` /
       ``zero_shot``), l'OCR amont (s'il existe), le LLM, et le
       template de prompt en ``llm_params``.
-    - **BaseOCREngine** (legacy) : spec mono-step (IMAGE → RAW_TEXT).
-      Le step référencera ``engine.name`` ; le caller l'enregistre
-      dans l'adapter resolver via un ``LegacyOCREngineExecutor(engine)``.
 
     Parameters
     ----------
     engine:
-        Instance d'un ``BaseOCRAdapter`` canonique, d'un
-        ``BaseOCREngine`` legacy, ou d'un ``OCRLLMPipeline``.
+        Instance d'un ``BaseOCRAdapter`` canonique ou d'un
+        ``OCRLLMPipelineConfig``.
 
     Returns
     -------
@@ -546,7 +543,12 @@ def engine_to_pipeline_spec(engine: Any) -> PipelineSpec:
         return _canonical_adapter_to_spec(engine)
     if getattr(engine, "is_pipeline", False):
         return _ocr_llm_pipeline_to_spec(engine)
-    return _ocr_only_to_spec(engine)
+    raise PicaronesError(
+        f"Type d'engine non supporté : {type(engine).__name__}.  "
+        "Attendu : ``BaseOCRAdapter`` ou ``OCRLLMPipelineConfig``.  "
+        "Le support legacy ``BaseOCREngine`` / ``OCRLLMPipeline`` "
+        "a été retiré au sprint H.2.c.",
+    )
 
 
 def _canonical_adapter_to_spec(adapter: Any) -> PipelineSpec:
@@ -582,25 +584,11 @@ def _canonical_adapter_to_spec(adapter: Any) -> PipelineSpec:
     )
 
 
-def _ocr_only_to_spec(engine: "BaseOCREngine") -> PipelineSpec:
-    """Spec mono-step : un OCR legacy consommant IMAGE et produisant RAW_TEXT."""
-    name = engine.name
-    safe_name = _safe_pipeline_name(name)
-    return PipelineSpec(
-        name=f"ocr_only_{safe_name}",
-        description=f"OCR step seul ({name}) — IMAGE → RAW_TEXT.",
-        initial_inputs=(ArtifactType.IMAGE,),
-        steps=(
-            PipelineStep(
-                id="ocr",
-                kind="ocr",
-                adapter_name=name,
-                input_types=(ArtifactType.IMAGE,),
-                output_types=(ArtifactType.RAW_TEXT,),
-                inputs_from={ArtifactType.IMAGE: INITIAL_STEP_ID},
-            ),
-        ),
-    )
+# Sprint H.2.c — ``_ocr_only_to_spec`` (legacy ``BaseOCREngine`` →
+# spec mono-step en dur IMAGE → RAW_TEXT) supprimé.  Le path
+# canonique ``_canonical_adapter_to_spec`` couvre tous les cas en
+# utilisant les ``input_types``/``output_types`` déclarés par
+# l'adapter.
 
 
 def _ocr_llm_pipeline_to_spec(pipeline: Any) -> PipelineSpec:
@@ -646,17 +634,15 @@ def build_adapter_resolver(
     """Construit un adapter resolver pour ``PipelineExecutor``.
 
     Parcourt les engines fournis et associe leur ``name`` à un
-    ``StepExecutor`` valide :
+    ``StepExecutor`` valide (Sprint H.2.c — le path legacy
+    ``LegacyOCREngineExecutor`` a été retiré) :
 
-    - **BaseOCRAdapter** (canonique, Sprint H.2.b) : enregistré
-      directement (déjà ``StepExecutor``).
-    - **OCR simple** (``BaseOCREngine`` legacy) → wrapped via
-      ``LegacyOCREngineExecutor``.
-    - **OCRLLMPipeline** → enregistre les deux sous-composants :
-      ``ocr_engine`` (wrapped) et ``llm_adapter`` (déjà
+    - **BaseOCRAdapter** : enregistré directement (déjà ``StepExecutor``).
+    - **OCRLLMPipelineConfig** → enregistre les deux sous-composants :
+      ``ocr_adapter`` (canonique, direct) et ``llm_adapter`` (déjà
       ``StepExecutor`` natif depuis Sprint A14-S44).  Le pipeline
-      lui-même n'est pas enregistré directement — sa spec
-      référence ses sous-steps par leur ``adapter_name``.
+      lui-même n'est pas enregistré directement — sa spec référence
+      ses sous-steps par leur ``adapter_name``.
 
     Le resolver retourné lève ``KeyError`` si un nom inconnu est
     demandé.
@@ -664,8 +650,8 @@ def build_adapter_resolver(
     Parameters
     ----------
     engines:
-        Liste d'instances ``BaseOCRAdapter`` (canonique) ou
-        ``BaseOCREngine``/``OCRLLMPipeline`` (legacy) à enregistrer.
+        Liste d'instances ``BaseOCRAdapter`` ou
+        ``OCRLLMPipelineConfig`` à enregistrer.
 
     Returns
     -------
@@ -694,22 +680,22 @@ def build_adapter_resolver(
             # BaseOCRAdapter : déjà StepExecutor, pas de wrapping.
             _register(engine.name, engine)
         elif getattr(engine, "is_pipeline", False):
-            # OCRLLMPipeline (legacy) ou OCRLLMPipelineConfig
-            # (canonique) : enregistrer ocr + llm sous-jacents.
+            # OCRLLMPipelineConfig : enregistrer ocr + llm sous-jacents.
             ocr_engine = getattr(engine, "ocr_engine", None)
             llm_adapter = getattr(engine, "llm_adapter", None)
             if ocr_engine is not None:
-                if _is_canonical_adapter(ocr_engine):
-                    # BaseOCRAdapter : déjà StepExecutor.
-                    _register(ocr_engine.name, ocr_engine)
-                else:
-                    _register(
-                        ocr_engine.name, LegacyOCREngineExecutor(ocr_engine),
-                    )
+                # ``ocr_engine`` est un alias compat de ``ocr_adapter``
+                # (cf. ``OCRLLMPipelineConfig.ocr_engine``) — toujours
+                # un ``BaseOCRAdapter`` canonique en H.2.c+.
+                _register(ocr_engine.name, ocr_engine)
             if llm_adapter is not None:
                 _register(_llm_adapter_name(llm_adapter), llm_adapter)
         else:
-            _register(engine.name, LegacyOCREngineExecutor(engine))
+            raise PicaronesError(
+                f"Type d'engine non supporté pour le resolver : "
+                f"{type(engine).__name__}.  Attendu : ``BaseOCRAdapter`` "
+                "ou ``OCRLLMPipelineConfig``.",
+            )
 
     def resolver(name: str) -> Any:
         if name not in name_to_executor:

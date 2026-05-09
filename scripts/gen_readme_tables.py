@@ -72,16 +72,19 @@ _ENGINE_DESCRIPTIONS: dict[str, tuple[str, str, str]] = {
 
 
 def _engine_files() -> list[str]:
-    """Retourne la liste triée des modules d'engines (sans base / factory).
+    """Retourne la liste triée des modules d'OCR engines (sans helpers).
 
-    Lot E (2026-05) : ``picarones/engines/`` a été retiré, son canonique
-    est ``picarones/adapters/legacy_engines/``.
+    Sprint H.2.d (2026-05) : ``picarones/adapters/legacy_engines/`` a été
+    supprimé, le canonique est ``picarones/adapters/ocr/``.  On filtre
+    aussi les modules helpers (``confidences``, ``precomputed``) qui ne
+    sont pas des engines OCR à proprement parler.
     """
     out: list[str] = []
-    engines_dir = REPO_ROOT / "picarones" / "adapters" / "legacy_engines"
+    engines_dir = REPO_ROOT / "picarones" / "adapters" / "ocr"
+    skip = {"__init__", "base", "factory", "confidences", "precomputed"}
     for path in sorted(engines_dir.glob("*.py")):
         name = path.stem
-        if name in {"__init__", "base", "factory"}:
+        if name in skip:
             continue
         out.append(name)
     return out

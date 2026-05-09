@@ -16,7 +16,6 @@ Sprint 30 livre quatre durcissements transverses :
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 
