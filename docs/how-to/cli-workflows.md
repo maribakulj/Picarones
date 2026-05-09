@@ -106,7 +106,7 @@ picarones import iiif \
 Télécharge un manifeste IIIF v2/v3 (BnF Gallica, Bodleian, Vatican…) et
 crée un corpus local avec `.gt.txt` extraits de l'OCR ALTO si présent.
 Depuis le chantier 4, IIIF et Gallica utilisent les mêmes helpers HTTP
-factorisés ([`picarones/extras/importers/_http.py`](../picarones/extras/importers/_http.py))
+factorisés ([`picarones/adapters/corpus/_http.py`](../picarones/adapters/corpus/_http.py))
 avec garde-fou `file://`/`ftp://`/`javascript://`.
 
 ## Outils utilitaires
@@ -183,9 +183,9 @@ pour découvrir la sortie sans corpus réel.
 
 ## Code source
 
-- [`picarones/cli/__init__.py`](../picarones/cli/__init__.py) — groupe
+- [`picarones/interfaces/cli/_legacy/__init__.py`](../picarones/interfaces/cli/_legacy/__init__.py) — groupe
   Click + helpers + commandes simples.
-- [`picarones/cli/_workflows.py`](../picarones/cli/_workflows.py) —
+- [`picarones/interfaces/cli/_legacy/_workflows.py`](../picarones/interfaces/cli/_legacy/_workflows.py) —
   run, diagnose, economics, edition, compare + helper `_run_workflow`.
 - Voir aussi [`docs/reference/normalization-profiles.md`](profiles.md) et
   [`docs/reference/views.md`](views.md).

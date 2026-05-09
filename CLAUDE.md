@@ -221,11 +221,10 @@ Pour le travail courant, ce qui compte :
   changes acceptés.
 - **Principe directeur** : suppression agressive.  Pas de shim
   qui survit à son usage.  Dès qu'un caller migre vers le
-  canonique, son shim est supprimé.  Tout symbole legacy public
-  doit être tracé dans
-  [`tests/architecture/test_legacy_canonical_parity.py`](tests/architecture/test_legacy_canonical_parity.py)
-  — c'est le journal de bord vivant qui garantit qu'aucune
-  fonctionnalité n'est silencieusement perdue.
+  canonique, son shim est supprimé.  Le test
+  [`tests/architecture/test_no_legacy_imports_in_rewrite.py`](tests/architecture/test_no_legacy_imports_in_rewrite.py)
+  garde l'invariant inverse : les paquets rewrite ne doivent
+  jamais réintroduire un import vers du legacy disparu.
 - **Plan maître** : [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md)
   — cartographie complète des Phases 0-11 avec statut.
 - **Sub-plan convergence pipeline** : [`docs/migration/pipeline-convergence-plan.md`](docs/migration/pipeline-convergence-plan.md)

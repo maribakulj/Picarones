@@ -30,11 +30,11 @@ Vérifie que :
 
 | Item | Source de vérité | Sens du contrat |
 |---|---|---|
-| Moteurs OCR | `picarones/engines/*.py` | Tout moteur listé dans le tableau « Supported Engines » du README doit avoir un adapter |
-| Commandes CLI | `picarones/cli/*.py` (Click) | Toute commande listée dans le README doit apparaître dans `picarones --help` |
-| Endpoints API | `picarones/web/app.py` (`app.openapi()`) | Tout endpoint listé doit exister dans la spec OpenAPI |
+| Moteurs OCR | `picarones/adapters/legacy_engines/*.py` | Tout moteur listé dans le tableau « Supported Engines » du README doit avoir un adapter |
+| Commandes CLI | `picarones/interfaces/cli/_legacy/*.py` (Click) | Toute commande listée dans le README doit apparaître dans `picarones --help` |
+| Endpoints API | `picarones/interfaces/web/_legacy/app.py` (`app.openapi()`) | Tout endpoint listé doit exister dans la spec OpenAPI |
 | Compteur de tests | `pytest --collect-only` | Toute mention « N tests » ou « N passed » doit être à 5 % près du baseline |
-| Variables `AWS_*` | `picarones/engines/aws*.py` | Si documentées, un adapter doit exister |
+| Variables `AWS_*` | `picarones/adapters/legacy_engines/aws*.py` | Si documentées, un adapter doit exister |
 
 **Direction unidirectionnelle** : on vérifie que ce qui est *annoncé*
 existe — pas que tout ce qui existe est annoncé. La direction réciproque

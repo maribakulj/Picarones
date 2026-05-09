@@ -209,7 +209,7 @@ picarones demo --output /tmp/demo.html --docs 8
 
 Si la synthèse ne contient pas votre fait, vérifiez :
 1. Que votre détecteur retourne bien quelque chose sur les données de
-   démo (`grep -A 20 "def generate_sample_benchmark" picarones/fixtures.py`).
+   démo (`grep -A 20 "def generate_sample_benchmark" picarones/evaluation/synthetic.py`).
 2. Que l'importance est suffisante (> `MEDIUM`) pour passer le filtre
    par défaut de l'arbitre.
 3. Que votre type n'est pas en collision avec un autre déjà retenu pour

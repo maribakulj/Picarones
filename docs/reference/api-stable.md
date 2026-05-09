@@ -8,14 +8,16 @@
 > [`docs/explanation/architecture.md`](../explanation/architecture.md)).
 >
 > **Pendant la migration** (jusqu'à la version 2.0), l'API
-> publique est en cours de refonte.  Tous les chemins legacy
-> (`picarones.core.X`, `picarones.measurements.X`, etc.) sont
-> des shims `DeprecationWarning` qui ré-exportent depuis le
-> canonique.  Les nouveaux imports doivent utiliser les chemins
-> canoniques (`picarones.domain.*`, `picarones.evaluation.*`).
->
-> Le tableau de parité legacy ↔ canonique vit dans
-> [`tests/architecture/test_legacy_canonical_parity.py`](../../tests/architecture/test_legacy_canonical_parity.py).
+> publique est en cours de refonte.  Les chemins legacy
+> top-level (`picarones.core.*`, `picarones.measurements.*`,
+> `picarones.engines.*`, `picarones.modules.*`,
+> `picarones.report.*`, `picarones.llm.*`,
+> `picarones.cli.*`, `picarones.extras.*`,
+> `picarones.fixtures`) ont **tous été supprimés**.  Les
+> nouveaux imports doivent utiliser les chemins canoniques
+> (`picarones.domain.*`, `picarones.evaluation.*`,
+> `picarones.adapters.*`, `picarones.reports.*`,
+> `picarones.interfaces.*`).
 
 ## Définition
 

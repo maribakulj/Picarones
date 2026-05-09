@@ -150,7 +150,7 @@ def my_hook(*, ground_truth, hypothesis, image_path, corpus_lang, ocr_result):
 
 - [`picarones/evaluation/metric_hooks.py`](../picarones/evaluation/metric_hooks.py)
   — registre, profils, `run_document_hooks()`, `run_corpus_aggregators()`.
-- [`picarones/measurements/builtin_hooks.py`](../picarones/measurements/builtin_hooks.py)
+- [`picarones/evaluation/metrics/builtin_hooks.py`](../picarones/evaluation/metrics/builtin_hooks.py)
   — les 12 hooks doc + 12 agrégateurs natifs Picarones.
 - [`tests/test_metric_hooks.py`](../tests/test_metric_hooks.py)
   — tests unitaires + rétrocompat profil `standard`.

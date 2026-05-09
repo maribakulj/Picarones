@@ -116,7 +116,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ``picarones.pipeline.legacy_*``.  Les docs concernées
 # (CHANGELOG.md, audits, sub-plans) gardent volontairement les
 # anciens chemins pour la traçabilité historique.
-BROKEN_PATHS_BASELINE = 172
+# Sprint H.5 : -11 broken paths — fix des refs actives dans
+# docs/how-to/cli-workflows.md (cli/ → interfaces/cli/_legacy/,
+# extras/importers/_http.py → adapters/corpus/_http.py),
+# docs/explanation/narrative-engine{.,en}.md (measurements/narrative/
+# → reports/narrative/, fixtures.py → evaluation/synthetic.py),
+# docs/reference/normalization-profiles.md (measurements/builtin_hooks
+# → evaluation/metrics/builtin_hooks), docs/developer/doc-consistency.md
+# (engines/, cli/, web/ → leurs nouveaux chemins),
+# docs/migration/SESSION_HANDOVER.md (refonte section 5 pour pointer
+# vers H.2.b-d/H.4/H.6 au lieu de l'ex sub-phase 7.B.2 obsolète).
+BROKEN_PATHS_BASELINE = 161
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

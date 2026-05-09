@@ -18,15 +18,13 @@
   acceptés.
 - Dès qu'un caller migre vers le canonique, son shim est
   **supprimé** (pas conservé pour un usage hypothétique).
-- Tout symbole legacy public doit être tracé dans
-  ``tests/architecture/test_legacy_canonical_parity.py`` :
-  `canonical: ...` (équivalent canonique existe), `dropped: ...`
-  (volontairement abandonné, justifié), ou `unmigrated: ...`
-  (cible prévue, en cours).
-
-Le test ``test_legacy_canonical_parity`` garantit qu'**aucune
-fonctionnalité legacy n'est silencieusement perdue** au cours
-de la migration.  C'est le journal de bord vivant.
+- L'invariant inverse est gardé par
+  ``tests/architecture/test_no_legacy_imports_in_rewrite.py`` :
+  les paquets rewrite (`domain → formats → evaluation →
+  pipeline → adapters → app → reports → interfaces`) ne
+  doivent jamais importer depuis un paquet legacy.  Pour le
+  retrait final v2.0, ``LEGACY_PACKAGES = ()`` (vide) — tous
+  les paquets top-level legacy ont été supprimés.
 
 ---
 
@@ -40,10 +38,10 @@ de la migration.  C'est le journal de bord vivant.
    sous-plan détaillé de la convergence ``BaseModule`` /
    ``PipelineRunner`` → ``StepExecutor`` / ``PipelineExecutor``
    (Sub-phases 7.A-7.D).
-3. **[`../../tests/architecture/test_legacy_canonical_parity.py`](../../tests/architecture/test_legacy_canonical_parity.py)** —
-   journal vivant de la migration : table 3-états des symboles
-   legacy avec leur équivalent canonique.  À mettre à jour à
-   chaque migration.
+3. **[`../../tests/architecture/test_no_legacy_imports_in_rewrite.py`](../../tests/architecture/test_no_legacy_imports_in_rewrite.py)** —
+   garde-fou architectural : aucun module rewrite n'importe
+   depuis un paquet legacy (``LEGACY_PACKAGES`` désormais
+   vide à v2.0).
 4. **[`../../CLAUDE.md`](../../CLAUDE.md)** — règles d'architecture
    à respecter, statut de la migration, et liens vers le reste.
 5. **`git log --oneline -10`** — les 10 derniers commits
@@ -160,26 +158,18 @@ référence cassée.  Soit :
 Quand le fichier sera créé en réalité, abaisser
 ``BROKEN_PATHS_BASELINE``.
 
-### 3.F Test parité legacy ↔ canonique
+### 3.F Test parité legacy ↔ canonique (retiré au sprint H.5)
 
-``tests/architecture/test_legacy_canonical_parity.py`` maintient
-une table 3-états (``LEGACY_PARITY``) :
-
-- ``canonical: <module.symbol>`` — équivalent canonique existe.
-  Le test vérifie présence + signatures compatibles.
-- ``dropped: <raison>`` — feature volontairement abandonnée
-  avec justification écrite.
-- ``unmigrated: <cible prévue>`` — migration prévue ; cible
-  peut ne pas encore exister.
-
-À chaque migration d'un symbole, **mettre à jour la table**.
-Les symboles non trackés sont comptés via
-``BOOTSTRAP_BASELINE`` (à diminuer à chaque session).
-
-Limites du test : il ne vérifie que la **présence** et les
-**signatures**, pas le comportement réel.  Les différences
-sémantiques sont signalées via le champ ``behavior_diff``
-optionnel.
+``tests/architecture/test_legacy_canonical_parity.py`` a été
+supprimé au sprint H.5 (mai 2026) : la table 3-états était
+vidée au fil des Lots A-G (chaque entrée retirée en même temps
+que le shim concerné), et tous les paquets legacy top-level
+qu'elle scannait (``llm/``, ``measurements/``, ``engines/``,
+``modules/``, ``report/``, ``core/``, ``cli/``, ``web/``,
+``extras/``, ``pipelines/``) ont été supprimés ou relocalisés
+sous ``adapters/legacy_*`` et ``interfaces/*/_legacy/``.  Le
+seul invariant qui reste à garder est l'absence d'import legacy
+depuis le rewrite (``test_no_legacy_imports_in_rewrite``).
 
 ### 3.G README généré
 
@@ -243,17 +233,9 @@ sprint par sprint en migrant chaque caller.
 
 ### 4.C Symboles legacy non tracés dans la table de parité
 
-**110 symboles** publics dans les paquets legacy ne sont pas
-encore dans
-``tests/architecture/test_legacy_canonical_parity.py::LEGACY_PARITY``.
-Répartition :
-
-- ``measurements/`` : 104
-- ``pipelines/`` : 6
-
-Le test ``test_no_untracked_legacy_symbol_above_baseline``
-autorise temporairement 110 (``BOOTSTRAP_BASELINE = 110``).
-À diminuer à chaque session.
+**Sans objet à v2.0** : la table de parité a été retirée au
+sprint H.5, en même temps que la suppression des derniers
+paquets legacy top-level (cf. 3.F).
 
 ### 4.D Plan de bataille pour les imports tests
 
@@ -300,10 +282,11 @@ L'ordre recommandé, par lots de symboles cohérents :
      structure, taxonomy, taxonomy_comparison,
      taxonomy_cooccurrence, taxonomy_intra_doc, throughput,
      worst_lines}`` → ``evaluation.metrics.{...}``.
-   - ``picarones/measurements/__init__.py`` réécrit pour
+   - L'ancien ``measurements/__init__.py`` réécrit pour
      refléter la nouvelle composition (modules legacy
      restants + `import picarones.evaluation.metrics`
-     unique pour déclencher les décorateurs).
+     unique pour déclencher les décorateurs).  Tout le
+     sous-package a été supprimé au sprint E.6.
    - ``test_no_flat_files_in_measurements::WHITELIST_FLAT_FILES_S3``
      réduit de 60 → 25 entrées.
    - ``test_module_coverage::TEST_ONLY_BASELINE`` réduit
@@ -389,101 +372,38 @@ commit (principe « no shim survives its caller »).
 
 ---
 
-## 5. Prochaine sub-phase à exécuter
+## 5. Prochaines sub-phases à exécuter (post H.5)
 
-**Sub-phase 7.B.2** — refactoriser le corps de
-``PipelineRunner.run`` dans
-``picarones/evaluation/pipeline.py`` (lignes 384-590) pour
-qu'il délègue au canonique ``PipelineExecutor`` via le
-wrapper ``_BaseModuleAdapter`` créé en 7.B.1.
+Les sprints A-G + H.1-H.3 + H.5 ont été achevés.  Restent
+les chantiers suivants pour atteindre v2.0 :
 
-### Plan d'exécution
+### H.2.b-d — refonte API ``BaseOCREngine`` → ``BaseOCRAdapter``
 
-1. **Lire** ``picarones/evaluation/pipeline.py:PipelineRunner.run``
-   en entier pour comprendre la logique actuelle (résolution
-   d'inputs versionnés, exécution chronométrée, capture
-   d'erreur, évaluation auto vs GT, conversion outputs).
+- ``adapters/legacy_engines/`` (Tesseract, Pero, Mistral OCR,
+  Google Vision, Azure DI) doit être promu en
+  ``adapters/ocr/`` aux contrats ``StepExecutor``
+  (``execute(inputs, params, context)`` au lieu de
+  ``run(image_path)``).
+- Suppression de ``OCRLLMPipeline`` + ``adapters/legacy_pipelines/``
+  une fois les callers migrés vers la construction directe
+  d'une ``PipelineSpec`` via
+  ``picarones.pipeline.make_ocr_llm_pipeline_spec``.
+- Suppression de ``BaseOCREngine``, ``BaseModule``,
+  ``adapters/legacy_engines/``, ``adapters/legacy_pipelines/``.
 
-2. **(Phase 7.D — module supprimé)** : ``_BaseModuleAdapter`` et
-   ``_PayloadRegistry`` vivaient dans ``_legacy_module_adapter.py``,
-   retiré avec le runner en 7.D.
+### H.4 — refonte interfaces
 
-3. **Écrire** un nouveau corps de ``PipelineRunner.run`` qui :
-   - Crée un ``_PayloadRegistry`` par appel.
-   - Wrappe les ``initial_inputs`` legacy via
-     ``wrap_initial_inputs(...)``.
-   - Convertit la ``PipelineSpec`` legacy en ``PipelineSpec``
-     canonique (``picarones.domain.pipeline_spec.PipelineSpec``).
-     Chaque ``PipelineStep.module: BaseModule`` devient un
-     ``adapter_name: str``, et l'adapter est
-     ``_BaseModuleAdapter(module, registry)``.
-   - Construit un ``adapter_resolver`` qui retourne le
-     wrapper de chaque module.
-   - Construit un ``RunContext``.
-   - Convertit le ``Document`` legacy en ``DocumentRef``.
-   - Invoque ``PipelineExecutor.run(canonical_spec,
-     document_ref, canonical_inputs, context)``.
-   - Reconvertit le ``PipelineResult`` canonique en
-     ``PipelineResult`` legacy.
-   - Calcule ``junction_metrics`` en post-étape (parcourt
-     les ``StepResult.produced_artifacts``, lit le payload
-     du registre, appelle ``compute_at_junction`` contre la
-     GT du document si ``GTLevel`` correspond).
+- ``interfaces/cli/_legacy/`` : refondre les commandes Click
+  pour consommer directement ``BenchmarkService`` /
+  ``RunOrchestrator`` au lieu du runner legacy.
+- ``interfaces/web/_legacy/`` : refondre les routes FastAPI
+  pour consommer le rewrite pur (sans ``OCRLLMPipeline``).
 
-4. **Tester** : tous les tests existants doivent toujours
-   passer (les 7 fichiers axe B + ``test_sprint63_pipeline_runner``,
-   etc.).  C'est l'invariant de la sub-phase 7.B.2.
+### H.6 — release v2.0
 
-5. **Lint** : ``ruff check picarones/ tests/``.
-
-6. **Commit + push** avec message décrivant ce qui a été
-   fait + pointer vers la sub-phase 7.B.3 comme prochaine
-   étape.
-
-### Alternative pragmatique
-
-Si le refactor 7.B.2 est trop gros pour une session,
-**commencer par le Lot A de la section 4.D** (migrer les ~30
-imports tests qui consomment ``core.modules`` et
-``core.facts`` vers leur canonique ``domain/``).  Cela vide
-une portion de la table de parité et permet de **supprimer les
-shims** ``core.modules.py`` et ``core.facts.py`` en bloc —
-résultat tangible et bien aligné avec le principe
-« suppression agressive ».
-
-Pareil pour Lots B-F : chaque lot est indépendant, fait
-progresser la migration, et démontre concrètement la
-suppression du legacy.
-
-### Pièges anticipés pour 7.B.2
-
-- **Sémantique différente des inputs entre legacy et canonique** :
-  le legacy passe ``Document.image_path`` comme un string
-  pur dans ``initial_inputs[ArtifactType.IMAGE]`` ; le canonique
-  attend un ``Artifact(uri=...)``.  ``wrap_initial_inputs``
-  fait la conversion mais il faut s'assurer que les modules
-  consomment bien le ``uri`` côté `_BaseModuleAdapter`.
-
-- **``junction_metrics`` calcul** : le legacy
-  ``PipelineRunner.run`` calcule ``junction_metrics`` à
-  chaque step (cf. ligne 519-540 actuellement).  Le canonique
-  ``PipelineExecutor`` ne le fait pas.  Il faut donc faire
-  ce calcul **après** l'exécution canonique, en parcourant
-  les artefacts produits et en lisant les payloads via le
-  registre.
-
-- **``output_types`` partial** : si un module produit un
-  output type non déclaré, le legacy le tolère (on remplit
-  ``StepResult.output_types`` avec ce qui est effectivement
-  produit, pas ce qui est déclaré).  Le canonique
-  ``PipelineExecutor`` rejette en ``error="missing_output: ..."``.
-  Vérifier la sémantique attendue par les tests.
-
-- **Spec conversion** : ``PipelineStep`` legacy a
-  ``inputs_from: dict[ArtifactType, str]`` (mapping
-  type→step_name).  ``PipelineStep`` canonique a
-  ``inputs_from: tuple[InputBinding, ...]``.  Conversion
-  attentive nécessaire.
+- Bump version dans ``pyproject.toml`` + ``picarones/_version.py``.
+- Section CHANGELOG « 2.0.0 — Legacy retirement complete ».
+- Tag ``v2.0.0``.
 
 ---
 
@@ -500,7 +420,7 @@ section 2.
 Ou pour aller direct à l'action :
 
 ```
-Continue la sub-phase 7.B.2.
+Attaque H.2.b — refonte BaseOCREngine → BaseOCRAdapter.
 ```
 
 (Claude Code va automatiquement lire CLAUDE.md à l'init, qui
