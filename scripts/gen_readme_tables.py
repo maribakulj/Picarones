@@ -237,22 +237,24 @@ def _replace_test_count(text: str, count: int) -> str:
     nombre dans la fenêtre [count*0.5, count*2]. Garde la formulation
     exacte (espace, ponctuation) intacte.
 
-    Le count est **arrondi à la dizaine inférieure** pour rendre le
-    résultat OS-déterministe : sur Windows certains tests POSIX-only
-    sont skipés (cf. ``pytest.importorskip``) ce qui décale le
-    compteur de quelques unités.  Le floor à la dizaine absorbe ces
-    écarts mineurs sans masquer une vraie évolution (le seuil de
-    tolérance des tests consistency reste à ±5 %).
+    Le count est **arrondi à la cinquantaine inférieure** pour rendre
+    le résultat OS-déterministe : selon les binaires système (tesseract,
+    pero-ocr) installés sur le runner, certains modules de test sont
+    skipés au niveau ``pytest.skip(allow_module_level=True)`` — ce qui
+    soustrait le fichier entier de la collection.  Exemple observé en
+    S8.7 : Linux CI (avec tesseract) collecte 4510 tests, dev local
+    (sans tesseract) en collecte 4509.  Avec un floor à 10 ces deux
+    valeurs divergent (4510 vs 4500) ; avec un floor à 50, elles
+    convergent toutes deux vers 4500.
 
-    Note : utilise ``(count // 10) * 10`` plutôt que
+    Note : utilise ``(count // 50) * 50`` plutôt que
     ``round(count, -1)``.  Le ``round()`` Python applique le
     "banker's rounding" (round half to even) qui n'est pas
-    monotone — un écart d'1 test entre Linux et Windows peut
-    produire des dizaines différentes (ex : 5035 → 5040 sur Linux,
-    5034 → 5030 sur Windows), faisant échouer le test
-    ``test_readme_tables_consistent_with_code``.
+    monotone.  Le floor à 50 garde la propriété de monotonie (un
+    ajout de tests ne fait jamais reculer le compteur) tout en
+    absorbant les écarts de ±49 tests entre environnements.
     """
-    rounded_count = (count // 10) * 10
+    rounded_count = (count // 50) * 50
 
     def _sub(match: re.Match) -> str:
         cited = int(match.group(1))
