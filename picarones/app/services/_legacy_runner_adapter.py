@@ -33,6 +33,7 @@ quand toutes les briques seront en place.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -53,6 +54,8 @@ from picarones.pipeline.llm_pipeline_builder import make_ocr_llm_pipeline_spec
 if TYPE_CHECKING:
     from picarones.adapters.legacy_engines.base import BaseOCREngine
     from picarones.evaluation.corpus import Corpus, Document
+
+logger = logging.getLogger(__name__)
 
 # Pas d'import direct de ``picarones.pipelines.base.OCRLLMPipeline`` ici —
 # l'invariant architectural ``test_layer_imports_are_legal[layer-app]``
@@ -758,11 +761,11 @@ def run_benchmark_via_service(
     progress_callback: Callable[[str, int, str], None] | None = None,
     timeout_seconds: float = 60.0,
     cancel_event: Any | None = None,
+    partial_dir: str | Path | None = None,
     # ---- Paramètres legacy non encore portés vers BenchmarkService ----
     # Sprint D.2 du plan v2.0 — les features manquantes seront
     # ajoutées au ``BenchmarkService`` dans une session ultérieure.
     max_workers: int = 4,  # noqa: ARG001
-    partial_dir: Any | None = None,  # noqa: ARG001
     entity_extractor: Any | None = None,  # noqa: ARG001
     profile: str = "standard",  # noqa: ARG001
 ) -> Any:
@@ -794,12 +797,29 @@ def run_benchmark_via_service(
     le Sprint D.2 :
 
     - ``show_progress`` (tqdm),
-    - ``progress_callback`` (SSE web),
     - ``max_workers`` (parallélisme intra-engine),
-    - ``partial_dir`` (reprise sur interruption),
-    - ``cancel_event`` (annulation propre),
     - ``entity_extractor`` (calcul NER),
     - ``profile`` (validation de profil de mesures).
+
+    Reprise sur interruption (D.2.b)
+    --------------------------------
+    Si ``partial_dir`` est fourni, le bench est exécuté en mode
+    **per-engine resumable** :
+
+    - Pour chaque engine, on cherche un fichier
+      ``{partial_dir}/picarones_{corpus}_{engine}.partial.jsonl``
+      d'une exécution précédente interrompue.
+    - Les ``DocumentResult`` qui y sont déjà persistés sont
+      réutilisés tels quels (pas de recalcul).
+    - Seuls les documents restants sont soumis au ``BenchmarkService``.
+    - Chaque nouveau ``DocumentResult`` est ajouté en append au
+      partial avant de passer au suivant.
+    - À la fin d'un engine traité avec succès, son partial est
+      supprimé.
+
+    Quand ``partial_dir`` est ``None`` (défaut), une seule passe
+    multi-engine est lancée (chemin rapide, pas de persistance
+    intermédiaire).
 
     Parameters
     ----------
@@ -831,8 +851,6 @@ def run_benchmark_via_service(
         Si les engines ne déclarent pas tous un ``name`` unique
         (cf. ``build_adapter_resolver``).
     """
-    import tempfile
-
     if code_version is None:
         # Le scanner d'archi rejette ``from picarones import __version__``
         # parce qu'il classe ``picarones`` (sans sous-package) comme une
@@ -845,6 +863,55 @@ def run_benchmark_via_service(
         except (ImportError, AttributeError):
             code_version = "unknown"
 
+    if partial_dir is None:
+        benchmark_result = _run_benchmark_unified(
+            corpus=corpus,
+            engines=engines,
+            char_exclude=char_exclude,
+            normalization_profile=normalization_profile,
+            code_version=code_version,
+            progress_callback=progress_callback,
+            timeout_seconds=timeout_seconds,
+            cancel_event=cancel_event,
+        )
+    else:
+        benchmark_result = _run_benchmark_with_partial(
+            corpus=corpus,
+            engines=engines,
+            partial_dir=Path(partial_dir),
+            char_exclude=char_exclude,
+            normalization_profile=normalization_profile,
+            code_version=code_version,
+            progress_callback=progress_callback,
+            timeout_seconds=timeout_seconds,
+            cancel_event=cancel_event,
+        )
+
+    # Sérialisation JSON optionnelle
+    if output_json is not None:
+        _persist_benchmark_result_json(benchmark_result, Path(output_json))
+
+    return benchmark_result
+
+
+def _run_benchmark_unified(
+    *,
+    corpus: "Corpus",
+    engines: list["BaseOCREngine"],
+    char_exclude: Any | None,
+    normalization_profile: Any | None,
+    code_version: str,
+    progress_callback: Callable[[str, int, str], None] | None,
+    timeout_seconds: float,
+    cancel_event: Any | None,
+) -> Any:
+    """Chemin rapide : un seul ``BenchmarkService.run`` multi-engine.
+
+    Pas de persistance intermédiaire — si le run crashe, tout est
+    perdu.  Utilisé quand ``partial_dir`` est ``None``.
+    """
+    import tempfile
+
     with tempfile.TemporaryDirectory(prefix="picarones_bench_") as ws:
         workspace = Path(ws)
         gt_dir = workspace / "gt"
@@ -852,23 +919,14 @@ def run_benchmark_via_service(
         run_dir = workspace / "run"
         run_dir.mkdir()
 
-        # 1. Conversion corpus → CorpusSpec (D.1.a)
         corpus_spec = corpus_to_corpus_spec(corpus, workspace_dir=gt_dir)
-
-        # 2. Conversion engines → PipelineSpec[] + adapter resolver (D.1.b)
         pipeline_specs = [engine_to_pipeline_spec(e) for e in engines]
         adapter_resolver = build_adapter_resolver(engines)
-
-        # Mapping pipeline_name → engine.name pour préserver la
-        # sémantique legacy de ``progress_callback(engine_name, ...)``
-        # qui attend le nom de l'engine, pas celui de la pipeline
-        # (qui inclut le préfixe ``ocr_only_`` côté rewrite).
         pipeline_to_engine_name = {
             spec.name: engine.name
             for spec, engine in zip(pipeline_specs, engines)
         }
 
-        # 3. Exécution via BenchmarkService rewrite
         run_result = _execute_via_benchmark_service(
             corpus_spec=corpus_spec,
             pipeline_specs=pipeline_specs,
@@ -881,8 +939,7 @@ def run_benchmark_via_service(
             pipeline_to_engine_name=pipeline_to_engine_name,
         )
 
-        # 4. Conversion RunResult → BenchmarkResult legacy (D.1.c)
-        benchmark_result = run_result_to_benchmark_result(
+        return run_result_to_benchmark_result(
             run_result,
             corpus=corpus,
             engines=engines,
@@ -890,11 +947,162 @@ def run_benchmark_via_service(
             normalization_profile=normalization_profile,
         )
 
-    # 5. Sérialisation JSON optionnelle
-    if output_json is not None:
-        _persist_benchmark_result_json(benchmark_result, Path(output_json))
 
-    return benchmark_result
+def _run_benchmark_with_partial(
+    *,
+    corpus: "Corpus",
+    engines: list["BaseOCREngine"],
+    partial_dir: Path,
+    char_exclude: Any | None,
+    normalization_profile: Any | None,
+    code_version: str,
+    progress_callback: Callable[[str, int, str], None] | None,
+    timeout_seconds: float,
+    cancel_event: Any | None,
+) -> Any:
+    """Chemin reprise : per-engine avec NDJSON intermédiaire.
+
+    Pour chaque engine, charge le partial existant, filtre les docs
+    déjà traités, lance ``BenchmarkService`` sur les restants,
+    persiste chaque nouveau ``DocumentResult`` au fil de l'eau.
+    """
+    import tempfile
+
+    from picarones.app.services._legacy_partial_store import (
+        _delete_partial,
+        _load_partial,
+        _partial_path,
+        _save_partial_line,
+    )
+    from picarones.evaluation.benchmark_result import (
+        BenchmarkResult,
+        EngineReport,
+    )
+    from picarones.evaluation.corpus import Corpus as LegacyCorpus
+    from picarones.evaluation.metric_result import aggregate_metrics
+
+    partial_dir.mkdir(parents=True, exist_ok=True)
+
+    # Index des docs par ID — permet de ré-ordonner les
+    # DocumentResult rechargés selon l'ordre original du corpus.
+    doc_order = {doc.doc_id: idx for idx, doc in enumerate(corpus.documents)}
+
+    engine_reports: list[Any] = []
+
+    for engine in engines:
+        # Vérifier la cancellation entre engines (matche la
+        # sémantique legacy : un Ctrl+C arrête après l'engine en
+        # cours, conserve les partials, ne démarre pas le suivant).
+        if cancel_event is not None and getattr(
+            cancel_event, "is_set", lambda: False,
+        )():
+            logger.info(
+                "[partial_dir] benchmark annulé avant l'engine '%s' "
+                "— partials conservés pour reprise.", engine.name,
+            )
+            break
+
+        partial_path = _partial_path(corpus.name, engine.name, partial_dir)
+        loaded_results = _load_partial(partial_path)
+        loaded_doc_ids = {dr.doc_id for dr in loaded_results}
+
+        if loaded_results:
+            logger.info(
+                "[partial_dir] reprise '%s' : %d/%d docs déjà traités.",
+                engine.name, len(loaded_results), len(corpus.documents),
+            )
+
+        remaining_docs = [
+            d for d in corpus.documents if d.doc_id not in loaded_doc_ids
+        ]
+
+        new_doc_results: list[Any] = []
+        if remaining_docs:
+            # Sub-corpus avec uniquement les docs restants.  On
+            # conserve le ``name`` original pour que les chemins de
+            # partial restent cohérents si un re-run arrive.
+            sub_corpus = LegacyCorpus(
+                name=corpus.name,
+                documents=remaining_docs,
+                source_path=corpus.source_path,
+            )
+
+            with tempfile.TemporaryDirectory(
+                prefix="picarones_bench_partial_",
+            ) as ws:
+                workspace = Path(ws)
+                gt_dir = workspace / "gt"
+                gt_dir.mkdir()
+                run_dir = workspace / "run"
+                run_dir.mkdir()
+
+                sub_corpus_spec = corpus_to_corpus_spec(
+                    sub_corpus, workspace_dir=gt_dir,
+                )
+                pipeline_spec = engine_to_pipeline_spec(engine)
+                adapter_resolver = build_adapter_resolver([engine])
+                pipeline_to_engine_name = {pipeline_spec.name: engine.name}
+
+                run_result = _execute_via_benchmark_service(
+                    corpus_spec=sub_corpus_spec,
+                    pipeline_specs=[pipeline_spec],
+                    adapter_resolver=adapter_resolver,
+                    workspace_uri=str(run_dir),
+                    code_version=code_version,
+                    timeout_seconds=timeout_seconds,
+                    progress_callback=progress_callback,
+                    cancel_event=cancel_event,
+                    pipeline_to_engine_name=pipeline_to_engine_name,
+                )
+
+                # Convertir ce sous-RunResult en EngineReport avec
+                # uniquement les docs restants — puis extraire les
+                # ``DocumentResult`` pour append au partial.
+                sub_report = run_result_to_benchmark_result(
+                    run_result,
+                    corpus=sub_corpus,
+                    engines=[engine],
+                    char_exclude=char_exclude,
+                    normalization_profile=normalization_profile,
+                )
+                new_doc_results = list(
+                    sub_report.engine_reports[0].document_results,
+                )
+
+                # Append au partial : un cancel mid-engine
+                # préservera ce qui a déjà été calculé.
+                for dr in new_doc_results:
+                    _save_partial_line(partial_path, dr)
+
+        # Fusion : loaded + new, ré-ordonné selon le corpus original.
+        all_doc_results = list(loaded_results) + new_doc_results
+        all_doc_results.sort(key=lambda dr: doc_order.get(dr.doc_id, 0))
+
+        aggregated = aggregate_metrics([d.metrics for d in all_doc_results])
+        pipeline_info = _build_pipeline_info(engine)
+
+        engine_reports.append(
+            EngineReport(
+                engine_name=engine.name,
+                engine_version=_safe_engine_version(engine),
+                engine_config=getattr(engine, "config", {}) or {},
+                document_results=all_doc_results,
+                aggregated_metrics=aggregated,
+                pipeline_info=pipeline_info,
+            ),
+        )
+
+        # Engine traité avec succès → cleanup du partial.  Si on
+        # arrive ici sans exception, tous les docs sont dans
+        # ``all_doc_results``.
+        _delete_partial(partial_path)
+
+    return BenchmarkResult(
+        corpus_name=corpus.name,
+        corpus_source=str(corpus.source_path) if corpus.source_path else None,
+        document_count=len(corpus.documents),
+        engine_reports=engine_reports,
+    )
 
 
 def _execute_via_benchmark_service(

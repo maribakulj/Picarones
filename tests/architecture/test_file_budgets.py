@@ -40,8 +40,10 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/legacy_pipelines/_executor_runner.py": 470,  # actuel 410
     # Sprint D.1 (plan v2.0) — adapter de compat run_benchmark legacy
     # → BenchmarkService rewrite.  Module transitoire qui sera
-    # supprimé en D.6 avec measurements/runner/.
-    "picarones/app/services/_legacy_runner_adapter.py": 1200,  # actuel 1007
+    # supprimé en H.4 avec interfaces/{cli,web}/_legacy/.
+    # Sprint D.2.b a ajouté ~260 LOC pour la branche resumable
+    # (``_run_benchmark_with_partial``).
+    "picarones/app/services/_legacy_runner_adapter.py": 1450,  # actuel 1269
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # statistics.py (1128 lignes) a été éclaté en sous-package
