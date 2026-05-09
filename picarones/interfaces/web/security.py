@@ -477,6 +477,65 @@ def _get_csrf_secret() -> bytes:
     return _csrf_secret_runtime
 
 
+class CSRFConfigError(RuntimeError):
+    """Levée au démarrage si la config CSRF est incohérente.
+
+    Sprint S6.9 — en mode institutionnel
+    (``PICARONES_CSRF_REQUIRED=1``), exiger un ``PICARONES_CSRF_SECRET``
+    stable ; sans lui, les tokens sont invalidés à chaque redémarrage,
+    ce qui dégrade l'UX et masque une mauvaise configuration ops.
+    """
+
+
+def validate_csrf_config() -> None:
+    """Refuse le démarrage si la config CSRF est dangereuse.
+
+    Sprint S6.9 — appelé au lifespan de l'app FastAPI.  Trois cas :
+
+    1. ``PICARONES_CSRF_REQUIRED`` désactivé → bypass total
+       (mode public HF Space).  Aucun secret nécessaire.
+    2. ``PICARONES_CSRF_REQUIRED=1`` ET ``PICARONES_CSRF_SECRET``
+       défini → OK.
+    3. ``PICARONES_CSRF_REQUIRED=1`` ET ``PICARONES_CSRF_SECRET``
+       absent → :class:`CSRFConfigError` levée (refus démarrage).
+
+    Cas 3 est dangereux : sans secret stable, le serveur génère un
+    secret aléatoire au démarrage.  Tous les tokens CSRF sont
+    invalidés à chaque restart → UX cassée, et une équipe ops qui
+    voit ``PICARONES_CSRF_REQUIRED=1`` croit (à tort) que la
+    config est complète.
+
+    Raises
+    ------
+    CSRFConfigError
+        Si le mode CSRF est requis sans secret stable.
+    """
+    if not is_csrf_required():
+        return
+    secret = os.environ.get("PICARONES_CSRF_SECRET", "").strip()
+    if not secret:
+        raise CSRFConfigError(
+            "PICARONES_CSRF_REQUIRED=1 mais PICARONES_CSRF_SECRET "
+            "n'est pas défini.  En mode institutionnel, le secret "
+            "doit être stable entre redémarrages — sinon tous les "
+            "tokens CSRF émis sont invalidés à chaque restart.\n\n"
+            "Solution : exporter un secret généré une fois pour "
+            "toutes :\n"
+            "  export PICARONES_CSRF_SECRET=$(openssl rand -hex 32)\n\n"
+            "Et le persister dans le mécanisme de secrets de "
+            "l'institution (Vault, AWS Secrets Manager, "
+            "kubernetes Secret, etc.)."
+        )
+    # Garde-fou : un secret évident (vide après strip, "secret",
+    # "changeme", ...) doit aussi alerter.
+    weak_values = {"changeme", "secret", "password", "test", "dev"}
+    if secret.lower() in weak_values:
+        raise CSRFConfigError(
+            f"PICARONES_CSRF_SECRET a une valeur trivialement faible "
+            f"({secret!r}).  Utiliser ``openssl rand -hex 32``."
+        )
+
+
 def generate_csrf_token() -> str:
     """Produit un token signé HMAC-SHA256.
 

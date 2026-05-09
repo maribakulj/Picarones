@@ -75,7 +75,14 @@ services:
     volumes:
       - ollama_models:/root/.ollama
     environment:
-      - OLLAMA_ORIGINS=*
+      # Sprint S6.4 — restriction CORS Ollama.  Avant : ``*`` permet
+      # à n'importe quel site web visité par l'utilisateur d'appeler
+      # l'API Ollama interne via son navigateur (CSRF cross-origin).
+      # En mode défaut, on n'autorise que le service web Picarones
+      # (réseau Docker interne) ; un opérateur peut surcharger via
+      # ``OLLAMA_ORIGINS`` env var pour ajouter un origin de
+      # développement (ex : ``http://localhost:3000``).
+      - OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-http://web:7860,http://localhost:7860}
     deploy:
       resources:
         reservations:

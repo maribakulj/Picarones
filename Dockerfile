@@ -114,17 +114,31 @@ WORKDIR /app
 # Sprint A14 (correctif Trivy) : ``apt-get upgrade -y`` avant install
 # pour récupérer les patches de sécurité Debian (libssl3t64, libc6,
 # openssl, etc.) — la base image Python ne les inclut pas par défaut.
+#
+# Sprint S6.1 — Reproductibilité institutionnelle (BnF) :
+# ``tesseract-ocr`` est pinné à ``5.3.0-2`` (version Debian 12
+# bookworm).  Sans ce pin, ``apt-get install tesseract-ocr`` peut
+# remonter une version mineure différente entre deux builds (ex :
+# ``5.3.0-2`` → ``5.4.1-1``) et faire dériver les CER mesurés.
+# Pour un benchmark reproductible cité dans une publication
+# scientifique, c'est inacceptable.
+#
+# Si Debian 12 sort un point release (bookworm-2 → bookworm-3) et
+# rebump tesseract-ocr, le build échouera avec un message clair —
+# le mainteneur devra alors décider explicitement de la mise à jour
+# (et regénérer les baselines CER si la nouvelle version a un
+# comportement différent).
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-        # Tesseract OCR 5 et modèles de langues
-        tesseract-ocr \
-        tesseract-ocr-fra \
-        tesseract-ocr-lat \
-        tesseract-ocr-eng \
-        tesseract-ocr-deu \
-        tesseract-ocr-ita \
-        tesseract-ocr-spa \
+        # Tesseract OCR 5.3.0 (Debian 12) + modèles de langues
+        tesseract-ocr=5.3.0-2 \
+        tesseract-ocr-fra=1:4.1.0-2 \
+        tesseract-ocr-lat=1:4.1.0-2 \
+        tesseract-ocr-eng=1:4.1.0-2 \
+        tesseract-ocr-deu=1:4.1.0-2 \
+        tesseract-ocr-ita=1:4.1.0-2 \
+        tesseract-ocr-spa=1:4.1.0-2 \
         # Bibliothèques image pour Pillow
         libpng16-16 \
         libjpeg62-turbo \

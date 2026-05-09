@@ -31,18 +31,24 @@ classifiers = [
     "Natural Language :: French",
 ]
 dependencies = [
-    "click>=8.1.0",
-    "jiwer>=3.0.0",
-    "Pillow>=10.0.0",
-    "pyyaml>=6.0.0",
-    "pytesseract>=0.3.10",
-    "tqdm>=4.66.0",
-    "numpy>=1.24.0",
-    "jinja2>=3.1.0",
+    # Sprint S6.3 — toutes les dépendances core ont une borne
+    # supérieure (caplock major) pour éviter qu'un ``pip install
+    # picarones`` futur ramène une version 2 d'un paquet et casse
+    # silencieusement l'API.  Les majeures suivantes sont validées
+    # sur le repo ; passage à une majeure supérieure = sprint
+    # explicite (mise à jour des bornes ICI + tests d'équivalence).
+    "click>=8.1.0,<9.0",
+    "jiwer>=3.0.0,<4.0",
+    "Pillow>=10.0.0,<13.0",
+    "pyyaml>=6.0.0,<7.0",
+    "pytesseract>=0.3.10,<0.4",
+    "tqdm>=4.66.0,<5.0",
+    "numpy>=1.24.0,<3.0",
+    "jinja2>=3.1.0,<4.0",
     # XML parsing sécurisé contre les attaques XXE / Billion Laughs.
     # Utilisé par ``picarones.interfaces.web.corpus_utils`` pour le parsing
     # ALTO/PAGE quand un utilisateur uploade un corpus XML.
-    "defusedxml>=0.7.1",
+    "defusedxml>=0.7.1,<0.8",
     # Pydantic — types immutables de la couche 1 (``picarones.domain``).
     # Déclaré explicitement pour que les installs minimaux (sans
     # ``[web]`` qui le ramènerait via FastAPI) bénéficient des modèles

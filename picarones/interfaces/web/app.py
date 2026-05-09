@@ -60,14 +60,23 @@ _logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    """Hook de démarrage : marque les jobs orphelins comme ``interrupted``.
+    """Hook de démarrage : valide la config + nettoie les jobs orphelins.
 
-    Au démarrage d'un nouveau processus, tous les jobs
-    encore en statut ``pending`` ou ``running`` en base sont
-    forcément orphelins (le processus précédent est mort sans les
-    finir). On les bascule en ``interrupted`` pour ne pas laisser
-    d'état mensonger sur le tableau de bord.
+    1. Sprint S6.9 — ``validate_csrf_config()`` : refuse de démarrer
+       si ``PICARONES_CSRF_REQUIRED=1`` sans ``PICARONES_CSRF_SECRET``
+       stable (sinon tous les tokens CSRF sont invalidés à chaque
+       restart, UX cassée et signal de mauvaise config masqué).
+    2. Au démarrage, tous les jobs encore en statut ``pending`` ou
+       ``running`` en base sont forcément orphelins (le processus
+       précédent est mort sans les finir).  On les bascule en
+       ``interrupted`` pour ne pas laisser d'état mensonger sur le
+       tableau de bord.
     """
+    # Étape 1 — validation config (échec rapide si dangereux).
+    from picarones.interfaces.web.security import validate_csrf_config
+    validate_csrf_config()
+
+    # Étape 2 — nettoyage jobs orphelins.
     # NB : on accède via ``state.JOB_STORE`` (pas un import direct) pour
     # que les fixtures de tests qui ré-affectent ``state.JOB_STORE`` à
     # un store isolé soient effectivement vues par le lifespan.
@@ -153,6 +162,23 @@ def register_global_exception_handler(target_app: FastAPI) -> None:
 
 register_global_exception_handler(app)
 
+
+# Sprint S6.5 — logs JSON structurés si ``PICARONES_LOG_FORMAT=json``.
+# Opt-in pour ne pas casser les déploiements existants qui parsent
+# le format texte humain.
+from picarones.interfaces.web.observability import (
+    install_json_logging,
+    is_json_logging_requested,
+    request_id_middleware,
+)
+if is_json_logging_requested():
+    install_json_logging()
+    _logger.info("[observability] JsonLogFormatter installé.")
+
+
+# Middleware request_id — pose ``request.state.request_id`` et
+# expose ``X-Request-Id`` en réponse.  Toujours actif (coût négligeable).
+app.middleware("http")(request_id_middleware)
 
 # Middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
 app.middleware("http")(csp_middleware)
