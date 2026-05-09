@@ -13,7 +13,7 @@ Couverture :
 from __future__ import annotations
 
 
-from picarones.reports_v2.narrative import (
+from picarones.reports.narrative import (
     DetectorRegistry,
     Fact,
     FactImportance,

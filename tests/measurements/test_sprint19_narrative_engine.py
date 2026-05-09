@@ -15,7 +15,7 @@ import re
 
 import pytest
 
-from picarones.reports_v2.narrative import (
+from picarones.reports.narrative import (
     Fact,
     FactImportance,
     FactType,
@@ -25,7 +25,7 @@ from picarones.reports_v2.narrative import (
     render_synthesis,
     select_facts,
 )
-from picarones.reports_v2.narrative.detectors import (
+from picarones.reports.narrative.detectors import (
     detect_confidence_warning,
     detect_error_profile_outlier,
     detect_global_leader_cer,
@@ -520,7 +520,7 @@ def benchmark_result():
 
 class TestReportIntegration:
     def test_report_contains_synthesis_section(self, benchmark_result, tmp_path):
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -530,7 +530,7 @@ class TestReportIntegration:
         assert re.search(r'<ul class="synth-list">\s*<li>', html)
 
     def test_report_synthesis_is_deterministic(self, benchmark_result, tmp_path):
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         out1 = tmp_path / "r1.html"
         out2 = tmp_path / "r2.html"
         ReportGenerator(benchmark_result).generate(out1)
@@ -545,7 +545,7 @@ class TestReportIntegration:
                hashlib.sha256(s2.group().encode()).hexdigest()
 
     def test_default_registry_has_all_types_registered(self):
-        from picarones.reports_v2.narrative import _DEFAULT_REGISTRY
+        from picarones.reports.narrative import _DEFAULT_REGISTRY
         from picarones.domain.facts import FactType
 
         registered = set(_DEFAULT_REGISTRY.registered_types())
@@ -554,7 +554,7 @@ class TestReportIntegration:
         assert registered == set(FactType)
 
     def test_english_locale_produces_english_sentences(self, benchmark_result, tmp_path):
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         out = tmp_path / "report_en.html"
         ReportGenerator(benchmark_result, lang="en").generate(out)
         html = out.read_text(encoding="utf-8")

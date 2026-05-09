@@ -1,7 +1,7 @@
 """``picarones-rewrite report`` — génère le HTML d'un run persisté.
 
 Wrapper Click mince autour du :class:`HtmlReportRenderer` (couche
-``reports_v2/html/``).
+``reports/html/``).
 
 ::
 
@@ -30,7 +30,7 @@ from pathlib import Path
 
 import click
 
-from picarones.reports_v2.html import HtmlReportRenderer
+from picarones.reports.html import HtmlReportRenderer
 
 
 @click.command()

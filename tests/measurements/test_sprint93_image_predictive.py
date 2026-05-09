@@ -35,7 +35,7 @@ from picarones.evaluation.metrics.image_predictive import (
     compute_corpus_homogeneity,
     compute_paleographic_complexity,
 )
-from picarones.reports_v2.html.renderers.image_predictive import (
+from picarones.reports.html.renderers.image_predictive import (
     build_image_predictive_html,
 )
 
@@ -43,7 +43,7 @@ from picarones.reports_v2.html.renderers.image_predictive import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

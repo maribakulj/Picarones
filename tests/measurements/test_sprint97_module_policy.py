@@ -37,7 +37,7 @@ from picarones.evaluation.metrics.module_policy import (
 )
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.module_protocol import BaseModule
-from picarones.reports_v2.html.renderers.module_audit import (
+from picarones.reports.html.renderers.module_audit import (
     build_module_audit_html,
 )
 
@@ -45,7 +45,7 @@ from picarones.reports_v2.html.renderers.module_audit import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

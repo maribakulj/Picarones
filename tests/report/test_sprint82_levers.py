@@ -31,7 +31,7 @@ from picarones.evaluation.metrics.levers import (
     detect_robustness_projection_observation,
     iter_lever_detectors,
 )
-from picarones.reports_v2.html.renderers.levers import build_levers_section_html
+from picarones.reports.html.renderers.levers import build_levers_section_html
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -376,7 +376,7 @@ class TestDetectLevers:
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 
@@ -435,7 +435,7 @@ class TestRender:
         """
         import logging
 
-        from picarones.reports_v2.html.renderers import levers as levers_render
+        from picarones.reports.html.renderers import levers as levers_render
 
         # Patche un des formatters pour qu'il lève une exception
         original = levers_render._FORMATTERS.copy()
@@ -455,7 +455,7 @@ class TestRender:
         }
         with caplog.at_level(
             logging.WARNING,
-            logger="picarones.reports_v2.html.renderers.levers",
+            logger="picarones.reports.html.renderers.levers",
         ):
             html = build_levers_section_html([d], _load_labels("fr"))
 

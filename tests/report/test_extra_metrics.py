@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 
 from picarones.evaluation.synthetic import generate_sample_benchmark
-from picarones.reports_v2.html.data import build_report_data
-from picarones.reports_v2.html.data.extra_metrics import (
+from picarones.reports.html.data import build_report_data
+from picarones.reports.html.data.extra_metrics import (
     compute_marginal_cost_section,
     compute_rare_token_recall_per_engine,
     compute_taxonomy_cooccurrence_section,
@@ -97,7 +97,7 @@ class TestTaxonomyCooccurrence:
             assert r == results[0]
 
     def test_compatible_with_renderer(self, sample_benchmark) -> None:
-        from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
+        from picarones.reports.html.renderers.taxonomy_cooccurrence import (
             build_taxonomy_cooccurrence_html,
         )
         result = compute_taxonomy_cooccurrence_section(sample_benchmark)
@@ -138,7 +138,7 @@ class TestTaxonomyIntraDoc:
             assert key in result, f"clé {key!r} manquante (renderer la requiert)"
 
     def test_renders_html_when_signal_present(self, sample_benchmark) -> None:
-        from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
+        from picarones.reports.html.renderers.taxonomy_intra_doc import (
             build_taxonomy_intra_doc_html,
         )
         result = compute_taxonomy_intra_doc_section(sample_benchmark)
@@ -180,7 +180,7 @@ class TestMarginalCost:
         assert compute_marginal_cost_section(engines_summary) is None
 
     def test_renderer_compatibility(self) -> None:
-        from picarones.reports_v2.html.renderers.marginal_cost import (
+        from picarones.reports.html.renderers.marginal_cost import (
             build_marginal_cost_html,
         )
         engines_summary = [

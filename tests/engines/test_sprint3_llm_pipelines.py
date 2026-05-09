@@ -386,7 +386,7 @@ class TestReportWithPipeline:
     @pytest.fixture(scope="class")
     def report_data(self):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         images_b64 = bm.metadata.get("_images_b64", {})
         return _build_report_data(bm, images_b64)
@@ -433,7 +433,7 @@ class TestReportWithPipeline:
 
     def test_html_contains_pipeline_tag(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)

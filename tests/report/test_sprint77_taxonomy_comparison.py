@@ -27,7 +27,7 @@ from picarones.evaluation.metrics.taxonomy_comparison import (
     RECOVERABILITY,
     compare_taxonomies,
 )
-from picarones.reports_v2.html.renderers.taxonomy_comparison import (
+from picarones.reports.html.renderers.taxonomy_comparison import (
     build_taxonomy_comparison_html,
 )
 
@@ -194,7 +194,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

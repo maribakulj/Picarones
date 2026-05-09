@@ -59,10 +59,10 @@ FILE_BUDGETS: dict[str, int] = {
     # à 500 pour verrouiller le gain ; toute croissance > 500 sera
     # un signal pour redécouper.
     # Phase 5.E : ``report/generator.py`` est désormais un shim ;
-    # canonique dans ``reports_v2/html/generator.py``.
-    "picarones/reports_v2/html/generator.py": 550,        # actuel 471
+    # canonique dans ``reports/html/generator.py``.
+    "picarones/reports/html/generator.py": 550,        # actuel 471
     # --- Fichiers métier larges.
-    # (Phase 7.D — ``reports_v2/html/renderers/pipeline.py`` supprimé.)
+    # (Phase 7.D — ``reports/html/renderers/pipeline.py`` supprimé.)
     # Phase 4-ter : ``core/results.py`` est désormais un shim
     # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (modèles
@@ -70,8 +70,8 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/evaluation/benchmark_result.py": 750,      # actuel 702
     # Phase 5.C : ``report/philological_render.py`` est désormais
     # un shim (≤ 25 l).  Le contenu canonique vit dans
-    # ``reports_v2/html/renderers/philological.py``.
-    "picarones/reports_v2/html/renderers/philological.py": 700,  # actuel 601
+    # ``reports/html/renderers/philological.py``.
+    "picarones/reports/html/renderers/philological.py": 700,  # actuel 601
     # Sprint E.1 du plan v2.0 — module migré vers ``evaluation/metrics/``.
     "picarones/evaluation/metrics/modern_archives.py": 700,  # actuel 599
     # Sprint E.4 du plan v2.0 — migré vers ``evaluation/metrics/``.
@@ -161,16 +161,16 @@ FILE_BUDGETS: dict[str, int] = {
     # Le shim a été supprimé au Lot D ; seul le canonique reste.
     "picarones/formats/text/normalization.py": 500,       # actuel 420
     # Phase 5.E : ``report/comparison.py`` est désormais un shim ;
-    # canonique dans ``reports_v2/html/comparison.py``.
-    "picarones/reports_v2/html/comparison.py": 500,       # actuel 414
+    # canonique dans ``reports/html/comparison.py``.
+    "picarones/reports/html/comparison.py": 500,       # actuel 414
     # --- Module mutualisé créé par le sprint des render helpers
     # (Sprint « consolidation des renderers » 2026-05-02). Budget
     # calibré sur la taille post-documentation des conventions.
     # Phase 5 : ``report/render_helpers.py`` est désormais un shim
     # (≤ 25 l).  Le contenu canonique vit dans
-    # ``reports_v2/_helpers/`` ; même budget pour la même raison
+    # ``reports/_helpers/`` ; même budget pour la même raison
     # historique (consolidation des 25 helpers de couleur).
-    "picarones/reports_v2/_helpers/render_helpers.py": 480,  # actuel 428
+    "picarones/reports/_helpers/render_helpers.py": 480,  # actuel 428
     # --- Services applicatifs et orchestration du rewrite ciblé.
     # Budgets calibrés à current + 15 % de marge.  La CLI elle-même
     # reste mince (~110 lignes) — toute logique métier vit dans
@@ -178,10 +178,10 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
     "picarones/app/services/run_orchestrator.py": 500,    # actuel 432
-    # Le rendu HTML vit en couche ``reports_v2/`` (cible documentée
+    # Le rendu HTML vit en couche ``reports/`` (cible documentée
     # du rewrite — un rapport est un format de sortie, pas un
     # service métier).
-    "picarones/reports_v2/html/render.py": 700,           # actuel 615
+    "picarones/reports/html/render.py": 700,           # actuel 615
 }
 
 

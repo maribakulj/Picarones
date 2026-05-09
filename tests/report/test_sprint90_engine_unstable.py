@@ -21,10 +21,10 @@ import json
 import re
 from pathlib import Path
 
-from picarones.reports_v2.narrative import build_synthesis
-from picarones.reports_v2.narrative.detectors import detect_engine_unstable
+from picarones.reports.narrative import build_synthesis
+from picarones.reports.narrative.detectors import detect_engine_unstable
 from picarones.domain.facts import FactImportance, FactType
-from picarones.reports_v2.html.renderers.multirun_stability import (
+from picarones.reports.html.renderers.multirun_stability import (
     build_multirun_stability_html,
 )
 
@@ -32,7 +32,7 @@ from picarones.reports_v2.html.renderers.multirun_stability import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 
@@ -47,7 +47,7 @@ class TestFactType:
         assert FactType.ENGINE_UNSTABLE.value == "engine_unstable"
 
     def test_in_arbiter_fallback_order(self) -> None:
-        from picarones.reports_v2.narrative.arbiter import _FALLBACK_TYPE_ORDER
+        from picarones.reports.narrative.arbiter import _FALLBACK_TYPE_ORDER
         assert FactType.ENGINE_UNSTABLE in _FALLBACK_TYPE_ORDER
 
 

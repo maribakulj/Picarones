@@ -90,7 +90,7 @@ Résumé :
 - ``evaluation/`` whitelist limitée : pas de pytesseract /
   mistralai / azure / google / pero_ocr.  Ces libs externes
   vont dans ``adapters/``.
-- ``reports_v2/`` ne peut importer que les canoniques
+- ``reports/`` ne peut importer que les canoniques
   (``evaluation/metrics/``), pas les shims legacy
   (``measurements/X.py``).
 
@@ -339,7 +339,7 @@ L'ordre recommandé, par lots de symboles cohérents :
    - ``scripts/gen_readme_tables.py`` redirigé vers
      ``picarones/adapters/legacy_engines/`` ;
      ``docs/reference/views.md`` migré en place vers
-     ``picarones/reports_v2/html/{views, generator, renderers,
+     ``picarones/reports/html/{views, generator, renderers,
      templates}``.
 7. ⏳ **Lot G — measurements/runner et co.** (reporté car
    canonique absent — phase 6 du plan maître).

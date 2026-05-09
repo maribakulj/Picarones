@@ -8,7 +8,7 @@ import io
 from picarones.app.results import RunDocumentResult, RunResult
 from picarones.domain import RunManifest, utcnow
 from picarones.evaluation.views.base import ViewResult
-from picarones.reports_v2.csv import CsvReportRenderer
+from picarones.reports.csv import CsvReportRenderer
 
 
 def _make_minimal_result(

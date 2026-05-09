@@ -98,7 +98,7 @@ picarones/
 ├── app/                        Couche 6 — services applicatifs
 │   └── services/               BenchmarkService, CorpusRunner, RunOrchestrator
 │
-├── reports_v2/                 Couche 7 — rendu HTML / JSON / CSV
+├── reports/                 Couche 7 — rendu HTML / JSON / CSV
 │   ├── html/                   ReportGenerator + 22 renderers + 5 vues + templates Jinja2
 │   ├── json/, csv/             exports tabulaires
 │   ├── narrative/              moteur narratif (18 détecteurs)
@@ -267,13 +267,13 @@ Résumé express :
 - ``evaluation/`` ne peut pas importer depuis ``pipeline/`` :
   c'est le sens inverse de la dépendance.  Si un module bridge
   les deux contrats, il vit dans ``pipeline/``.
-- ``reports_v2/`` ne peut pas importer depuis ``measurements/``
+- ``reports/`` ne peut pas importer depuis ``measurements/``
   (legacy) ou ``core/`` (legacy).  Les renderers consomment les
   modules canoniques de ``evaluation/metrics/``.
 - ``test_module_coverage::TEST_ONLY_BASELINE`` : ajouter à
   cette frozenset dès qu'un shim ``measurements/X.py`` n'a
   plus de consommateur production (cas typique : un renderer
-  est migré vers ``reports_v2/`` et importe directement le
+  est migré vers ``reports/`` et importe directement le
   canonique au lieu du shim).
 
 ### Apprentissages des phases précédentes
@@ -305,7 +305,7 @@ Le modèle de données (`Fact`, `FactType`, `FactImportance`,
 le rendu vivent en couche 7 (`reports_v2`) :
 
 ```
-picarones/reports_v2/narrative/
+picarones/reports/narrative/
 ├── __init__.py              API publique + pipeline build_synthesis
 ├── arbiter.py               Tri par importance, non-redondance, anti-contradiction
 ├── renderer.py              Rendu templates YAML par str.format_map (déterministe)
@@ -359,10 +359,10 @@ détecte, arbitre, rend.
 | 4-bis   | ✅ terminée | ``ArtifactType`` migration + 22 callers                    |
 | 4-ter   | ✅ terminée | core/{metric_registry,metric_hooks,metrics,results} → eval |
 | 4-quater | ✅ terminée | core/corpus → evaluation/corpus                           |
-| 5.A     | ✅ terminée | helpers + glossary + i18n → reports_v2/                    |
+| 5.A     | ✅ terminée | helpers + glossary + i18n → reports/                    |
 | 5.B     | ✅ terminée | (intégré dans 5.A)                                         |
-| 5.C     | ✅ terminée | 29 renderers + 5 modules pré-requis → reports_v2/          |
-| 5.D     | ✅ terminée | 5 vues thématiques → reports_v2/html/views/                |
+| 5.C     | ✅ terminée | 29 renderers + 5 modules pré-requis → reports/          |
+| 5.D     | ✅ terminée | 5 vues thématiques → reports/html/views/                |
 | 5.E     | ✅ terminée | generator + comparison + snapshot + data + templates       |
 | 7.A     | ✅ terminée | engines/ + modules/ → adapters/legacy_*/                   |
 | 7.B.1   | ✅ terminée | _BaseModuleAdapter + _PayloadRegistry (commit b70f12a)     |

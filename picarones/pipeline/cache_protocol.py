@@ -7,7 +7,7 @@ Pourquoi ce Protocol
 --------------------
 La couche ``pipeline/`` est plus interne que ``adapters/`` dans la
 hiérarchie documentée du rewrite (``domain → formats → evaluation
-→ pipeline → adapters → app → reports_v2 → interfaces``).  Importer
+→ pipeline → adapters → app → reports → interfaces``).  Importer
 depuis ``adapters/`` dans ``pipeline/`` violerait la règle de
 dépendance.
 

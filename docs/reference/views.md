@@ -62,7 +62,7 @@ orphelins** identifiés dans l'audit initial :
 
 #### Vue « Coût et performance » (`build_economics_view_html`)
 
-Module : [`picarones/reports_v2/html/views/economics.py`](../picarones/reports_v2/html/views/economics.py).
+Module : [`picarones/reports/html/views/economics.py`](../picarones/reports/html/views/economics.py).
 Activée si :
 - `engine_reports` fournis avec durations non nulles.
 - (Optionnel) `extra_html_blocks` pour cost projection / marginal cost.
@@ -73,7 +73,7 @@ Sous-sections :
 
 #### Vue « Taxonomie avancée » (`build_advanced_taxonomy_view_html`)
 
-Module : [`picarones/reports_v2/html/views/advanced_taxonomy.py`](../picarones/reports_v2/html/views/advanced_taxonomy.py).
+Module : [`picarones/reports/html/views/advanced_taxonomy.py`](../picarones/reports/html/views/advanced_taxonomy.py).
 Activée si ≥ 2 moteurs ont une `aggregated_taxonomy`.
 
 Sous-sections :
@@ -85,7 +85,7 @@ Sous-sections :
 
 #### Vue « Diagnostic approfondi » (`build_diagnostics_view_html`)
 
-Module : [`picarones/reports_v2/html/views/diagnostics.py`](../picarones/reports_v2/html/views/diagnostics.py).
+Module : [`picarones/reports/html/views/diagnostics.py`](../picarones/reports/html/views/diagnostics.py).
 Activée si `detect_levers()` produit au moins un levier (typique sur
 un bench standard) ou si données opt-in fournies.
 
@@ -106,7 +106,7 @@ servent à composer des **rapports autonomes** :
 
 ### Vue « Pipeline composée » (`build_pipeline_view_html`)
 
-Module : [`picarones/reports_v2/html/views/pipeline.py`](../picarones/reports_v2/html/views/pipeline.py).
+Module : [`picarones/reports/html/views/pipeline.py`](../picarones/reports/html/views/pipeline.py).
 
 Utilisée par `picarones pipeline run` (ou par tout outil qui consomme un
 `PipelineBenchmarkResult`). Sous-sections :
@@ -122,7 +122,7 @@ Utilisée par `picarones pipeline run` (ou par tout outil qui consomme un
 
 ### Vue « Robustesse projetée » (`build_robustness_view_html`)
 
-Module : [`picarones/reports_v2/html/views/robustness.py`](../picarones/reports_v2/html/views/robustness.py).
+Module : [`picarones/reports/html/views/robustness.py`](../picarones/reports/html/views/robustness.py).
 
 Utilisée par le workflow `picarones robustness`. Sous-sections :
 
@@ -141,14 +141,14 @@ défini dans `economics.py` :
 
 ## Code source
 
-- [`picarones/reports_v2/html/generator.py`](../picarones/reports_v2/html/generator.py)
+- [`picarones/reports/html/generator.py`](../picarones/reports/html/generator.py)
   — orchestrateur Jinja2 qui appelle les renderers et passe leurs sorties
   au template.
-- [`picarones/reports_v2/html/views/`](../picarones/reports_v2/html/views/) — 5 modules de
+- [`picarones/reports/html/views/`](../picarones/reports/html/views/) — 5 modules de
   composition (chantier 3).
-- [`picarones/reports_v2/html/renderers/`](../picarones/reports_v2/html/renderers/) — 26 renderers
+- [`picarones/reports/html/renderers/`](../picarones/reports/html/renderers/) — 26 renderers
   atomiques.
-- [`picarones/reports_v2/html/templates/view_analyses.html`](../picarones/reports_v2/html/templates/view_analyses.html)
+- [`picarones/reports/html/templates/view_analyses.html`](../picarones/reports/html/templates/view_analyses.html)
   — template Jinja2 qui inclut les blocs.
 - [`tests/test_views.py`](../tests/test_views.py) — tests d'intégration
   des 5 vues du chantier 3.

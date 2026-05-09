@@ -6,7 +6,7 @@ Couvre :func:`color_traffic_light`, :func:`color_single_gradient`,
 
 from __future__ import annotations
 
-from picarones.reports_v2._helpers.render_helpers import (
+from picarones.reports._helpers.render_helpers import (
     DIVERGING_NEGATIVE_RGB,
     DIVERGING_POSITIVE_RGB,
     GRADIENT_GREEN_RGB,

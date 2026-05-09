@@ -24,7 +24,7 @@ from picarones.evaluation.metrics.robustness_projection import (
     aggregate_projection_per_engine,
     project_robustness_on_corpus,
 )
-from picarones.reports_v2.html.renderers.robustness_projection import (
+from picarones.reports.html.renderers.robustness_projection import (
     build_robustness_projection_html,
 )
 
@@ -32,7 +32,7 @@ from picarones.reports_v2.html.renderers.robustness_projection import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

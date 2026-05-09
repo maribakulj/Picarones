@@ -29,7 +29,7 @@ from picarones.evaluation.metrics.error_absorption import (
     aggregate_error_absorption,
     compute_error_absorption,
 )
-from picarones.reports_v2.html.renderers.error_absorption import (
+from picarones.reports.html.renderers.error_absorption import (
     build_error_absorption_html,
 )
 
@@ -37,7 +37,7 @@ from picarones.reports_v2.html.renderers.error_absorption import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

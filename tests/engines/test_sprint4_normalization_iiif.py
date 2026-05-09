@@ -791,7 +791,7 @@ class TestReportDiplomaticCER:
     def test_report_data_has_cer_diplomatic(self):
         """_build_report_data doit inclure cer_diplomatic dans engines_summary."""
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
 
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, images_b64={})
@@ -806,7 +806,7 @@ class TestReportDiplomaticCER:
     def test_html_contains_cer_diplo_column(self, tmp_path):
         """Le HTML généré doit contenir la colonne CER diplo."""
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark()
         out = tmp_path / "report_test.html"
@@ -819,7 +819,7 @@ class TestReportDiplomaticCER:
     def test_html_contains_medieval_graphie_indicator(self, tmp_path):
         """Le rapport doit mentionner les graphies médiévales (ſ=s ou u=v)."""
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark()
         out = tmp_path / "report_test.html"

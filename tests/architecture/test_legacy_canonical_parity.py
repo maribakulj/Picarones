@@ -375,7 +375,7 @@ def test_canonical_paths_dont_themselves_use_legacy() -> None:
         "picarones.pipeline.",
         "picarones.adapters.",
         "picarones.app.",
-        "picarones.reports_v2.",
+        "picarones.reports.",
         "picarones.interfaces.",
     )
     misrouted: list[tuple[str, str]] = []

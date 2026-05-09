@@ -114,7 +114,7 @@ Orchestration entre adapters et evaluation.
 | `schemas/run_spec.py` | `RunSpec`, `StepSpec` — modèles YAML user-facing |
 | `results.py` | `RunResult`, `RunDocumentResult`, `ReportRenderer` (alias type unique) |
 
-### `picarones/reports_v2/` — rendu déterministe
+### `picarones/reports/` — rendu déterministe
 
 | Sous-package | Rôle |
 |---|---|

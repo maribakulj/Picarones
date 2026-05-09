@@ -17,7 +17,7 @@ relevées par l'audit :
 
 1. **Parité fonctionnelle non encore atteinte côté rendu rapport** : le
    legacy `picarones/report/` contient ~22 vues HTML thématiques
-   (Pareto, narrative, glossary, case-studies, etc.) que `reports_v2/`
+   (Pareto, narrative, glossary, case-studies, etc.) que `reports/`
    ne reproduit pas intégralement.  Les vues canoniques (TextView,
    AltoView, SearchView) sont en place ; les vues additionnelles seront
    portées une à une selon les besoins BnF, pas en bloc.
@@ -46,7 +46,7 @@ relevées par l'audit :
 | `picarones/engines/` | LEGACY | `picarones/adapters/ocr/` (5 natifs) | Conserver — feature parité (confidences) |
 | `picarones/llm/` | RE-EXPORT | `picarones/adapters/llm/` | Déjà migré (re-export pur) |
 | `picarones/pipelines/` | LEGACY | (composition via pipeline DAG natif S6+) | Conserver — pas d'équivalent direct |
-| `picarones/report/` | LEGACY | `picarones/reports_v2/{html,csv,json}/` | Conserver — vues thématiques manquantes |
+| `picarones/report/` | LEGACY | `picarones/reports/{html,csv,json}/` | Conserver — vues thématiques manquantes |
 
 ## Ce qui est DÉFINITIVEMENT migré (S27-S45)
 
@@ -175,7 +175,7 @@ adressées en 6 vagues (S47-S57) :
    réutiliser proprement les confidences exposées par chaque OCR
    adapter, sans surcharger `BaseOCRAdapter.execute()`.
 2. **Vues HTML manquantes** : porter Pareto, Narrative, Glossary du
-   legacy `report/` vers `reports_v2/html/` une vue à la fois.
+   legacy `report/` vers `reports/html/` une vue à la fois.
 3. **CLI complète** : porter les commandes manquantes (`history`,
    `compare`, `pipeline`, `diagnose`, etc.) dans
    `interfaces/cli/`.

@@ -31,14 +31,14 @@ def sample_benchmark_s7():
 
 @pytest.fixture
 def report_data_s7(sample_benchmark_s7):
-    from picarones.reports_v2.html.generator import _build_report_data
+    from picarones.reports.html.generator import _build_report_data
     imgs = sample_benchmark_s7.metadata.get("_images_b64", {})
     return _build_report_data(sample_benchmark_s7, imgs)
 
 
 @pytest.fixture
 def html_s7(sample_benchmark_s7):
-    from picarones.reports_v2.html.generator import ReportGenerator
+    from picarones.reports.html.generator import ReportGenerator
     import tempfile
     import pathlib
     gen = ReportGenerator(sample_benchmark_s7)

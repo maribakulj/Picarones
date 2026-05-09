@@ -245,7 +245,7 @@ def test_pricing_staleness_detector_registered() -> None:
     # Trigger registration
     import picarones.evaluation.metrics  # noqa: F401
     from picarones.domain.facts import FactType
-    from picarones.reports_v2.narrative.detectors import DETECTORS_BY_TYPE
+    from picarones.reports.narrative.detectors import DETECTORS_BY_TYPE
 
     assert FactType.PRICING_STALENESS_WARNING in DETECTORS_BY_TYPE
 
@@ -254,7 +254,7 @@ def test_pricing_staleness_detector_silent_when_valid() -> None:
     """Le détecteur reste silencieux si ``today <= valid_until``."""
     from datetime import date, timedelta
 
-    from picarones.reports_v2.narrative.detectors.pareto import (
+    from picarones.reports.narrative.detectors.pareto import (
         detect_pricing_staleness,
     )
 
@@ -271,7 +271,7 @@ def test_pricing_staleness_detector_fires_when_expired() -> None:
     from datetime import date, timedelta
 
     from picarones.domain.facts import FactType
-    from picarones.reports_v2.narrative.detectors.pareto import (
+    from picarones.reports.narrative.detectors.pareto import (
         detect_pricing_staleness,
     )
 
@@ -287,7 +287,7 @@ def test_pricing_staleness_detector_fires_when_expired() -> None:
 
 def test_pricing_staleness_detector_silent_on_missing_data() -> None:
     """Le détecteur ne crashe pas si la clé est absente."""
-    from picarones.reports_v2.narrative.detectors.pareto import (
+    from picarones.reports.narrative.detectors.pareto import (
         detect_pricing_staleness,
     )
 

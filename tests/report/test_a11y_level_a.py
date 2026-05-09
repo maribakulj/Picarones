@@ -25,7 +25,7 @@ import re
 import pytest
 
 from picarones.evaluation.synthetic import generate_sample_benchmark
-from picarones.reports_v2.html.generator import ReportGenerator
+from picarones.reports.html.generator import ReportGenerator
 
 
 @pytest.fixture(scope="module")

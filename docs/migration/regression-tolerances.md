@@ -73,7 +73,7 @@ Pour une fonctionnalité donnée, la sortie du rewrite **doit être
 | `tokens[].confidence` | **0** | Tesseract retourne un entier 0-100 ; division exacte par 100 → flottant binairement identique en IEEE-754 |
 | `extractor`, `model_version` | **0** |
 
-### HTML (rapport `reports_v2/html/render.py`)
+### HTML (rapport `reports/html/render.py`)
 
 Le diff HTML est **structurel**, pas lexical :
 
@@ -89,7 +89,7 @@ Implémenté via une fonction `assert_html_semantically_equal(a, b)`
 qui parse les deux HTML avec `lxml` (ou `html.parser` fallback) et
 compare l'arbre.
 
-### CSV (`reports_v2/csv/render.py`)
+### CSV (`reports/csv/render.py`)
 
 | Output | ε |
 |--------|---|
@@ -98,7 +98,7 @@ compare l'arbre.
 | Ordre des lignes | autorisé à différer | les renderers triaient parfois différemment ; seule l'égalité ensembliste est exigée |
 | Format des nombres | **0** (le rewrite formate à 6 décimales `f"{v:.6f}"`) | déterministe |
 
-### JSON (`reports_v2/json/render.py`)
+### JSON (`reports/json/render.py`)
 
 | Output | ε |
 |--------|---|

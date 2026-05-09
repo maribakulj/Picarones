@@ -215,7 +215,7 @@ azure.*, pero_ocr, ollama).  Implémentent `StepExecutor`.
 `BenchmarkService`, `CorpusRunner`, `RunOrchestrator`.
 Orchestrent les pipelines canoniques sur corpus.
 
-### 2.7 `picarones/reports_v2/` — rendu HTML / JSON / CSV
+### 2.7 `picarones/reports/` — rendu HTML / JSON / CSV
 
 Rapport final consommant un `BenchmarkResult` ou `RunResult`.
 22 renderers thématiques + 5 vues (advanced_taxonomy,

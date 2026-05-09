@@ -231,7 +231,7 @@ def report_cmd(results: str, output: str, lazy_images: bool, verbose: bool) -> N
     """
     _setup_logging(verbose)
 
-    from picarones.reports_v2.html.generator import ReportGenerator
+    from picarones.reports.html.generator import ReportGenerator
 
     click.echo(f"Chargement des résultats : {results}")
     try:
@@ -317,7 +317,7 @@ def demo_cmd(
     generate_sample_benchmark = importlib.import_module(
         "picarones.evaluation.synthetic",
     ).generate_sample_benchmark
-    from picarones.reports_v2.html.generator import ReportGenerator
+    from picarones.reports.html.generator import ReportGenerator
 
     click.echo(f"Génération des données fictives ({docs} documents, 3 moteurs)…")
     benchmark = generate_sample_benchmark(n_docs=docs)

@@ -116,7 +116,7 @@ def benchmark_result():
 
 class TestReportIntegration:
     def test_report_links_to_case_studies(self, benchmark_result, tmp_path):
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -125,7 +125,7 @@ class TestReportIntegration:
     def test_report_polish_no_consecutive_empty_lines_in_views(self, benchmark_result, tmp_path):
         """Garde-fou cosmétique léger — éviter les blocs vides excessifs
         introduits par les includes Jinja2."""
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         out = tmp_path / "report.html"
         ReportGenerator(benchmark_result).generate(out)
         html = out.read_text(encoding="utf-8")
@@ -143,7 +143,7 @@ class TestEndToEnd:
 
     def test_small_corpus_renders(self, tmp_path):
         from picarones.evaluation import synthetic as fixtures
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bench = fixtures.generate_sample_benchmark(n_docs=2)
         out = tmp_path / "small.html"
         ReportGenerator(bench).generate(out)
@@ -151,7 +151,7 @@ class TestEndToEnd:
 
     def test_large_corpus_renders(self, tmp_path):
         from picarones.evaluation import synthetic as fixtures
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bench = fixtures.generate_sample_benchmark(n_docs=20)
         out = tmp_path / "large.html"
         ReportGenerator(bench).generate(out)
@@ -159,7 +159,7 @@ class TestEndToEnd:
 
     def test_english_locale_full_render(self, tmp_path):
         from picarones.evaluation import synthetic as fixtures
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bench = fixtures.generate_sample_benchmark(n_docs=5)
         out = tmp_path / "en.html"
         ReportGenerator(bench, lang="en").generate(out)

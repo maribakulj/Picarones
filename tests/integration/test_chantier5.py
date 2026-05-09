@@ -2,7 +2,7 @@
 
 Couvre :
 
-- 5.A : :mod:`picarones.reports_v2.narrative.detectors` est désormais un
+- 5.A : :mod:`picarones.reports.narrative.detectors` est désormais un
   package thématique de 6 sous-modules (1229 lignes → 6 fichiers).
   Tous les imports historiques restent accessibles.
 - 5.B : :mod:`picarones.cli` est désormais un package avec 6
@@ -23,7 +23,7 @@ import pytest
 class TestDetectorsPackage:
     def test_detectors_is_now_a_package(self):
         """``detectors.py`` est devenu ``detectors/`` (package)."""
-        from picarones.reports_v2.narrative import detectors
+        from picarones.reports.narrative import detectors
         # Un package a __path__, un module simple ne l'a pas
         assert hasattr(detectors, "__path__"), (
             "detectors devrait être un package depuis le chantier 5"
@@ -56,12 +56,12 @@ class TestDetectorsPackage:
     def test_all_20_detectors_importable_from_root(self, name):
         """Rétrocompat : les 20 détecteurs s'importent depuis le package
         (18 historiques + Sprint A3 + Sprint A8)."""
-        from picarones.reports_v2.narrative import detectors
+        from picarones.reports.narrative import detectors
         assert hasattr(detectors, name), f"{name} disparu après chantier 5"
         assert callable(getattr(detectors, name))
 
     def test_DETECTORS_BY_TYPE_still_exposed(self):
-        from picarones.reports_v2.narrative.detectors import DETECTORS_BY_TYPE
+        from picarones.reports.narrative.detectors import DETECTORS_BY_TYPE
         assert isinstance(DETECTORS_BY_TYPE, dict)
         # Sprint A3 → 19 (IMPORTER_FALLBACK_TRIGGERED).
         # Sprint A8 → 20 (PRICING_STALENESS_WARNING).
@@ -70,7 +70,7 @@ class TestDetectorsPackage:
         )
 
     def test_register_default_detectors_still_callable(self):
-        from picarones.reports_v2.narrative.detectors import register_default_detectors
+        from picarones.reports.narrative.detectors import register_default_detectors
         assert callable(register_default_detectors)
 
     @pytest.mark.parametrize("submodule, detector_count", [
@@ -88,7 +88,7 @@ class TestDetectorsPackage:
         import importlib
 
         mod = importlib.import_module(
-            f"picarones.reports_v2.narrative.detectors.{submodule}"
+            f"picarones.reports.narrative.detectors.{submodule}"
         )
         detectors_in_sub = [
             n for n in dir(mod)
@@ -102,15 +102,15 @@ class TestDetectorsPackage:
     def test_identity_through_submodule_and_root(self):
         """Le détecteur exposé depuis __init__.py et depuis son sous-module
         est la même fonction (pas de redéfinition)."""
-        from picarones.reports_v2.narrative.detectors import detect_global_leader_cer
-        from picarones.reports_v2.narrative.detectors.ranking import (
+        from picarones.reports.narrative.detectors import detect_global_leader_cer
+        from picarones.reports.narrative.detectors.ranking import (
             detect_global_leader_cer as via_submodule,
         )
         assert detect_global_leader_cer is via_submodule
 
     def test_detector_smoke_via_root(self):
         """Smoke test : un détecteur fonctionne via l'import root."""
-        from picarones.reports_v2.narrative.detectors import detect_global_leader_cer
+        from picarones.reports.narrative.detectors import detect_global_leader_cer
         result = detect_global_leader_cer({
             "ranking": [
                 {"engine": "tess", "mean_cer": 0.05},
@@ -123,7 +123,7 @@ class TestDetectorsPackage:
     def test_helpers_are_in_dedicated_module(self):
         """Les helpers internes (_engines_summary, etc.) vivent dans
         ``_helpers.py`` (pattern modulaire propre)."""
-        from picarones.reports_v2.narrative.detectors import _helpers
+        from picarones.reports.narrative.detectors import _helpers
         assert hasattr(_helpers, "_engines_summary")
         assert hasattr(_helpers, "_engine_by_name")
         assert hasattr(_helpers, "_n_docs")

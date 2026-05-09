@@ -27,12 +27,12 @@ from pathlib import Path
 import pytest
 
 from picarones.evaluation.metric_result import MetricsResult
-from picarones.reports_v2.narrative.detectors import detect_stratification_recommended
+from picarones.reports.narrative.detectors import detect_stratification_recommended
 from picarones.domain.facts import FactImportance, FactType
-from picarones.reports_v2.narrative.renderer import extract_numbers, render_fact
+from picarones.reports.narrative.renderer import extract_numbers, render_fact
 from picarones.evaluation.benchmark_result import DocumentResult
-from picarones.reports_v2.html.generator import ReportGenerator
-from picarones.reports_v2.html.renderers.stratification import build_stratified_ranking_html
+from picarones.reports.html.generator import ReportGenerator
+from picarones.reports.html.renderers.stratification import build_stratified_ranking_html
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ class TestTraceability:
             )
 
     def test_template_has_no_hardcoded_numbers(self) -> None:
-        from picarones.reports_v2.narrative.renderer import _load_templates
+        from picarones.reports.narrative.renderer import _load_templates
         for lang in ("fr", "en"):
             tpl = _load_templates(lang).get("stratification_recommended", "")
             assert tpl, f"Template absent pour {lang}"
@@ -359,7 +359,7 @@ class TestI18NCompleteness:
     def test_key_present(self, lang: str, key: str) -> None:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports" / "i18n" / f"{lang}.json"
         )
         data = json.loads(path.read_text(encoding="utf-8"))
         assert key in data, f"Clé {key!r} manquante dans {lang}.json"

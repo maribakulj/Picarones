@@ -1,7 +1,7 @@
 """Garde-fou : aucun module du rewrite n'importe depuis le legacy.
 
 L'arborescence post-rewrite (``domain → formats → evaluation →
-pipeline → adapters → app → reports_v2 → interfaces``) doit être
+pipeline → adapters → app → reports → interfaces``) doit être
 **autonome**.  Le legacy peut s'appuyer sur le rewrite (re-exports),
 mais l'inverse romprait l'invariant — chaque retrait de paquet
 legacy au cours des phases 1-11 ferait planter le rewrite.
@@ -37,7 +37,7 @@ REWRITE_PACKAGES: tuple[str, ...] = (
     "pipeline",
     "adapters",
     "app",
-    "reports_v2",
+    "reports",
     "interfaces",
 )
 

@@ -7,7 +7,7 @@ import json
 from picarones.app.results import RunDocumentResult, RunResult
 from picarones.domain import RunManifest, utcnow
 from picarones.evaluation.views.base import ViewResult
-from picarones.reports_v2.json import JsonReportRenderer
+from picarones.reports.json import JsonReportRenderer
 
 
 def _make_result(view_results: tuple[ViewResult, ...] = ()) -> RunResult:

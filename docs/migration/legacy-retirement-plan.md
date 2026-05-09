@@ -60,7 +60,7 @@ suivantes **vérifiables** sans introduire de régression invisible.
   Smoke test couvre les 16 invariants du harness lui-même.
 - [x] `tests/architecture/test_no_legacy_imports_in_rewrite.py` —
   garantit qu'aucun fichier des paquets `domain/`, `formats/`,
-  `evaluation/`, `pipeline/`, `adapters/`, `app/`, `reports_v2/`,
+  `evaluation/`, `pipeline/`, `adapters/`, `app/`, `reports/`,
   `interfaces/` n'importe depuis un paquet legacy.  AST-based,
   pas regex syntaxique.  État initial : **vert** — le rewrite est
   déjà clean.
@@ -157,25 +157,25 @@ identique parce que c'est le même fichier.
 
 | Legacy | Canonique |
 |--------|-----------|
-| `measurements/narrative/__init__.py` | `reports_v2/narrative/__init__.py` |
-| `measurements/narrative/arbiter.py` | `reports_v2/narrative/arbiter.py` |
-| `measurements/narrative/registry.py` | `reports_v2/narrative/registry.py` |
-| `measurements/narrative/renderer.py` | `reports_v2/narrative/renderer.py` |
-| `measurements/narrative/detectors/__init__.py` | `reports_v2/narrative/detectors/__init__.py` |
-| `measurements/narrative/detectors/_helpers.py` | `reports_v2/narrative/detectors/_helpers.py` |
-| `measurements/narrative/detectors/ensemble.py` | `reports_v2/narrative/detectors/ensemble.py` (1 détecteur) |
-| `measurements/narrative/detectors/history.py` | `reports_v2/narrative/detectors/history.py` (3 détecteurs) |
-| `measurements/narrative/detectors/pareto.py` | `reports_v2/narrative/detectors/pareto.py` (2 détecteurs) |
-| `measurements/narrative/detectors/quality.py` | `reports_v2/narrative/detectors/quality.py` (4 détecteurs) |
-| `measurements/narrative/detectors/ranking.py` | `reports_v2/narrative/detectors/ranking.py` (5 détecteurs) |
-| `measurements/narrative/detectors/stratum.py` | `reports_v2/narrative/detectors/stratum.py` (3 détecteurs) |
-| `measurements/narrative/templates/fr.yaml` | `reports_v2/narrative/templates/fr.yaml` |
-| `measurements/narrative/templates/en.yaml` | `reports_v2/narrative/templates/en.yaml` |
+| `measurements/narrative/__init__.py` | `reports/narrative/__init__.py` |
+| `measurements/narrative/arbiter.py` | `reports/narrative/arbiter.py` |
+| `measurements/narrative/registry.py` | `reports/narrative/registry.py` |
+| `measurements/narrative/renderer.py` | `reports/narrative/renderer.py` |
+| `measurements/narrative/detectors/__init__.py` | `reports/narrative/detectors/__init__.py` |
+| `measurements/narrative/detectors/_helpers.py` | `reports/narrative/detectors/_helpers.py` |
+| `measurements/narrative/detectors/ensemble.py` | `reports/narrative/detectors/ensemble.py` (1 détecteur) |
+| `measurements/narrative/detectors/history.py` | `reports/narrative/detectors/history.py` (3 détecteurs) |
+| `measurements/narrative/detectors/pareto.py` | `reports/narrative/detectors/pareto.py` (2 détecteurs) |
+| `measurements/narrative/detectors/quality.py` | `reports/narrative/detectors/quality.py` (4 détecteurs) |
+| `measurements/narrative/detectors/ranking.py` | `reports/narrative/detectors/ranking.py` (5 détecteurs) |
+| `measurements/narrative/detectors/stratum.py` | `reports/narrative/detectors/stratum.py` (3 détecteurs) |
+| `measurements/narrative/templates/fr.yaml` | `reports/narrative/templates/fr.yaml` |
+| `measurements/narrative/templates/en.yaml` | `reports/narrative/templates/en.yaml` |
 
 Total : **18 détecteurs en 6 familles + arbitre + renderer + 36
 templates YAML FR/EN** migrés.
 
-**Cible architecturale** : `picarones/reports_v2/narrative/` (le
+**Cible architecturale** : `picarones/reports/narrative/` (le
 narratif est de la **présentation**, pas du domaine — il vit du
 côté rapport, pas de l'évaluation).
 
@@ -186,7 +186,7 @@ côté rapport, pas de l'évaluation).
 - Tous les imports `picarones.core.facts` (11 occurrences) migrés
   vers `picarones.domain.facts` (Phase 1 a déjà migré ce module).
 - Tous les imports auto-référencés `picarones.measurements.narrative`
-  réécrits en `picarones.reports_v2.narrative`.
+  réécrits en `picarones.reports.narrative`.
 - Path des templates YAML auto-ajusté (relatif à `__file__`).
 - 12 shims `measurements/narrative/*.py` + `_helpers.py` shim
   manuel (privé, pas d'`__all__`).
@@ -588,10 +588,10 @@ reste référencé pour ses types.
 - `templates/` (~10 fichiers Jinja2), `glossary/` (2 YAML, 25
   entrées), `i18n/`, `vendor/`.
 
-**Cible** : `picarones/reports_v2/html/views/<theme>.py` + helpers
-partagés dans `reports_v2/html/_helpers/`.  Glossaire dans
-`reports_v2/html/glossary/`.  Templates Jinja2 dans
-`reports_v2/html/templates/`.
+**Cible** : `picarones/reports/html/views/<theme>.py` + helpers
+partagés dans `reports/html/_helpers/`.  Glossaire dans
+`reports/html/glossary/`.  Templates Jinja2 dans
+`reports/html/templates/`.
 
 **Effort** : 12-18 jours.
 
@@ -609,11 +609,11 @@ migrés au fil des phases ultérieures, par lots).
 
 | Source legacy                        | Destination canonique                          |
 |--------------------------------------|------------------------------------------------|
-| ``report/colors.py``                 | ``reports_v2/_helpers/colors.py``              |
-| ``report/render_helpers.py``         | ``reports_v2/_helpers/render_helpers.py``      |
-| ``report/assets.py`` + ``vendor/``   | ``reports_v2/_helpers/assets.py`` + ``vendor/``|
-| ``report/glossary/{fr,en}.yaml``     | ``reports_v2/glossary/{fr,en}.yaml``           |
-| ``report/i18n/{fr,en}.json``         | ``reports_v2/i18n/{fr,en}.json``               |
+| ``report/colors.py``                 | ``reports/_helpers/colors.py``              |
+| ``report/render_helpers.py``         | ``reports/_helpers/render_helpers.py``      |
+| ``report/assets.py`` + ``vendor/``   | ``reports/_helpers/assets.py`` + ``vendor/``|
+| ``report/glossary/{fr,en}.yaml``     | ``reports/glossary/{fr,en}.yaml``           |
+| ``report/i18n/{fr,en}.json``         | ``reports/i18n/{fr,en}.json``               |
 
 ``report/diff_utils.py`` redirige désormais directement vers
 ``picarones.evaluation`` (au lieu du double-shim via
@@ -626,16 +626,16 @@ via des shims minimaux (< 25 lignes) avec ``DeprecationWarning``
 **Adaptations transverses** :
 
 - ``picarones/i18n.py`` : ``_I18N_DIR`` pointe désormais vers
-  ``reports_v2/i18n/``.
+  ``reports/i18n/``.
 - 22 renderers ``report/*_render.py`` migrés sur leurs imports
-  internes vers ``picarones.reports_v2._helpers.*``.
+  internes vers ``picarones.reports._helpers.*``.
 - 28 fichiers de tests mis à jour (chemins ``picarones/report/i18n/*``
-  remplacés par ``picarones/reports_v2/i18n/*``).
+  remplacés par ``picarones/reports/i18n/*``).
 - ``test_layer_dependencies.py::EXTERNAL_ALLOWED["reports_v2"]``
   étendu à ``PIL`` (Pillow utilisé par ``_helpers/assets.py``
   pour le redimensionnement d'images).
 - ``test_file_budgets.py`` : entrée ``report/render_helpers.py``
-  remplacée par ``reports_v2/_helpers/render_helpers.py``
+  remplacée par ``reports/_helpers/render_helpers.py``
   (budget 480 inchangé).
 
 **Acceptance Phase 5.A+B** : 5019 tests passent, lint vert,
@@ -651,18 +651,18 @@ canonique reste un sprint à part entière (5.D ou 5.E selon
 priorité).
 
 Convention de nommage : ``picarones.report.<theme>_render`` →
-``picarones.reports_v2.html.renderers.<theme>``.  Le suffixe
+``picarones.reports.html.renderers.<theme>``.  Le suffixe
 ``_render`` est retiré (déjà implicite dans la position).
 
 **Migrations effectuées** :
 
 | Source legacy                            | Destination canonique                                |
 |------------------------------------------|------------------------------------------------------|
-| ``report/searchability_render.py`` (103) | ``reports_v2/html/renderers/searchability.py``       |
-| ``report/specialization_render.py`` (113)| ``reports_v2/html/renderers/specialization.py``      |
-| ``report/marginal_cost_render.py`` (111) | ``reports_v2/html/renderers/marginal_cost.py``       |
-| ``report/rare_token_recall_render.py`` (116)| ``reports_v2/html/renderers/rare_token_recall.py``|
-| ``report/readability_render.py`` (126)   | ``reports_v2/html/renderers/readability.py``         |
+| ``report/searchability_render.py`` (103) | ``reports/html/renderers/searchability.py``       |
+| ``report/specialization_render.py`` (113)| ``reports/html/renderers/specialization.py``      |
+| ``report/marginal_cost_render.py`` (111) | ``reports/html/renderers/marginal_cost.py``       |
+| ``report/rare_token_recall_render.py`` (116)| ``reports/html/renderers/rare_token_recall.py``|
+| ``report/readability_render.py`` (126)   | ``reports/html/renderers/readability.py``         |
 
 Total : ~569 lignes relocalisées.  Les chemins ``report/X_render.py``
 deviennent des shims minimaux (< 20 lignes) avec
@@ -670,21 +670,21 @@ deviennent des shims minimaux (< 20 lignes) avec
 
 **Adaptations transverses** :
 
-- ``reports_v2/html/renderers/specialization.py`` import canonique
+- ``reports/html/renderers/specialization.py`` import canonique
   ``picarones.evaluation.metrics.specialization`` (au lieu du shim
   legacy ``picarones.measurements.specialization``) pour respecter
   la règle layer-dependencies (interdiction d'importer du legacy
-  depuis ``reports_v2/``).
+  depuis ``reports/``).
 - ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à
   ``"specialization"`` : son shim legacy n'a plus de consommateur
-  production (le renderer est désormais dans ``reports_v2/``).
+  production (le renderer est désormais dans ``reports/``).
 - 3 tests (``test_extra_metrics.py``,
   ``test_sprint86_aii5_html.py``,
   ``test_sprint87_readability_html.py``,
   ``test_sprint89_specialization.py``) mis à jour pour pointer
   vers les nouveaux chemins canoniques.
 - ``picarones/report/generator.py`` mis à jour pour importer les
-  5 renderers depuis ``reports_v2/html/renderers/``.
+  5 renderers depuis ``reports/html/renderers/``.
 
 **Acceptance batch 1** : 5019 tests passent, lint vert,
 architecture vérifiée.
@@ -735,18 +735,18 @@ les importer depuis le canonique).  Remplacé par
 
 | Source legacy                                | Destination canonique                                |
 |----------------------------------------------|------------------------------------------------------|
-| ``report/difficulty_render.py`` (45)         | ``reports_v2/html/renderers/difficulty.py``          |
-| ``report/lexical_modernization_render.py`` (114) | ``reports_v2/html/renderers/lexical_modernization.py`` |
-| ``report/multirun_stability_render.py`` (151)| ``reports_v2/html/renderers/multirun_stability.py``  |
-| ``report/throughput_render.py`` (154)        | ``reports_v2/html/renderers/throughput.py``          |
-| ``report/longitudinal_render.py`` (165)      | ``reports_v2/html/renderers/longitudinal.py``        |
+| ``report/difficulty_render.py`` (45)         | ``reports/html/renderers/difficulty.py``          |
+| ``report/lexical_modernization_render.py`` (114) | ``reports/html/renderers/lexical_modernization.py`` |
+| ``report/multirun_stability_render.py`` (151)| ``reports/html/renderers/multirun_stability.py``  |
+| ``report/throughput_render.py`` (154)        | ``reports/html/renderers/throughput.py``          |
+| ``report/longitudinal_render.py`` (165)      | ``reports/html/renderers/longitudinal.py``        |
 
 Total : ~629 lignes relocalisées.  5 nouveaux shims minimaux
 (< 20 lignes) avec ``DeprecationWarning``.
 
 **Adaptations transverses** :
 
-- ``reports_v2/html/renderers/lexical_modernization.py`` import
+- ``reports/html/renderers/lexical_modernization.py`` import
   canonique ``picarones.evaluation.metrics.lexical_modernization``
   (au lieu du shim legacy ``picarones.measurements.lexical_modernization``).
 - ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à
@@ -771,11 +771,11 @@ pas de dépendance sur des modules legacy non-migrés.
 
 | Source legacy                                  | Destination canonique                                  |
 |------------------------------------------------|--------------------------------------------------------|
-| ``report/module_audit_render.py`` (173)        | ``reports_v2/html/renderers/module_audit.py``          |
-| ``report/incremental_comparison_render.py`` (201)| ``reports_v2/html/renderers/incremental_comparison.py``|
-| ``report/image_predictive_render.py`` (207)    | ``reports_v2/html/renderers/image_predictive.py``      |
-| ``report/error_absorption_render.py`` (210)    | ``reports_v2/html/renderers/error_absorption.py``      |
-| ``report/ner_render.py`` (222)                 | ``reports_v2/html/renderers/ner.py``                   |
+| ``report/module_audit_render.py`` (173)        | ``reports/html/renderers/module_audit.py``          |
+| ``report/incremental_comparison_render.py`` (201)| ``reports/html/renderers/incremental_comparison.py``|
+| ``report/image_predictive_render.py`` (207)    | ``reports/html/renderers/image_predictive.py``      |
+| ``report/error_absorption_render.py`` (210)    | ``reports/html/renderers/error_absorption.py``      |
+| ``report/ner_render.py`` (222)                 | ``reports/html/renderers/ner.py``                   |
 
 Total : ~1013 lignes relocalisées.  5 nouveaux shims minimaux
 (< 20 lignes) avec ``DeprecationWarning``.
@@ -803,11 +803,11 @@ vers le canonique ``picarones.evaluation.metrics.robustness_projection``.
 
 | Source legacy                                  | Destination canonique                                  |
 |------------------------------------------------|--------------------------------------------------------|
-| ``report/stratification_render.py`` (188)      | ``reports_v2/html/renderers/stratification.py``        |
-| ``report/baseline_render.py`` (238)            | ``reports_v2/html/renderers/baseline.py``              |
-| ``report/inter_engine_render.py`` (245)        | ``reports_v2/html/renderers/inter_engine.py``          |
-| ``report/robustness_projection_render.py`` (252) | ``reports_v2/html/renderers/robustness_projection.py``|
-| ``report/calibration_render.py`` (321)         | ``reports_v2/html/renderers/calibration.py``           |
+| ``report/stratification_render.py`` (188)      | ``reports/html/renderers/stratification.py``        |
+| ``report/baseline_render.py`` (238)            | ``reports/html/renderers/baseline.py``              |
+| ``report/inter_engine_render.py`` (245)        | ``reports/html/renderers/inter_engine.py``          |
+| ``report/robustness_projection_render.py`` (252) | ``reports/html/renderers/robustness_projection.py``|
+| ``report/calibration_render.py`` (321)         | ``reports/html/renderers/calibration.py``           |
 
 Total : ~1244 lignes relocalisées.  5 nouveaux shims minimaux
 (< 20 lignes) avec ``DeprecationWarning``.
@@ -839,17 +839,17 @@ batch 6 (XXL + ``levers``) et la migration des 5 vues
 
 | Source legacy                                   | Destination canonique                                |
 |-------------------------------------------------|------------------------------------------------------|
-| ``report/taxonomy_intra_doc_render.py`` (148)   | ``reports_v2/html/renderers/taxonomy_intra_doc.py``  |
-| ``report/taxonomy_cooccurrence_render.py`` (161)| ``reports_v2/html/renderers/taxonomy_cooccurrence.py``|
-| ``report/worst_lines_render.py`` (164)          | ``reports_v2/html/renderers/worst_lines.py``         |
-| ``report/taxonomy_comparison_render.py`` (233)  | ``reports_v2/html/renderers/taxonomy_comparison.py`` |
-| ``report/pipeline_dag_render.py`` (314)         | ``reports_v2/html/renderers/pipeline_dag.py``        |
+| ``report/taxonomy_intra_doc_render.py`` (148)   | ``reports/html/renderers/taxonomy_intra_doc.py``  |
+| ``report/taxonomy_cooccurrence_render.py`` (161)| ``reports/html/renderers/taxonomy_cooccurrence.py``|
+| ``report/worst_lines_render.py`` (164)          | ``reports/html/renderers/worst_lines.py``         |
+| ``report/taxonomy_comparison_render.py`` (233)  | ``reports/html/renderers/taxonomy_comparison.py`` |
+| ``report/pipeline_dag_render.py`` (314)         | ``reports/html/renderers/pipeline_dag.py``        |
 
 Total : ~1020 lignes relocalisées.
 
 **Adaptations transverses** :
 
-- ``reports_v2/html/renderers/worst_lines.py`` :
+- ``reports/html/renderers/worst_lines.py`` :
   - import ``WorstLineEntry`` redirigé vers
     ``picarones.evaluation.metrics.worst_lines``
   - import ``compute_char_diff`` redirigé vers
@@ -877,8 +877,8 @@ qui dépend de ``measurements/roman_numerals``).
 
 | Source legacy                               | Destination canonique                                |
 |---------------------------------------------|------------------------------------------------------|
-| ``report/levers_render.py`` (249)           | ``reports_v2/html/renderers/levers.py``              |
-| ``report/philological_render.py`` (527)     | ``reports_v2/html/renderers/philological.py``        |
+| ``report/levers_render.py`` (249)           | ``reports/html/renderers/levers.py``              |
+| ``report/philological_render.py`` (527)     | ``reports/html/renderers/philological.py``        |
 
 Total : ~776 lignes relocalisées.
 
@@ -886,10 +886,10 @@ Total : ~776 lignes relocalisées.
 
 - ``test_sprint82_levers.py`` : monkeypatch sur `_FORMATTERS`
   pointe désormais vers le module canonique
-  ``picarones.reports_v2.html.renderers.levers``.
+  ``picarones.reports.html.renderers.levers``.
 - ``test_file_budgets.py`` : entrée
   ``report/philological_render.py`` retirée, remplacée par
-  ``reports_v2/html/renderers/philological.py`` (budget
+  ``reports/html/renderers/philological.py`` (budget
   inchangé à 700).
 
 **Cumul Phase 5.C** (batches 1-6) : 27 / 29 renderers migrés
@@ -917,8 +917,8 @@ Puis les 2 derniers renderers :
 
 | Source legacy                                  | Destination canonique                                |
 |------------------------------------------------|------------------------------------------------------|
-| ``report/numerical_sequences_render.py`` (149) | ``reports_v2/html/renderers/numerical_sequences.py`` |
-| ``report/pipeline_render.py`` (707)            | ``reports_v2/html/renderers/pipeline.py``            |
+| ``report/numerical_sequences_render.py`` (149) | ``reports/html/renderers/numerical_sequences.py`` |
+| ``report/pipeline_render.py`` (707)            | ``reports/html/renderers/pipeline.py``            |
 
 Total : ~3031 lignes relocalisées dans ce batch.  7 nouveaux
 shims minimaux (< 25 lignes) avec ``DeprecationWarning``.
@@ -963,14 +963,14 @@ Restantes pour Phase 5
 ----------------------
 
 - Phase 5.D ✅ — 5 vues (``views/*.py``) migrées vers
-  ``reports_v2/html/views/``.
+  ``reports/html/views/``.
 - Phase 5.E : ``generator.py``, ``comparison.py``,
   ``snapshot.py``, ``report_data/``, templates Jinja2.
 
 #### Phase 5.D — Migration des 5 vues thématiques (2026-05)
 
 Phase 5.D migre les 5 vues thématiques (orchestrateurs des
-renderers) vers ``reports_v2/html/views/``.  Ces vues prennent un
+renderers) vers ``reports/html/views/``.  Ces vues prennent un
 ``report_data`` dict et composent plusieurs renderers en blocs
 ``<details>`` collapsibles, avec adaptive masking.
 
@@ -978,12 +978,12 @@ renderers) vers ``reports_v2/html/views/``.  Ces vues prennent un
 
 | Source legacy                                  | Destination canonique                              |
 |------------------------------------------------|----------------------------------------------------|
-| ``report/views/__init__.py`` (65)              | ``reports_v2/html/views/__init__.py``              |
-| ``report/views/advanced_taxonomy.py`` (245)    | ``reports_v2/html/views/advanced_taxonomy.py``     |
-| ``report/views/diagnostics.py`` (247)          | ``reports_v2/html/views/diagnostics.py``           |
-| ``report/views/economics.py`` (219)            | ``reports_v2/html/views/economics.py``             |
-| ``report/views/pipeline.py`` (237)             | ``reports_v2/html/views/pipeline.py``              |
-| ``report/views/robustness.py`` (101)           | ``reports_v2/html/views/robustness.py``            |
+| ``report/views/__init__.py`` (65)              | ``reports/html/views/__init__.py``              |
+| ``report/views/advanced_taxonomy.py`` (245)    | ``reports/html/views/advanced_taxonomy.py``     |
+| ``report/views/diagnostics.py`` (247)          | ``reports/html/views/diagnostics.py``           |
+| ``report/views/economics.py`` (219)            | ``reports/html/views/economics.py``             |
+| ``report/views/pipeline.py`` (237)             | ``reports/html/views/pipeline.py``              |
+| ``report/views/robustness.py`` (101)           | ``reports/html/views/robustness.py``            |
 
 Total : ~1114 lignes relocalisées.  6 nouveaux shims minimaux
 (< 25 lignes) avec ``DeprecationWarning``.
@@ -997,7 +997,7 @@ Total : ~1114 lignes relocalisées.  6 nouveaux shims minimaux
   ``throughput``.
 - ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu de 6
   modules supplémentaires (mêmes raisons que les renderers).
-- Renderers ``reports_v2/html/renderers/`` cross-référencés
+- Renderers ``reports/html/renderers/`` cross-référencés
   par les vues — toujours au canonique.
 
 **Acceptance Phase 5.D** : 5019 tests passent, lint vert,
@@ -1012,19 +1012,19 @@ Phase 5.E finalise Phase 5 en migrant les derniers composants
 
 | Source legacy                                  | Destination canonique                              |
 |------------------------------------------------|----------------------------------------------------|
-| ``report/generator.py`` (466)                  | ``reports_v2/html/generator.py``                   |
-| ``report/comparison.py`` (409)                 | ``reports_v2/html/comparison.py``                  |
-| ``report/snapshot.py`` (266)                   | ``reports_v2/html/snapshot.py``                    |
-| ``report/report_data/__init__.py`` (132)       | ``reports_v2/html/data/__init__.py``               |
-| ``report/report_data/_helpers.py`` (30)        | ``reports_v2/html/data/_helpers.py``               |
-| ``report/report_data/documents.py`` (167)      | ``reports_v2/html/data/documents.py``              |
-| ``report/report_data/engines.py`` (103)        | ``reports_v2/html/data/engines.py``                |
-| ``report/report_data/extra_metrics.py`` (272)  | ``reports_v2/html/data/extra_metrics.py``          |
-| ``report/report_data/pareto.py`` (159)         | ``reports_v2/html/data/pareto.py``                 |
-| ``report/report_data/scatter.py`` (56)         | ``reports_v2/html/data/scatter.py``                |
-| ``report/report_data/statistics.py`` (216)     | ``reports_v2/html/data/statistics.py``             |
-| ``report/templates/`` (13 fichiers)            | ``reports_v2/html/templates/`` (13 fichiers)       |
-| ``picarones/i18n.py`` (124)                    | ``picarones/reports_v2/i18n/__init__.py``          |
+| ``report/generator.py`` (466)                  | ``reports/html/generator.py``                   |
+| ``report/comparison.py`` (409)                 | ``reports/html/comparison.py``                  |
+| ``report/snapshot.py`` (266)                   | ``reports/html/snapshot.py``                    |
+| ``report/report_data/__init__.py`` (132)       | ``reports/html/data/__init__.py``               |
+| ``report/report_data/_helpers.py`` (30)        | ``reports/html/data/_helpers.py``               |
+| ``report/report_data/documents.py`` (167)      | ``reports/html/data/documents.py``              |
+| ``report/report_data/engines.py`` (103)        | ``reports/html/data/engines.py``                |
+| ``report/report_data/extra_metrics.py`` (272)  | ``reports/html/data/extra_metrics.py``          |
+| ``report/report_data/pareto.py`` (159)         | ``reports/html/data/pareto.py``                 |
+| ``report/report_data/scatter.py`` (56)         | ``reports/html/data/scatter.py``                |
+| ``report/report_data/statistics.py`` (216)     | ``reports/html/data/statistics.py``             |
+| ``report/templates/`` (13 fichiers)            | ``reports/html/templates/`` (13 fichiers)       |
+| ``picarones/i18n.py`` (124)                    | ``picarones/reports/i18n/__init__.py``          |
 | ``report/__init__.py`` (3)                     | shim re-export                                     |
 
 Total : ~2400 lignes relocalisées + 13 templates Jinja2 + le
@@ -1033,34 +1033,34 @@ lignes) avec ``DeprecationWarning``.
 
 **Adaptations transverses** :
 
-- ``reports_v2/html/snapshot.py`` ne peut pas importer
+- ``reports/html/snapshot.py`` ne peut pas importer
   ``picarones.__version__`` (interdit par layer-deps) : utilise
   ``importlib.metadata`` avec fallback (idem qu'au Phase 4-ter).
-- ``reports_v2/html/snapshot.py`` import ``pricing`` redirigé
+- ``reports/html/snapshot.py`` import ``pricing`` redirigé
   vers le canonique ``evaluation/metrics/pricing``.
-- ``reports_v2/html/generator.py`` toutes les ~30 imports
-  internes redirigés vers ``reports_v2/html/{data,renderers,
+- ``reports/html/generator.py`` toutes les ~30 imports
+  internes redirigés vers ``reports/html/{data,renderers,
   views,snapshot}`` et ``evaluation/{statistics,metric_result,
   benchmark_result}``.
-- ``reports_v2/html/data/`` : 7 imports vers
+- ``reports/html/data/`` : 7 imports vers
   ``measurements/{statistics,difficulty,pricing,marginal_cost,
   rare_tokens,taxonomy_cooccurrence,taxonomy_intra_doc}``
   redirigés vers ``evaluation/{statistics,metrics/...}``.
-- ``reports_v2/html/views/`` : 6 imports vers
+- ``reports/html/views/`` : 6 imports vers
   ``measurements/{taxonomy_comparison,incremental_comparison,
   levers,image_predictive,worst_lines,throughput}`` redirigés
   vers ``evaluation/metrics/...``.
-- ``picarones/reports_v2/__init__.py`` : nouveau loader
-  ``from picarones.reports_v2.html.generator import ReportGenerator``.
+- ``picarones/reports/__init__.py`` : nouveau loader
+  ``from picarones.reports.html.generator import ReportGenerator``.
 - ``test_module_coverage.py::TEST_ONLY_BASELINE`` étendu à 3
   modules : ``statistics``, ``pricing``, ``difficulty``.
 - ``test_file_budgets.py`` : 2 entrées legacy retirées,
   remplacées par les chemins canoniques ; templates dir
-  référencé via ``reports_v2/html/templates/``.
+  référencé via ``reports/html/templates/``.
 - 28+ chemins de templates dans les tests redirigés vers
-  ``reports_v2/html/templates/``.
+  ``reports/html/templates/``.
 - Tests qui faisaient ``from picarones import i18n`` redirigés
-  vers ``from picarones.reports_v2 import i18n`` (le shim ne
+  vers ``from picarones.reports import i18n`` (le shim ne
   ré-exporte pas ``_get_labels_cached`` — privé).
 
 État final de ``picarones/report/``
@@ -1069,7 +1069,7 @@ lignes) avec ``DeprecationWarning``.
 Le répertoire ``picarones/report/`` ne contient désormais
 **que des shims** (~30 fichiers).  Aucun module avec du
 contenu réel ne subsiste.  Le canonique vit intégralement
-dans ``picarones/reports_v2/html/`` (générateur + renderers
+dans ``picarones/reports/html/`` (générateur + renderers
 + vues + données + templates + comparaison + snapshot).
 
 **Acceptance Phase 5.E + Phase 5 entière** : 5019 tests

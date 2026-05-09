@@ -37,7 +37,7 @@ picarones/
 │   ├── storage/         # ArtifactStore, JobStore
 │   └── legacy_engines/, legacy_modules/  # legacy BaseModule-based, en retrait
 ├── app/                 # Layer 6 — services applicatifs (BenchmarkService, …)
-├── reports_v2/          # Layer 7 — rendu HTML / JSON / CSV (22 renderers + 5 vues)
+├── reports/          # Layer 7 — rendu HTML / JSON / CSV (22 renderers + 5 vues)
 └── interfaces/          # Layer 8 — CLI Click, Web FastAPI
 
 # Arborescence legacy en cours de retrait (cf. docs/migration/) :

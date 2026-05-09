@@ -36,10 +36,10 @@ from picarones.evaluation.metrics.searchability_hooks import (
     aggregate_searchability_metrics,
     compute_searchability_metrics,
 )
-from picarones.reports_v2.html.renderers.numerical_sequences import (
+from picarones.reports.html.renderers.numerical_sequences import (
     build_numerical_sequences_html,
 )
-from picarones.reports_v2.html.renderers.searchability import (
+from picarones.reports.html.renderers.searchability import (
     build_searchability_summary_html,
 )
 
@@ -47,7 +47,7 @@ from picarones.reports_v2.html.renderers.searchability import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

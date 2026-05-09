@@ -8,8 +8,8 @@ Service applicatif qui assemble :
 
 Le rendu de rapport (HTML, JSON, CSV) est **injecté par le caller**
 via le paramètre ``report_renderer`` — le service ``app/`` ne peut
-pas importer ``reports_v2/`` car cette couche est plus externe
-(``domain → … → app → reports_v2 → interfaces``).  Cette inversion
+pas importer ``reports/`` car cette couche est plus externe
+(``domain → … → app → reports → interfaces``).  Cette inversion
 de dépendance garantit que :
 
 - L'orchestrateur n'est pas couplé à un format de sortie spécifique.
@@ -148,7 +148,7 @@ class RunOrchestrator:
             written_path`` qui rend le rapport.  Si ``None`` (défaut)
             OU si ``spec.report_html`` est vide, aucun rapport n'est
             émis.  L'inversion de dépendance évite à
-            ``app/services/`` d'importer ``reports_v2/`` (couche plus
+            ``app/services/`` d'importer ``reports/`` (couche plus
             externe — interdit par l'architecture).
 
         Raises
@@ -204,7 +204,7 @@ class RunOrchestrator:
 
         # 7. Rapport optionnel — délégué au renderer injecté.
         # Inversion de dépendance : ``app/`` ne peut pas importer
-        # ``reports_v2/`` (plus externe).  Le caller fournit un
+        # ``reports/`` (plus externe).  Le caller fournit un
         # callable.
         report_path: Path | None = None
         if report_renderer is not None and spec.report_html:

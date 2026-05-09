@@ -4,7 +4,7 @@ import json
 import pytest
 
 from picarones.evaluation.synthetic import generate_sample_benchmark
-from picarones.reports_v2.html.generator import ReportGenerator, _build_report_data, _cer_color
+from picarones.reports.html.generator import ReportGenerator, _build_report_data, _cer_color
 
 
 # ---------------------------------------------------------------------------

@@ -85,13 +85,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   avant la migration (ces moteurs n'ont jamais été implémentés).
 #:   ``SPECS.md`` a été corrigé en place vers
 #:   ``picarones/adapters/legacy_engines/base.py``.
-#: - 132 (sprint « Lot F — report/ → reports_v2/ », 2026-05-07) :
+#: - 132 (sprint « Lot F — report/ → reports/ », 2026-05-07) :
 #:   suppression des 37 shims ``picarones/report/`` (29 *_render.py,
 #:   2 helpers, 6 modules + glossary).  38 nouveaux chemins cassés
 #:   héritage : 29 dans ``CHANGELOG.md`` + 8 dans ``docs/audits/*.md``
 #:   et ``docs/migration/legacy-retirement-plan.md`` — tous
 #:   intouchables.  Le doc actif ``docs/reference/views.md`` a été
-#:   corrigé en place vers les chemins ``picarones/reports_v2/html/{views,
+#:   corrigé en place vers les chemins ``picarones/reports/html/{views,
 #:   generator, renderers, templates}``.
 #: - 134 (sprint « Lot G — core/{diff_utils, xml_utils} », 2026-05-07) :
 #:   suppression des 2 derniers shims de ``picarones/core/``.  Le

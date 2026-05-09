@@ -326,7 +326,7 @@ picarones/
 ├── pipeline/       Layer 4 — canonical pipeline executor
 ├── adapters/       Layer 5 — external libs (OCR, LLM, VLM, corpus)
 ├── app/            Layer 6 — application services
-├── reports_v2/     Layer 7 — HTML / JSON / CSV report renderers
+├── reports/     Layer 7 — HTML / JSON / CSV report renderers
 └── interfaces/     Layer 8 — CLI Click, Web FastAPI
 ```
 

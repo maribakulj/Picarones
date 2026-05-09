@@ -35,9 +35,9 @@ from picarones.evaluation.metrics.baseline_comparison import (
     compute_corpus_difficulty_percentile,
     compute_engine_baseline,
 )
-from picarones.reports_v2.narrative.detectors import detect_engine_off_baseline
+from picarones.reports.narrative.detectors import detect_engine_off_baseline
 from picarones.domain.facts import FactImportance, FactType
-from picarones.reports_v2.narrative.renderer import render_fact
+from picarones.reports.narrative.renderer import render_fact
 
 
 # ──────────────────────────────────────────────────────────────────────────

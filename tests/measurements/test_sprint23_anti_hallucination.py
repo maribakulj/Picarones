@@ -30,18 +30,18 @@ from pathlib import Path
 
 import pytest
 
-from picarones.reports_v2.narrative import (
+from picarones.reports.narrative import (
     Fact,
     FactImportance,
     FactType,
     build_synthesis,
     select_facts,
 )
-from picarones.reports_v2.narrative.arbiter import DEFAULT_TYPE_ORDER
+from picarones.reports.narrative.arbiter import DEFAULT_TYPE_ORDER
 from picarones.evaluation.statistics import bootstrap_ci
 
 ROOT = Path(__file__).parent.parent.parent
-TEMPLATES_DIR = ROOT / "picarones" / "reports_v2" / "narrative" / "templates"
+TEMPLATES_DIR = ROOT / "picarones" / "reports" / "narrative" / "templates"
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def _full_data() -> dict:
 
 class TestPayloadsCarryFormerlyHardcodedConstants:
     def test_confidence_warning_payload_carries_confidence_level(self):
-        from picarones.reports_v2.narrative.detectors import detect_confidence_warning
+        from picarones.reports.narrative.detectors import detect_confidence_warning
 
         facts = detect_confidence_warning(_full_data())
         assert facts, "fixture devrait déclencher au moins un confidence_warning"
@@ -95,7 +95,7 @@ class TestPayloadsCarryFormerlyHardcodedConstants:
             )
 
     def test_pareto_alternative_payload_carries_cost_unit(self):
-        from picarones.reports_v2.narrative.detectors import detect_pareto_alternative
+        from picarones.reports.narrative.detectors import detect_pareto_alternative
 
         facts = detect_pareto_alternative(_full_data())
         assert facts, "fixture devrait déclencher au moins un pareto_alternative"
@@ -103,7 +103,7 @@ class TestPayloadsCarryFormerlyHardcodedConstants:
             assert f.payload.get("cost_unit_pages") == 1000
 
     def test_cost_outlier_payload_carries_cost_unit(self):
-        from picarones.reports_v2.narrative.detectors import detect_cost_outlier
+        from picarones.reports.narrative.detectors import detect_cost_outlier
 
         facts = detect_cost_outlier(_full_data())
         assert facts, "fixture devrait déclencher au moins un cost_outlier"
@@ -161,7 +161,7 @@ class TestEndToEndWithEmptyWhitelist:
 
     @pytest.mark.parametrize("lang", ["fr", "en"])
     def test_every_number_traceable_with_empty_whitelist(self, lang):
-        from picarones.reports_v2.narrative import extract_numbers
+        from picarones.reports.narrative import extract_numbers
 
         from tests.measurements.test_sprint19_narrative_engine import _numbers_in_payload
 

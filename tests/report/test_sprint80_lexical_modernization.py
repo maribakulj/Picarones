@@ -32,7 +32,7 @@ from picarones.evaluation.metrics.lexical_modernization import (
     compute_lexical_modernization,
     top_modernized_tokens,
 )
-from picarones.reports_v2.html.renderers.lexical_modernization import (
+from picarones.reports.html.renderers.lexical_modernization import (
     build_lexical_modernization_html,
 )
 
@@ -222,7 +222,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

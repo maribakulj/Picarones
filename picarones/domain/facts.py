@@ -1,7 +1,7 @@
 """Modèle de données du moteur narratif.
 
 Un ``Fact`` est une observation structurée extraite d'un résultat
-de benchmark.  Chaque détecteur (cf. ``picarones.reports_v2.narrative``)
+de benchmark.  Chaque détecteur (cf. ``picarones.reports.narrative``)
 retourne zéro, un ou plusieurs ``Fact`` typés.  L'arbitre trie par
 ``importance`` et sélectionne les faits à afficher dans la synthèse
 narrative.
@@ -13,7 +13,7 @@ reproductible bit-à-bit et immune à l'hallucination par
 construction.
 
 Module dans ``domain/`` parce qu'il définit des types purs (pas
-d'I/O, pas de framework).  Consommé par ``reports_v2/narrative/``.
+d'I/O, pas de framework).  Consommé par ``reports/narrative/``.
 """
 
 from __future__ import annotations
@@ -30,8 +30,8 @@ class FactType(str, Enum):
     """Types de faits détectables.
 
     L'ajout d'un nouveau type se fait ici + un détecteur dans
-    ``reports_v2/narrative/detectors/`` + un template dans
-    ``reports_v2/narrative/templates/{lang}.yaml``.
+    ``reports/narrative/detectors/`` + un template dans
+    ``reports/narrative/templates/{lang}.yaml``.
     """
 
     GLOBAL_LEADER_CER = "global_leader_cer"

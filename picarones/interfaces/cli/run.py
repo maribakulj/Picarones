@@ -3,7 +3,7 @@
 Wrapper Click mince autour du :class:`RunOrchestrator` (couche
 ``app/services/``) — toute la logique métier vit dans le service,
 ce module ne fait que du parsing CLI, l'injection du renderer HTML
-(:class:`HtmlReportRenderer` de la couche ``reports_v2/``) et le
+(:class:`HtmlReportRenderer` de la couche ``reports/``) et le
 formatage de sortie.
 
 Usage
@@ -28,7 +28,7 @@ from picarones.app.results import RunResult
 from picarones.app.schemas import RunSpecLoadError, load_run_spec_from_yaml
 from picarones.app.services.corpus_service import CorpusImportError
 from picarones.app.services.run_orchestrator import RunOrchestrator
-from picarones.reports_v2.html import HtmlReportRenderer
+from picarones.reports.html import HtmlReportRenderer
 
 
 def _render_html_report(

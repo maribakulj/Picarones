@@ -29,7 +29,7 @@ import pytest
 from picarones.evaluation.metrics.taxonomy_cooccurrence import (
     compute_taxonomy_cooccurrence,
 )
-from picarones.reports_v2.html.renderers.taxonomy_cooccurrence import (
+from picarones.reports.html.renderers.taxonomy_cooccurrence import (
     build_taxonomy_cooccurrence_html,
 )
 
@@ -207,7 +207,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

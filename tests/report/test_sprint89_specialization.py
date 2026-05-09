@@ -22,7 +22,7 @@ from picarones.evaluation.metrics.specialization import (
     compute_specialization_score,
     top_specialized_pairs,
 )
-from picarones.reports_v2.html.renderers.specialization import (
+from picarones.reports.html.renderers.specialization import (
     build_specialization_html,
 )
 
@@ -30,7 +30,7 @@ from picarones.reports_v2.html.renderers.specialization import (
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

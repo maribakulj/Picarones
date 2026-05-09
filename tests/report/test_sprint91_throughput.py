@@ -28,13 +28,13 @@ from picarones.evaluation.metrics.throughput import (
     aggregate_effective_throughput,
     compute_effective_throughput,
 )
-from picarones.reports_v2.html.renderers.throughput import build_throughput_html
+from picarones.reports.html.renderers.throughput import build_throughput_html
 
 
 def _load_labels(lang: str) -> dict:
     p = (
         Path(__file__).parent.parent.parent
-        / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+        / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
 

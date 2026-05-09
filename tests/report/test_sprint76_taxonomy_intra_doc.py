@@ -29,7 +29,7 @@ import pytest
 from picarones.evaluation.metrics.taxonomy_intra_doc import (
     compute_taxonomy_position_heatmap,
 )
-from picarones.reports_v2.html.renderers.taxonomy_intra_doc import (
+from picarones.reports.html.renderers.taxonomy_intra_doc import (
     build_taxonomy_intra_doc_html,
 )
 
@@ -174,7 +174,7 @@ class TestI18nCompleteness:
     def _load(self, lang: str) -> dict:
         path = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "reports_v2" / "i18n" / f"{lang}.json"
+            / "picarones" / "reports" / "i18n" / f"{lang}.json"
         )
         return json.loads(path.read_text(encoding="utf-8"))
 

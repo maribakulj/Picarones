@@ -759,7 +759,7 @@ class TestReportSprint5:
 
     def test_report_data_has_ligature_score(self):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
         for eng in data["engines"]:
@@ -767,7 +767,7 @@ class TestReportSprint5:
 
     def test_report_data_has_diacritic_score(self):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
         for eng in data["engines"]:
@@ -775,7 +775,7 @@ class TestReportSprint5:
 
     def test_report_data_has_aggregated_taxonomy(self):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
         for eng in data["engines"]:
@@ -783,7 +783,7 @@ class TestReportSprint5:
 
     def test_report_data_has_aggregated_image_quality(self):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
         for eng in data["engines"]:
@@ -791,7 +791,7 @@ class TestReportSprint5:
 
     def test_html_has_characters_tab(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)
@@ -800,7 +800,7 @@ class TestReportSprint5:
 
     def test_html_has_ligatures_column(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)
@@ -809,7 +809,7 @@ class TestReportSprint5:
 
     def test_html_has_diacritiques_column(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)
@@ -818,7 +818,7 @@ class TestReportSprint5:
 
     def test_html_has_scatter_plot(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)
@@ -827,7 +827,7 @@ class TestReportSprint5:
 
     def test_html_has_taxonomy_chart(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)
@@ -836,7 +836,7 @@ class TestReportSprint5:
 
     def test_html_has_confusion_heatmap(self, tmp_path):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark()
         out = tmp_path / "report.html"
         ReportGenerator(bm).generate(out)
@@ -845,7 +845,7 @@ class TestReportSprint5:
 
     def test_doc_results_have_image_quality_in_report(self):
         from picarones.evaluation.synthetic import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import _build_report_data
+        from picarones.reports.html.generator import _build_report_data
         bm = generate_sample_benchmark()
         data = _build_report_data(bm, {})
         doc = data["documents"][0]
