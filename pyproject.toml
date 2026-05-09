@@ -118,7 +118,7 @@ all = [
 ]
 
 [project.scripts]
-picarones = "picarones.interfaces.cli._legacy:cli"
+picarones = "picarones.interfaces.cli:cli"
 
 # ──────────────────────────────────────────────────────────────────
 # Sprint A9 (M-5) — version dynamique via setuptools_scm.

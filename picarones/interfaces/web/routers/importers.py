@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from picarones.interfaces.web._legacy.models import HTRUnitedImportRequest, HuggingFaceImportRequest
+from picarones.interfaces.web.models import HTRUnitedImportRequest, HuggingFaceImportRequest
 
 router = APIRouter()
 

@@ -51,7 +51,7 @@ def tmp_corpus(tmp_path):
 
 @pytest.fixture
 def client():
-    from picarones.interfaces.web._legacy.app import app
+    from picarones.interfaces.web.app import app
     return TestClient(app)
 
 
@@ -865,31 +865,31 @@ class TestFastAPIReportServe:
 class TestCLIServeCommand:
 
     def test_serve_command_registered(self):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         commands = cli.commands
         assert "serve" in commands
 
     def test_serve_help_text(self):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["serve", "--help"])
         assert result.exit_code == 0
         assert "serve" in result.output.lower() or "localhost" in result.output.lower()
 
     def test_serve_default_port_in_help(self):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["serve", "--help"])
         assert "8000" in result.output
 
     def test_serve_help_has_port_option(self):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["serve", "--help"])
         assert "--port" in result.output
 
     def test_serve_missing_uvicorn_exits_gracefully(self):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         # Avec uvicorn installé, cela démarrerait le serveur — on teste juste que
         # la commande existe et est invocable (pas qu'elle démare le serveur)
@@ -907,14 +907,14 @@ class TestRunnerProgressCallback:
     def test_callback_signature_accepted(self):
         """run_benchmark accepte un paramètre progress_callback."""
         import inspect
-        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
+        from picarones.app.services.benchmark_runner import run_benchmark_via_service
         sig = inspect.signature(run_benchmark_via_service)
         assert "progress_callback" in sig.parameters
 
     def test_callback_is_optional(self):
         """progress_callback est optionnel (valeur par défaut None)."""
         import inspect
-        from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
+        from picarones.app.services.benchmark_runner import run_benchmark_via_service
         sig = inspect.signature(run_benchmark_via_service)
         param = sig.parameters["progress_callback"]
         assert param.default is None
@@ -953,7 +953,7 @@ class TestRunnerProgressCallback:
 
     def test_callback_called_with_mock_engine(self, tmp_corpus):
         """Le callback est appelé pour chaque document."""
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
@@ -971,7 +971,7 @@ class TestRunnerProgressCallback:
 
     def test_callback_receives_engine_name(self, tmp_corpus):
         """Le callback reçoit le nom du moteur."""
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
@@ -990,7 +990,7 @@ class TestRunnerProgressCallback:
 
     def test_callback_exception_does_not_crash(self, tmp_corpus):
         """Une exception dans le callback ne plante pas le benchmark."""
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
@@ -1472,7 +1472,7 @@ class TestFastAPICorpusUpload:
 
     def test_alto_text_extraction(self, alto_xml_bytes):
         """_detect_xml_gt extrait correctement le texte depuis un ALTO XML."""
-        from picarones.interfaces.web._legacy.corpus_utils import detect_xml_gt as _detect_xml_gt
+        from picarones.interfaces.web.corpus_utils import detect_xml_gt as _detect_xml_gt
         result = _detect_xml_gt(alto_xml_bytes)
         assert result is not None
         fmt, text = result
@@ -1525,7 +1525,7 @@ class TestFastAPICorpusUpload:
 
     def test_page_text_extraction(self, page_xml_bytes):
         """_detect_xml_gt extrait correctement le texte depuis un PAGE XML."""
-        from picarones.interfaces.web._legacy.corpus_utils import detect_xml_gt as _detect_xml_gt
+        from picarones.interfaces.web.corpus_utils import detect_xml_gt as _detect_xml_gt
         result = _detect_xml_gt(page_xml_bytes)
         assert result is not None
         fmt, text = result

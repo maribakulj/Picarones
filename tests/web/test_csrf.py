@@ -24,7 +24,7 @@ def public_client(monkeypatch) -> TestClient:
     # On ré-importe l'app pour que le middleware lise la variable à
     # chaque requête (il le fait déjà via ``is_csrf_required()`` à chaque
     # appel — pas besoin de reload du module).
-    from picarones.interfaces.web._legacy.app import app
+    from picarones.interfaces.web.app import app
     return TestClient(app)
 
 
@@ -33,7 +33,7 @@ def institutional_client(monkeypatch) -> TestClient:
     """Client en mode institutionnel (CSRF activé)."""
     monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
     monkeypatch.setenv("PICARONES_CSRF_SECRET", "test-secret-do-not-use-in-prod" * 2)
-    from picarones.interfaces.web._legacy.app import app
+    from picarones.interfaces.web.app import app
     return TestClient(app)
 
 
@@ -91,7 +91,7 @@ def test_institutional_post_with_only_header_returns_403(
 ) -> None:
     """Header présent mais cookie absent → 403."""
     # On force l'absence de cookie en utilisant un nouveau client sans état
-    from picarones.interfaces.web._legacy.app import app
+    from picarones.interfaces.web.app import app
     fresh = TestClient(app)
     r = fresh.post(
         "/api/lang/fr",
@@ -164,7 +164,7 @@ def test_csrf_token_endpoint_does_not_require_token(
     # Le endpoint est en GET donc CSRF ne s'applique pas, mais on
     # vérifie aussi qu'il est dans la liste des exemptions (au cas où
     # un PR futur le passerait en POST).
-    from picarones.interfaces.web._legacy.security import CSRF_EXEMPT_PATH_PREFIXES
+    from picarones.interfaces.web.security import CSRF_EXEMPT_PATH_PREFIXES
     assert any(
         "/api/csrf/token".startswith(p) for p in CSRF_EXEMPT_PATH_PREFIXES
     )
@@ -179,7 +179,7 @@ def test_generate_then_verify_token_round_trip(monkeypatch) -> None:
     """``generate_csrf_token`` produit un token que ``verify_csrf_token``
     valide. Garantit le round-trip de signature."""
     monkeypatch.setenv("PICARONES_CSRF_SECRET", "round-trip-secret-32-bytes-ok!")
-    from picarones.interfaces.web._legacy.security import generate_csrf_token, verify_csrf_token
+    from picarones.interfaces.web.security import generate_csrf_token, verify_csrf_token
 
     token = generate_csrf_token()
     assert verify_csrf_token(token) is True
@@ -187,7 +187,7 @@ def test_generate_then_verify_token_round_trip(monkeypatch) -> None:
 
 def test_verify_token_rejects_garbage(monkeypatch) -> None:
     monkeypatch.setenv("PICARONES_CSRF_SECRET", "round-trip-secret-32-bytes-ok!")
-    from picarones.interfaces.web._legacy.security import verify_csrf_token
+    from picarones.interfaces.web.security import verify_csrf_token
 
     assert verify_csrf_token(None) is False
     assert verify_csrf_token("") is False
@@ -200,7 +200,7 @@ def test_csrf_disabled_by_default(monkeypatch) -> None:
     """Garantit qu'on a bien posé la rétrocompat HuggingFace : sans la
     variable d'env, ``is_csrf_required()`` retourne False."""
     monkeypatch.delenv("PICARONES_CSRF_REQUIRED", raising=False)
-    from picarones.interfaces.web._legacy.security import is_csrf_required
+    from picarones.interfaces.web.security import is_csrf_required
 
     assert is_csrf_required() is False
 
@@ -219,6 +219,6 @@ def test_csrf_disabled_by_default(monkeypatch) -> None:
 ])
 def test_csrf_env_var_parsing(monkeypatch, value: str, expected: bool) -> None:
     monkeypatch.setenv("PICARONES_CSRF_REQUIRED", value)
-    from picarones.interfaces.web._legacy.security import is_csrf_required
+    from picarones.interfaces.web.security import is_csrf_required
 
     assert is_csrf_required() is expected

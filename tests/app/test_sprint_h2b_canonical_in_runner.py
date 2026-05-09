@@ -20,7 +20,7 @@ from picarones.adapters.ocr import (
     PrecomputedTextAdapter,
     ocr_adapter_from_name,
 )
-from picarones.app.services._legacy_runner_adapter import (
+from picarones.app.services.benchmark_runner import (
     build_adapter_resolver,
     engine_to_pipeline_spec,
     run_benchmark_via_service,
@@ -184,7 +184,7 @@ class TestRunBenchmarkWithCanonical:
 
         assert bm.document_count == 2
         # Le partial a été supprimé après succès.
-        from picarones.app.services._legacy_partial_store import (
+        from picarones.app.services.partial_store import (
             _partial_path,
         )
         partial = _partial_path(corpus.name, adapter.name, tmp_path / "partials")

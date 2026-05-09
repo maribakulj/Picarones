@@ -27,7 +27,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from picarones.interfaces.web._legacy.jobs import JobStore, get_default_store, reset_default_store
+from picarones.interfaces.web.jobs import JobStore, get_default_store, reset_default_store
 
 
 # ---------------------------------------------------------------------------
@@ -258,8 +258,8 @@ def client_with_isolated_store(monkeypatch, tmp_path):
     db = tmp_path / "jobs.db"
     monkeypatch.setenv("PICARONES_JOBS_DB", str(db))
     reset_default_store()
-    from picarones.interfaces.web._legacy import app as web_app
-    from picarones.interfaces.web._legacy import state as web_state
+    from picarones.interfaces.web import app as web_app
+    from picarones.interfaces.web import state as web_state
     web_state.JOB_STORE = get_default_store()
     # Vide aussi le cache RAM des jobs
     web_state.JOBS.clear()
@@ -358,8 +358,8 @@ class TestStartupOrphansHook:
         monkeypatch.setenv("PICARONES_JOBS_DB", str(db))
         reset_default_store()
         # Forcer le startup hook via TestClient context manager
-        from picarones.interfaces.web._legacy import app as web_app
-        from picarones.interfaces.web._legacy import state as web_state
+        from picarones.interfaces.web import app as web_app
+        from picarones.interfaces.web import state as web_state
         web_state.JOB_STORE = get_default_store()
         with TestClient(web_app.app):
             pass  # __enter__ déclenche startup, __exit__ shutdown

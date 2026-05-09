@@ -695,7 +695,7 @@ class TestCLIDemo:
 
     def test_demo_with_history_flag(self):
         from click.testing import CliRunner
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["demo", "--with-history", "--docs", "3"])
         assert result.exit_code == 0
@@ -703,7 +703,7 @@ class TestCLIDemo:
 
     def test_demo_with_robustness_flag(self):
         from click.testing import CliRunner
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["demo", "--with-robustness", "--docs", "3"])
         assert result.exit_code == 0
@@ -711,21 +711,21 @@ class TestCLIDemo:
 
     def test_demo_with_both_flags(self):
         from click.testing import CliRunner
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["demo", "--with-history", "--with-robustness", "--docs", "3"])
         assert result.exit_code == 0
 
     def test_demo_without_flags(self):
         from click.testing import CliRunner
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["demo", "--docs", "3"])
         assert result.exit_code == 0
 
     def test_demo_generates_html_file(self):
         from click.testing import CliRunner
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         import os
         runner = CliRunner()
         with runner.isolated_filesystem():

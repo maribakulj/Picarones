@@ -25,12 +25,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from picarones.interfaces.web._legacy.models import (
+from picarones.interfaces.web.models import (
     BenchmarkRequest,
     BenchmarkRunRequest,
     CompetitorConfig,
 )
-from picarones.interfaces.web._legacy.state import BenchmarkJob, iso_now
+from picarones.interfaces.web.state import BenchmarkJob, iso_now
 
 
 def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
@@ -167,7 +167,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
@@ -197,7 +197,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         # par le router (validated_path).  ``report_name`` est sanitizé
         # ici pour défense en profondeur (refuse ``../``, séparateurs,
         # caractères de contrôle) avant concaténation à output_dir.
-        from picarones.interfaces.web._legacy.security import safe_report_name
+        from picarones.interfaces.web.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -279,7 +279,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
@@ -319,7 +319,7 @@ def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
         # par le router (validated_path).  ``report_name`` est sanitizé
         # ici pour défense en profondeur (refuse ``../``, séparateurs,
         # caractères de contrôle) avant concaténation à output_dir.
-        from picarones.interfaces.web._legacy.security import safe_report_name
+        from picarones.interfaces.web.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"

@@ -1,134 +1,222 @@
-"""Router corpus — Sprint A14-S36.
-
-Endpoints d'import et d'analyse de corpus, adossés à
-``CorpusService`` (S20).  **Pas un shim** sur le legacy
-``picarones.web.routers.corpus`` — c'est un router neuf, mince,
-qui délègue toute la logique à ``CorpusService``.
-
-Endpoints
----------
-- ``POST /api/corpus/import``  : multipart upload d'un ZIP, retourne
-  un ``CorpusImportResponse`` avec stats et warnings.
-- ``GET  /api/corpus/{name}``  : retourne les métadonnées d'un
-  corpus déjà importé (lit le manifest depuis le workspace).
-
-Anti-sur-ingénierie
--------------------
-- Pas de listing exhaustif des corpora.  Si un caller a besoin de
-  lister, on l'ajoutera (typiquement S37+).
-- Pas de browse arbitraire du filesystem (legacy
-  ``/api/corpus/browse`` est une exposition risquée — la cible
-  documentée demande un workflow plus contraint).
-- Pas de delete — un caller peut supprimer manuellement le
-  ``WorkspaceManager.root`` ou attendre la session expiration.
-"""
+"""Router de gestion du corpus : navigation, upload, listing, suppression."""
 
 from __future__ import annotations
 
+import asyncio
+import io
 import logging
+import shutil
+import uuid
+import zipfile
+from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 
-from picarones.app.services.corpus_service import CorpusImportError
+from picarones.interfaces.web.corpus_utils import analyze_corpus_dir, flatten_zip_to_dir
+from picarones.interfaces.web.security import compute_browse_roots, validate_image_safe
+from picarones.interfaces.web.state import IMAGE_EXTS, UPLOADS_DIR
 
-logger = logging.getLogger(__name__)
-
-
-router = APIRouter(prefix="/api/corpus", tags=["corpus"])
-
-
-# ──────────────────────────────────────────────────────────────────────
-# Schémas de réponse
-# ──────────────────────────────────────────────────────────────────────
-
-
-class CorpusImportResponse(BaseModel):
-    """Réponse JSON pour ``POST /api/corpus/import``."""
-
-    corpus_name: str = Field(description="Nom du corpus importé.")
-    extracted_dir: str = Field(description="Répertoire d'extraction.")
-    n_documents: int
-    n_images_without_gt: int
-    n_gt_without_image: int
-    n_skipped_noise: int
-    warnings: list[str] = Field(default_factory=list)
-    skipped_paths: list[str] = Field(default_factory=list)
+router = APIRouter()
+_logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────────────────────────────
-# POST /api/corpus/import
-# ──────────────────────────────────────────────────────────────────────
+# Racines configurables via PICARONES_BROWSE_ROOTS, sinon
+# défaut restreint en mode public, défaut historique en mode dev.
+_BROWSE_ROOTS = compute_browse_roots(UPLOADS_DIR)
 
 
-@router.post(
-    "/import",
-    response_model=CorpusImportResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def import_corpus(
-    request: Request,
-    corpus_name: str,
-    file: UploadFile = File(...),
-) -> CorpusImportResponse:
-    """Importe un corpus depuis un ZIP uploadé.
+def _is_path_allowed(target: Path) -> bool:
+    """Vérifie qu'un chemin résolu est sous un des répertoires autorisés."""
+    for root in _BROWSE_ROOTS:
+        try:
+            if target == root or target.is_relative_to(root):
+                return True
+        except (ValueError, TypeError):
+            continue
+    return False
 
-    Le service ``CorpusService.import_zip`` valide le ZIP (taille,
-    nombre d'entrées, taille décompressée), l'extrait dans le
-    workspace, et construit un ``CorpusSpec`` listant les paires
-    image+GT détectées.
 
-    Retourne un ``CorpusImportResponse`` avec stats et warnings.
+@router.get("/api/corpus/browse")
+async def api_corpus_browse(
+    path: str = Query(default=".", description="Chemin à explorer"),
+) -> dict:
+    """Parcourt un dossier autorisé et retourne ses entrées."""
+    target = Path(path).resolve()
+    if not target.exists() or not target.is_dir():
+        raise HTTPException(status_code=404, detail=f"Dossier non trouvé : {path}")
+    if not _is_path_allowed(target):
+        raise HTTPException(
+            status_code=403,
+            detail="Accès refusé : chemin hors des répertoires autorisés",
+        )
+
+    items = []
+    try:
+        for entry in sorted(target.iterdir()):
+            item: dict[str, Any] = {
+                "name": entry.name,
+                "path": str(entry),
+                "is_dir": entry.is_dir(),
+            }
+            if entry.is_dir():
+                gt_count = sum(
+                    1 for f in entry.iterdir()
+                    if f.suffix == ".txt" and f.stem.endswith(".gt")
+                )
+                item["gt_count"] = gt_count
+                item["has_corpus"] = gt_count > 0
+            items.append(item)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    return {
+        "current_path": str(target),
+        "parent_path": str(target.parent) if target.parent != target else None,
+        "items": items,
+    }
+
+
+@router.post("/api/corpus/upload")
+async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
+    """Upload un corpus : soit un ``.zip``, soit une sélection d'images + ``.gt.txt``.
+
+    Pour chaque fichier, la lecture multipart (``uf.read()``) reste
+    sur l'event loop car FastAPI/Starlette gèrent l'asynchronisme du
+    streaming HTTP. L'écriture disque (potentiellement 500 Mo pour
+    un ZIP) et l'analyse du corpus sont déléguées à un thread.
     """
-    state = request.app.state.picarones
-    corpus_service = state.corpus
-
-    # Validation rapide du nom : on délègue la validation stricte au
-    # service mais on rejette tout de suite les noms vides.
-    if not corpus_name or not corpus_name.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="corpus_name est requis et ne peut pas être vide.",
-        )
-
-    zip_bytes = await file.read()
-    if not zip_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Fichier ZIP vide.",
-        )
+    corpus_id = str(uuid.uuid4())
+    corpus_dir = UPLOADS_DIR / corpus_id
+    corpus_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        report = corpus_service.import_zip(
-            zip_bytes=zip_bytes,
-            corpus_name=corpus_name.strip(),
-        )
-    except CorpusImportError as exc:
-        # Erreurs métier (ZIP mal formé, bombe, paths unsafe, ...).
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        # Étape 1 (async) : lire les bytes multipart pour ne pas
+        # bloquer l'event loop sur la réception réseau.
+        payloads: list[tuple[str, bytes]] = []
+        for uf in files:
+            filename = uf.filename or "upload"
+            # Empêcher la traversée via le nom de fichier reçu
+            # depuis le client (multipart). On garde uniquement le basename.
+            safe_name = Path(filename).name
+            data = await uf.read()
+            payloads.append((safe_name, data))
+
+        # Étape 2 (thread) : écriture disque + analyse synchrone.
+        try:
+            summary = await asyncio.to_thread(
+                _write_payloads_and_analyze, corpus_dir, payloads,
+            )
+        except ValueError as exc:
+            # Validation d'image rejetée (taille, format, bombe de
+            # décompression, ZIP trop volumineux, etc.).
+            raise HTTPException(status_code=415, detail=str(exc))
+
+        if not summary["usable"]:
+            shutil.rmtree(corpus_dir, ignore_errors=True)
+            raise HTTPException(
+                status_code=422,
+                detail="Aucune paire image/.gt.txt valide trouvée dans les fichiers uploadés.",
+            )
+
+        return {
+            "corpus_id": corpus_id,
+            "corpus_path": str(corpus_dir),
+            **summary,
+        }
+    except HTTPException:
+        raise
     except Exception as exc:  # noqa: BLE001
-        # Erreurs inattendues — log + 500.
-        logger.error(
-            "[corpus] import inattendu en échec : %s", exc, exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Échec d'import : {type(exc).__name__}",
-        ) from exc
-
-    return CorpusImportResponse(
-        corpus_name=report.spec.name,
-        extracted_dir=str(report.extracted_dir),
-        n_documents=report.n_documents,
-        n_images_without_gt=report.n_images_without_gt,
-        n_gt_without_image=report.n_gt_without_image,
-        n_skipped_noise=report.n_skipped_noise,
-        warnings=list(report.warnings),
-        skipped_paths=list(report.skipped_paths),
-    )
+        shutil.rmtree(corpus_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
-__all__ = ["router"]
+def _write_payloads_and_analyze(
+    corpus_dir: Path, payloads: list[tuple[str, bytes]],
+) -> dict:
+    """Écrit les bytes multipart sur disque puis analyse le résultat.
+
+    Exécuté dans un thread (lib appelante : ``api_corpus_upload``).
+    Lève ``ValueError`` sur image invalide ou ZIP corrompu —
+    l'appelant doit traduire en HTTP 415.
+    """
+    for safe_name, data in payloads:
+        suffix = Path(safe_name).suffix.lower()
+        if suffix == ".zip":
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                flatten_zip_to_dir(zf, corpus_dir)
+        elif suffix in IMAGE_EXTS:
+            # Valider l'image avant écriture (Pillow.verify,
+            # taille max, rejet des bombes de décompression).
+            validate_image_safe(data, filename=safe_name)
+            (corpus_dir / safe_name).write_bytes(data)
+        elif (
+            safe_name.endswith(".gt.txt")
+            or safe_name.endswith(".ocr.txt")
+            or suffix in (".txt", ".xml")
+        ):
+            (corpus_dir / safe_name).write_bytes(data)
+        # Sinon : type ignoré (silence intentionnel).
+
+    return analyze_corpus_dir(corpus_dir)
+
+
+@router.get("/api/corpus/uploads")
+async def api_corpus_uploads() -> dict:
+    """Liste les corpus uploadés disponibles."""
+    if not UPLOADS_DIR.exists():
+        return {"uploads": []}
+
+    uploads = []
+    for d in sorted(UPLOADS_DIR.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            summary = analyze_corpus_dir(d)
+            uploads.append({
+                "corpus_id": d.name,
+                "corpus_path": str(d),
+                "doc_count": summary["doc_count"],
+                "has_missing_gt": summary["has_missing_gt"],
+            })
+        except Exception as e:  # noqa: BLE001
+            _logger.warning(
+                "[api_corpus_uploads] upload '%s' ignoré — inspection impossible : %s",
+                d.name, e,
+            )
+    return {"uploads": uploads}
+
+
+@router.get("/api/corpus/image/{upload_id}/{filename}")
+async def api_corpus_image(upload_id: str, filename: str) -> FileResponse:
+    """Sert une image depuis le dossier d'upload."""
+    # Sécurité : interdire les path traversal
+    if "/" in upload_id or "\\" in upload_id or ".." in upload_id:
+        raise HTTPException(status_code=400, detail="upload_id invalide")
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="filename invalide")
+    image_path = UPLOADS_DIR / upload_id / filename
+    if not image_path.exists() or not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Image non trouvée")
+    suffix = image_path.suffix.lower()
+    media_types = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".tif": "image/tiff", ".tiff": "image/tiff",
+        ".webp": "image/webp",
+    }
+    media_type = media_types.get(suffix, "application/octet-stream")
+    return FileResponse(str(image_path), media_type=media_type)
+
+
+@router.delete("/api/corpus/uploads/{corpus_id}")
+async def api_corpus_delete(corpus_id: str) -> dict:
+    """Supprime un corpus uploadé."""
+    if "/" in corpus_id or "\\" in corpus_id or ".." in corpus_id:
+        raise HTTPException(status_code=400, detail="corpus_id invalide")
+    corpus_dir = UPLOADS_DIR / corpus_id
+    if not corpus_dir.exists() or not corpus_dir.is_dir():
+        raise HTTPException(status_code=404, detail=f"Corpus non trouvé : {corpus_id}")
+    shutil.rmtree(corpus_dir)
+    return {"deleted": corpus_id}

@@ -62,7 +62,7 @@ class TestDefinitiveHomeExports:
     def test_legacy_web_security_reexports_helpers(self) -> None:
         """Le legacy ``web.security`` continue d'exposer les 4 symboles
         (re-import, pas de duplication)."""
-        from picarones.interfaces.web._legacy import security as legacy
+        from picarones.interfaces.web import security as legacy
         assert legacy.validated_path is validated_path
         assert legacy.safe_report_name is safe_report_name
         assert legacy.validated_prompt_filename is validated_prompt_filename

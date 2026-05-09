@@ -34,14 +34,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # de couverture, pas par un seuil dur).
 FILE_BUDGETS: dict[str, int] = {
     # Sprint D.1 (plan v2.0) — adapter de compat run_benchmark legacy
-    # → BenchmarkService rewrite.  Module transitoire qui sera
-    # supprimé en H.4 avec interfaces/{cli,web}/_legacy/.
+    # → BenchmarkService rewrite.  Module qui présente l'API
+    # historique mono-call ``run_benchmark(corpus, engines, ...)``
+    # consommée par les interfaces CLI/web.
     # Sprint D.2.b a ajouté ~260 LOC pour la branche resumable.
     # Sprint D.2.c-f a ajouté ~190 LOC : NER attach + over_normalization
     # + validate_profile.
     # Sprint H.2.c a retiré ``_ocr_only_to_spec`` legacy + simplifié
     # ``build_adapter_resolver`` (canonique uniquement).
-    "picarones/app/services/_legacy_runner_adapter.py": 1700,  # actuel ~1450
+    # Sprint H.4 — module renommé ``_legacy_runner_adapter`` →
+    # ``benchmark_runner`` (drop le préfixe legacy : c'est l'entry
+    # point canonique des interfaces vers ``BenchmarkService``).
+    "picarones/app/services/benchmark_runner.py": 1700,  # actuel ~1450
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # statistics.py (1128 lignes) a été éclaté en sous-package
@@ -95,8 +99,8 @@ FILE_BUDGETS: dict[str, int] = {
     # validated_prompt_filename, safe_report_name et compute_workspace_roots.
     # Ces helpers seront extraits dans ``picarones/web/path_security.py``
     # lors du Sprint S20 du rewrite ciblé (création couche app/services/).
-    # Sprint F du plan v2.0 — déplacé vers ``interfaces/web/_legacy/``.
-    "picarones/interfaces/web/_legacy/security.py": 850,  # actuel 751
+    # Sprint F du plan v2.0 — déplacé vers ``interfaces/web/``.
+    "picarones/interfaces/web/security.py": 850,  # actuel 751
     # Sprint A14-S8 — CorpusRunner introduit pour orchestrer les
     # pipelines composées sur un corpus avec backpressure / timeout
     # réel / annulation propre.  Budget stable, l'extension
@@ -142,12 +146,12 @@ FILE_BUDGETS: dict[str, int] = {
     # _fallback_log}`` ont été supprimés au Lot I (mai 2026).
     "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
-    # Sprint G du plan v2.0 — déplacé vers ``interfaces/cli/_legacy/``.
-    "picarones/interfaces/cli/_legacy/_workflows.py": 550,  # actuel 469
+    # Sprint G du plan v2.0 — déplacé vers ``interfaces/cli/``.
+    "picarones/interfaces/cli/_workflows.py": 550,  # actuel 469
     # ``__init__.py`` du legacy CLI — plus gros que les autres car il
     # contient les commandes ``info``, ``engines``, ``metrics``,
     # ``report``, ``demo``.
-    "picarones/interfaces/cli/_legacy/__init__.py": 500,    # actuel 396
+    "picarones/interfaces/cli/__init__.py": 500,    # actuel 396
     # Phase 4-ter : ``core/metric_hooks.py`` est désormais un shim
     # (≤ 80 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (centralise les

@@ -129,7 +129,7 @@ _CLI_DESCRIPTIONS: dict[str, str] = {
 
 
 def build_cli_table() -> str:
-    from picarones.interfaces.cli._legacy import cli
+    from picarones.interfaces.cli import cli
 
     rows = [
         "| Command | Description |",
@@ -147,7 +147,7 @@ def build_cli_table() -> str:
 
 
 def build_endpoints_table() -> str:
-    from picarones.interfaces.web._legacy.app import app
+    from picarones.interfaces.web.app import app
 
     spec = app.openapi()
     rows = [

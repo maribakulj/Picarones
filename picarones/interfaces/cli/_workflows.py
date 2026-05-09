@@ -14,7 +14,7 @@ import sys
 
 import click
 
-from picarones.interfaces.cli._legacy import cli, _engine_from_name, _setup_logging
+from picarones.interfaces.cli import cli, _engine_from_name, _setup_logging
 
 
 def _validate_cer_threshold(
@@ -130,7 +130,7 @@ def run_cmd(
     _setup_logging(verbose)
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
+    from picarones.app.services.benchmark_runner import run_benchmark_via_service
 
     # Chargement du corpus
     try:
@@ -228,7 +228,7 @@ def _run_workflow(
     _setup_logging(verbose)
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.app.services._legacy_runner_adapter import run_benchmark_via_service
+    from picarones.app.services.benchmark_runner import run_benchmark_via_service
 
     try:
         corp = load_corpus_from_directory(corpus)

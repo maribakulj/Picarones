@@ -44,7 +44,7 @@ class TestMacOSHiddenFilesFiltering:
 
     def test_hidden_files_not_extracted_from_zip(self, tmp_path):
         """_flatten_zip_to_dir doit ignorer les entrées ._* dans le ZIP."""
-        from picarones.interfaces.web._legacy.corpus_utils import flatten_zip_to_dir as _flatten_zip_to_dir
+        from picarones.interfaces.web.corpus_utils import flatten_zip_to_dir as _flatten_zip_to_dir
 
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
@@ -140,7 +140,7 @@ class TestExcludeCharsNormalization:
         runner adapter inchangée.
         """
         from picarones.adapters.ocr.base import BaseOCRAdapter
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         from picarones.domain.artifacts import Artifact, ArtifactType

@@ -15,7 +15,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from picarones.interfaces.web._legacy import state
+from picarones.interfaces.web import state
 
 router = APIRouter()
 

@@ -137,7 +137,7 @@ class TestDetectorsPackage:
 class TestCliPackage:
     def test_cli_is_now_a_package(self):
         try:
-            import picarones.interfaces.cli._legacy as cli_pkg
+            import picarones.interfaces.cli as cli_pkg
         except ImportError as exc:
             if "click" in str(exc):
                 pytest.skip("click non installé")
@@ -150,7 +150,7 @@ class TestCliPackage:
         """L'entry-point ``picarones.cli:cli`` (pyproject.toml) doit
         rester valide après le chantier 5."""
         try:
-            from picarones.interfaces.cli._legacy import cli
+            from picarones.interfaces.cli import cli
         except ImportError as exc:
             if "click" in str(exc):
                 pytest.skip("click non installé")
@@ -161,7 +161,7 @@ class TestCliPackage:
         """``_setup_logging`` et ``_engine_from_name`` restent accessibles
         depuis ``picarones.cli`` (les sous-modules les utilisent)."""
         try:
-            import picarones.interfaces.cli._legacy as cli_pkg
+            import picarones.interfaces.cli as cli_pkg
         except ImportError as exc:
             if "click" in str(exc):
                 pytest.skip("click non installé")
@@ -178,7 +178,7 @@ class TestCliPackage:
     ])
     def test_submodule_loaded(self, submodule):
         try:
-            import picarones.interfaces.cli._legacy as cli_pkg
+            import picarones.interfaces.cli as cli_pkg
         except ImportError as exc:
             if "click" in str(exc):
                 pytest.skip("click non installé")
@@ -202,7 +202,7 @@ class TestCliPackage:
         désormais supprimé.  Le compteur historique passe de 15 à 14.
         """
         try:
-            from picarones.interfaces.cli._legacy import cli
+            from picarones.interfaces.cli import cli
         except ImportError as exc:
             if "click" in str(exc):
                 pytest.skip("click non installé")

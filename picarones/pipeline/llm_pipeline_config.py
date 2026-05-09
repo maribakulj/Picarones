@@ -36,7 +36,7 @@ que ``OCRLLMPipeline`` legacy :
 - ``name``.
 
 Les helpers
-``picarones.app.services._legacy_runner_adapter.engine_to_pipeline_spec``
+``picarones.app.services.benchmark_runner.engine_to_pipeline_spec``
 et ``build_adapter_resolver`` traitent donc indifféremment les
 deux types.
 """

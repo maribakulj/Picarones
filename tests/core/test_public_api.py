@@ -197,7 +197,7 @@ class TestMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 5. picarones.app.services._legacy_runner_adapter — run_benchmark_via_service
+# 5. picarones.app.services.benchmark_runner — run_benchmark_via_service
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -206,7 +206,7 @@ class TestRunnerApi:
         """Sprint D du plan v2.0 — l'adapter rewrite remplace
         ``measurements.runner.run_benchmark`` (legacy supprimé en D.6)."""
         _assert_function(
-            "picarones.app.services._legacy_runner_adapter",
+            "picarones.app.services.benchmark_runner",
             "run_benchmark_via_service",
         )
 
@@ -214,7 +214,7 @@ class TestRunnerApi:
         """Les paramètres clés (corpus, engines, profile…) doivent rester
         accessibles dans l'adapter rewrite. Ajout d'un argument requis =
         breaking change."""
-        from picarones.app.services._legacy_runner_adapter import (
+        from picarones.app.services.benchmark_runner import (
             run_benchmark_via_service,
         )
         sig = inspect.signature(run_benchmark_via_service)
@@ -342,19 +342,19 @@ class TestAltoMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 11. picarones.interfaces.web._legacy.jobs — JobStore (utilisé par web/)
+# 11. picarones.interfaces.web.jobs — JobStore (utilisé par web/)
 # ──────────────────────────────────────────────────────────────────────────
 
 
 class TestJobsApi:
     def test_job_store(self):
-        _assert_class("picarones.interfaces.web._legacy.jobs", "JobStore")
+        _assert_class("picarones.interfaces.web.jobs", "JobStore")
 
     @pytest.mark.parametrize("name", [
         "get_default_store", "reset_default_store",
     ])
     def test_function_exists(self, name):
-        _assert_function("picarones.interfaces.web._legacy.jobs", name)
+        _assert_function("picarones.interfaces.web.jobs", name)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -448,12 +448,12 @@ class TestApiStableDoc:
             "picarones.domain.module_protocol",
             "picarones.evaluation.benchmark_result",
             "picarones.evaluation.metrics.text_metrics",
-            "picarones.app.services._legacy_runner_adapter",
+            "picarones.app.services.benchmark_runner",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",
             "picarones.evaluation.metrics.builtin_metrics",
             "picarones.evaluation.metrics.alto_metrics",
-            "picarones.interfaces.web._legacy.jobs",
+            "picarones.interfaces.web.jobs",
         ]:
             assert module in content, (
                 f"docs/api-stable.md ne mentionne pas {module}"

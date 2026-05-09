@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import click
 
-from picarones.interfaces.cli._legacy import cli, _setup_logging
+from picarones.interfaces.cli import cli, _setup_logging
 
 # ---------------------------------------------------------------------------
 # picarones history

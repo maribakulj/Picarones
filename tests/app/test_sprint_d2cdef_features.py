@@ -4,7 +4,7 @@
 Couvre les paramètres legacy auparavant ignorés :
 
 - D.2.c (``output_json``) : déjà actif depuis D.1.d, couvert par
-  ``test_sprint_d_legacy_runner_adapter::test_output_json_persists_to_disk``.
+  ``les tests bout-en-bout du benchmark_runner``.
 - D.2.d (``over_normalization``) : pour les pipelines OCR+LLM avec
   étape OCR amont, ``DocumentResult.pipeline_metadata`` porte
   désormais une clé ``over_normalization``.
@@ -22,7 +22,7 @@ import pytest
 
 from picarones.adapters.llm.base import BaseLLMAdapter
 from picarones.adapters.ocr.base import BaseOCRAdapter
-from picarones.app.services._legacy_runner_adapter import (
+from picarones.app.services.benchmark_runner import (
     _aggregate_ner_metrics,
     run_benchmark_via_service,
 )

@@ -1,6 +1,6 @@
 """Tests Sprint A11 — purge automatique des uploads (item M-8).
 
-Valide que le module ``picarones.interfaces.web._legacy.maintenance`` :
+Valide que le module ``picarones.interfaces.web.maintenance`` :
 
 1. supprime les uploads dont le mtime dépasse le seuil ;
 2. **ne supprime pas** les uploads référencés par un job actif ;
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.interfaces.web._legacy.maintenance import (
+from picarones.interfaces.web.maintenance import (
     _get_retention_days,
     _should_purge,
     purge_old_uploads,
@@ -187,7 +187,7 @@ def test_purge_does_not_crash_on_individual_failure(
         return original_rmtree(path, *args, **kwargs)
 
     monkeypatch.setattr(
-        "picarones.interfaces.web._legacy.maintenance.shutil.rmtree", failing_rmtree
+        "picarones.interfaces.web.maintenance.shutil.rmtree", failing_rmtree
     )
 
     purged = purge_old_uploads(

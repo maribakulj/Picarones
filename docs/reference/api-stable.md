@@ -103,7 +103,7 @@ def compute_metrics(reference, hypothesis, char_exclude=None) -> MetricsResult
 def aggregate_metrics(results: list) -> dict
 ```
 
-### `picarones.app.services._legacy_runner_adapter`
+### `picarones.app.services.benchmark_runner`
 
 ```python
 def run_benchmark_via_service(
@@ -243,7 +243,7 @@ def alto_text_mer(reference_alto, hypothesis_alto) -> float
 def alto_text_wil(reference_alto, hypothesis_alto) -> float
 ```
 
-### `picarones.interfaces.web._legacy.jobs`
+### `picarones.interfaces.web.jobs`
 
 Persistance des jobs benchmark (utilisé par l'interface web) :
 

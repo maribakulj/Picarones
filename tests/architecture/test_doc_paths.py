@@ -119,12 +119,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Sprint H.5 : -11 broken paths — fix des refs actives dans
 # docs/how-to/cli-workflows.md, narrative-engine, normalization-profiles,
 # doc-consistency, SESSION_HANDOVER.
-# Sprint H.2.d : +1 — la suppression de ``adapters/legacy_engines/``
-# et ``adapters/legacy_pipelines/`` casse 1 ref active de plus dans
-# les docs migration restantes (la majorité des refs cassées
-# pointaient déjà vers ces paquets dans CHANGELOG/audits historiques,
-# d'où l'impact limité).
-BROKEN_PATHS_BASELINE = 162
+# Sprint H.2.d : +1 — suppression de ``adapters/legacy_engines/``.
+# Sprint H.4 : +3 — suppression des stubs canoniques
+# ``interfaces/cli/{run,report,import_corpus}.py`` (références dans
+# audits/migration historiques uniquement) et promotion de
+# ``interfaces/{cli,web}/_legacy/`` vers ``interfaces/{cli,web}/``
+# (les anciens chemins ``_legacy/`` apparaissent dans CHANGELOG +
+# audits, intouchables).
+BROKEN_PATHS_BASELINE = 165
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

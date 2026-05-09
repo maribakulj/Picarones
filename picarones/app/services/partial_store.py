@@ -23,7 +23,7 @@ Trace de retrait
 Module transitoire (Sprint D.2.b du plan v2.0).  Sera supprimé
 en H.4 quand ``run_benchmark_via_service`` lui-même disparaîtra
 au profit d'une consommation directe de ``BenchmarkService`` par
-les callers (``cli/_legacy``, ``web/_legacy``).
+les callers (``cli``, ``web``).
 
 Anti-sur-ingénierie
 -------------------

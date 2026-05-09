@@ -1,199 +1,319 @@
-"""Router benchmark — Sprint A14-S36.
+"""Router des endpoints de benchmark : start, status, cancel, stream, run.
 
-Endpoints de listing/lecture des runs persistés dans le workspace.
-Le **lancement** d'un run (asynchrone) est dans le router ``jobs``
-au S37 — ici, on lit uniquement les manifests d'archive.
-
-Convention de stockage
-----------------------
-``<workspace.root>/runs/<run_id>/`` contient :
-
-- ``run_manifest.json`` (métadonnées du run)
-- ``pipeline_results.jsonl``
-- ``view_results.jsonl``
-
-(cf. ``BenchmarkService.persist`` au S17.)
-
-Endpoints
----------
-- ``GET /api/runs`` : liste des run_ids disponibles avec leur
-  manifest (corpus, pipeline_names, n_documents, started_at,
-  completed_at).
-- ``GET /api/runs/{run_id}`` : retourne le manifest complet d'un
-  run.
-
-Anti-sur-ingénierie
--------------------
-- Pas de pagination — un workspace utilisateur a typiquement < 100
-  runs.  Si un caller en a besoin, on l'ajoutera.
-- Pas de delete — un caller peut supprimer le sous-dossier
-  manuellement.
-- Pas de search/filter par corpus_name — facile à ajouter mais on
-  attend qu'un caller le demande.
+Le ``stream`` SSE supporte la reprise via ``Last-Event-ID`` (Sprint 26).
+``start`` lance un benchmark à liste de moteurs ; ``run`` accepte des
+``CompetitorConfig`` composés (OCR + LLM, pipelines mutualisés) —
+deux endpoints distincts pour deux UX historiquement séparées.
 """
 
 from __future__ import annotations
 
-import json
-import logging
-from pathlib import Path
+import asyncio
+import threading
+import uuid
+from typing import AsyncIterator, Callable, Optional
 
-from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
-logger = logging.getLogger(__name__)
+from picarones.interfaces.web import state
+from picarones.interfaces.web.benchmark_utils import (
+    run_benchmark_thread,
+    run_benchmark_thread_v2,
+    sse_format,
+)
+from picarones.interfaces.web.models import BenchmarkRequest, BenchmarkRunRequest
+from picarones.interfaces.web.security import (
+    PathValidationError,
+    assert_engines_allowed,
+    assert_llm_provider_allowed,
+    compute_workspace_roots,
+    get_max_concurrent_jobs,
+    validated_path,
+    validated_prompt_filename,
+)
+from picarones.interfaces.web.state import UPLOADS_DIR
 
-
-router = APIRouter(prefix="/api/runs", tags=["benchmark"])
-
-#: Sous-dossier sous ``WorkspaceManager.root`` où les runs sont
-#: persistés.  Convention partagée avec ``BenchmarkService.persist``
-#: lorsque le caller ne précise pas de répertoire.  Pour l'instant,
-#: le caller peut tout aussi bien persister ailleurs — l'API web
-#: regarde uniquement ici.  Au S37, ``RunOrchestrator`` garantira
-#: cette convention.
-RUNS_SUBDIR = "runs"
-
-
-# ──────────────────────────────────────────────────────────────────────
-# Schémas de réponse
-# ──────────────────────────────────────────────────────────────────────
-
-
-class RunSummary(BaseModel):
-    """Résumé d'un run pour la liste."""
-
-    run_id: str
-    corpus_name: str | None = None
-    n_documents: int | None = None
-    pipeline_names: list[str] = Field(default_factory=list)
-    started_at: str | None = None
-    completed_at: str | None = None
+router = APIRouter()
 
 
-class RunListResponse(BaseModel):
-    """Réponse JSON pour ``GET /api/runs``."""
+def _start_job_thread(
+    job: state.BenchmarkJob,
+    worker: Callable[..., None],
+    req,
+) -> None:
+    """Démarre ``worker`` dans un thread daemon en libérant le sémaphore à la fin.
 
-    runs: list[RunSummary]
-
-
-class RunManifestResponse(BaseModel):
-    """Réponse JSON pour ``GET /api/runs/{run_id}``.
-
-    Manifest complet — ``raw`` est le contenu JSON exact du
-    ``run_manifest.json`` persisté.  L'utilisateur web peut faire
-    son propre rendu sans qu'on impose une représentation.
+    Helper partagé par les deux endpoints qui lancent un benchmark
+    (``/api/benchmark/start`` et ``/api/benchmark/run``). Garantit
+    que ``JOBS_SEMAPHORE`` est libéré, succès ou échec, sans avoir
+    à dupliquer le ``try/finally`` au site d'appel.
     """
+    def _release_after_worker():
+        try:
+            worker(job, req)
+        finally:
+            state.JOBS_SEMAPHORE.release()
 
-    run_id: str
-    raw: dict
-
-
-# ──────────────────────────────────────────────────────────────────────
-# Helpers
-# ──────────────────────────────────────────────────────────────────────
-
-
-def _runs_dir(state) -> Path:
-    """Retourne le dossier des runs sous le workspace de l'état."""
-    return Path(state.workspace.root) / RUNS_SUBDIR
+    threading.Thread(target=_release_after_worker, daemon=True).start()
 
 
-def _read_manifest(manifest_path: Path) -> dict | None:
-    """Lit un ``run_manifest.json`` et retourne le dict ; ``None`` en
-    cas d'échec (warning loggé)."""
+# ──────────────────────────────────────────────────────────────────────────
+# Lancement legacy : liste de moteurs (BenchmarkRequest)
+# ──────────────────────────────────────────────────────────────────────────
+
+@router.post("/api/benchmark/start")
+async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
+    """Lance un benchmark sur une liste de moteurs OCR (mode legacy)."""
+    # Sprint 24 — mode public : refuse les moteurs OCR cloud mutualisés.
+    # Vérifié AVANT la validation des chemins pour que la réponse
+    # 403 mode public reste prioritaire (cf. tests sprint24).
     try:
-        return json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "[benchmark] échec de lecture du manifest %s : %s",
-            manifest_path, exc,
+        assert_engines_allowed(req.engines)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur
+    # contre les racines workspace autorisées.  Bloque les chemins
+    # absolus arbitraires, la traversée (``..``), les liens symboliques
+    # vers l'extérieur, etc.
+    workspace_roots = compute_workspace_roots(UPLOADS_DIR)
+    try:
+        validated_path(
+            req.corpus_path,
+            allowed_roots=workspace_roots,
+            must_be_dir=True,
         )
-        return None
+        # ``output_dir`` peut ne pas encore exister, on valide juste
+        # qu'il sera créé dans une racine autorisée.
+        validated_path(
+            req.output_dir,
+            allowed_roots=workspace_roots,
+            must_exist=False,
+        )
+    except PathValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Sprint 24 — rate limit + sémaphore concurrents.
+    state.enforce_rate_limit(request)
+    if not state.JOBS_SEMAPHORE.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Trop de benchmarks concurrents (max "
+                f"{get_max_concurrent_jobs()}). Réessayer plus tard."
+            ),
+        )
+
+    job_id = str(uuid.uuid4())
+    job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
+    state.JOB_STORE.create_job(job_id)
+    state.register_job(job)
+    state.cleanup_old_jobs()
+
+    _start_job_thread(job, run_benchmark_thread, req)
+    return {"job_id": job_id, "status": "pending"}
 
 
-def _summarize(manifest: dict, run_id: str) -> RunSummary:
-    """Construit un ``RunSummary`` à partir d'un manifest."""
-    return RunSummary(
-        run_id=run_id,
-        corpus_name=manifest.get("corpus_name"),
-        n_documents=manifest.get("n_documents"),
-        pipeline_names=list(manifest.get("pipeline_names", [])),
-        started_at=manifest.get("started_at"),
-        completed_at=manifest.get("completed_at"),
-    )
+# ──────────────────────────────────────────────────────────────────────────
+# Lancement composé : liste de CompetitorConfig (BenchmarkRunRequest)
+# ──────────────────────────────────────────────────────────────────────────
 
+@router.post("/api/benchmark/run")
+async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
+    """Lance un benchmark à concurrents composés (OCR + LLM, pipelines).
 
-# ──────────────────────────────────────────────────────────────────────
-# Endpoints
-# ──────────────────────────────────────────────────────────────────────
-
-
-@router.get("", response_model=RunListResponse)
-async def list_runs(request: Request) -> RunListResponse:
-    """Liste les runs persistés dans le workspace.
-
-    Scan le sous-dossier ``runs/`` du workspace et lit chaque
-    ``run_manifest.json``.  Les manifests illisibles (corruption,
-    permission) sont loggés en warning et omis du résultat.
+    Chaque ``CompetitorConfig`` peut combiner un moteur OCR et un
+    provider LLM (mode post-correction, zero-shot, ou OCR seul).
     """
-    state = request.app.state.picarones
-    runs_dir = _runs_dir(state)
-    if not runs_dir.exists():
-        return RunListResponse(runs=[])
+    # ``competitors`` non vide est garanti par Pydantic ``min_length=1``.
 
-    summaries: list[RunSummary] = []
-    for entry in sorted(runs_dir.iterdir()):
-        if not entry.is_dir():
-            continue
-        manifest_path = entry / "run_manifest.json"
-        if not manifest_path.exists():
-            continue
-        manifest = _read_manifest(manifest_path)
-        if manifest is None:
-            continue
-        summaries.append(_summarize(manifest, run_id=entry.name))
-
-    return RunListResponse(runs=summaries)
-
-
-@router.get("/{run_id}", response_model=RunManifestResponse)
-async def get_run(request: Request, run_id: str) -> RunManifestResponse:
-    """Retourne le manifest complet d'un run."""
-    state = request.app.state.picarones
-    runs_dir = _runs_dir(state)
-    run_dir = runs_dir / run_id
-    manifest_path = run_dir / "run_manifest.json"
-
-    # Validation : le run_id ne doit pas s'évader du workspace.
+    # Mode public : refuse les pipelines LLM mutualisés et les moteurs
+    # OCR cloud sollicités par n'importe quel concurrent.
+    # Vérifié AVANT la validation des chemins (cf. /api/benchmark/start
+    # pour le rationale).
     try:
-        run_dir_resolved = run_dir.resolve()
-        runs_dir_resolved = runs_dir.resolve()
-        if not str(run_dir_resolved).startswith(str(runs_dir_resolved)):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="run_id invalide.",
+        for comp in req.competitors:
+            assert_engines_allowed([comp.ocr_engine] if comp.ocr_engine else [])
+            assert_llm_provider_allowed(comp.llm_provider)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur
+    # (cf. /api/benchmark/start).  Idempotent : refuse un corpus_path
+    # absolu hors workspaces, et refuse un output_dir qui s'évaderait
+    # via ``..`` ou symlinks.
+    workspace_roots = compute_workspace_roots(UPLOADS_DIR)
+    try:
+        validated_path(
+            req.corpus_path,
+            allowed_roots=workspace_roots,
+            must_be_dir=True,
+        )
+        validated_path(
+            req.output_dir,
+            allowed_roots=workspace_roots,
+            must_exist=False,
+        )
+        # Sprint A14-S1 — restriction des prompts à la bibliothèque
+        # intégrée (``picarones/prompts/``).  Cf. validated_prompt_filename
+        # pour le rationale (vecteur d'exfiltration via LLM).
+        for comp in req.competitors:
+            if comp.prompt_file:
+                validated_prompt_filename(comp.prompt_file)
+    except PathValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Sprint 24 — rate limit + sémaphore concurrents.
+    state.enforce_rate_limit(request)
+    if not state.JOBS_SEMAPHORE.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Trop de benchmarks concurrents (max "
+                f"{get_max_concurrent_jobs()}). Réessayer plus tard."
+            ),
+        )
+
+    job_id = str(uuid.uuid4())
+    job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
+    state.JOB_STORE.create_job(job_id)
+    state.register_job(job)
+
+    _start_job_thread(job, run_benchmark_thread_v2, req)
+    return {"job_id": job_id, "status": "pending"}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Statut + annulation
+# ──────────────────────────────────────────────────────────────────────────
+
+@router.get("/api/benchmark/{job_id}/status")
+async def api_benchmark_status(job_id: str) -> dict:
+    """Statut courant d'un job (RAM si disponible, sinon DB)."""
+    job = state.get_job_in_memory(job_id)
+    if job is not None:
+        return job.as_dict()
+    # Sprint 26 — fallback DB : le job n'est pas (plus) en RAM dans ce
+    # worker mais peut exister en base (autre worker, ou redémarrage).
+    db_job = state.JOB_STORE.get_job(job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
+    return {
+        "job_id": db_job["job_id"],
+        "status": db_job["status"],
+        "progress": db_job["progress"],
+        "current_engine": db_job["current_engine"],
+        "total_docs": db_job["total_docs"],
+        "processed_docs": db_job["processed_docs"],
+        "output_path": db_job["output_path"],
+        "error": db_job["error"],
+        "started_at": None,
+        "finished_at": db_job["finished_at"],
+    }
+
+
+@router.post("/api/benchmark/{job_id}/cancel")
+async def api_benchmark_cancel(job_id: str) -> dict:
+    """Annule un job en cours (no-op si déjà terminé)."""
+    job = state.get_job_in_memory(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
+    if job.status in ("complete", "error"):
+        return {
+            "job_id": job_id,
+            "status": job.status,
+            "message": "Job déjà terminé.",
+        }
+    job.set_status("cancelled")
+    job._cancel_event.set()  # Signal d'annulation pour run_benchmark
+    job.add_event("cancelled", {"message": "Benchmark annulé par l'utilisateur."})
+    return {"job_id": job_id, "status": "cancelled"}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# SSE de progression (avec reprise via Last-Event-ID)
+# ──────────────────────────────────────────────────────────────────────────
+
+@router.get("/api/benchmark/{job_id}/stream")
+async def api_benchmark_stream(job_id: str, request: Request) -> StreamingResponse:
+    """SSE de progression d'un benchmark.
+
+    Sprint 26 — supporte la reprise via le header standard
+    ``Last-Event-ID`` (clamped à un ``int``) : le client envoie le
+    dernier ``seq`` reçu, le serveur rejoue tous les événements
+    ``> seq`` puis bascule sur le live. Si le job est terminé (ou
+    orphelin/interrompu), on envoie le backlog puis ``done`` et on
+    ferme la connexion.
+
+    Trois cas :
+
+    1. Job en RAM ET vivant ⇒ subscribe + backlog DB depuis ``last_seq``.
+    2. Job en RAM mais terminé ⇒ backlog DB + ``done``.
+    3. Job uniquement en DB (orphelin, autre worker) ⇒ backlog DB + ``done``.
+    """
+    last_event_id = request.headers.get("last-event-id", "0").strip()
+    try:
+        last_seq = max(0, int(last_event_id))
+    except ValueError:
+        last_seq = 0
+
+    job = state.get_job_in_memory(job_id)
+    db_job = state.JOB_STORE.get_job(job_id)
+    if job is None and db_job is None:
+        raise HTTPException(status_code=404, detail=f"Job non trouvé : {job_id}")
+
+    async def event_generator() -> AsyncIterator[str]:
+        queue: Optional[asyncio.Queue] = None
+        if job is not None:
+            queue = job.subscribe()
+        try:
+            # 1) Backlog depuis la base — l'autorité de vérité (Sprint 26).
+            backlog = state.JOB_STORE.get_events_after(job_id, last_seq=last_seq)
+            seen_seqs: set[int] = set()
+            for ev in backlog:
+                seen_seqs.add(ev["seq"])
+                yield sse_format(ev["kind"], ev["data"], seq=ev["seq"])
+
+            current_status = (
+                job.status if job is not None
+                else (db_job or {}).get("status", "")
             )
-    except (OSError, RuntimeError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"run_id invalide : {exc}",
-        ) from exc
+            if current_status in ("complete", "error", "cancelled", "interrupted"):
+                yield sse_format("done", {"status": current_status})
+                return
 
-    if not manifest_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"run {run_id!r} introuvable.",
-        )
+            if queue is None:
+                # Pas de live possible (job pas en RAM dans ce worker) — on
+                # ne peut pas suivre la progression future. Au pire le
+                # client se reconnecte avec le nouveau ``Last-Event-ID``.
+                yield sse_format("done", {"status": current_status or "unknown"})
+                return
 
-    manifest = _read_manifest(manifest_path)
-    if manifest is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"manifest du run {run_id!r} illisible.",
-        )
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    seq = event.get("seq")
+                    if seq is not None and seq in seen_seqs:
+                        # Déjà délivré dans le backlog — éviter le doublon.
+                        continue
+                    yield sse_format(event["kind"], event["data"], seq=seq)
+                    if event["kind"] in ("complete", "error", "cancelled", "done"):
+                        break
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    if job.status in ("complete", "error", "cancelled", "interrupted"):
+                        yield sse_format("done", {"status": job.status})
+                        break
+        finally:
+            if queue is not None and job is not None:
+                job.unsubscribe(queue)
 
-    return RunManifestResponse(run_id=run_id, raw=manifest)
-
-
-__all__ = ["router"]
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

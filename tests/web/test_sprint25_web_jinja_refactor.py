@@ -42,7 +42,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).parent.parent.parent
-WEB_DIR = ROOT / "picarones" / "interfaces" / "web" / "_legacy"
+WEB_DIR = ROOT / "picarones" / "interfaces" / "web"
 TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
 APP_PY = WEB_DIR / "app.py"
@@ -92,14 +92,14 @@ class TestTemplateFilesExist:
 
 class TestRenderIndexDeterminism:
     def test_same_inputs_same_output(self):
-        from picarones.interfaces.web._legacy.routers.home import render_index as _render_index
+        from picarones.interfaces.web.routers.home import render_index as _render_index
 
         a = _render_index("fr")
         b = _render_index("fr")
         assert a == b, "Rendu non déterministe sur lang=fr"
 
     def test_lang_change_changes_output(self):
-        from picarones.interfaces.web._legacy.routers.home import render_index as _render_index
+        from picarones.interfaces.web.routers.home import render_index as _render_index
 
         fr = _render_index("fr")
         en = _render_index("en")
@@ -108,7 +108,7 @@ class TestRenderIndexDeterminism:
         assert 'name="picarones-lang" content="en"' in en
 
     def test_html_lang_attribute_set(self):
-        from picarones.interfaces.web._legacy.routers.home import render_index as _render_index
+        from picarones.interfaces.web.routers.home import render_index as _render_index
         assert '<html lang="en">' in _render_index("en")
         assert '<html lang="fr">' in _render_index("fr")
 
@@ -120,7 +120,7 @@ class TestRenderIndexDeterminism:
 class TestStructuralElementsPresent:
     @pytest.fixture(scope="class")
     def html(self) -> str:
-        from picarones.interfaces.web._legacy.routers.home import render_index as _render_index
+        from picarones.interfaces.web.routers.home import render_index as _render_index
         return _render_index("fr")
 
     @pytest.mark.parametrize("view_id", [
@@ -160,7 +160,7 @@ _ID_RE = re.compile(r'\sid="([a-zA-Z0-9_\-]+)"')
 
 class TestNoDuplicateIds:
     def test_no_duplicate_ids_in_rendered_page(self):
-        from picarones.interfaces.web._legacy.routers.home import render_index as _render_index
+        from picarones.interfaces.web.routers.home import render_index as _render_index
         html = _render_index("fr")
         ids = _ID_RE.findall(html)
         # Les `id` HTML doivent être uniques (W3C). Une duplication signe un
@@ -183,7 +183,7 @@ class TestNoInlineScriptCode:
     autorisés)."""
 
     def test_no_large_inline_script_block(self):
-        from picarones.interfaces.web._legacy.routers.home import render_index as _render_index
+        from picarones.interfaces.web.routers.home import render_index as _render_index
         html = _render_index("fr")
         # Capture tout le contenu entre <script> sans src= et </script>.
         pattern = re.compile(
@@ -233,7 +233,7 @@ class TestAppPyShrunk:
 class TestEndpointStillServesPage:
     @pytest.fixture
     def client(self):
-        from picarones.interfaces.web._legacy.app import app
+        from picarones.interfaces.web.app import app
         return TestClient(app)
 
     def test_root_returns_200_and_html(self, client):

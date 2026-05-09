@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 
-from picarones.interfaces.web._legacy.engine_utils import (
+from picarones.interfaces.web.engine_utils import (
     check_engine,
     fetch_ollama_info,
     get_tesseract_langs,
@@ -298,7 +298,7 @@ def _models_for_provider_sync(provider: str, capability: str) -> dict:
         return _format_models(provider, models, capability)
 
     if provider == "prompts":
-        prompts_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "prompts"
+        prompts_dir = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
         prompts = (
             sorted(f.name for f in prompts_dir.glob("*.txt"))
             if prompts_dir.exists()

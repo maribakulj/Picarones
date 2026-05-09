@@ -1223,7 +1223,7 @@ def _run_benchmark_with_partial(
     """
     import tempfile
 
-    from picarones.app.services._legacy_partial_store import (
+    from picarones.app.services.partial_store import (
         _delete_partial,
         _load_partial,
         _partial_path,

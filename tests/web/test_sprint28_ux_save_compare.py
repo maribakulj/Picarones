@@ -136,7 +136,7 @@ class TestRenderComparisonHTML:
 
 class TestCompareCLI:
     def test_basic_compare_writes_html(self, tmp_path):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         a_path = tmp_path / "a.json"
         b_path = tmp_path / "b.json"
         a_path.write_text(json.dumps(_benchmark_json({"tesseract": 0.05})))
@@ -150,7 +150,7 @@ class TestCompareCLI:
         assert out.exists()
 
     def test_regression_exit_code_is_2(self, tmp_path):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         a_path = tmp_path / "a.json"
         b_path = tmp_path / "b.json"
         a_path.write_text(json.dumps(_benchmark_json({"tesseract": 0.05})))
@@ -165,7 +165,7 @@ class TestCompareCLI:
         assert "régression" in result.output.lower() or "tesseract" in result.output.lower()
 
     def test_json_mode_outputs_dict(self, tmp_path):
-        from picarones.interfaces.cli._legacy import cli
+        from picarones.interfaces.cli import cli
         a_path = tmp_path / "a.json"
         b_path = tmp_path / "b.json"
         a_path.write_text(json.dumps(_benchmark_json({"tesseract": 0.05})))
@@ -186,7 +186,7 @@ class TestCompareCLI:
 
 @pytest.fixture
 def client():
-    from picarones.interfaces.web._legacy.app import app
+    from picarones.interfaces.web.app import app
     return TestClient(app)
 
 
@@ -261,9 +261,9 @@ class TestSynthesisPreviewEndpoint:
     def job_with_results(self, monkeypatch, tmp_path):
         """Crée un job 'complete' + JSON résultat sur disque."""
         from picarones.evaluation import synthetic as fixtures
-        from picarones.interfaces.web._legacy.jobs import get_default_store, reset_default_store
-        from picarones.interfaces.web._legacy import app as web_app
-        from picarones.interfaces.web._legacy import state as web_state
+        from picarones.interfaces.web.jobs import get_default_store, reset_default_store
+        from picarones.interfaces.web import app as web_app
+        from picarones.interfaces.web import state as web_state
         # Isolate store
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()
@@ -296,9 +296,9 @@ class TestSynthesisPreviewEndpoint:
         assert r.status_code == 404
 
     def test_409_when_job_not_complete(self, monkeypatch, tmp_path):
-        from picarones.interfaces.web._legacy.jobs import get_default_store, reset_default_store
-        from picarones.interfaces.web._legacy import app as web_app
-        from picarones.interfaces.web._legacy import state as web_state
+        from picarones.interfaces.web.jobs import get_default_store, reset_default_store
+        from picarones.interfaces.web import app as web_app
+        from picarones.interfaces.web import state as web_state
         monkeypatch.setenv("PICARONES_JOBS_DB", str(tmp_path / "jobs.db"))
         reset_default_store()
         web_state.JOB_STORE = get_default_store()

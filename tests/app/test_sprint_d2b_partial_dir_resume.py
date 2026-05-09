@@ -3,7 +3,7 @@
 
 Couvre :
 
-- Helpers ``picarones.app.services._legacy_partial_store`` (chemin,
+- Helpers ``picarones.app.services.partial_store`` (chemin,
   sérialisation NDJSON, tolérance aux lignes corrompues).
 - Comportement bout-en-bout de ``run_benchmark_via_service`` quand
   ``partial_dir`` est fourni :
@@ -21,14 +21,14 @@ import pytest
 
 from picarones.adapters.ocr.base import BaseOCRAdapter
 from picarones.domain.artifacts import Artifact, ArtifactType
-from picarones.app.services._legacy_partial_store import (
+from picarones.app.services.partial_store import (
     _delete_partial,
     _load_partial,
     _partial_path,
     _sanitize_filename,
     _save_partial_line,
 )
-from picarones.app.services._legacy_runner_adapter import (
+from picarones.app.services.benchmark_runner import (
     run_benchmark_via_service,
 )
 from picarones.evaluation.benchmark_result import DocumentResult
@@ -102,7 +102,7 @@ def _make_doc_result(doc_id: str, hyp: str = "h", cer: float = 0.1) -> DocumentR
 
 
 # ──────────────────────────────────────────────────────────────────────
-# 1. Helpers _legacy_partial_store
+# 1. Helpers partial_store
 # ──────────────────────────────────────────────────────────────────────
 
 
