@@ -283,12 +283,21 @@ async def api_benchmark_stream(job_id: str, request: Request) -> StreamingRespon
                 yield sse_format("done", {"status": current_status})
                 return
 
-            if queue is None:
+            if queue is None or job is None:
                 # Pas de live possible (job pas en RAM dans ce worker) — on
                 # ne peut pas suivre la progression future. Au pire le
                 # client se reconnecte avec le nouveau ``Last-Event-ID``.
                 yield sse_format("done", {"status": current_status or "unknown"})
                 return
+
+            # Sprint S3.1 — narrowing mypy explicite : à ce point,
+            # ``queue`` et ``job`` sont garantis non-``None`` (par
+            # construction lignes 268-271).  Les ``assert`` ne sont
+            # pas pour la défense (impossible) mais pour le type
+            # checker — sans eux, ``job.status`` ligne ~315 échoue
+            # ``mypy --strict``.
+            assert job is not None
+            assert queue is not None
 
             while True:
                 try:

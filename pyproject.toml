@@ -43,6 +43,11 @@ dependencies = [
     # Utilisé par ``picarones.interfaces.web.corpus_utils`` pour le parsing
     # ALTO/PAGE quand un utilisateur uploade un corpus XML.
     "defusedxml>=0.7.1",
+    # Pydantic — types immutables de la couche 1 (``picarones.domain``).
+    # Déclaré explicitement pour que les installs minimaux (sans
+    # ``[web]`` qui le ramènerait via FastAPI) bénéficient des modèles
+    # validés au moment de la déserialisation YAML.
+    "pydantic>=2.0,<3.0",
 ]
 
 [project.urls]
@@ -237,10 +242,15 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 no_implicit_optional = true
-# Les imports vers les autres cercles sont suivis silencieusement
-# pour éviter de propager les erreurs des cercles non encore typés.
-# Sprint A11 resserrera progressivement.
+# Les imports vers les autres couches sont suivis silencieusement
+# pour éviter de propager les erreurs des couches non encore typées.
 follow_imports = "silent"
+# Sprint S3.6 — plugin Pydantic obligatoire pour que ``mypy --strict``
+# sur ``picarones.domain`` reconnaisse les ``BaseModel`` correctement.
+# Sans plugin, ``BaseModel`` est traité comme ``Any`` et chaque
+# ``class X(BaseModel)`` génère un faux positif
+# ``Class cannot subclass "BaseModel"``.
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "picarones.domain.*"

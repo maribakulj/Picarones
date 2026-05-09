@@ -105,13 +105,15 @@ def assert_llm_provider_allowed(llm_provider: str) -> None:
 # background.
 # ---------------------------------------------------------------------------
 
-from picarones.app.services.path_security import (  # noqa: F401
-    PathValidationError,
-    safe_report_name,
-    validated_path,
-    validated_prompt_filename,
+from picarones.app.services.path_security import (
+    PathValidationError as PathValidationError,
+    safe_report_name as safe_report_name,
+    validated_path as validated_path,
+    validated_prompt_filename as validated_prompt_filename,
 )
-from picarones.app.services.path_security import _is_within  # noqa: F401
+from picarones.app.services.path_security import (
+    _is_within as _is_within,  # noqa: F401
+)
 
 
 # ---------------------------------------------------------------------------

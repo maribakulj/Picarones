@@ -100,6 +100,60 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+# ──────────────────────────────────────────────────────────────────────────
+# Sprint S3.2 — Handler exception global
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def register_global_exception_handler(target_app: FastAPI) -> None:
+    """Enregistre un handler ``Exception`` qui :
+
+    1. Logue le détail (message + traceback) au niveau ERROR avec
+       le ``request_id`` quand disponible — l'équipe ops peut
+       corréler la 500 au log.
+    2. Retourne au client un JSON minimaliste sans stack trace ni
+       message interne.  Format :
+       ``{"error": "internal_error", "request_id": "...", "detail": "..."}``.
+
+    Sans ce handler, FastAPI renvoie soit la stack trace au client
+    (en mode debug), soit un 500 vide non corrélable côté ops.
+    """
+    import uuid
+
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    @target_app.exception_handler(Exception)
+    async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # Tente de récupérer un request_id si un middleware l'a posé
+        # dans request.state ; sinon en génère un éphémère pour
+        # corréler client ↔ log.
+        rid = getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
+        _logger.error(
+            "[web] exception non capturée — request_id=%s path=%s method=%s : %s",
+            rid,
+            request.url.path,
+            request.method,
+            exc,
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "internal_error",
+                "request_id": rid,
+                "detail": (
+                    "Une erreur interne est survenue.  Le détail technique "
+                    "a été loggé côté serveur ; communiquer ce request_id "
+                    "au support."
+                ),
+            },
+        )
+
+
+register_global_exception_handler(app)
+
+
 # Middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
 app.middleware("http")(csp_middleware)
 
