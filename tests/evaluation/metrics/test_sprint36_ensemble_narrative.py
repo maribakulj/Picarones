@@ -264,7 +264,7 @@ class TestSynthesisIntegration:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-from tests.measurements._helpers import numbers_in_payload as _numbers_in_payload  # noqa: E402
+from tests.evaluation.metrics._helpers import numbers_in_payload as _numbers_in_payload  # noqa: E402
 
 
 class TestTraceability:

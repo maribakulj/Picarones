@@ -40,7 +40,7 @@ from picarones.reports.narrative import (
 from picarones.reports.narrative.arbiter import DEFAULT_TYPE_ORDER
 from picarones.evaluation.statistics import bootstrap_ci
 
-ROOT = Path(__file__).parent.parent.parent
+ROOT = Path(__file__).parent.parent.parent.parent
 TEMPLATES_DIR = ROOT / "picarones" / "reports" / "narrative" / "templates"
 
 
@@ -163,7 +163,7 @@ class TestEndToEndWithEmptyWhitelist:
     def test_every_number_traceable_with_empty_whitelist(self, lang):
         from picarones.reports.narrative import extract_numbers
 
-        from tests.measurements.test_sprint19_narrative_engine import _numbers_in_payload
+        from tests.evaluation.metrics.test_sprint19_narrative_engine import _numbers_in_payload
 
         result = build_synthesis(_full_data(), lang)
         allowed: set[str] = set()

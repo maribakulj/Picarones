@@ -456,7 +456,7 @@ class TestBuildSynthesisE2E:
 # ``_numbers_in_payload`` vit dans ``tests/measurements/_helpers.py`` ;
 # on le ré-expose sous son ancien nom privé pour compatibilité avec les
 # tests qui l'importent depuis ce module (ex. test_sprint23).
-from tests.measurements._helpers import numbers_in_payload as _numbers_in_payload  # noqa: E402
+from tests.evaluation.metrics._helpers import numbers_in_payload as _numbers_in_payload  # noqa: E402
 
 
 # Sprint 23 : whitelist vidée. Tout nombre rendu dans la synthèse doit

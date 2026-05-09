@@ -38,7 +38,7 @@ from picarones.reports.html.renderers.incremental_comparison import (
 
 def _load_labels(lang: str) -> dict:
     p = (
-        Path(__file__).parent.parent.parent
+        Path(__file__).parent.parent.parent.parent
         / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))

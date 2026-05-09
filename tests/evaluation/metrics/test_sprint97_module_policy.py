@@ -44,7 +44,7 @@ from picarones.reports.html.renderers.module_audit import (
 
 def _load_labels(lang: str) -> dict:
     p = (
-        Path(__file__).parent.parent.parent
+        Path(__file__).parent.parent.parent.parent
         / "picarones" / "reports" / "i18n" / f"{lang}.json"
     )
     return json.loads(p.read_text(encoding="utf-8"))
@@ -260,7 +260,7 @@ class TestRender:
 class TestDocumentation:
     def test_docs_present(self) -> None:
         path = (
-            Path(__file__).parent.parent.parent
+            Path(__file__).parent.parent.parent.parent
             / "docs" / "developer" / "module-policy.md"
         )
         assert path.exists()
@@ -272,7 +272,7 @@ class TestDocumentation:
 
     def test_docs_lists_required_fields(self) -> None:
         path = (
-            Path(__file__).parent.parent.parent
+            Path(__file__).parent.parent.parent.parent
             / "docs" / "developer" / "module-policy.md"
         )
         text = path.read_text(encoding="utf-8")

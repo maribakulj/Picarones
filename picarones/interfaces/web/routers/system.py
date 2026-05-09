@@ -77,6 +77,109 @@ async def api_status() -> dict:
     }
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Sprint S8.2 — Endpoint /metrics au format Prometheus exposition.
+# Opt-in via PICARONES_METRICS_ENABLED=1.  Désactivé par défaut pour
+# ne pas exposer de surface publique en mode HuggingFace Space.
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _metrics_enabled() -> bool:
+    import os
+    return os.environ.get("PICARONES_METRICS_ENABLED", "").strip() in (
+        "1", "true", "yes",
+    )
+
+
+@router.get("/metrics")
+async def metrics_endpoint() -> Response:
+    """Endpoint Prometheus exposition format (text/plain; version=0.0.4).
+
+    Désactivé par défaut.  Activer via
+    ``PICARONES_METRICS_ENABLED=1``.
+
+    Métriques exposées :
+
+    - ``picarones_jobs_total{status="<status>"}`` — nombre de jobs
+      par statut (pending, running, complete, error, cancelled,
+      interrupted).
+    - ``picarones_jobs_pending`` — alias direct (gauge).
+    - ``picarones_jobs_running`` — alias direct (gauge).
+    - ``picarones_app_info{version="X.Y.Z"}`` — info statique = 1.
+
+    Format : lignes ``# HELP`` + ``# TYPE`` + samples conformes
+    à la spec Prometheus.  Pas de dépendance ``prometheus_client``
+    pour rester léger ; un opérateur qui veut un client riche
+    peut greffer un middleware externe.
+    """
+    if not _metrics_enabled():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Metrics endpoint disabled.  Activate via "
+                "PICARONES_METRICS_ENABLED=1."
+            ),
+        )
+
+    from picarones.interfaces.web import state
+
+    try:
+        records = state.JOB_STORE.list(limit=10000)
+    except Exception as exc:  # noqa: BLE001
+        # Best-effort : si le store SQLite est indisponible, on
+        # expose quand même app_info pour que l'orchestrateur
+        # voie le service vivant.
+        import logging
+        logging.getLogger(__name__).warning(
+            "[metrics] JobStore inaccessible : %s", exc,
+        )
+        records = ()
+
+    counts: dict[str, int] = {}
+    for r in records:
+        counts[r.status] = counts.get(r.status, 0) + 1
+
+    known_statuses = (
+        "pending", "running", "complete", "error",
+        "cancelled", "interrupted",
+    )
+    for s in known_statuses:
+        counts.setdefault(s, 0)
+
+    lines: list[str] = []
+    lines.append("# HELP picarones_app_info Application info (always 1)")
+    lines.append("# TYPE picarones_app_info gauge")
+    lines.append(f'picarones_app_info{{version="{__version__}"}} 1')
+    lines.append("")
+
+    lines.append(
+        "# HELP picarones_jobs_total Total number of jobs by status"
+    )
+    lines.append("# TYPE picarones_jobs_total gauge")
+    for status, n in sorted(counts.items()):
+        lines.append(
+            f'picarones_jobs_total{{status="{status}"}} {n}'
+        )
+    lines.append("")
+
+    # Aliases directs pour les deux statuts opérationnels les plus
+    # surveillés (alerts Prometheus simples).
+    lines.append("# HELP picarones_jobs_pending Jobs pending")
+    lines.append("# TYPE picarones_jobs_pending gauge")
+    lines.append(f"picarones_jobs_pending {counts.get('pending', 0)}")
+    lines.append("")
+    lines.append("# HELP picarones_jobs_running Jobs running")
+    lines.append("# TYPE picarones_jobs_running gauge")
+    lines.append(f"picarones_jobs_running {counts.get('running', 0)}")
+    lines.append("")
+
+    body = "\n".join(lines) + "\n"
+    return Response(
+        content=body,
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
 @router.get("/api/lang")
 async def api_get_lang(picarones_lang: str = Cookie(default="fr")) -> dict:
     """Retourne la langue courante (lue depuis le cookie de session)."""
