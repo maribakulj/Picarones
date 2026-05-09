@@ -21,6 +21,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "README.md"
 GEN_SCRIPT = REPO_ROOT / "scripts" / "gen_readme_tables.py"
@@ -128,6 +130,15 @@ def test_gen_readme_tables_script_exists() -> None:
     )
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason=(
+        "gen_readme_tables.py compare le compte de tests collectés ; "
+        "le compte diverge entre OS (tests skip différemment selon "
+        "Windows / Linux / macOS).  Le README est généré et committé "
+        "depuis Linux ; ce test n'est pertinent que sur le même OS."
+    ),
+)
 def test_readme_tables_consistent_with_code() -> None:
     """``python scripts/gen_readme_tables.py --check`` doit retourner 0
     (le README est synchronisé avec le code)."""

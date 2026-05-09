@@ -169,4 +169,3 @@ class TestMistralAdapterLogging:
 # Le warning « LLM retourne texte vide » est désormais émis directement
 # par les adapters LLM (``picarones.adapters.llm.base.BaseLLMAdapter``) ;
 # il est testé dans ``tests/adapters/llm/`` au niveau adapter.
-

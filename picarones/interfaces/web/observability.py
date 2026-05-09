@@ -58,8 +58,16 @@ class JsonLogFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        # ``record.created`` est un timestamp UNIX float ; on génère
+        # un ISO 8601 UTC compatible cross-OS sans dépendre de
+        # ``time.strftime("%f")`` (non supporté sur Windows).
+        from datetime import datetime, timezone
+        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        timestamp = dt.strftime("%Y-%m-%dT%H:%M:%S") + (
+            f".{int(record.msecs):03d}Z"
+        )
         payload: dict[str, Any] = {
-            "timestamp": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S.%fZ"),
+            "timestamp": timestamp,
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

@@ -20,40 +20,42 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ──────────────────────────────────────────────────────────────────────
 
 
-class TestTesseractPinnedInDockerfile:
-    """Sans pin Tesseract, deux builds peuvent ramener des versions
-    différentes (5.3.0 vs 5.4.1) → CER mesurés divergent → benchmarks
-    non reproductibles.  Inacceptable pour publication scientifique.
+class TestTesseractInDockerfile:
+    """Le Dockerfile doit installer ``tesseract-ocr`` + les 6
+    modèles de langues du corpus institutionnel BnF (fra, lat,
+    eng, deu, ita, spa).
+
+    Sprint S6.1 a tenté un pin exact ``=5.3.0-2`` mais Debian
+    point-release rebump fréquemment, cassant le build.  La
+    reproductibilité passe désormais par :
+
+    1. Base image Python pinée par digest SHA256.
+    2. ``requirements-docker.lock`` côté Python.
+    3. ``RunManifest.dependencies_lock`` qui capture la version
+       Tesseract effective au runtime (``tesseract --version``).
     """
 
     def setup_method(self) -> None:
         self.text = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
 
-    def test_tesseract_ocr_has_explicit_version_pin(self) -> None:
-        # Pattern : ``tesseract-ocr=<version>`` (avec ``=``, pas
-        # juste ``tesseract-ocr``).
-        match = re.search(
-            r"tesseract-ocr=(\d+\.\d+\.\d+(?:-\d+)?)",
-            self.text,
-        )
-        assert match, (
-            "Le Dockerfile installe ``tesseract-ocr`` sans pin de "
-            "version.  Pour la reproductibilité institutionnelle "
-            "(BnF), ajouter ``=5.3.0-2`` (ou autre version Debian "
-            "courante explicite)."
+    def test_tesseract_ocr_installed(self) -> None:
+        # Pattern : ``tesseract-ocr`` au début d'un mot (suivi de
+        # whitespace, ``\``, ou ``=``), pour ne pas matcher
+        # ``tesseract-ocr-fra`` etc.
+        assert re.search(r"\btesseract-ocr(?:[\s\\=]|$)", self.text), (
+            "Le Dockerfile n'installe pas ``tesseract-ocr``."
         )
 
-    def test_all_language_models_have_pin(self) -> None:
-        """Les modèles de langues (fra, lat, eng, ...) doivent eux
-        aussi être pinnés.  Une version différente de
-        ``tesseract-ocr-fra`` peut changer le résultat OCR sur les
-        manuscrits français."""
+    def test_all_language_models_installed(self) -> None:
+        """Les modèles de langues du corpus BnF doivent tous être
+        installés (fra, lat, eng, deu, ita, spa).
+        """
         languages = ("fra", "lat", "eng", "deu", "ita", "spa")
         for lang in languages:
-            pattern = rf"tesseract-ocr-{lang}=[\w.\-:]+"
+            pattern = rf"tesseract-ocr-{lang}(?:[\s\\=]|$)"
             assert re.search(pattern, self.text), (
-                f"Modèle ``tesseract-ocr-{lang}`` non pinné dans le "
-                f"Dockerfile."
+                f"Modèle ``tesseract-ocr-{lang}`` non installé dans "
+                f"le Dockerfile."
             )
 
 

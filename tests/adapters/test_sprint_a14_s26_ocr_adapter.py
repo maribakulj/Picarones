@@ -335,4 +335,3 @@ class TestPipelineExecutorIntegration:
         text_arts = result.artifacts_of_type(ArtifactType.RAW_TEXT)
         assert len(text_arts) == 1
         assert Path(text_arts[0].uri).read_text() == "Bonjour"
-
