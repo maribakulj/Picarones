@@ -115,6 +115,15 @@ class RunManifest(BaseModel):
     started_at: datetime
     completed_at: datetime
     dependencies_lock: dict[str, str] = Field(default_factory=dict)
+    #: Sprint S8.5 — versions des binaires système critiques
+    #: (Tesseract, etc.).  Capturé via
+    #: ``picarones.app.services.dependencies.capture_system_binaries_lock``.
+    #: Ferme le trou laissé par ``dependencies_lock`` qui ne couvre
+    #: que les paquets Python — sans cette capture, deux runs avec
+    #: le même ``dependencies_lock`` peuvent produire des CER
+    #: différents si la version Tesseract change entre temps.
+    #: Default empty dict (rétro-compat manifests pré-S8.5).
+    system_binaries_lock: dict[str, str] = Field(default_factory=dict)
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @computed_field  # type: ignore[prop-decorator]

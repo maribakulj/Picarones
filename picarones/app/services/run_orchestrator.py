@@ -45,7 +45,10 @@ from typing import Any, Callable
 from picarones.app.results import ReportRenderer, RunResult
 from picarones.app.schemas import RunSpec, resolve_adapter_class
 from picarones.app.services.benchmark_service import BenchmarkService
-from picarones.app.services.dependencies import capture_dependencies_lock
+from picarones.app.services.dependencies import (
+    capture_dependencies_lock,
+    capture_system_binaries_lock,
+)
 from picarones.app.services.corpus_service import (
     CorpusImportError,
     CorpusService,
@@ -182,7 +185,10 @@ class RunOrchestrator:
         )
 
         # 6. Capture du verrou de dépendances pour la reproductibilité.
+        # Sprint S8.5 — capture aussi les binaires système (Tesseract,
+        # etc.) qui ne sont pas couverts par le wheel ``pytesseract``.
         deps_lock = capture_dependencies_lock()
+        bin_lock = capture_system_binaries_lock()
 
         result = bench.run(
             corpus=corpus_spec,
@@ -193,6 +199,7 @@ class RunOrchestrator:
             context_factory=_make_context_factory(spec.code_version),
             adapter_kwargs=adapter_kwargs,
             dependencies_lock=deps_lock,
+            system_binaries_lock=bin_lock,
             metadata={"orchestrator": "picarones.app.services.run_orchestrator"},
         )
 

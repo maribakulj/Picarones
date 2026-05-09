@@ -121,6 +121,7 @@ class BenchmarkService:
         context_factory: ContextFactory,
         run_id: str | None = None,
         dependencies_lock: dict[str, str] | None = None,
+        system_binaries_lock: dict[str, str] | None = None,
         adapter_kwargs: dict[str, dict[str, Any]] | None = None,
         metadata: dict[str, str] | None = None,
     ) -> RunResult:
@@ -197,6 +198,7 @@ class BenchmarkService:
             started_at=started_at,
             completed_at=completed_at,
             dependencies_lock=dependencies_lock or {},
+            system_binaries_lock=system_binaries_lock or {},
             metadata=metadata or {},
         )
 
