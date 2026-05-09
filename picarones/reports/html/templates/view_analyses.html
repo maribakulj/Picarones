@@ -157,10 +157,10 @@
       <div class="calibration-grid"
            style="display:grid;gap:1.2rem;align-items:start">
         {% if calibration_summary_html %}
-        <div>{{ calibration_summary_html }}</div>
+        <div>{{ calibration_summary_html | safe }}</div>
         {% endif %}
         {% if reliability_diagrams_html %}
-        <div>{{ reliability_diagrams_html }}</div>
+        <div>{{ reliability_diagrams_html | safe }}</div>
         {% endif %}
       </div>
       <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
@@ -182,10 +182,10 @@
       <div class="ner-grid"
            style="display:grid;gap:1.2rem;align-items:start">
         {% if ner_summary_html %}
-        <div>{{ ner_summary_html }}</div>
+        <div>{{ ner_summary_html | safe }}</div>
         {% endif %}
         {% if ner_per_category_html %}
-        <div>{{ ner_per_category_html }}</div>
+        <div>{{ ner_per_category_html | safe }}</div>
         {% endif %}
       </div>
       <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
@@ -205,7 +205,7 @@
          Adaptive : n'apparaît que si au moins un module a du signal. -->
     {% if philological_profile_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ philological_profile_html }}
+      {{ philological_profile_html | safe }}
     </div>
     {% endif %}
 
@@ -214,12 +214,12 @@
          un moteur a du signal. -->
     {% if searchability_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ searchability_html }}
+      {{ searchability_html | safe }}
     </div>
     {% endif %}
     {% if numerical_sequences_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ numerical_sequences_html }}
+      {{ numerical_sequences_html | safe }}
     </div>
     {% endif %}
 
@@ -227,7 +227,7 @@
          n'apparaît que si au moins un moteur a du signal. -->
     {% if readability_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ readability_html }}
+      {{ readability_html | safe }}
     </div>
     {% endif %}
 
@@ -235,7 +235,7 @@
          Adaptive : n'apparaît que si ≥ 2 moteurs avec taxonomie. -->
     {% if specialization_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ specialization_html }}
+      {{ specialization_html | safe }}
     </div>
     {% endif %}
 
@@ -246,10 +246,10 @@
       <div class="inter-engine-grid"
            style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
         {% if divergence_matrix_html %}
-        <div>{{ divergence_matrix_html }}</div>
+        <div>{{ divergence_matrix_html | safe }}</div>
         {% endif %}
         {% if oracle_gap_html %}
-        <div>{{ oracle_gap_html }}</div>
+        <div>{{ oracle_gap_html | safe }}</div>
         {% endif %}
       </div>
       <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
@@ -268,17 +268,17 @@
          retourne du contenu (au moins une sous-section avec signal). -->
     {% if economics_view_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ economics_view_html }}
+      {{ economics_view_html | safe }}
     </div>
     {% endif %}
     {% if advanced_taxonomy_view_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ advanced_taxonomy_view_html }}
+      {{ advanced_taxonomy_view_html | safe }}
     </div>
     {% endif %}
     {% if diagnostics_view_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ diagnostics_view_html }}
+      {{ diagnostics_view_html | safe }}
     </div>
     {% endif %}
 
@@ -287,22 +287,22 @@
          Adaptive : ne s'affichent que si le calcul a remonté du signal. -->
     {% if rare_token_recall_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ rare_token_recall_html }}
+      {{ rare_token_recall_html | safe }}
     </div>
     {% endif %}
     {% if taxonomy_cooccurrence_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ taxonomy_cooccurrence_html }}
+      {{ taxonomy_cooccurrence_html | safe }}
     </div>
     {% endif %}
     {% if taxonomy_intra_doc_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ taxonomy_intra_doc_html }}
+      {{ taxonomy_intra_doc_html | safe }}
     </div>
     {% endif %}
     {% if marginal_cost_html %}
     <div class="chart-card" style="grid-column:1/-1">
-      {{ marginal_cost_html }}
+      {{ marginal_cost_html | safe }}
     </div>
     {% endif %}
 

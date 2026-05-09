@@ -47,7 +47,7 @@
     <!-- Sprint 46 — vue stratifiée par script_type (rapport adaptatif :
          section omise quand aucune strate n'est disponible) -->
     {% if stratified_ranking_html %}
-    {{ stratified_ranking_html }}
+    {{ stratified_ranking_html | safe }}
     {% endif %}
   </div>
 

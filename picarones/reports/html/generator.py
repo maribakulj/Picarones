@@ -77,19 +77,42 @@ _TEMPLATES_DIR = Path(__file__).parent / "templates"
 def _build_jinja_env():
     """Construit l'Environment Jinja2 pour le rapport.
 
-    Autoescape désactivé : le comportement est équivalent à celui du
-    ``_HTML_TEMPLATE.format()`` historique. Les variables injectées
-    (JSON embarqué, SVG généré, synthèse narrative issue de templates
-    internes) sont toutes produites par le code Picarones et ne
-    nécessitent pas d'échappement HTML.
+    Sprint S1 (Bandit B701, CWE-94) : autoescape activé via
+    ``select_autoescape``.  Les variables qui contiennent du HTML
+    pré-construit (renderers thématiques, SVG, JSON) sont marquées
+    avec ``| safe`` dans les templates ; les variables d'origine
+    utilisateur sont auto-échappées.
     """
-    from jinja2 import Environment, FileSystemLoader
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
     env = Environment(
         loader=FileSystemLoader(str(_TEMPLATES_DIR)),
-        autoescape=False,
+        autoescape=select_autoescape(["html", "j2", "xml"]),
         keep_trailing_newline=True,
     )
     return env
+
+
+def _safe_json_for_script_tag(data: object) -> str:
+    """Sérialise data en JSON safe pour injection dans <script type="application/json">.
+
+    Sprint S1 — protection XSS : un fragment ``</script>`` dans une
+    chaîne JSON termine le tag <script> parent, même si la chaîne
+    est syntaxiquement bien formée côté JSON.
+
+    Solution standard : remplacer ``<``, ``>``, ``&`` par leurs
+    séquences d'échappement Unicode JSON.  JavaScript décode au
+    parse — plus de tag-break possible.
+    """
+    raw = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    # On remplace ``<`` par ``<`` (séquence JSON, JavaScript la
+    # décode au parse en ``<``).  Idem ``>`` et ``&``.  Le ``\\`` du
+    # Python source produit un seul ``\`` dans la sortie.
+    return (
+        raw.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -205,8 +228,8 @@ class ReportGenerator:
             normalization_profile=self.normalization_profile,
         )
 
-        report_json = json.dumps(report_data, ensure_ascii=False, separators=(",", ":"))
-        i18n_json = json.dumps(labels, ensure_ascii=False, separators=(",", ":"))
+        report_json = _safe_json_for_script_tag(report_data)
+        i18n_json = _safe_json_for_script_tag(labels)
         chartjs_js = _load_vendor_js("chart.umd.min.js")
 
         # Sprint 17 — rendu SVG du CDD côté serveur (statique, pas de JS)
@@ -221,7 +244,7 @@ class ReportGenerator:
         # Sprint 20 — glossaire contextuel chargé depuis YAML
         from picarones.reports.glossary import load_glossary
         glossary = load_glossary(self.lang)
-        glossary_json = json.dumps(glossary, ensure_ascii=False, separators=(",", ":"))
+        glossary_json = _safe_json_for_script_tag(glossary)
 
         section_html = self._build_section_html(report_data, labels)
 
