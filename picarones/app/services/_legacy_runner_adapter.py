@@ -319,6 +319,8 @@ def run_result_to_benchmark_result(
             pipeline_metadata = _build_pipeline_metadata(
                 engine=engine,
                 ocr_intermediate=ocr_intermediate,
+                ground_truth=document.ground_truth,
+                hypothesis=text_final,
             )
 
             doc_results.append(
@@ -407,8 +409,18 @@ def _build_pipeline_metadata(
     *,
     engine: Any,
     ocr_intermediate: str | None,
+    ground_truth: str = "",
+    hypothesis: str = "",
 ) -> dict:
-    """Reconstitue les ``pipeline_metadata`` legacy pour un DocumentResult."""
+    """Reconstitue les ``pipeline_metadata`` legacy pour un DocumentResult.
+
+    Sprint D.2.d — pour les pipelines composées OCR+LLM, calcule
+    ``over_normalization`` (détection des cas où le LLM a sur-normalisé
+    le texte par rapport à la GT) si ``ocr_intermediate`` est
+    disponible.  Equivalent fonctionnel de
+    ``picarones.measurements.runner.document._compute_doc_result``
+    lignes 102-112 (legacy supprimé en D.6.b).
+    """
     if not getattr(engine, "is_pipeline", False):
         return {}
     metadata: dict = {
@@ -425,6 +437,23 @@ def _build_pipeline_metadata(
         metadata["llm_provider"] = llm_adapter.name
     if ocr_intermediate is not None:
         metadata["ocr_intermediate"] = ocr_intermediate
+        # D.2.d : over_normalization computé pour les pipelines avec
+        # OCR amont — pas de signal exploitable en zero-shot.
+        try:
+            from picarones.evaluation.metrics.over_normalization import (
+                detect_over_normalization,
+            )
+            over_norm = detect_over_normalization(
+                ground_truth=ground_truth,
+                ocr_text=ocr_intermediate,
+                llm_text=hypothesis,
+            )
+            metadata["over_normalization"] = over_norm.as_dict()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[over_normalization] fonctionnalité dégradée : %s",
+                exc,
+            )
     return metadata
 
 
@@ -762,12 +791,13 @@ def run_benchmark_via_service(
     timeout_seconds: float = 60.0,
     cancel_event: Any | None = None,
     partial_dir: str | Path | None = None,
+    entity_extractor: Callable[[str], list[dict]] | None = None,
+    profile: str = "standard",
     # ---- Paramètres legacy non encore portés vers BenchmarkService ----
-    # Sprint D.2 du plan v2.0 — les features manquantes seront
-    # ajoutées au ``BenchmarkService`` dans une session ultérieure.
+    # Sprint D.2 du plan v2.0 — features marginales restantes :
+    # ``max_workers`` (le rewrite a son propre max_in_flight via
+    # ``CorpusRunner``).
     max_workers: int = 4,  # noqa: ARG001
-    entity_extractor: Any | None = None,  # noqa: ARG001
-    profile: str = "standard",  # noqa: ARG001
 ) -> Any:
     """Adapter de compatibilité ``run_benchmark`` legacy →
     ``BenchmarkService`` rewrite.
@@ -793,13 +823,27 @@ def run_benchmark_via_service(
     Périmètre reporté (D.2)
     -----------------------
     Les paramètres suivants sont **acceptés mais ignorés** dans
-    cette MVP — leur portage vers ``BenchmarkService`` constitue
-    le Sprint D.2 :
+    cette MVP — le rewrite gère ces aspects nativement :
 
     - ``show_progress`` (tqdm),
-    - ``max_workers`` (parallélisme intra-engine),
-    - ``entity_extractor`` (calcul NER),
-    - ``profile`` (validation de profil de mesures).
+    - ``max_workers`` (le rewrite ``CorpusRunner`` a son propre
+      ``max_in_flight``, branché à 2 par défaut).
+
+    Profil de mesures (D.2.f)
+    -------------------------
+    ``profile`` est validé au démarrage via
+    ``picarones.evaluation.metric_hooks.validate_profile``.  Un
+    profil inconnu lève ``PicaronesError``.  La valeur n'a pas
+    encore d'effet sur les hooks document-level (ce serait l'objet
+    d'un sprint ultérieur, hors du périmètre v2.0).
+
+    NER attach (D.2.e)
+    ------------------
+    Si ``entity_extractor`` est fourni, après le calcul des
+    ``DocumentResult``, le service appelle l'extracteur sur chaque
+    hypothèse OCR pour les documents dont la GT possède un niveau
+    ``ENTITIES``, puis attache les métriques NER (``ner_metrics``
+    par document, ``aggregated_ner`` au niveau engine).
 
     Reprise sur interruption (D.2.b)
     --------------------------------
@@ -851,6 +895,13 @@ def run_benchmark_via_service(
         Si les engines ne déclarent pas tous un ``name`` unique
         (cf. ``build_adapter_resolver``).
     """
+    # D.2.f : valide ``profile`` tôt — un nom inconnu lève
+    # ``PicaronesError`` avant que le bench ne démarre, plutôt
+    # que de dégrader silencieusement plus loin.
+    from picarones.evaluation.metric_hooks import validate_profile
+
+    validate_profile(profile)
+
     if code_version is None:
         # Le scanner d'archi rejette ``from picarones import __version__``
         # parce qu'il classe ``picarones`` (sans sous-package) comme une
@@ -887,11 +938,152 @@ def run_benchmark_via_service(
             cancel_event=cancel_event,
         )
 
+    # D.2.e : NER attach post-process.  Idempotent — re-calcule à
+    # chaque run même en mode resume (les ner_metrics ne sont pas
+    # persistées dans le partial NDJSON, cohérent avec le legacy
+    # qui calculait NER après le doc loop).
+    if entity_extractor is not None:
+        _attach_ner_metrics_to_benchmark(
+            benchmark_result, corpus, entity_extractor,
+        )
+
     # Sérialisation JSON optionnelle
     if output_json is not None:
         _persist_benchmark_result_json(benchmark_result, Path(output_json))
 
     return benchmark_result
+
+
+def _attach_ner_metrics_to_benchmark(
+    benchmark_result: Any,
+    corpus: "Corpus",
+    entity_extractor: Callable[[str], list[dict]],
+) -> None:
+    """Sprint D.2.e — calcule + attache les métriques NER post-bench.
+
+    Parcourt les ``DocumentResult`` de chaque ``EngineReport`` et,
+    pour chaque doc dont la GT possède un niveau ``ENTITIES``,
+    invoque ``entity_extractor(hypothesis)`` puis
+    ``compute_ner_metrics`` contre les entités de la GT.  Le
+    résultat est attaché sur ``dr.ner_metrics``.  Les agrégats
+    par engine sont calculés via ``_aggregate_ner_metrics`` et
+    stockés sur ``EngineReport.aggregated_ner``.
+
+    Tolérance : un échec d'extraction ou de calcul sur un doc
+    spécifique est dégradé en warning ; le bench n'est pas
+    interrompu.
+    """
+    from picarones.domain.artifacts import ArtifactType
+    from picarones.evaluation.metrics.ner import compute_ner_metrics
+
+    docs_by_id = {d.doc_id: d for d in corpus.documents}
+
+    for report in benchmark_result.engine_reports:
+        n_done = 0
+        for dr in report.document_results:
+            if dr.engine_error is not None or not dr.hypothesis:
+                continue
+            doc = docs_by_id.get(dr.doc_id)
+            if doc is None or not doc.has_gt(ArtifactType.ENTITIES):
+                continue
+            try:
+                gt_payload = doc.get_gt(ArtifactType.ENTITIES)
+                gt_entities = (
+                    list(gt_payload.entities) if gt_payload else []
+                )
+                hyp_entities = entity_extractor(dr.hypothesis) or []
+                dr.ner_metrics = compute_ner_metrics(
+                    gt_entities, hyp_entities,
+                )
+                n_done += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[ner.attach] %s/%s : extraction/comparaison "
+                    "NER dégradée : %s",
+                    report.engine_name, dr.doc_id, exc,
+                )
+
+        if n_done > 0:
+            report.aggregated_ner = _aggregate_ner_metrics(
+                report.document_results,
+            )
+            logger.info(
+                "[ner] %d documents évalués pour engine '%s'.",
+                n_done, report.engine_name,
+            )
+
+
+def _aggregate_ner_metrics(doc_results: list) -> dict | None:
+    """Sprint D.2.e — agrège les ``ner_metrics`` au niveau engine.
+
+    Recalcule precision/recall/F1 *micro* à partir des sommes
+    globales TP/FP/FN, plus le détail par catégorie, plus les
+    compteurs totaux d'hallucinations et d'entités manquées.
+
+    Equivalent fonctionnel de
+    ``picarones.measurements.runner.ner_attach._aggregate_ner``
+    (legacy supprimé en D.6.b).
+    """
+    relevant = [
+        dr for dr in doc_results if dr.ner_metrics is not None
+    ]
+    if not relevant:
+        return None
+
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+    cat_tp: dict[str, int] = {}
+    cat_fp: dict[str, int] = {}
+    cat_fn: dict[str, int] = {}
+    total_hallucinated = 0
+    total_missed = 0
+    iou_threshold = 0.5
+
+    for dr in relevant:
+        m = dr.ner_metrics
+        total_tp += int(m.get("true_positives", 0))
+        total_fp += int(m.get("false_positives", 0))
+        total_fn += int(m.get("false_negatives", 0))
+        total_hallucinated += len(m.get("hallucinated_entities", []) or [])
+        total_missed += len(m.get("missed_entities", []) or [])
+        iou_threshold = float(m.get("iou_threshold", iou_threshold))
+        for cat, stats in (m.get("per_category") or {}).items():
+            cat_tp.setdefault(cat, 0)
+            cat_fp.setdefault(cat, 0)
+            cat_fn.setdefault(cat, 0)
+            support = int(stats.get("support", 0))
+            recall = float(stats.get("recall", 0.0))
+            precision = float(stats.get("precision", 0.0))
+            tp_cat = round(support * recall) if support > 0 else 0
+            fn_cat = max(0, support - tp_cat)
+            fp_cat = (
+                round(tp_cat * (1 - precision) / precision)
+                if precision > 0 else 0
+            )
+            cat_tp[cat] += tp_cat
+            cat_fp[cat] += fp_cat
+            cat_fn[cat] += fn_cat
+
+    def _prf(tp: int, fp: int, fn: int) -> dict[str, float]:
+        p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
+        return {
+            "precision": p, "recall": r, "f1": f1, "support": tp + fn,
+        }
+
+    return {
+        "global": _prf(total_tp, total_fp, total_fn),
+        "per_category": {
+            cat: _prf(cat_tp[cat], cat_fp[cat], cat_fn[cat])
+            for cat in sorted(cat_tp)
+        },
+        "n_documents": len(relevant),
+        "total_hallucinated": total_hallucinated,
+        "total_missed": total_missed,
+        "iou_threshold": iou_threshold,
+    }
 
 
 def _run_benchmark_unified(

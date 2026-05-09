@@ -43,7 +43,10 @@ FILE_BUDGETS: dict[str, int] = {
     # supprimé en H.4 avec interfaces/{cli,web}/_legacy/.
     # Sprint D.2.b a ajouté ~260 LOC pour la branche resumable
     # (``_run_benchmark_with_partial``).
-    "picarones/app/services/_legacy_runner_adapter.py": 1450,  # actuel 1269
+    # Sprint D.2.c-f a ajouté ~190 LOC : NER attach (post-process +
+    # _aggregate_ner_metrics) + over_normalization dans
+    # _build_pipeline_metadata + validate_profile.
+    "picarones/app/services/_legacy_runner_adapter.py": 1700,  # actuel 1461
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # statistics.py (1128 lignes) a été éclaté en sous-package
