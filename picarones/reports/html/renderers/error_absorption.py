@@ -1,11 +1,5 @@
 """Rendu HTML « Absorption d'erreur » — Sprint 94 (B.3).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.error_absorption_render`` vers
-``picarones.reports.html.renderers.error_absorption``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/error_absorption.py``.  Pattern
 identique aux autres rendus : server-side, pas de JS, anti-
 injection systématique.

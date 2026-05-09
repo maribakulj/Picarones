@@ -1,18 +1,12 @@
-"""Chargement et gestion des corpus de documents (Cercle 2).
-
-Phase 4-quater — module relocalisé depuis ``picarones.core.corpus``
-vers le Cercle 2 (``evaluation``) où il appartient sémantiquement.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
+"""Chargement et gestion des corpus de documents (couche 3 — evaluation).
 
 Coexistence avec ``domain.corpus.CorpusSpec``
 ---------------------------------------------
 ``evaluation.corpus`` (le présent module) porte les types **riches
-en behavior** historiquement utilisés par le runner de
-``measurements/`` : ``Document``, ``Corpus``, ``ArtifactType`` +
-payloads ``TextGT``/``AltoGT``/``PageGT``/``EntitiesGT``/
-``ReadingOrderGT`` chargés en mémoire, et la fonction
-``load_corpus_from_directory``.
+en behavior** consommés par ``BenchmarkService`` (couche 6) :
+``Document``, ``Corpus``, ``ArtifactType`` + payloads
+``TextGT``/``AltoGT``/``PageGT``/``EntitiesGT``/``ReadingOrderGT``
+chargés en mémoire, et la fonction ``load_corpus_from_directory``.
 
 ``domain.corpus.CorpusSpec`` + ``domain.documents.DocumentRef``
 (Pydantic, immutable, déclaratif) sont une vue **structurelle**

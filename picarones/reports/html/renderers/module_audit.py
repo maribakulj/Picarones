@@ -1,11 +1,5 @@
 """Rendu HTML « Modules audités » — Sprint 97 (B.6).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.module_audit_render`` vers
-``picarones.reports.html.renderers.module_audit``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/module_policy.py``.  Pattern
 identique aux autres rendus : server-side, pas de JS, anti-
 injection systématique.

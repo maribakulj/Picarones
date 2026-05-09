@@ -1,11 +1,5 @@
 """Rendu HTML « Recherchabilité fuzzy » — Sprint 86 (A.II.5a HTML).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.searchability_render`` vers
-``picarones.reports.html.renderers.searchability``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/searchability.py`` (Sprint 84) +
 câblage runner (Sprint 86).
 

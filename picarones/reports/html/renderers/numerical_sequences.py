@@ -1,11 +1,5 @@
 """Rendu HTML « Précision sur séquences numériques » — Sprint 86.
 
-Phase 5.C.batch7 — module relocalisé depuis
-``picarones.report.numerical_sequences_render`` vers
-``picarones.reports.html.renderers.numerical_sequences``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Suite directe ``picarones/core/numerical_sequences.py``
 (Sprint 85) + câblage runner Sprint 86.
 

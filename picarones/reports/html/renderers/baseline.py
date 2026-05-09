@@ -1,11 +1,5 @@
 """Rendu de l'encart « Ce corpus est-il habituel ? » — Sprint 74.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.baseline_render`` vers
-``picarones.reports.html.renderers.baseline``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 A.I.3 chantier 1 du plan d'évolution 2026.
 
 Suite directe Sprint 73 (couche calcul + détecteur narratif).  Ce
@@ -167,7 +161,7 @@ def build_corpus_difficulty_baseline_html(
     ----------
     percentile_data:
         Sortie de
-        ``picarones.measurements.baseline_comparison.compute_corpus_difficulty_percentile``.
+        ``picarones.evaluation.metrics.baseline_comparison.compute_corpus_difficulty_percentile``.
         Si ``None``, retourne ``""`` (rapport adaptatif —
         historique trop court ou difficulté absente).
     historical_values:

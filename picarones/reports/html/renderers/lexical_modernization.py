@@ -1,11 +1,5 @@
 """Rendu HTML de la vue « Modernisation lexicale » — Sprint 80.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.lexical_modernization_render`` vers
-``picarones.reports.html.renderers.lexical_modernization``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 A.I.7 du plan d'évolution 2026.
 
 Suite directe ``picarones/core/lexical_modernization.py``.

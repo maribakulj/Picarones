@@ -1,11 +1,5 @@
 """Rendu HTML server-side de la vue stratifiée par script_type (Sprint 46).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.stratification_render`` vers
-``picarones.reports.html.renderers.stratification``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe du Sprint 45 (couche backend). Affiche le classement
 moteur par strate sous forme de tableaux pliables (HTML ``<details>``,
 pas de JavaScript).

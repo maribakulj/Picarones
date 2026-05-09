@@ -1,8 +1,8 @@
-"""Sprint D.2.b — reprise sur interruption pour ``run_benchmark_via_service``.
+"""Reprise sur interruption pour ``run_benchmark_via_service``.
 
-Persistance NDJSON des ``DocumentResult`` legacy au fil du
-benchmark, pour permettre la reprise après crash / Ctrl+C / timeout
-sans perdre le travail déjà fait.
+Persistance NDJSON des ``DocumentResult`` au fil du benchmark, pour
+permettre la reprise après crash / Ctrl+C / timeout sans perdre le
+travail déjà fait.
 
 Contrat
 -------
@@ -18,19 +18,12 @@ partiel est supprimé.  Si un crash interrompt le run mid-engine,
 le fichier persiste : la prochaine exécution reprendra exactement
 où l'on s'est arrêté.
 
-Trace de retrait
-----------------
-Module transitoire (Sprint D.2.b du plan v2.0).  Sera supprimé
-en H.4 quand ``run_benchmark_via_service`` lui-même disparaîtra
-au profit d'une consommation directe de ``BenchmarkService`` par
-les callers (``cli``, ``web``).
-
 Anti-sur-ingénierie
 -------------------
 - Format JSONL plat (une ligne = un ``DocumentResult.as_dict()``),
   pas de schéma versioné.  Si la structure du ``DocumentResult``
-  legacy change, le fichier devient illisible — mais à ce stade
-  on est déjà en post-rewrite v2.0+ et le legacy est mort.
+  change, le fichier devient illisible — l'opérateur supprime
+  ``partial_dir`` et relance.
 - Lock thread-safe partagé module-level ; pas de tentative de
   partage inter-process (chaque process a son propre tempdir).
 - Pas de checksum ni de validation de schéma — best-effort.  Une
@@ -63,9 +56,8 @@ _partial_write_lock = threading.Lock()
 def _sanitize_filename(s: str) -> str:
     """Réduit ``s`` à ``[\\w\\-]`` et tronque à 64 chars.
 
-    Cohérent avec le format historique du fichier partiel
-    legacy ; permet à un opérateur de retrouver visuellement
-    le fichier dans ``partial_dir``.
+    Permet à un opérateur de retrouver visuellement le fichier
+    dans ``partial_dir``.
     """
     return re.sub(r"[^\w\-]", "_", s)[:64]
 

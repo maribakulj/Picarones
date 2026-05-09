@@ -1,11 +1,5 @@
 """Rendu HTML « Stabilité multi-runs » — Sprint 90 (A.II.4).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.multirun_stability_render`` vers
-``picarones.reports.html.renderers.multirun_stability``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Suite directe ``picarones/core/reliability.compute_multirun_stability``
 (Sprint 83).  Pattern identique aux autres rendus : server-side,
 pas de JS, anti-injection systématique.

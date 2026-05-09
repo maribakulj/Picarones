@@ -4,7 +4,7 @@ Sprint A14-S23 du rewrite ciblé.
 
 Le service applicatif qui **construit** explicitement le
 ``MetricRegistry`` et le ``ProjectorRegistry`` au démarrage, en
-remplacement de l'anti-pattern legacy ``import picarones.measurements
+remplacement de l'anti-pattern legacy ``import picarones.evaluation.metrics
 as _trigger`` (où l'import par effet de bord déclenchait
 l'enregistrement via décorateurs au top-level d'un package, chargeant
 des dizaines de modules optionnels au moment d'un simple

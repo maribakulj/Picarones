@@ -1,11 +1,5 @@
 """Rendu HTML « Profil d'image du corpus » — Sprint 93 (A.II.7).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.image_predictive_render`` vers
-``picarones.reports.html.renderers.image_predictive``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/image_predictive.py``.  Pattern
 identique aux autres rendus : server-side, pas de JS, anti-
 injection systématique.

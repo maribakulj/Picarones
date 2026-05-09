@@ -215,7 +215,7 @@ def compute_pairwise_stats(
 
 __all__ = [
     # Symboles publics : signature stable, consommés directement par les
-    # tests via le ré-export de ``picarones.measurements.statistics``.
+    # tests via le ré-export de ``picarones.evaluation.statistics``.
     "compute_pairwise_stats",
     "wilcoxon_test",
     # Symboles privés ré-exportés (consommés par certains tests) :

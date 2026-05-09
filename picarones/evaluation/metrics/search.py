@@ -1,15 +1,7 @@
-"""Recherchabilité fuzzy + séquences numériques — Sprint A14-S16.
+"""Recherchabilité fuzzy + séquences numériques.
 
-Fonctions de calcul **pures** (sans ``@register_metric`` legacy)
-utilisées par ``SearchView``.  Réimplémente la logique des modules
-historiques ``picarones.measurements.searchability`` (Sprint 84)
-et ``picarones.measurements.numerical_sequences`` (Sprint 85),
-sans la dépendance vers le singleton global ``core.metric_registry``.
-
-Les modules legacy seront supprimés au S20 quand le
-``MetricRegistry`` instancié explicitement (S5) deviendra le seul
-registre.  En attendant, ce module fournit la version "couche
-evaluation" propre.
+Fonctions de calcul **pures** (sans décorateur ``@register_metric``)
+utilisées par ``SearchView``.
 
 Métriques livrées
 -----------------
@@ -20,11 +12,8 @@ Métriques livrées
 
 - ``numerical_sequence_preservation(reference, hypothesis)`` —
   fraction des séquences numériques de la GT préservées
-  strictement dans l'hypothèse.  Volontairement minimaliste pour
-  S16 : détecte uniquement les **années 4 chiffres** (proxy
-  réaliste pour les corpus patrimoniaux datés).  Le cas complet
-  (numéraux romains, foliations, monnaies, années régnales) reste
-  dans le legacy et sera réintégré au S20 avec le registre.
+  strictement dans l'hypothèse.  Détecte uniquement les **années
+  4 chiffres** (proxy réaliste pour les corpus patrimoniaux datés).
 
 Toutes les métriques ∈ [0, 1] avec ``higher_is_better=True``.
 """
@@ -42,8 +31,7 @@ import re
 def levenshtein_distance(a: str, b: str) -> int:
     """Distance de Levenshtein (substitution = insertion = suppression = 1).
 
-    Implémentation identique à ``picarones.measurements.searchability``
-    (Sprint 84) mais sans le décorateur ``@register_metric``.
+    Implémentation pure (sans décorateur ``@register_metric``).
     """
     if a == b:
         return 0
@@ -93,7 +81,7 @@ def searchability_recall(
     -------
     float
         ``n_retrouves / n_gt`` ∈ [0, 1].  ``0.0`` si la GT est
-        vide (convention identique au legacy Sprint 84).
+        vide.
     """
     if max_distance < 0:
         raise ValueError(f"max_distance doit être ≥ 0, reçu {max_distance}")
@@ -164,11 +152,10 @@ def numerical_sequence_preservation(
 
     Note méthodologique
     -------------------
-    Volontairement minimaliste pour S16 : seules les années 4
-    chiffres sont détectées.  Le pattern complet (numéraux romains,
-    foliations ``f. 12r``, monnaies, années régnales ``an III``)
-    reste dans ``picarones.measurements.numerical_sequences``
-    (Sprint 85) et sera réintégré dans la couche evaluation au S20.
+    Volontairement minimaliste : seules les années 4 chiffres sont
+    détectées.  Le pattern complet (numéraux romains, foliations
+    ``f. 12r``, monnaies, années régnales ``an III``) n'est pas
+    couvert ici.
 
     Multi-set : si la GT contient ``"1789"`` deux fois et
     l'hypothèse une fois, seul un est compté préservé.

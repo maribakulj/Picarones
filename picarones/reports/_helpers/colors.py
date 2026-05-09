@@ -1,10 +1,5 @@
 """Palettes de couleurs CSS — partagées entre rapport HTML et modules de rendu.
 
-Phase 5 — module relocalisé depuis ``picarones.report.colors`` vers
-``picarones.reports._helpers.colors``.  Le chemin legacy reste
-disponible via un shim avec ``DeprecationWarning`` ; suppression
-prévue en 2.0.
-
 Sprint A7 (item m-5 de l'audit institutional-readiness-2026-05) :
 introduction d'une **palette daltonien-friendly** (Okabe-Ito) qui
 remplace la palette historique rouge/vert/orange (problématique pour

@@ -15,7 +15,7 @@ Conception volontairement minimale :
 
 Le détecteur de Fact correspondant (``FactType.IMPORTER_FALLBACK_TRIGGERED``)
 est implémenté dans
-:mod:`picarones.measurements.narrative.detectors.history`.
+:mod:`picarones.evaluation.metrics.narrative.detectors.history`.
 """
 
 from __future__ import annotations

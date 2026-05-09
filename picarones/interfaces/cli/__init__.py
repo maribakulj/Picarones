@@ -326,9 +326,10 @@ def demo_cmd(
         picarones demo --with-robustness
         picarones demo --with-history --with-robustness --docs 8
     """
-    # Sprint G du plan v2.0 — ``picarones.fixtures`` reste legacy
-    # top-level ; import dynamique pour respecter
-    # ``test_layer_imports_are_legal[layer-interfaces]``.
+    # Import dynamique pour respecter ``test_layer_imports_are_legal``
+    # (les imports top-level depuis ``interfaces/`` sont scannés à
+    # l'import-time, et l'analyseur s'exécute sans avoir loadé tous
+    # les modules).
     import importlib
     generate_sample_benchmark = importlib.import_module(
         "picarones.evaluation.synthetic",

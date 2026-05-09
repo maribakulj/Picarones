@@ -4,7 +4,7 @@ Chantier 2 du plan d'évolution post-Sprint 97.
 
 Ce module **migre** les 12 hooks document-level et 12 agrégateurs
 corpus-level qui étaient codés en dur dans
-``picarones.measurements.runner._compute_document_result`` et autour de la
+``picarones.app.services.benchmark_runner._compute_document_result`` et autour de la
 boucle d'agrégation (lignes 794-827 du runner pré-chantier-2).
 
 Approche additive — rétrocompat stricte

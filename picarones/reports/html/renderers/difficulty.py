@@ -1,11 +1,5 @@
 """Helpers de rendu pour le score de difficulté intrinsèque.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.difficulty_render`` vers
-``picarones.reports.html.renderers.difficulty``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Sprint A3 (item B-2 de l'audit institutional-readiness-2026-05) :
 ``difficulty_color`` vivait précédemment dans
 ``picarones/measurements/difficulty.py`` et y violait la règle
@@ -15,7 +9,7 @@ juste place — Cercle 3, à côté de la palette qu'elle consomme — et
 ``measurements/difficulty.py`` ne contient plus que de la logique
 purement numérique.
 
-Le module pur ``picarones.measurements.difficulty`` reste utilisable
+Le module pur ``picarones.evaluation.metrics.difficulty`` reste utilisable
 sans dépendance vers ``picarones.report``.
 """
 
@@ -40,7 +34,7 @@ def difficulty_color(score: float) -> str:
     - score ≥ 0.75  → rouge     (« très difficile »)
 
     Le label texte correspondant est produit par
-    :func:`picarones.measurements.difficulty.difficulty_label`.
+    :func:`picarones.evaluation.metrics.difficulty.difficulty_label`.
     """
     if score < 0.25:
         return COLOR_GREEN

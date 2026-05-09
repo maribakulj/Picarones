@@ -116,7 +116,7 @@ def compute_taxonomy_cooccurrence_section(
     l'indice de Jaccard entre paires de classes au niveau corpus.
 
     Retour : sortie de
-    :func:`picarones.measurements.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`,
+    :func:`picarones.evaluation.metrics.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`,
     ou ``None`` si aucune classification taxonomique n'est disponible.
     """
     # Map doc_id → index dans per_doc_classes pour merger correctement

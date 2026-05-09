@@ -6,12 +6,11 @@ Un rapport est un **format de sortie** consommant un ``RunResult``
 persisté — pas un service métier.  ``app/services/`` orchestre la
 génération via ``RunOrchestrator``, mais le rendu lui-même est ici.
 
-Premier rapport HTML du nouveau monde.  Volontairement minimal : ce
-service répond à *« je veux ouvrir un fichier ``.html`` et voir mon
-benchmark »*, pas à *« je veux les 22 vues legacy avec Chart.js, CDD,
-narrative engine, glossaire, mode avancé »* — ces vues vivent toujours
-dans ``picarones.report.*`` (legacy) et seront ré-intégrées au cas par
-cas dans une phase ultérieure du rewrite.
+Renderer minimal côté ``RunResult`` brut (pour les pipelines
+exécutés via ``RunOrchestrator``).  Le renderer riche
+(``reports/html/generator.py``) consomme un ``BenchmarkResult``
+et produit le rapport principal avec les 22 vues, narrative
+engine, CDD, glossaire et mode avancé.
 
 Caractéristiques
 ----------------
@@ -30,8 +29,8 @@ Caractéristiques
 Anti-sur-ingénierie
 -------------------
 - Pas de coloration par gradient.  Les valeurs sont affichées en
-  toutes lettres ; le caller qui veut un rendu visuel sophistiqué
-  utilise le legacy.
+  toutes lettres.  Pour un rendu visuel sophistiqué, utiliser
+  ``reports/html/generator.py``.
 - Pas d'arrow ↑/↓ par métrique : ``EvaluationView`` ne porte pas
   cette info (elle vit dans ``MetricSpec``, qui n'est pas dans le
   ``RunResult``).  À ajouter quand un caller a vraiment besoin.

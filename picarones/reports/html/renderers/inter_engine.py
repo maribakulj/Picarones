@@ -1,11 +1,5 @@
 """Rendu HTML serveur-side de la section inter-moteurs (Sprint 37).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.inter_engine_render`` vers
-``picarones.reports.html.renderers.inter_engine``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite des Sprints 35-36 : la couche de calcul (`inter_engine.py`) et le
 câblage runner+narratif sont en place.  Ce module produit les blocs HTML
 qui remontent ces données dans le rapport :

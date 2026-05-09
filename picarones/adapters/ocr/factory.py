@@ -1,9 +1,6 @@
 """Factory canonique : instancier un ``BaseOCRAdapter`` par nom court.
 
 Sprint H.2.b du plan v2.0 — équivalent canonique de
-``picarones.adapters.legacy_engines.factory.engine_from_name`` qui
-retournait des ``BaseOCREngine`` (legacy, ``run(image_path) →
-EngineResult``).  Cette factory retourne des ``BaseOCRAdapter``
 (rewrite, ``StepExecutor`` Protocol, ``execute(inputs, params,
 context) → dict[ArtifactType, Artifact]``).
 
@@ -15,14 +12,6 @@ Vit en couche 5 (``picarones.adapters.ocr``) plutôt qu'en
 Cette factory ne dépend d'aucune brique de couche supérieure
 (pas de ``click``, pas de FastAPI).
 
-Migration depuis le legacy
---------------------------
-Code legacy ::
-
-    from picarones.adapters.legacy_engines.factory import engine_from_name
-    engine = engine_from_name("tesseract", lang="fra", psm=6)
-    # engine est un BaseOCREngine, à wrapper via LegacyOCREngineExecutor
-    # avant de pouvoir être consommé par PipelineExecutor.
 
 Code canonique équivalent ::
 

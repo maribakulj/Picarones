@@ -1,34 +1,19 @@
-"""Sprint D.1 du plan v2.0 — adapter de compat ``run_benchmark`` legacy
-→ ``BenchmarkService`` rewrite.
+"""Entry point CLI/web — façade ``run_benchmark_via_service``.
 
-Ce module présente l'API mono-call historique de
-``picarones.measurements.runner.run_benchmark`` mais s'appuie en
-interne sur le rewrite (``BenchmarkService``,
-``PipelineExecutor``, ``CorpusRunner``).  Il sert de pont
-transitoire pour faciliter la migration des callers en plusieurs
-étapes :
+Présente l'API mono-call ``run_benchmark_via_service(corpus,
+engines, ...)`` consommée par ``picarones.interfaces.cli`` et
+``picarones.interfaces.web``.  S'appuie en interne sur le service
+canonique (``BenchmarkService``, ``PipelineExecutor``,
+``CorpusRunner``).
 
-1. (cette session) Helpers de mapping ``Corpus`` ↔ ``CorpusSpec``
-   et ``Document`` ↔ ``DocumentRef`` — testables indépendamment.
-2. (sub-phase D.1.b) Mapping ``BaseOCREngine`` → ``PipelineSpec``
-   + adapter resolver.
-3. (sub-phase D.1.c) Conversion ``RunResult`` → ``BenchmarkResult``.
-4. (sub-phase D.1.d) Fonction ``run_benchmark_via_service``
-   complète avec progress callback, output_json, partial_dir.
-5. (sub-phase D.1.e) Tests d'équivalence numérique (CER/WER) entre
-   les deux runners sur les fixtures.
-
-Trace de retrait
-----------------
-Ce module est **transitoire** (Sprint D du plan v2.0).  Il sera
-supprimé en D.6 quand tous les callers (cli/_workflows,
-web/benchmark_utils) consommeront ``BenchmarkService``
-directement.
-
-Cette première itération n'expose que les helpers de mapping
-documents/corpus — la fonction publique
-``run_benchmark_via_service`` arrive dans une session ultérieure
-quand toutes les briques seront en place.
+Pourquoi cette façade
+---------------------
+``BenchmarkService`` consomme ``CorpusSpec`` (références
+filesystem, Pydantic, immutable) et ``PipelineSpec`` (déclaratif).
+Les interfaces utilisateur (CLI, web upload) raisonnent en
+``Corpus`` riche en behavior + liste de moteurs OCR/LLM.  Ce
+module fait la conversion entre les deux modèles, expose une API
+mono-call ergonomique et restitue un ``BenchmarkResult``.
 """
 
 from __future__ import annotations
@@ -37,11 +22,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-# Sprint H.2.c.1 — ``LegacyOCREngineExecutor`` n'est plus consommé :
-# tous les callers passent désormais des ``BaseOCRAdapter`` canoniques
-# (déjà ``StepExecutor`` natifs).  L'import est retiré ; le code path
-# legacy de ``build_adapter_resolver`` est désormais inaccessible et
-# peut être supprimé en H.2.c.2.
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.corpus import CorpusSpec
 from picarones.domain.documents import DocumentRef, GroundTruthRef
@@ -58,15 +38,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Pas d'import direct de ``picarones.pipelines.base.OCRLLMPipeline`` ici —
-# l'invariant architectural ``test_layer_imports_are_legal[layer-app]``
-# interdit à ``app/`` de dépendre du legacy.  On consomme un
-# ``OCRLLMPipeline`` exclusivement par duck typing (``is_pipeline``,
-# ``ocr_engine``, ``llm_adapter``, ``mode``, ``prompt_template``).
+# Le ``OCRLLMPipelineConfig`` (couche 4) est consommé exclusivement
+# par duck typing (``is_pipeline``, ``ocr_adapter``, ``llm_adapter``,
+# ``mode``, ``prompt_template``) pour respecter l'inward-only :
+# ``app/`` ne doit pas importer ``pipeline/llm_pipeline_config``
+# directement.
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Mapping Document (legacy) → DocumentRef (rewrite)
+# Mapping Document → DocumentRef
 # ──────────────────────────────────────────────────────────────────────
 
 
@@ -75,9 +55,9 @@ def document_to_document_ref(
     *,
     workspace_dir: Path,
 ) -> DocumentRef:
-    """Convertit un ``Document`` legacy en ``DocumentRef`` rewrite.
+    """Convertit un ``Document`` (couche 3) en ``DocumentRef`` (couche 1).
 
-    Le ``Document`` legacy porte sa GT en mémoire (``ground_truth: str``
+    Le ``Document`` (modèle riche) porte sa GT en mémoire (``ground_truth: str``
     et ``ground_truths: dict[ArtifactType, GTPayload]``).  Le
     ``DocumentRef`` rewrite porte des références filesystem
     (``GroundTruthRef.uri``).  La conversion écrit chaque GT
@@ -86,7 +66,7 @@ def document_to_document_ref(
     Parameters
     ----------
     document:
-        Document legacy.  ``image_path`` non-``None`` est requis ;
+        Document.  ``image_path`` non-``None`` est requis ;
         ``ground_truth`` (TEXT) peut être vide.
     workspace_dir:
         Répertoire de travail où écrire les fichiers GT
@@ -171,7 +151,7 @@ def corpus_to_corpus_spec(
     *,
     workspace_dir: Path,
 ) -> CorpusSpec:
-    """Convertit un ``Corpus`` legacy en ``CorpusSpec`` rewrite.
+    """Convertit un ``Corpus`` (couche 3) en ``CorpusSpec`` (couche 1).
 
     Itère sur ``corpus.documents`` et applique
     ``document_to_document_ref`` pour chacun.
@@ -179,7 +159,7 @@ def corpus_to_corpus_spec(
     Parameters
     ----------
     corpus:
-        Corpus legacy.
+        Corpus.
     workspace_dir:
         Répertoire de travail où écrire les fichiers GT
         synthétisés (typiquement un ``tempfile.TemporaryDirectory``
@@ -219,7 +199,7 @@ def corpus_to_corpus_spec(
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Mapping RunResult (rewrite) → BenchmarkResult (legacy)
+# Mapping RunResult → BenchmarkResult
 # ──────────────────────────────────────────────────────────────────────
 
 
@@ -231,7 +211,7 @@ def run_result_to_benchmark_result(
     char_exclude: Any | None = None,
     normalization_profile: Any | None = None,
 ) -> Any:
-    """Transpose un ``RunResult`` rewrite en ``BenchmarkResult`` legacy.
+    """Transpose un ``RunResult`` (couche 4) en ``BenchmarkResult`` (couche 3).
 
     Le mapping est en **transposition** :
 
@@ -249,7 +229,7 @@ def run_result_to_benchmark_result(
     3. Lit l'``ocr_intermediate`` (RAW_TEXT) si le pipeline a un
        step OCR amont.
     4. Calcule les métriques CER/WER via ``compute_metrics``.
-    5. Construit un ``DocumentResult`` legacy avec ``engine_error``
+    5. Construit un ``DocumentResult`` avec ``engine_error``
        extrait des ``step_results``.
     6. Aggrège les métriques par engine via ``aggregate_metrics``.
     7. Reconstitue ``pipeline_info`` pour les engines pipeline
@@ -260,11 +240,11 @@ def run_result_to_benchmark_result(
     run_result:
         ``RunResult`` produit par ``BenchmarkService.run``.
     corpus:
-        Corpus legacy d'origine — sert à récupérer le ``ground_truth``
+        Corpus d'origine — sert à récupérer le ``ground_truth``
         et l'``image_path`` pour chaque document, dans le même ordre
         que ``run_result.document_results``.
     engines:
-        Liste d'engines legacy dans l'ordre où leurs specs ont été
+        Liste d'adapters dans l'ordre où leurs specs ont été
         passées à ``BenchmarkService.run`` (l'ordre détermine
         l'index dans ``RunDocumentResult.pipeline_results``).
     char_exclude:
@@ -275,7 +255,7 @@ def run_result_to_benchmark_result(
     Returns
     -------
     BenchmarkResult
-        Format legacy compatible avec les consommateurs historiques
+        Format compatible avec les consommateurs historiques
         (rapport HTML, persistance JSON, narrative engine).
     """
     from picarones.evaluation.benchmark_result import (
@@ -413,14 +393,14 @@ def _build_pipeline_metadata(
     ground_truth: str = "",
     hypothesis: str = "",
 ) -> dict:
-    """Reconstitue les ``pipeline_metadata`` legacy pour un DocumentResult.
+    """Reconstitue les ``pipeline_metadata`` pour un DocumentResult.
 
     Sprint D.2.d — pour les pipelines composées OCR+LLM, calcule
     ``over_normalization`` (détection des cas où le LLM a sur-normalisé
     le texte par rapport à la GT) si ``ocr_intermediate`` est
     disponible.  Equivalent fonctionnel de
-    ``picarones.measurements.runner.document._compute_doc_result``
-    lignes 102-112 (legacy supprimé en D.6.b).
+    le calcul historique de DocumentResult
+    (supprimé en D.6.b).
     """
     if not getattr(engine, "is_pipeline", False):
         return {}
@@ -428,7 +408,7 @@ def _build_pipeline_metadata(
         "pipeline_mode": getattr(engine, "mode", None),
         "is_pipeline": True,
     }
-    # mode peut être un Enum (legacy) ou une string (canonique).
+    # mode peut être un Enum ou une string (canonique).
     mode = metadata["pipeline_mode"]
     if mode is not None and hasattr(mode, "value"):
         metadata["pipeline_mode"] = mode.value
@@ -472,7 +452,7 @@ def _build_pipeline_info(engine: Any) -> dict:
         info["llm_provider"] = llm_adapter.name
     mode = getattr(engine, "mode", None)
     if mode is not None:
-        # Tolère enum (legacy ``PipelineMode.X``) ou string (canonique).
+        # Tolère enum (``PipelineMode.X``) ou string.
         info["mode"] = mode.value if hasattr(mode, "value") else mode
     prompt_path = getattr(engine, "prompt_path", None)
     if prompt_path is not None:
@@ -498,12 +478,12 @@ def _safe_engine_version(engine: Any) -> str:
 
 def _is_canonical_adapter(engine: Any) -> bool:
     """Détecte si ``engine`` est un ``BaseOCRAdapter`` canonique
-    (par opposition à ``BaseOCREngine`` legacy ou ``OCRLLMPipeline``).
+    (par opposition aux modèles riches en behavior).
 
     Duck-typing tolérant : un objet est canonical s'il expose
     ``execute``, ``input_types``, ``output_types`` (les trois
     attributs requis par le contrat ``StepExecutor``) ET n'a pas
-    le marker legacy ``is_pipeline``.
+    le marker ``is_pipeline``.
     """
     from picarones.adapters.ocr.base import BaseOCRAdapter
     return isinstance(engine, BaseOCRAdapter)
@@ -517,7 +497,7 @@ def _is_canonical_adapter(engine: Any) -> bool:
 def engine_to_pipeline_spec(engine: Any) -> PipelineSpec:
     """Convertit un engine en ``PipelineSpec`` rewrite.
 
-    Deux cas (Sprint H.2.c — le path legacy ``BaseOCREngine`` a
+    Deux cas (le path historique ``BaseOCREngine`` a
     été retiré) :
 
     - **BaseOCRAdapter** (canonique) : spec mono-step consommant
@@ -546,7 +526,7 @@ def engine_to_pipeline_spec(engine: Any) -> PipelineSpec:
     raise PicaronesError(
         f"Type d'engine non supporté : {type(engine).__name__}.  "
         "Attendu : ``BaseOCRAdapter`` ou ``OCRLLMPipelineConfig``.  "
-        "Le support legacy ``BaseOCREngine`` / ``OCRLLMPipeline`` "
+        "Le support historique ``BaseOCREngine`` / ``OCRLLMPipeline`` "
         "a été retiré au sprint H.2.c.",
     )
 
@@ -584,7 +564,7 @@ def _canonical_adapter_to_spec(adapter: Any) -> PipelineSpec:
     )
 
 
-# Sprint H.2.c — ``_ocr_only_to_spec`` (legacy ``BaseOCREngine`` →
+# ``_ocr_only_to_spec`` (mappait ``BaseOCREngine`` →
 # spec mono-step en dur IMAGE → RAW_TEXT) supprimé.  Le path
 # canonique ``_canonical_adapter_to_spec`` couvre tous les cas en
 # utilisant les ``input_types``/``output_types`` déclarés par
@@ -592,10 +572,10 @@ def _canonical_adapter_to_spec(adapter: Any) -> PipelineSpec:
 
 
 def _ocr_llm_pipeline_to_spec(pipeline: Any) -> PipelineSpec:
-    """Spec composée pour un ``OCRLLMPipeline`` legacy ou un
+    """Spec composée pour un ``OCRLLMPipelineConfig`` ou un
     ``OCRLLMPipelineConfig`` canonique (3 modes).
 
-    Tolère ``pipeline.mode`` en enum (legacy ``PipelineMode.TEXT_ONLY``)
+    Tolère ``pipeline.mode`` en enum (``PipelineMode.TEXT_ONLY``)
     ou en string (canonique ``"text_only"``).
     """
     mode_attr = pipeline.mode
@@ -634,7 +614,7 @@ def build_adapter_resolver(
     """Construit un adapter resolver pour ``PipelineExecutor``.
 
     Parcourt les engines fournis et associe leur ``name`` à un
-    ``StepExecutor`` valide (Sprint H.2.c — le path legacy
+    ``StepExecutor`` valide (le path historique
     ``LegacyOCREngineExecutor`` a été retiré) :
 
     - **BaseOCRAdapter** : enregistré directement (déjà ``StepExecutor``).
@@ -700,7 +680,7 @@ def build_adapter_resolver(
     def resolver(name: str) -> Any:
         if name not in name_to_executor:
             raise KeyError(
-                f"adapter inconnu pour le resolver legacy : {name!r}.  "
+                f"adapter inconnu pour le resolver : {name!r}.  "
                 f"Enregistrés : {sorted(name_to_executor.keys())!r}."
             )
         return name_to_executor[name]
@@ -856,17 +836,17 @@ def run_benchmark_via_service(
     partial_dir: str | Path | None = None,
     entity_extractor: Callable[[str], list[dict]] | None = None,
     profile: str = "standard",
-    # ---- Paramètres legacy non encore portés vers BenchmarkService ----
+    # ---- Paramètres non encore portés vers BenchmarkService ----
     # Sprint D.2 du plan v2.0 — features marginales restantes :
     # ``max_workers`` (le rewrite a son propre max_in_flight via
     # ``CorpusRunner``).
     max_workers: int = 4,  # noqa: ARG001
 ) -> Any:
-    """Adapter de compatibilité ``run_benchmark`` legacy →
+    """Façade ``run_benchmark`` →
     ``BenchmarkService`` rewrite.
 
     Présente la signature historique de
-    ``picarones.measurements.runner.run_benchmark`` mais s'appuie
+    ``picarones.app.services.benchmark_runner.run_benchmark`` mais s'appuie
     en interne sur le rewrite (``CorpusSpec``, ``PipelineSpec``,
     ``PipelineExecutor``, ``BenchmarkService``).  Pivot du Sprint D
     du plan v2.0.
@@ -880,7 +860,7 @@ def run_benchmark_via_service(
     - Un ``Corpus`` avec image_path + ground_truth (TEXT) par doc.
     - Métriques CER/WER calculées via ``compute_metrics`` sur les
       hypothèses extraites des artefacts produits.
-    - Conversion en ``BenchmarkResult`` legacy compatible avec les
+    - Conversion en ``BenchmarkResult`` compatible avec les
       consommateurs historiques (rapport HTML, narrative engine).
 
     Périmètre reporté (D.2)
@@ -931,16 +911,16 @@ def run_benchmark_via_service(
     Parameters
     ----------
     corpus:
-        Corpus legacy.
+        Corpus.
     engines:
-        Liste d'engines/pipelines legacy à benchmarker.
+        Liste d'engines/pipelines à benchmarker.
     char_exclude:
         Filtre passé à ``compute_metrics``.
     normalization_profile:
         Profil de normalisation passé à ``compute_metrics``.
     output_json:
         Si fourni, le ``BenchmarkResult`` est sérialisé en JSON
-        à ce chemin (via la sérialisation legacy).
+        à ce chemin (sérialisation BenchmarkResult).
     code_version:
         Version du code injectée dans le ``RunContext`` /
         ``RunManifest``.  Défaut : ``picarones.__version__``.
@@ -950,7 +930,7 @@ def run_benchmark_via_service(
     Returns
     -------
     BenchmarkResult
-        Format legacy compatible.
+        Format compatible avec les consommateurs historiques.
 
     Raises
     ------
@@ -1003,7 +983,7 @@ def run_benchmark_via_service(
 
     # D.2.e : NER attach post-process.  Idempotent — re-calcule à
     # chaque run même en mode resume (les ner_metrics ne sont pas
-    # persistées dans le partial NDJSON, cohérent avec le legacy
+    # persistées dans le partial NDJSON
     # qui calculait NER après le doc loop).
     if entity_extractor is not None:
         _attach_ner_metrics_to_benchmark(
@@ -1084,8 +1064,8 @@ def _aggregate_ner_metrics(doc_results: list) -> dict | None:
     compteurs totaux d'hallucinations et d'entités manquées.
 
     Equivalent fonctionnel de
-    ``picarones.measurements.runner.ner_attach._aggregate_ner``
-    (legacy supprimé en D.6.b).
+    ``picarones.app.services.benchmark_runner.ner_attach._aggregate_ner``
+    (le runner historique a été supprimé en D.6.b).
     """
     relevant = [
         dr for dr in doc_results if dr.ner_metrics is not None
@@ -1246,7 +1226,7 @@ def _run_benchmark_with_partial(
 
     for engine in engines:
         # Vérifier la cancellation entre engines (matche la
-        # sémantique legacy : un Ctrl+C arrête après l'engine en
+        # sémantique : un Ctrl+C arrête après l'engine en
         # cours, conserve les partials, ne démarre pas le suivant).
         if cancel_event is not None and getattr(
             cancel_event, "is_set", lambda: False,
@@ -1377,7 +1357,7 @@ def _execute_via_benchmark_service(
     Vues passées en liste vide — les métriques sont calculées
     côté converter D.1.c via ``compute_metrics`` directement sur
     les hypothèses extraites des artefacts.  Pattern simple,
-    cohérent avec le legacy qui calcule aussi les métriques au
+    cohérent : on calcule aussi les métriques au
     moment du benchmark (pas via ``EvaluationView``).
     """
     from picarones.app.services.benchmark_service import BenchmarkService
@@ -1399,7 +1379,7 @@ def _execute_via_benchmark_service(
 
     # ViewExecutor minimal : registres vides.
     # Pas de calcul de ``ViewResult`` ici — le converter D.1.c
-    # calcule les métriques côté legacy via ``compute_metrics``
+    # calcule les métriques via ``compute_metrics``
     # directement sur les hypothèses extraites des artefacts.
     view_executor = DefaultEvaluationViewExecutor.from_registries(
         metric_registry=MetricRegistry(),
@@ -1439,7 +1419,7 @@ def _execute_via_benchmark_service(
     # Sprint D.2.a : le hook ``progress_callback`` est appelé ici —
     # ``context_factory`` est invoqué une fois par (doc, pipeline)
     # AVANT l'exécution effective, ce qui correspond à la sémantique
-    # legacy de ``progress_callback(engine_name, doc_idx, doc_id)``.
+    # de ``progress_callback(engine_name, doc_idx, doc_id)``.
     import threading
 
     counter_lock = threading.Lock()
@@ -1452,7 +1432,7 @@ def _execute_via_benchmark_service(
             with counter_lock:
                 idx = counter_state["doc_idx"]
                 counter_state["doc_idx"] = idx + 1
-            # Sémantique legacy : ``progress_callback(engine.name, ...)``
+            # Sémantique : ``progress_callback(engine.name, ...)``
             # plutôt que le nom de la pipeline (qui inclut le préfixe
             # ``ocr_only_``).  Le mapping est fourni par le caller.
             engine_name = (
@@ -1463,7 +1443,7 @@ def _execute_via_benchmark_service(
             try:
                 progress_callback(engine_name, idx, doc.id)
             except Exception:  # noqa: BLE001
-                # Le legacy ignore silencieusement les erreurs du
+                # On ignore silencieusement les erreurs du
                 # callback (un caller qui crashe ne doit pas faire
                 # tomber le benchmark).  Même contrat ici.
                 pass
@@ -1502,7 +1482,7 @@ def _execute_via_benchmark_service(
 def _persist_benchmark_result_json(
     benchmark_result: Any, output_path: Path,
 ) -> None:
-    """Sérialise un ``BenchmarkResult`` legacy en JSON.
+    """Sérialise un ``BenchmarkResult`` en JSON.
 
     Utilise la méthode ``to_json``/``compact``/``asdict`` selon la
     surface disponible.  Ce helper duplique la logique de
@@ -1512,7 +1492,7 @@ def _persist_benchmark_result_json(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     # ``BenchmarkResult`` est un dataclass — dataclasses.asdict
     # sérialise récursivement.  Le format n'est pas forcément
-    # identique octet pour octet à la sortie legacy, mais reste
+    # identique octet pour octet à la sortie historique, mais reste
     # compatible avec les consommateurs (rapport, narrative).
     import dataclasses
     import json

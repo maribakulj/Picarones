@@ -25,7 +25,7 @@ abstraction ABC.
 Cibles à venir
 --------------
 - S37 : déplacement de ``picarones.web.jobs`` (SQLite job store).
-- Post-livraison : ``picarones.measurements.history`` (SQLite
+- Post-livraison : ``picarones.evaluation.metrics.history`` (SQLite
   history) et stores distribués (S3, GCS, …).
 """
 

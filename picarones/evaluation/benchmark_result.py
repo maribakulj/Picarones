@@ -1,10 +1,5 @@
 """Modèle de données des résultats et export JSON (Cercle 2).
 
-Phase 4-ter — module relocalisé depuis ``picarones.core.results``
-vers le Cercle 2 (``evaluation``) où il appartient sémantiquement.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Hiérarchie
 ----------
 BenchmarkResult

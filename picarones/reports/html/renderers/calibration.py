@@ -1,11 +1,5 @@
 """Rendu HTML server-side de la section calibration (Sprint 43).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.calibration_render`` vers
-``picarones.reports.html.renderers.calibration``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe des Sprints 39+42 : la couche de calcul (ECE, MCE,
 reliability_diagram) et le câblage runner sont en place ; ce module
 produit les blocs HTML qui rendent ces données visibles dans le

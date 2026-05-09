@@ -28,7 +28,7 @@ On ne reconstruit pas Friedman/Nemenyi (déjà dans Sprint 18) ;
 on agrège ici les données nécessaires pour qu'un
 tests statistique externe puisse les consommer.  Le rapport
 existant reste libre de brancher
-``picarones.measurements.statistics.friedman_test`` sur la sortie de
+``picarones.evaluation.statistics.friedman_test`` sur la sortie de
 ce module.
 
 Sortie

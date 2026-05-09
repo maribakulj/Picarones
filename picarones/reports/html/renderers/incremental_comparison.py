@@ -1,11 +1,5 @@
 """Rendu HTML « Comparaison contrôlée » — Sprint 96 (B.5).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.incremental_comparison_render`` vers
-``picarones.reports.html.renderers.incremental_comparison``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Suite directe ``picarones/core/incremental_comparison.py``.
 Pattern identique aux autres rendus : server-side, pas de JS,
 anti-injection systématique.

@@ -33,13 +33,12 @@ from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from picarones.evaluation.corpus import Corpus, Document
-    # ``BaseOCREngine`` (legacy ``adapters/legacy_engines/``) ne peut
-    # pas être importé statiquement depuis la couche ``evaluation/``
-    # (test_layer_imports_are_legal).  L'annotation utilise donc
-    # ``Any`` ; le check ``isinstance`` est fait dynamiquement par
-    # ``importlib`` si besoin (cas réel : duck typing suffit, l'objet
-    # passé doit juste avoir ``.run(image_path) -> EngineResult``).
-    BaseOCREngine = Any  # type: ignore[misc,assignment]
+    # Le moteur OCR passé à ``RobustnessAnalyzer`` n'est pas
+    # importé statiquement depuis la couche ``evaluation/`` (la
+    # règle inward-only interdit les imports vers ``adapters/``).
+    # L'annotation utilise donc ``Any`` ; le duck typing suffit :
+    # l'objet doit exposer ``.run(image_path) -> EngineResult``.
+    OCREngine = Any  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -413,7 +412,8 @@ class RobustnessAnalyzer:
     Parameters
     ----------
     engines:
-        Un ou plusieurs moteurs OCR (``BaseOCREngine``).
+        Un ou plusieurs adapters OCR (``BaseOCRAdapter`` — duck typing
+        suffit : l'objet doit exposer ``.run(image_path)``).
     degradation_types:
         Liste des types de dégradation à tester.
         Par défaut : tous (``"noise"``, ``"blur"``, ``"rotation"``,
@@ -425,16 +425,16 @@ class RobustnessAnalyzer:
 
     Examples
     --------
-    >>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+    >>> from picarones.adapters.ocr.tesseract import TesseractAdapter
     >>> from picarones.evaluation.metrics.robustness import RobustnessAnalyzer
-    >>> engine = TesseractEngine(config={"lang": "fra"})
+    >>> engine = TesseractAdapter(config={"lang": "fra"})
     >>> analyzer = RobustnessAnalyzer([engine], degradation_types=["noise", "blur"])
     >>> report = analyzer.analyze(corpus)
     """
 
     def __init__(
         self,
-        engines: "list[BaseOCREngine]",
+        engines: "list[OCREngine]",
         degradation_types: Optional[list[str]] = None,
         cer_threshold: float = 0.20,
         custom_levels: Optional[dict[str, list]] = None,

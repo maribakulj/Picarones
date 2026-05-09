@@ -1,11 +1,5 @@
 """Helpers de rendu mutualisés.
 
-Phase 5 — module relocalisé depuis
-``picarones.report.render_helpers`` vers
-``picarones.reports._helpers.render_helpers``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Centralise les fonctions de coloration et le builder de grille SVG qui
 étaient auparavant dupliqués dans chaque ``*_render.py``. Avant cette
 consolidation, le projet comptait 25 versions différentes de

@@ -21,7 +21,7 @@ résultats »* :
 
 Sources de données automatiques
 -------------------------------
-- *Leviers* : :func:`picarones.measurements.levers.detect_levers` est appelée
+- *Leviers* : :func:`picarones.evaluation.metrics.levers.detect_levers` est appelée
   sur ``report_data``. Couvre :
   ``dominant_recoverable_class``, ``pareto_concentration``,
   ``complementarity_observation``, ``lexical_modernization_observation``,
@@ -32,10 +32,10 @@ Sources de données opt-in (via ``opts``)
 - ``opts["benchmark"]``        : ``BenchmarkResult`` non compacté (worst lines).
 - ``opts["image_qualities"]``  : liste de dicts image_quality par doc.
 - ``opts["baseline_data"]``    : sortie de
-  :func:`picarones.measurements.baseline_comparison.compute_corpus_difficulty_percentile`.
+  :func:`picarones.evaluation.metrics.baseline_comparison.compute_corpus_difficulty_percentile`.
 - ``opts["longitudinal"]``     : map ``{engine: longitudinal_data}``.
 - ``opts["stability"]``        : sortie de
-  :func:`picarones.measurements.reliability.compute_multirun_stability`.
+  :func:`picarones.evaluation.metrics.reliability.compute_multirun_stability`.
 """
 
 from __future__ import annotations
@@ -76,16 +76,16 @@ def build_diagnostics_view_html(
         depuis les ``EngineReport.document_results`` avant compact).
     baseline_data:
         Sortie de
-        :func:`picarones.measurements.baseline_comparison.compute_corpus_difficulty_percentile`.
+        :func:`picarones.evaluation.metrics.baseline_comparison.compute_corpus_difficulty_percentile`.
         Active l'encart « ce corpus est-il habituel ? ».
     longitudinal:
         Sortie de
-        :func:`picarones.measurements.longitudinal.compute_corpus_longitudinal`.
+        :func:`picarones.evaluation.metrics.longitudinal.compute_corpus_longitudinal`.
         Active la table d'évolution.
     stability:
         Liste enrichie de ``{engine_name, ...stability_data}`` par
         moteur, sortie de
-        :func:`picarones.measurements.reliability.compute_multirun_stability`.
+        :func:`picarones.evaluation.metrics.reliability.compute_multirun_stability`.
         Active la table de stabilité multi-runs.
     history_values:
         Valeurs historiques de difficulté du corpus, utilisées pour

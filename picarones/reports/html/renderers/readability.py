@@ -1,11 +1,5 @@
 """Rendu HTML « Lisibilité (delta Flesch) » — Sprint 87 (A.II.2).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.readability_render`` vers
-``picarones.reports.html.renderers.readability``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/readability.py`` (Sprint 52) +
 câblage runner Sprint 87.
 

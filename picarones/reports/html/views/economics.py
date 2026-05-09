@@ -31,7 +31,7 @@ def _estimate_engine_throughput_inputs(
     engine_reports: list,
 ) -> list[dict]:
     """Construit les entrées attendues par
-    :func:`picarones.measurements.throughput.aggregate_effective_throughput`
+    :func:`picarones.evaluation.metrics.throughput.aggregate_effective_throughput`
     à partir des ``EngineReport`` du benchmark.
 
     Pour chaque moteur :

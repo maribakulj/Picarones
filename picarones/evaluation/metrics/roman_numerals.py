@@ -1,11 +1,5 @@
 """Numéraux romains — Sprint 60.
 
-Phase 5.C.batch7 — module relocalisé depuis
-``picarones.measurements.roman_numerals`` vers
-``picarones.evaluation.metrics.roman_numerals``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Sprint 60 — Étape 3 / extension philologique transversale du plan
 d'évolution 2026.
 

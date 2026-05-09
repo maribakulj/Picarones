@@ -1,10 +1,5 @@
 """Snapshots de reproductibilité pour le rapport HTML (Sprint 27).
 
-Phase 5.E — module relocalisé depuis ``picarones.report.snapshot``
-vers ``picarones.reports.html.snapshot``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Le rapport HTML auto-contenu doit pouvoir être *rejoué* sans avoir
 accès au code source du moment où il a été généré : un lecteur en
 2026 doit pouvoir comprendre exactement quelle table de prix, quelle
@@ -71,7 +66,7 @@ def pricing_snapshot(pricing_path: Optional[Path] = None) -> dict[str, Any]:
     """Retourne le YAML brut + dict parsé de la table de prix utilisée.
 
     Si ``pricing_path`` n'est pas fourni, utilise le chemin par défaut
-    de ``picarones.measurements.pricing._DEFAULT_PRICING_PATH``.
+    de ``picarones.evaluation.metrics.pricing._DEFAULT_PRICING_PATH``.
     """
     if pricing_path is None:
         try:

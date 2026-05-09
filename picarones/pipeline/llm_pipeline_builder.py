@@ -1,14 +1,13 @@
-"""Builder de ``PipelineSpec`` pour les chaînes OCR + LLM (Phase 6 volet 2).
+"""Builder de ``PipelineSpec`` pour les chaînes OCR + LLM.
 
-Ce module fournit la convergence entre les 3 modes historiques de
-``picarones.pipelines.base.OCRLLMPipeline`` (legacy) et la
-``PipelineSpec`` canonique exécutable par ``PipelineExecutor``.
+Construit une ``PipelineSpec`` exécutable par ``PipelineExecutor``
+à partir d'un mode + des noms d'adapters.
 
-Mapping mode legacy → spec canonique
-------------------------------------
+Modes
+-----
 
 ================ ============= =========== ================================
-Mode legacy      Initial input Steps       Output final
+Mode             Initial input Steps       Output final
 ================ ============= =========== ================================
 ``text_only``    IMAGE         OCR + LLM   ``CORRECTED_TEXT``
 ``text_and_image`` IMAGE       OCR + LLM   ``CORRECTED_TEXT`` (LLM voit aussi IMAGE)
@@ -26,22 +25,7 @@ L'adapter OCR amont (Tesseract, Pero, Mistral OCR, Google Vision,
 Azure DI, ou ``precomputed`` quand le corpus porte déjà l'OCR) est
 quelconque tant qu'il déclare ``output_types ⊇ {RAW_TEXT}``.
 
-Exemple de migration
---------------------
-Code legacy ::
-
-    from picarones.adapters.legacy_pipelines import OCRLLMPipeline, PipelineMode
-    from picarones.adapters.legacy_engines.tesseract import TesseractEngine
-    from picarones.adapters.llm import OpenAIAdapter
-
-    pipeline = OCRLLMPipeline(
-        ocr_engine=TesseractEngine({"lang": "fra"}),
-        llm_adapter=OpenAIAdapter(model="gpt-4o"),
-        mode=PipelineMode.TEXT_ONLY,
-    )
-    result = pipeline.run("scan.jpg")  # → EngineResult
-
-Code canonique équivalent ::
+Usage ::
 
     from picarones.pipeline import PipelineExecutor
     from picarones.pipeline.llm_pipeline_builder import (
@@ -119,10 +103,10 @@ def make_ocr_llm_pipeline_spec(
         Format scalaire (``str``, ``int``, ``float``, ``bool``).
     llm_params:
         Paramètres dynamiques passés au step LLM/VLM au runtime.
-        Cas typique (Sprint B du plan v2.0) :
+        Cas typique :
         ``{"prompt_template": "Corrige : {ocr_output}"}`` permet à
-        un caller de spécifier un template legacy ou rewrite sans
-        toucher à la config de l'adapter.
+        un caller de spécifier un template ad-hoc sans toucher à la
+        config de l'adapter.
 
     Returns
     -------

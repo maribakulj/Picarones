@@ -76,8 +76,6 @@ from picarones.pipeline import (
 # ──────────────────────────────────────────────────────────────────────
 
 
-
-
 @dataclass(frozen=True)
 class OrchestrationResult:
     """Tout ce qu'un caller (CLI, HTTP, script) doit savoir d'un run.

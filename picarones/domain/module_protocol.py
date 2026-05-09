@@ -20,17 +20,13 @@ Usage minimal ::
             txt = inputs[ArtifactType.RAW_TEXT]
             return {ArtifactType.RAW_TEXT: txt.upper()}
 
-Ce module canonique (Phase 4-bis du retrait du legacy) est le
-remplacement de ``picarones.core.modules.BaseModule``.  Le shim
-legacy ``core/modules.py`` le ré-exporte pour la rétrocompat des
-~25 callers (engines, measurements, modules officiels, cli, web,
-report) qui le consomment.
-
-Le rewrite a aussi des protocols spécialisés
-(``BaseOCRAdapter``, ``BaseLLMAdapter``, ``BaseVLMAdapter`` dans
-``picarones.adapters``) qui sont des cas particuliers de
-``BaseModule`` typés pour leur domaine.  ``BaseModule`` reste le
-contrat **générique** pour les modules contribués par des tiers.
+Protocols spécialisés
+---------------------
+Les contrats de domaine — ``BaseOCRAdapter``, ``BaseLLMAdapter``,
+``BaseVLMAdapter`` (dans ``picarones.adapters``) — sont des cas
+particuliers de ``BaseModule`` typés pour leur usage.
+``BaseModule`` reste le contrat **générique** pour les modules
+contribués par des tiers.
 """
 
 from __future__ import annotations

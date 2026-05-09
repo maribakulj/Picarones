@@ -1,16 +1,11 @@
-"""Modèle de données des métriques OCR/HTR (Cercle 2).
-
-Phase 4-ter — module relocalisé depuis ``picarones.core.metrics``
-vers le Cercle 2 (``evaluation``) où il appartient sémantiquement.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
+"""Modèle de données des métriques OCR/HTR (couche 3 — evaluation).
 
 Abstractions pures pour représenter les métriques calculées sur
 une paire (référence, hypothèse) — pas de dépendance externe (pas
 de jiwer, pas de scipy).
 
 Le calcul effectif via jiwer vit dans
-:mod:`picarones.measurements.metrics` (``compute_metrics``).
+:mod:`picarones.evaluation.metrics.text_metrics` (``compute_metrics``).
 L'agrégation statistique vit ici car elle n'utilise que la stdlib
 (``statistics``).
 """

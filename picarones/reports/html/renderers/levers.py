@@ -1,11 +1,5 @@
 """Rendu HTML de la section « Leviers d'amélioration » — Sprint 82.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.levers_render`` vers
-``picarones.reports.html.renderers.levers``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 A.I.9 du plan d'évolution 2026.
 
 Suite directe ``picarones/core/levers.py``.  Pattern identique aux

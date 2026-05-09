@@ -1,12 +1,4 @@
-"""``BaseOCRAdapter`` — contrat natif du nouveau monde pour un adapter OCR.
-
-Sprint A14-S26 du rewrite ciblé.
-
-Ce module définit le contrat **propre** auquel un adapter OCR du
-nouveau monde doit se conformer pour être utilisable comme step
-d'une pipeline ``picarones.pipeline``.  Pas hérité du legacy
-``picarones.engines.base.BaseOCREngine`` — c'est un nouveau contrat,
-sans dette technique, exprimé en termes du nouveau ``ArtifactType``.
+"""``BaseOCRAdapter`` — contrat pour un adapter OCR (couche 5).
 
 Contrat
 -------
@@ -22,23 +14,9 @@ Un adapter OCR :
 - Implémente
   ``execute(inputs, params, context) -> dict[ArtifactType, Artifact]``.
 
-Le ``Artifact`` retourné porte une ``uri`` filesystem — c'est la
-convention du nouveau monde pour permettre au ``payload_loader`` de
-le lire ultérieurement (Sprint S25 — la projection a un payload
-direct, mais les artefacts produits par les adapters sont stockés
-sur disque pour traçabilité et streaming).
-
-Différences avec le legacy
---------------------------
-- ``ArtifactType.RAW_TEXT`` (10 valeurs) au lieu de
-  ``ArtifactType.TEXT`` (6 valeurs legacy).
-- Pas de ``run(image_path)`` historique — un seul point d'entrée
-  ``execute()``.
-- Pas de wrapper ``EngineResult`` — les erreurs lèvent directement,
-  le ``PipelineExecutor`` les capture en step en échec.
-- Pas de ``_run_ocr`` / ``_run_with_native`` / ``_extract_raw_confidences``
-  — les confidences (S42 legacy) sont reportées à un sprint dédié
-  où l'on définira un ``ConfidenceArtifact`` typé.
+Le ``Artifact`` retourné porte une ``uri`` filesystem — convention
+qui permet au ``payload_loader`` de le lire ultérieurement et
+garantit la traçabilité et le streaming.
 
 Anti-sur-ingénierie
 -------------------

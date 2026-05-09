@@ -1,9 +1,5 @@
 """Labels i18n pour le rapport HTML et l'interface Picarones.
 
-Phase 5.E — module relocalisé depuis ``picarones.i18n`` vers
-``picarones.reports.i18n``.  Le chemin legacy reste disponible
-via un shim avec ``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Langues supportées
 ------------------
 - ``"fr"`` : français (défaut)

@@ -1,10 +1,5 @@
 """``MistralOCRAdapter`` natif — Sprint A14-S32.
-
-Migration native du legacy ``picarones.engines.mistral_ocr.MistralOCREngine``
-vers le contrat ``BaseOCRAdapter`` (S26).  **Pas un shim** : la classe
 implémente directement le contrat du nouveau monde.
-
-Le legacy ``MistralOCREngine`` reste en place jusqu'au S46.
 
 Cas d'usage BnF
 ---------------
@@ -47,8 +42,7 @@ Comportement
 Anti-sur-ingénierie
 -------------------
 - Pas de retry / backoff (le caller wrappe si besoin).
-- Pas d'extraction de confidences (legacy S49 — reportées au
-  sprint ``ConfidenceArtifact``).
+- Pas d'extraction de confidences (à ajouter quand un caller en aura besoin).
 - Pas de support multi-page (l'image est traitée comme une seule
   page d'entrée — Mistral OCR retourne une liste de pages dont on
   concatène les markdowns).

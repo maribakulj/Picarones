@@ -15,7 +15,6 @@ from picarones.domain.facts import Fact, FactImportance, FactType
 from picarones.reports.narrative.registry import register_detector
 
 
-
 @register_detector(
     FactType.PARETO_ALTERNATIVE,
     priority=90,

@@ -32,7 +32,7 @@ intuitive :
 
 Dépendances
 -----------
-S'appuie strictement sur ``picarones.measurements.inter_engine`` (Sprint
+S'appuie strictement sur ``picarones.evaluation.metrics.inter_engine`` (Sprint
 35) — pas de double calcul, pas de logique nouvelle de
 divergence.
 """

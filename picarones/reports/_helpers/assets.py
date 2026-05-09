@@ -1,10 +1,5 @@
 """Chargement et préparation des assets du rapport HTML.
 
-Phase 5 — module relocalisé depuis ``picarones.report.assets`` vers
-``picarones.reports._helpers.assets``.  Le chemin legacy reste
-disponible via un shim avec ``DeprecationWarning`` ; suppression
-prévue en 2.0.
-
 Ce module concentre tout ce qui touche aux ressources binaires
 embarquées ou référencées par le rapport :
 

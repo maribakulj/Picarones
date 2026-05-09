@@ -1,16 +1,11 @@
 """Registre typé des hooks de métriques document-level et corpus-level.
 
-Phase 4-ter — module relocalisé depuis ``picarones.core.metric_hooks``
-vers le Cercle 2 (``evaluation``) où il appartient sémantiquement.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Pourquoi ce module
 ------------------
 Avant le « chantier 2 » du plan d'évolution post-Sprint 97,
-``picarones.measurements.runner._compute_document_result``
+``picarones.app.services.benchmark_runner._compute_document_result``
 contenait **11 imports tardifs codés en dur** vers
-``picarones.measurements.confusion``, ``char_scores``, ``taxonomy``, ``structure``,
+``picarones.evaluation.metrics.confusion``, ``char_scores``, ``taxonomy``, ``structure``,
 ``image_quality``, ``line_metrics``, ``hallucination``,
 ``philological_hooks``, ``searchability_hooks``,
 ``numerical_sequences_hooks``, ``readability_hooks`` — chacun enrobé

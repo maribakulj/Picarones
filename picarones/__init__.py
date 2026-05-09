@@ -2,8 +2,8 @@
 
 Licence Apache 2.0.
 
-API publique du Cercle 1 (abstractions stables) ré-exportée ici pour
-permettre :
+API publique des couches 1 & 3 (abstractions stables) ré-exportée
+ici pour permettre :
 
 >>> from picarones import Corpus, Document, BaseModule, ArtifactType
 >>> from picarones import BenchmarkResult, EngineReport, DocumentResult
@@ -16,7 +16,7 @@ utiliser les sous-packages explicites :
 >>> from picarones.adapters.ocr.tesseract import TesseractAdapter
 
 Voir ``docs/explanation/architecture.md`` pour la cartographie complète des
-3 cercles, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
+8 couches, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ __author__ = "Picarones contributors"
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# API publique — Cercle 1 uniquement
+# API publique — couches stables (domain + evaluation)
 # ──────────────────────────────────────────────────────────────────────────
 
 from picarones.evaluation.corpus import (
@@ -75,12 +75,10 @@ from picarones.evaluation.metric_registry import (
     select_metrics,
 )
 
-# Sprint A3 — trigger d'enregistrement du registre typé (Sprint 34).
-# L'import de ``picarones.measurements`` provoque l'exécution des
-# décorateurs ``@register_metric`` sur ``cer``, ``wer``, ``mer``,
-# ``wil`` + ~15 métriques philologiques + reading order + NER + ALTO.
-# Ce trigger remplace l'ancien import croisé Cercle 1 → Cercle 2 dans
-# ``core/pipeline.py`` (violation B-1/B-2 du même esprit).
+# Trigger d'enregistrement du registre typé : l'import de
+# ``picarones.evaluation.metrics`` provoque l'exécution des décorateurs
+# ``@register_metric`` sur ``cer``, ``wer``, ``mer``, ``wil`` + ~15
+# métriques philologiques + reading order + NER + ALTO.
 import picarones.evaluation.metrics as _trigger_metric_registration  # noqa: F401, E402
 
 __all__ = [

@@ -1,11 +1,5 @@
 """Rendu HTML de la vue « Worst lines globale » — Sprint 72.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.worst_lines_render`` vers
-``picarones.reports.html.renderers.worst_lines``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe de ``picarones/core/worst_lines.py`` (extraction
 transversale).  Pattern identique aux Sprints 41/43/62/67 : rendu
 **server-side**, pas de JavaScript, anti-injection systématique

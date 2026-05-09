@@ -1,11 +1,5 @@
 """Rendu HTML du diagramme miroir taxonomique — Sprint 77.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.taxonomy_comparison_render`` vers
-``picarones.reports.html.renderers.taxonomy_comparison``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 A.I.4 chantier 3 du plan d'évolution 2026.
 
 Suite directe ``picarones/core/taxonomy_comparison.py``.  Pattern

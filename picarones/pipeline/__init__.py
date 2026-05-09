@@ -45,7 +45,7 @@ Modules livrés au S8
 Cible du Sprint S12
 -------------------
 Équivalence numérique CER/WER avec l'ancien
-``measurements.runner`` à 1e-9 près sur les fixtures.
+``BenchmarkService`` à 1e-9 près sur les fixtures.
 """
 
 from __future__ import annotations

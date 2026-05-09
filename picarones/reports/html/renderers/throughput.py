@@ -1,11 +1,5 @@
 """Rendu HTML « Throughput effectif » — Sprint 91 (A.II.6).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.throughput_render`` vers
-``picarones.reports.html.renderers.throughput``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/throughput.py``.  Pattern
 identique aux autres rendus : server-side, pas de JS, anti-
 injection systématique.

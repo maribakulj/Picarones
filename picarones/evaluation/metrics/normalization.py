@@ -6,7 +6,7 @@ rewrite ciblé (cf. ``docs/roadmap/rewrite-2026.md``).
 
 Ce fichier est conservé comme re-export pour ne **rien casser**
 chez les ~50 consommateurs qui font ``from
-picarones.measurements.normalization import X``.  Les symboles
+picarones.formats.text.normalization import X``.  Les symboles
 publics ET privés utilisés downstream (``_parse_exclude_chars``,
 ``_apply_diplomatic_table``) sont ré-exposés explicitement.
 

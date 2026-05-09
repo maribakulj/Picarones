@@ -1,11 +1,5 @@
 """Rendu HTML de la heatmap class × position — Sprint 76.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.taxonomy_intra_doc_render`` vers
-``picarones.reports.html.renderers.taxonomy_intra_doc``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 A.I.4 chantier 2 du plan d'évolution 2026.
 
 Suite directe ``picarones/core/taxonomy_intra_doc.py``.  Pattern

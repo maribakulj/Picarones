@@ -1,9 +1,5 @@
 """``AzureDocIntelAdapter`` natif — Sprint A14-S34.
-
-Migration native du legacy ``picarones.engines.azure_doc_intel`` vers
 ``BaseOCRAdapter`` (S26).  **Pas un shim**.
-
-Le legacy reste en place jusqu'au S46.
 
 Cas d'usage BnF
 ---------------
@@ -52,7 +48,7 @@ Comportement
 
 Anti-sur-ingénierie
 -------------------
-- Pas d'extraction de confidences (legacy S51 — reportée).
+- Pas d'extraction de confidences (à ajouter quand un caller en aura besoin).
 - Pas de support multi-langue dans une même requête.
 - Pas de retry au-delà du polling (qui est un retry implicite).
 """

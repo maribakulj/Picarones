@@ -1,10 +1,5 @@
 """``GoogleVisionAdapter`` natif — Sprint A14-S33.
 
-Migration native du legacy ``picarones.engines.google_vision.GoogleVisionEngine``
-vers le contrat ``BaseOCRAdapter`` (S26).  **Pas un shim**.
-
-Le legacy reste en place jusqu'au S46.
-
 Cas d'usage BnF
 ---------------
 Google Cloud Vision propose deux modes d'OCR :
@@ -36,7 +31,7 @@ disponible.
 
 Anti-sur-ingénierie
 -------------------
-- Pas d'extraction de confidences (legacy S50 — reportée).
+- Pas d'extraction de confidences (à ajouter quand un caller en aura besoin).
 - Pas de pré-validation du JSON service account — le SDK le fait.
 - Pas de support batch — un appel par image.
 """

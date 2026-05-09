@@ -1,11 +1,5 @@
 """Rendu HTML de la heatmap de co-occurrence taxonomique — Sprint 75.
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.taxonomy_cooccurrence_render`` vers
-``picarones.reports.html.renderers.taxonomy_cooccurrence``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 A.I.4 chantier 1 du plan d'évolution 2026.
 
 Suite directe ``picarones/core/taxonomy_cooccurrence.py``.  Pattern

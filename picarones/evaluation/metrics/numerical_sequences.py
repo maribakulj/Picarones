@@ -1,11 +1,5 @@
 """Précision sur séquences numériques — Sprint 85 (A.II.5b).
 
-Phase 5.C.batch7 — module relocalisé depuis
-``picarones.measurements.numerical_sequences`` vers
-``picarones.evaluation.metrics.numerical_sequences``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Sprint 85 — A.II.5b du plan d'évolution 2026.
 
 Pourquoi ce module
@@ -23,7 +17,7 @@ Catégories couvertes
    (le module détecte les **années** sur 4 chiffres dans la
    plage [1000-2099]).
 2. **Numéraux romains** : ``MDCLXVIII``, ``XIV``, ``Tome IV``.
-   Réutilise ``picarones.measurements.roman_numerals`` (Sprint 60).
+   Réutilise ``picarones.evaluation.metrics.roman_numerals`` (Sprint 60).
 3. **Foliotation** : ``f. 12``, ``f. 12r``, ``fol. 24v``,
    ``p. 5``, ``pp. 12-15``, ``n° 42``.
 4. **Montants** : ``12 livres``, ``5 sols``, ``8 deniers``,

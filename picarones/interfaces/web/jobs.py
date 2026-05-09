@@ -12,7 +12,7 @@ Avant le Sprint 26, l'état des benchmarks vivait uniquement en mémoire dans
    au-delà de ce que ``BenchmarkJob.events`` portait en RAM.
 
 Le Sprint 26 adresse les trois en persistant les jobs et leurs événements
-dans une base SQLite locale (cohérent avec ``picarones.measurements.history``,
+dans une base SQLite locale (cohérent avec ``picarones.evaluation.metrics.history``,
 qui utilise déjà SQLite). La base joue trois rôles :
 
 - **Source de vérité** pour le statut/progression d'un job — ``BenchmarkJob``

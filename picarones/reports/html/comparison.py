@@ -1,12 +1,7 @@
 """Comparaison de deux runs de benchmark (Sprint 28).
 
-Phase 5.E — module relocalisé depuis ``picarones.report.comparison``
-vers ``picarones.reports.html.comparison``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Le Sprint 8 a livré la persistance longitudinale via SQLite
-(``picarones.measurements.history``) et un détecteur de régression CLI. Mais
+(``picarones.evaluation.metrics.history``) et un détecteur de régression CLI. Mais
 aucun outil n'exposait la **comparaison** de deux runs côté rapport :
 un chercheur qui itère sur 8 prompts ne pouvait pas voir d'un coup
 *« Tesseract → GPT-4o version V2 a régressé de 0,8 pp en CER moyen

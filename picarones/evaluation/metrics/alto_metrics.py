@@ -17,7 +17,7 @@ enregistre quatre métriques natives (``alto_text_cer``,
 les opérateurs jiwer historiques sur le texte extrait des deux côtés.
 
 L'approche est strictement additive vis-à-vis de
-:mod:`picarones.measurements.metrics` : ce module ne touche pas le chemin de
+:mod:`picarones.evaluation.metrics.text_metrics` : ce module ne touche pas le chemin de
 calcul historique (``compute_metrics``), il enrichit uniquement le
 registre typé pour les pipelines composées.
 

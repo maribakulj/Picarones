@@ -1,44 +1,20 @@
-"""``OCRLLMPipelineConfig`` — container canonique pour pipelines OCR+LLM.
+"""``OCRLLMPipelineConfig`` — container pour pipelines OCR+LLM.
 
-Sprint H.2.b/c du plan v2.0 — équivalent canonique de
-``picarones.adapters.legacy_pipelines.base.OCRLLMPipeline``.
+Container *pur* (immutable, pas de logique d'exécution) qui décrit
+un pipeline composé OCR amont + LLM aval.  L'exécution effective
+passe par ``PipelineExecutor`` qui consomme une ``PipelineSpec``
+construite via ``make_ocr_llm_pipeline_spec``.
 
-Pourquoi
---------
-``OCRLLMPipeline`` (legacy) :
-
-- hérite de ``BaseOCREngine`` (legacy),
-- expose une méthode ``run(image_path) → EngineResult``,
-- mélange contrat d'exécution et configuration.
-
-Cette config canonique :
-
-- est un container *pur* (immutable, pas de logique d'exécution),
-- accepte un ``BaseOCRAdapter`` (canonique) au lieu d'un
-  ``BaseOCREngine`` (legacy) pour le step OCR amont,
-- ne dépend pas du legacy.
-
-L'exécution effective passe par ``PipelineExecutor`` qui consomme
-une ``PipelineSpec`` construite via ``make_ocr_llm_pipeline_spec``.
-
-Duck-typing compat
-------------------
-Pour faciliter la migration progressive,
-``OCRLLMPipelineConfig`` expose les mêmes attributs/propriétés
-que ``OCRLLMPipeline`` legacy :
-
-- ``is_pipeline = True``,
-- ``ocr_engine`` (alias de ``ocr_adapter`` côté canonique),
-- ``llm_adapter``,
-- ``mode`` (string, pas enum — tolérance ajoutée dans
-  ``_ocr_llm_pipeline_to_spec``),
-- ``prompt_template``,
-- ``name``.
-
-Les helpers
-``picarones.app.services.benchmark_runner.engine_to_pipeline_spec``
-et ``build_adapter_resolver`` traitent donc indifféremment les
-deux types.
+Attributs exposés
+-----------------
+- ``is_pipeline = True`` — marker consommé par ``benchmark_runner``
+  pour distinguer un pipeline composé d'un OCR seul.
+- ``ocr_engine`` (alias de ``ocr_adapter``) — adapter OCR amont.
+- ``llm_adapter`` — adapter LLM aval.
+- ``mode`` — string parmi ``text_only`` / ``text_and_image`` /
+  ``zero_shot``.
+- ``prompt_template`` — template de prompt pour le LLM.
+- ``name`` — nom du pipeline pour l'identification dans le rapport.
 """
 
 from __future__ import annotations
@@ -128,12 +104,12 @@ class OCRLLMPipelineConfig:
 
     @property
     def ocr_engine(self) -> Any | None:
-        """Compat duck-typing avec ``OCRLLMPipeline`` legacy.
+        """Alias historique de ``ocr_adapter``.
 
         Les helpers ``_ocr_llm_pipeline_to_spec`` et
-        ``build_adapter_resolver`` accèdent à ``pipeline.ocr_engine``
-        — on expose ``ocr_adapter`` sous ce nom pour la
-        rétro-compatibilité du wiring existant.
+        ``build_adapter_resolver`` accèdent à ``pipeline.ocr_engine`` ;
+        on expose ``ocr_adapter`` sous ce nom pour préserver leur
+        wiring.
         """
         return self.ocr_adapter
 

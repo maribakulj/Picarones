@@ -1,11 +1,5 @@
 """Rendu HTML server-side du profil philologique (Sprint 62).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.philological_render`` vers
-``picarones.reports.html.renderers.philological``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe Sprint 61 (câblage backend) — produit les blocs HTML
 qui exposent les six modules philologiques (Sprints 55-60) dans le
 rapport :

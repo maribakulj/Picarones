@@ -1,4 +1,4 @@
-"""Registre typé de métriques (Phase 4-ter — relocalisation Cercle 2).
+"""Registre typé de métriques (couche 3 — evaluation).
 
 Pattern et données
 ------------------
@@ -7,30 +7,19 @@ le décorateur ``@register_metric``.  Chaque métrique enregistre une
 ``MetricSpec`` (nom + signature de types + callable) ; la sélection
 typée à une jonction se fait via ``select_metrics(input_types)``.
 
-Le runner d'une pipeline composée
-(:func:`picarones.evaluation.pipeline.PipelineRunner.run`) consomme ce
-registre pour évaluer automatiquement chaque jonction GT vs sortie.
-
 Différence avec ``picarones.evaluation.registry.MetricRegistry``
 ----------------------------------------------------------------
-Le présent module est le pattern **historique** : un registre
-unique global, alimenté par les imports des sous-packages (le
-``picarones.measurements.__init__`` est l'amorce qui s'occupe de
-charger tous les modules définissant des ``@register_metric``).
+Le présent module est le pattern **module-level** : un registre
+unique global, alimenté par les imports des sous-packages
+(``picarones.evaluation.metrics.__init__`` charge tous les modules
+définissant des ``@register_metric``).
 
 ``picarones.evaluation.registry.MetricRegistry`` est une **classe
-instanciable** (Sprint A14-S5) — un service applicatif l'instancie
-explicitement et y enregistre les métriques sans side-effect
-d'import.  Les deux patterns coexistent volontairement : le legacy
-fonctionne pour les ~30 métriques existantes, l'instance-based est
-réservé aux contributions tierces et au cadre des
-``EvaluationView`` (S20+).
-
-Phase 4-ter (présente)
-----------------------
-Module relocalisé depuis ``picarones.core.metric_registry``.  Le
-chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
+instanciable** — un service applicatif l'instancie explicitement
+et y enregistre les métriques sans side-effect d'import.  Les
+deux patterns coexistent : le module-level fonctionne pour les
+~37 métriques existantes, l'instance-based est réservé aux
+contributions tierces et au cadre des ``EvaluationView``.
 
 Exemple d'usage
 ---------------

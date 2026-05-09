@@ -1,10 +1,5 @@
 """Générateur du rapport HTML interactif auto-contenu.
 
-Phase 5.E — module relocalisé depuis ``picarones.report.generator``
-vers ``picarones.reports.html.generator``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Le rapport produit est un fichier HTML unique embarquant :
 - Toutes les données (JSON inline)
 - Chart.js et diff2html (depuis cdnjs)

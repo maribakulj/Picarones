@@ -19,9 +19,6 @@ Familles
 
 Migration Phase 2
 -----------------
-
-Migré depuis :mod:`picarones.measurements.statistics` qui devient
-un shim re-export avec ``DeprecationWarning``.  Comportement
 identique bit-for-bit (même seed pour le bootstrap, mêmes
 algorithmes scipy, même rendu SVG).  Suppression du shim legacy
 en version 2.0.

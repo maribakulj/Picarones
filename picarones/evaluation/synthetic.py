@@ -496,7 +496,7 @@ def generate_sample_benchmark(
         document_count=n_docs,
         engine_reports=engine_reports,
         metadata={
-            "description": "Données de démonstration générées par picarones.fixtures",
+            "description": "Données de démonstration synthétiques",
             "script": "gothique textura",
             "langue": "Français médiéval (XIVe-XVe siècle)",
             "institution": "Département des manuscrits",

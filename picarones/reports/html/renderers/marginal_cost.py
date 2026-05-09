@@ -1,11 +1,5 @@
 """Rendu HTML du coût marginal inter-moteurs (Sprint 91, A.II.6).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.marginal_cost_render`` vers
-``picarones.reports.html.renderers.marginal_cost``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Tableau récapitulatif des paires (A → B) avec le coût additionnel
 par erreur évitée. Adaptive : retourne ``""`` si moins de 2 moteurs
 ou si aucune paire n'a de données coût/erreur exploitables.

@@ -74,7 +74,7 @@ from picarones.reports.narrative.detectors.ensemble import (
 from picarones.domain.facts import DetectorFn, FactType
 from picarones.reports.narrative.registry import (
     iter_detectors as _iter_detectors,
-    populate_legacy_registry as _populate_legacy_registry,
+    populate_detector_registry as _populate_detector_registry,
 )
 
 
@@ -97,7 +97,7 @@ def register_default_detectors(registry) -> None:
     le contenu du registre vers l'objet ``DetectorRegistry`` que les
     consommateurs externes (``DetectorRegistry.run``) instancient.
     """
-    _populate_legacy_registry(registry)
+    _populate_detector_registry(registry)
 
 
 __all__ = [

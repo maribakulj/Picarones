@@ -1,12 +1,6 @@
 """Rendu HTML « Spécialisation inter-moteurs » — Sprint 89
 (A.II.8b).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.specialization_render`` vers
-``picarones.reports.html.renderers.specialization``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/specialization.py``.  Vue
 **factuelle** sans recommandation : on liste les paires de
 moteurs les plus spécialisées, le chercheur arbitre.

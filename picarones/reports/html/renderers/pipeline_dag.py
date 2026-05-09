@@ -1,11 +1,5 @@
 """Visualisation DAG d'un pipeline composé — Sprint 95 (B.4).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.pipeline_dag_render`` vers
-``picarones.reports.html.renderers.pipeline_dag``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Sprint 95 — B.4 du plan d'évolution 2026.
 
 Outil d'inspection, pas de construction

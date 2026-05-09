@@ -129,7 +129,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ``picarones/cli/__init__.py`` et ``picarones/engines/tesseract.py``
 # dans le bloc « Migration depuis 1.x » (intouchables : c'est
 # justement le but du bloc).
-BROKEN_PATHS_BASELINE = 167
+# Sprint H.8 : +2 — la suppression du shim ``picarones/i18n.py`` et
+# la migration de l'exemple de docstring dans ``robustness.py``
+# vers ``adapters.ocr.tesseract`` cassent quelques refs dans des
+# audits historiques (CHANGELOG, docs/audits/).
+BROKEN_PATHS_BASELINE = 169
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

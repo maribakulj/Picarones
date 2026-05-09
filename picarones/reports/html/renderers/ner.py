@@ -1,10 +1,5 @@
 """Rendu HTML server-side de la section NER (Sprint 41).
 
-Phase 5.C — module relocalisé depuis ``picarones.report.ner_render``
-vers ``picarones.reports.html.renderers.ner``.  Le chemin legacy
-reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe des Sprints 38-40 : la couche de calcul, le backend
 extracteur et le câblage runner sont en place ; ce module produit les
 blocs HTML qui remontent ces données dans le rapport.

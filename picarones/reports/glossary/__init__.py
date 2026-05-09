@@ -1,10 +1,5 @@
 """Glossaire contextuel — loader YAML pour le rapport.
 
-Phase 5 — module relocalisé depuis ``picarones.report.glossary``
-vers ``picarones.reports.glossary``.  Le chemin legacy reste
-disponible via un shim avec ``DeprecationWarning`` ; suppression
-prévue en 2.0.
-
 Le glossaire est affiché dans un panneau latéral du rapport HTML.
 Chaque terme a sa propre entrée structurée (definition / measures /
 usage / limits / reference) dans ``{lang}.yaml``.

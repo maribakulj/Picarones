@@ -1,19 +1,13 @@
 """Rendu HTML « Déficit projeté de robustesse » — Sprint 88
 (A.I.8 vue HTML).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.robustness_projection_render`` vers
-``picarones.reports.html.renderers.robustness_projection``.
-Le chemin legacy reste disponible via un shim avec
-``DeprecationWarning`` ; suppression prévue en 2.0.
-
 Suite directe ``picarones/core/robustness_projection.py``
 (Sprint 81).  Pattern identique aux autres rendus : server-
 side, pas de JS, anti-injection systématique.
 
 Note d'intégration
 ------------------
-La robustesse synthétique (``picarones.measurements.robustness``) est
+La robustesse synthétique (``picarones.evaluation.metrics.robustness``) est
 exécutée par la CLI ``picarones robustness`` indépendamment du
 benchmark principal.  Pour produire la vue de projection,
 l'utilisateur compose :

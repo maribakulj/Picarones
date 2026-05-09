@@ -23,7 +23,7 @@ class PicaronesError(Exception):
     une sous-classe de ``PicaronesError`` plutôt qu'un ``Exception``
     générique ou un ``ValueError`` quand l'erreur a un sens métier.
 
-    L'ancien code (``picarones.core``, ``picarones.measurements``,
+    L'ancien code (``picarones.core``, ``picarones.evaluation.metrics``,
     etc.) garde son comportement actuel jusqu'à sa migration.
     """
 

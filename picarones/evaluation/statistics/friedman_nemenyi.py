@@ -6,7 +6,7 @@ Standard de facto pour comparer plusieurs systèmes sur plusieurs
 datasets — ici plusieurs moteurs OCR sur plusieurs documents.
 
 Le rendu visuel canonique (Critical Difference Diagram) vit dans
-:mod:`picarones.measurements.statistics.cdd_render` pour séparer
+:mod:`picarones.evaluation.statistics.cdd_render` pour séparer
 calcul (ce module) et présentation (l'autre).
 """
 

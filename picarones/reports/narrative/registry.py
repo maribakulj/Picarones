@@ -171,11 +171,11 @@ def default_type_order() -> tuple[FactType, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Pont avec ``DetectorRegistry`` historique
+# Synchronisation du ``DetectorRegistry``
 # ---------------------------------------------------------------------------
 
-def populate_legacy_registry(registry: DetectorRegistry) -> None:
-    """Synchronise le ``DetectorRegistry`` historique depuis le décorateur.
+def populate_detector_registry(registry: DetectorRegistry) -> None:
+    """Synchronise le ``DetectorRegistry`` depuis le décorateur.
 
     L'objet ``DetectorRegistry`` reste l'API publique pour les
     consommateurs externes (cf. ``DetectorRegistry.run``) ; cette
@@ -193,7 +193,7 @@ __all__ = [
     "detector_for",
     "clear_registry",
     "default_type_order",
-    "populate_legacy_registry",
+    "populate_detector_registry",
 ]
 
 

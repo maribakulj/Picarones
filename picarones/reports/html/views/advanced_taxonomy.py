@@ -25,11 +25,11 @@ Sources de données automatiques
 Sources de données opt-in (via ``opts``)
 ----------------------------------------
 - ``opts["cooccurrence"]``      : sortie de
-  :func:`picarones.measurements.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
+  :func:`picarones.evaluation.metrics.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
 - ``opts["intra_doc"]``         : sortie de
-  :func:`picarones.measurements.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
+  :func:`picarones.evaluation.metrics.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
 - ``opts["lexical_modernization"]``  : sortie de
-  :func:`picarones.measurements.lexical_modernization.compute_lexical_modernization`
+  :func:`picarones.evaluation.metrics.lexical_modernization.compute_lexical_modernization`
   agrégée corpus-wide.
 
 Ces calculs ne sont pas faits automatiquement par le runner standard
@@ -110,15 +110,15 @@ def build_advanced_taxonomy_view_html(
         Dict i18n complet.
     cooccurrence:
         Sortie pré-calculée de
-        :func:`picarones.measurements.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
+        :func:`picarones.evaluation.metrics.taxonomy_cooccurrence.compute_taxonomy_cooccurrence`.
         Optionnel — la sous-section est masquée si non fourni.
     intra_doc:
         Sortie pré-calculée de
-        :func:`picarones.measurements.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
+        :func:`picarones.evaluation.metrics.taxonomy_intra_doc.compute_taxonomy_position_heatmap`.
         Optionnel.
     lexical_modernization:
         Sortie pré-calculée de
-        :func:`picarones.measurements.lexical_modernization.aggregate_lexical_modernization`.
+        :func:`picarones.evaluation.metrics.lexical_modernization.aggregate_lexical_modernization`.
         Optionnel.
 
     Returns

@@ -1,11 +1,5 @@
 """Rendu HTML du recall sur tokens rares (Sprint 71, A.I.1).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.rare_token_recall_render`` vers
-``picarones.reports.html.renderers.rare_token_recall``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Petit tableau récapitulatif moteur × {n_rare_tokens, n_recalled,
 recall, n_docs}. Adaptive : retourne ``""`` si aucune donnée.
 

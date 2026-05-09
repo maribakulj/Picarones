@@ -1,11 +1,5 @@
 """Rendu HTML « Évolution dans le temps » — Sprint 92 (A.II.9).
 
-Phase 5.C — module relocalisé depuis
-``picarones.report.longitudinal_render`` vers
-``picarones.reports.html.renderers.longitudinal``.  Le chemin
-legacy reste disponible via un shim avec ``DeprecationWarning`` ;
-suppression prévue en 2.0.
-
 Suite directe ``picarones/core/longitudinal.py``.  Pattern
 identique aux autres rendus : server-side, pas de JS, anti-
 injection systématique.
