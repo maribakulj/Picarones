@@ -41,7 +41,7 @@ except (ImportError, AttributeError):
     __version__ = "unknown"
 
 if TYPE_CHECKING:
-    from picarones.adapters.legacy_engines.base import BaseOCREngine
+    from picarones.adapters.ocr.base import BaseOCRAdapter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,20 +56,36 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
-def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCREngine":
-    """Instancie un moteur OCR par son nom (wrapper Click).
+def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCRAdapter":
+    """Instancie un adapter OCR par son nom (wrapper Click).
 
-    Délègue à :func:`picarones.adapters.legacy_engines.factory.engine_from_name`
-    (couche adapters) puis traduit toute ``ValueError`` en
-    ``click.BadParameter`` pour rester compatible avec les sous-modules
-    CLI (``_workflows.py``, ``_robustness.py``) qui attrappent ce type
-    d'exception. Les commandes CLI continuent donc à fonctionner sans
-    aucune modification.
+    Sprint H.2.b — délègue désormais à la factory canonique
+    :func:`picarones.adapters.ocr.factory.ocr_adapter_from_name` qui
+    retourne un ``BaseOCRAdapter`` (StepExecutor natif), au lieu de
+    l'ancienne factory legacy qui retournait un ``BaseOCREngine``.
+
+    Le nom de la fonction reste ``_engine_from_name`` pour la
+    rétro-compatibilité des consommateurs internes
+    (``_workflows.py``, ``_robustness.py``) — ils sont migrés en
+    parallèle dans ce même sprint.
+
+    Toute ``ValueError`` (nom inconnu, dépendance optionnelle absente)
+    est traduite en ``click.BadParameter`` pour rester compatible avec
+    le pattern d'erreur Click existant.
     """
-    from picarones.adapters.legacy_engines.factory import engine_from_name
+    from picarones.adapters.ocr.factory import ocr_adapter_from_name
 
     try:
-        return engine_from_name(engine_name, lang=lang, psm=psm)
+        # Tesseract est le seul adapter dont la signature accepte
+        # ``lang`` + ``psm``.  Pour les autres, on les passe en
+        # kwargs et l'adapter ignore ce qu'il ne connaît pas (sauf
+        # qu'avec strict-kwargs il lève ``TypeError``).  On filtre
+        # donc en amont selon le nom.
+        if engine_name.lower() in {"tesseract", "tess"}:
+            return ocr_adapter_from_name(
+                engine_name, lang=lang, psm=psm,
+            )
+        return ocr_adapter_from_name(engine_name)
     except ValueError as exc:
         raise click.BadParameter(str(exc)) from exc
 
