@@ -26,6 +26,7 @@ Les deux sont opt-in via env vars :
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import os
@@ -33,6 +34,16 @@ import uuid
 from typing import Any
 
 from fastapi import Request
+
+
+#: Contextvar partagée entre le middleware (qui la set) et
+#: ``RequestIdFilter`` (qui la lit) pour propager le ``request_id``
+#: aux logs émis depuis des modules qui n'ont pas accès direct à
+#: ``request.state``.  Default ``None`` — ``.get()`` ne lève jamais
+#: ``LookupError`` (default toujours résolu).
+_request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "picarones_request_id", default=None,
+)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -181,26 +192,14 @@ class RequestIdFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        # Si l'attribut a déjà été posé (extra={"request_id": ...})
-        # on respecte ; sinon on tente la contextvar.
+        # Si l'attribut a déjà été posé (``extra={"request_id": ...}``)
+        # on respecte ; sinon on tente la contextvar (qui a un
+        # default ``None`` — ne lève jamais ``LookupError``).
         if not hasattr(record, "request_id"):
-            try:
-                from picarones.interfaces.web.observability import (
-                    _request_id_var,
-                )
-                rid = _request_id_var.get()
-                if rid:
-                    record.request_id = rid
-            except (ImportError, LookupError):
-                pass
+            rid = _request_id_var.get()
+            if rid:
+                record.request_id = rid
         return True
-
-
-import contextvars  # noqa: E402
-
-_request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "picarones_request_id", default=None,
-)
 
 
 __all__ = [
