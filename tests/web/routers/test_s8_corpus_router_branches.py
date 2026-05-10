@@ -219,6 +219,83 @@ class TestUploadImageRejection:
 # ──────────────────────────────────────────────────────────────────────
 
 
+class TestBrowsePermissionError:
+    """``iterdir()`` lève ``PermissionError`` sur un dossier sans
+    droits → 403 (avec le message d'erreur OS).  Couvre la branche
+    ``except PermissionError`` du browse handler."""
+
+    def test_iterdir_permission_error_returns_403(
+        self, tmp_path, monkeypatch,
+    ) -> None:
+        from fastapi.testclient import TestClient
+
+        # Crée un dossier valide qui passe les checks d'existence et
+        # ``_is_path_allowed`` (qui dépend de ``_BROWSE_ROOTS``).
+        target = tmp_path / "blocked"
+        target.mkdir()
+
+        app, _ = _make_app(tmp_path, monkeypatch)
+
+        # Mock ``Path.iterdir`` pour lever PermissionError sur le
+        # target spécifique.
+        original_iterdir = Path.iterdir
+
+        def raising_iterdir(self):
+            if self == target:
+                raise PermissionError("EACCES: permission denied")
+            return original_iterdir(self)
+
+        monkeypatch.setattr(Path, "iterdir", raising_iterdir)
+
+        with TestClient(app) as client:
+            r = client.get(
+                "/api/corpus/browse", params={"path": str(target)},
+            )
+            assert r.status_code == 403, r.text
+            assert "permission" in r.text.lower() or "EACCES" in r.text
+
+
+class TestUploadGenericException:
+    """Branche catch-all dans ``api_corpus_upload`` : si le
+    ``_write_payloads_and_analyze`` lève autre chose qu'une
+    ``ValueError`` (par ex. ``OSError`` disque plein), on doit
+    nettoyer ``corpus_dir`` ET retourner un 500 propre.  Couvre
+    lignes 130-132."""
+
+    def test_unexpected_exception_returns_500_and_cleans_corpus_dir(
+        self, tmp_path, monkeypatch,
+    ) -> None:
+        from fastapi.testclient import TestClient
+
+        from picarones.interfaces.web.routers import corpus as corpus_router
+
+        app, uploads_dir = _make_app(tmp_path, monkeypatch)
+        uploads_dir.mkdir()
+
+        # Mock _write_payloads_and_analyze pour lever une exception
+        # non-ValueError (donc non interceptée par le 415 path).
+        def raising_write(corpus_dir, payloads):
+            raise RuntimeError("disk full simulé")
+
+        monkeypatch.setattr(
+            corpus_router, "_write_payloads_and_analyze", raising_write,
+        )
+
+        with TestClient(app) as client:
+            r = client.post(
+                "/api/corpus/upload",
+                files={"files": ("test.png", b"fake-png-bytes", "image/png")},
+            )
+            assert r.status_code == 500, r.text
+            assert "disk full" in r.text or "RuntimeError" in r.text
+
+        # ``corpus_dir`` doit être nettoyé (sinon fuite disque sur
+        # tous les uploads ratés).
+        assert list(uploads_dir.iterdir()) == [], (
+            "corpus_dir aurait dû être supprimé après l'erreur"
+        )
+
+
 class TestIsPathAllowedException:
     def test_value_error_on_compare_continues_to_next_root(
         self, monkeypatch,
