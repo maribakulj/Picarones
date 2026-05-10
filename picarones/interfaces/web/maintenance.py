@@ -2,7 +2,7 @@
 
 Sprint A11 (item M-8 du plan de remédiation institutionnelle).
 
-Démarrée par le ``lifespan`` de ``picarones.web.app``, cette tâche
+Démarrée par le ``lifespan`` de ``picarones.interfaces.web.app``, cette tâche
 asyncio scanne le dossier ``uploads/`` toutes les ``interval_seconds``
 et supprime tout sous-dossier dont :
 

@@ -60,7 +60,7 @@ class JsonLogFormatter(logging.Formatter):
     .. code-block:: json
 
         {"timestamp": "2026-05-09T12:00:00.123Z", "level": "INFO",
-         "logger": "picarones.web.app", "message": "...",
+         "logger": "picarones.interfaces.web.app", "message": "...",
          "request_id": "abc123def456"}
 
     Champs additionnels : ``exc_type`` + ``exc_message`` aplatis si

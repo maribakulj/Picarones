@@ -1,7 +1,7 @@
 """Persistance SQLite des jobs de benchmark (Sprint 26).
 
 Avant le Sprint 26, l'état des benchmarks vivait uniquement en mémoire dans
-``picarones.web.app._JOBS``. Trois conséquences :
+``picarones.interfaces.web.app._JOBS``. Trois conséquences :
 
 1. Un redémarrage du worker uvicorn (OOM, déploiement, ``kill -HUP``)
    perdait l'état de tous les benchmarks en cours et un client SSE qui se

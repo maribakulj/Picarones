@@ -67,7 +67,7 @@ def serve_cmd(host: str, port: int, reload: bool, verbose: bool) -> None:
 
     log_level = "debug" if verbose else "info"
     uvicorn.run(
-        "picarones.web.app:app",
+        "picarones.interfaces.web.app:app",
         host=host,
         port=port,
         reload=reload,

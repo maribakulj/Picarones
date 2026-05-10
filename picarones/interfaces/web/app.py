@@ -6,21 +6,21 @@ Lance avec :
 
     picarones serve [--port 8000] [--host 127.0.0.1]
     # ou directement :
-    uvicorn picarones.web.app:app --reload --port 8000
+    uvicorn picarones.interfaces.web.app:app --reload --port 8000
 
 L'application est intentionnellement minimaliste : elle se contente
 d'instancier ``FastAPI``, de monter le middleware de sécurité (CSP,
 en-têtes durcis), de servir les fichiers statiques, puis d'inclure
-les 11 routers thématiques de :mod:`picarones.web.routers`. Toute la
-logique métier vit dans les sous-modules :
+les 11 routers thématiques de :mod:`picarones.interfaces.web.routers`.
+Toute la logique métier vit dans les sous-modules :
 
-- :mod:`picarones.web.state` — singletons et helpers transverses
-- :mod:`picarones.web.models` — Pydantic schemas
-- :mod:`picarones.web.corpus_utils` — parsing XML, analyse corpus
-- :mod:`picarones.web.engine_utils` — détection moteurs, capacités
-- :mod:`picarones.web.benchmark_utils` — workers threadés
-- :mod:`picarones.web.config_utils` — validation config utilisateur
-- :mod:`picarones.web.routers.*` — 11 ``APIRouter`` thématiques
+- :mod:`picarones.interfaces.web.state` — singletons et helpers transverses
+- :mod:`picarones.interfaces.web.models` — Pydantic schemas
+- :mod:`picarones.interfaces.web.corpus_utils` — parsing XML, analyse corpus
+- :mod:`picarones.interfaces.web.engine_utils` — détection moteurs, capacités
+- :mod:`picarones.interfaces.web.benchmark_utils` — workers threadés
+- :mod:`picarones.interfaces.web.config_utils` — validation config utilisateur
+- :mod:`picarones.interfaces.web.routers.*` — 11 ``APIRouter`` thématiques
 """
 
 from __future__ import annotations
