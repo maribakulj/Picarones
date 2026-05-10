@@ -1,8 +1,8 @@
 """``WorkspaceManager`` + helpers de validation de chemin — Sprint A14-S19.
 
 Foyer définitif des helpers ``validated_path``, ``safe_report_name``,
-``validated_prompt_filename`` créés au S1.  Les anciens callers
-(``picarones.web.security``) ré-importent depuis ce module.
+``validated_prompt_filename`` créés au S1.  Les callers web
+(``picarones.interfaces.web.security``) ré-importent depuis ce module.
 
 Pourquoi ici
 ------------
