@@ -5,14 +5,14 @@ convention de fichiers JSON par langue :
 
 | Système | Fichier | Contenu |
 |---------|---------|---------|
-| Interface du rapport HTML | `picarones/report/i18n/{lang}.json` | Libellés des onglets, colonnes, boutons, messages dynamiques |
-| Glossaire contextuel       | `picarones/report/glossary/{lang}.yaml` | Définitions des métriques |
-| Templates narratifs        | `picarones/core/narrative/templates/{lang}.yaml` | Phrases de la synthèse factuelle |
+| Interface du rapport HTML | `picarones/reports/html/i18n/{lang}.json` | Libellés des onglets, colonnes, boutons, messages dynamiques |
+| Glossaire contextuel       | `picarones/reports/html/glossary/{lang}.yaml` | Définitions des métriques |
+| Templates narratifs        | `picarones/domain/narrative/templates/{lang}.yaml` | Phrases de la synthèse factuelle |
 
 ## Ajouter une nouvelle clé d'interface
 
-1. Ajoutez la clé dans `picarones/report/i18n/fr.json` ET
-   `picarones/report/i18n/en.json` (le test `test_fr_and_en_have_same_keys`
+1. Ajoutez la clé dans `picarones/reports/html/i18n/fr.json` ET
+   `picarones/reports/html/i18n/en.json` (le test `test_fr_and_en_have_same_keys`
    casse sinon).
 2. Côté HTML, utilisez l'attribut `data-i18n="ma_nouvelle_cle"`. Le
    contenu littéral du HTML est le **fallback** ; il est remplacé au
@@ -29,10 +29,10 @@ const label = I18N.my_new_button || 'Texte par défaut français';
 
 ## Ajouter une nouvelle langue
 
-1. Créez `picarones/report/i18n/de.json` (copiez `fr.json` et traduisez).
-2. Créez `picarones/report/glossary/de.yaml` (copiez `fr.yaml` et
+1. Créez `picarones/reports/html/i18n/de.json` (copiez `fr.json` et traduisez).
+2. Créez `picarones/reports/html/glossary/de.yaml` (copiez `fr.yaml` et
    traduisez).
-3. Créez `picarones/core/narrative/templates/de.yaml` (copiez `fr.yaml`).
+3. Créez `picarones/domain/narrative/templates/de.yaml` (copiez `fr.yaml`).
 4. Lancez le rapport en spécifiant la langue : `picarones report
    --json results.json --output rapport.html --lang de`.
 

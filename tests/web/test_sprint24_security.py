@@ -28,7 +28,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from picarones.web import security as sec
+from picarones.interfaces.web import security as sec
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +209,7 @@ class TestEnvVarHelpers:
 class TestCSPHeaders:
     @pytest.fixture
     def client(self):
-        from picarones.web.app import app
+        from picarones.interfaces.web.app import app
         return TestClient(app)
 
     def test_csp_header_present(self, client, monkeypatch):
@@ -284,8 +284,8 @@ class TestPublicModeBlocksLLMBenchmark:
     def client_public(self, monkeypatch, tmp_path):
         monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
         # Désactive le rate limit dans cette session
-        from picarones.web import app as web_app
-        from picarones.web import state as web_state
+        from picarones.interfaces.web import app as web_app
+        from picarones.interfaces.web import state as web_state
         web_state.RATE_LIMITER.reset()
         web_state.RATE_LIMITER.max_per_hour = 0  # type: ignore[attr-defined]
         # Crée un faux corpus pour passer le contrôle d'existence
@@ -355,7 +355,7 @@ class TestPathAllowed:
     def test_path_outside_roots_is_blocked(self, monkeypatch, tmp_path):
         # On force le calcul des roots à uploads_dir uniquement
         monkeypatch.setenv("PICARONES_BROWSE_ROOTS", str(tmp_path))
-        from picarones.web.routers import corpus as web_corpus
+        from picarones.interfaces.web.routers import corpus as web_corpus
         web_corpus._BROWSE_ROOTS = sec.compute_browse_roots(tmp_path)
 
         outside = Path("/etc").resolve()

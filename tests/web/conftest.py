@@ -41,10 +41,10 @@ def _isolate_web_app_state():
     - les tests qui appellent le rate limiter directement laissent des
       timestamps dans son bucket.
     """
-    from picarones.web import app as web_app
-    from picarones.web import security as web_sec
-    from picarones.web import state as web_state
-    from picarones.web.routers import corpus as web_corpus_router
+    from picarones.interfaces.web import app as web_app
+    from picarones.interfaces.web import security as web_sec
+    from picarones.interfaces.web import state as web_state
+    from picarones.interfaces.web.routers import corpus as web_corpus_router
 
     # Sauvegarde
     original_browse_roots = list(web_corpus_router._BROWSE_ROOTS)

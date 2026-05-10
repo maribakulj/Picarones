@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.web.jobs import JobStore
+from picarones.interfaces.web.jobs import JobStore
 
 
 @pytest.fixture

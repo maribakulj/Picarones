@@ -7,6 +7,112 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [2.0.0] — Legacy retirement complete (mai 2026)
+
+**Breaking changes** majeurs : suppression complète des paquets
+legacy.  L'architecture canonique 8 couches (`domain → formats →
+evaluation → pipeline → adapters → app → reports → interfaces`)
+est la seule arborescence du code.  Aucun shim, aucun `_legacy/`,
+aucun `legacy_*` subdir.
+
+### Suppressions (toutes Sprints A-H, mai 2026)
+
+**Top-level** :
+- `picarones/core/` — Lots A-G : domain, formats, evaluation
+- `picarones/measurements/` — Lot D + E : evaluation/metrics, statistics
+- `picarones/engines/`, `picarones/modules/` — Lot E : adapters/legacy_*
+- `picarones/report/` — Lot F : reports/html (Sprint H.3 : `reports_v2/` → `reports/`)
+- `picarones/llm/`, `picarones/pipelines/`, `picarones/cli/`,
+  `picarones/web/`, `picarones/extras/`, `picarones/fixtures.py`
+  — Sprints F, G, H.1
+
+**Adapters legacy** :
+- `picarones/adapters/legacy_engines/` (Sprint H.2.d) :
+  `BaseOCREngine`, `EngineResult`, `LegacyOCREngineExecutor`,
+  `engine_from_name`, et les 5 adapters Tesseract/Pero/Mistral
+  OCR/Google Vision/Azure DI legacy.  Remplacés par
+  `picarones.adapters.ocr.*` (`BaseOCRAdapter` natif, factory
+  `ocr_adapter_from_name`).
+- `picarones/adapters/legacy_pipelines/` (Sprint H.2.c) :
+  `OCRLLMPipeline`, `PipelineMode`.  Remplacés par
+  `picarones.pipeline.llm_pipeline_config.OCRLLMPipelineConfig`
+  + `picarones.pipeline.llm_pipeline_builder.make_ocr_llm_pipeline_spec`.
+- `picarones/adapters/legacy_modules/` (Sprint H.2.a) :
+  `TextToAltoMonoRegion`.
+
+**Interfaces legacy** :
+- `picarones/interfaces/cli/_legacy/` + stubs canoniques
+  inachevés `interfaces/cli/{run,report,import_corpus}.py`
+  (Sprint H.4) : consolidé en `interfaces/cli/` (16+ commandes
+  Click).
+- `picarones/interfaces/web/_legacy/` + stubs canoniques
+  inachevés `interfaces/web/{__init__,app,security}.py` +
+  `routers/`, `templates/`, `static/`, `i18n/`
+  (Sprint H.4) : consolidé en `interfaces/web/` (FastAPI + UI
+  Jinja2 + SSE benchmark + ZIP upload).
+
+### Renames
+
+- `picarones/reports_v2/` → `picarones/reports/` (Sprint H.3).
+- `picarones/app/services/_legacy_runner_adapter.py` →
+  `picarones/app/services/benchmark_runner.py` (Sprint H.4) :
+  drop le préfixe `_legacy_` ; c'est l'entry point public des
+  interfaces vers `BenchmarkService`.
+- `picarones/app/services/_legacy_partial_store.py` →
+  `picarones/app/services/partial_store.py` (Sprint H.4).
+
+### Features ajoutées (Sprints D)
+
+- `partial_dir` : reprise sur interruption (NDJSON per-engine,
+  Sprint D.2.b) — un benchmark crashé peut reprendre sans
+  perdre le travail déjà fait.
+- `entity_extractor` : NER attach post-bench (Sprint D.2.e) —
+  metrics NER calculées + agrégées sur les documents avec GT
+  `ENTITIES`.
+- `over_normalization` : détection automatique pour les
+  pipelines OCR+LLM avec OCR amont (Sprint D.2.d).
+- `validate_profile()` au démarrage du benchmark (Sprint D.2.f) :
+  un profil inconnu lève `ValueError` avant tout calcul.
+
+### Architecture
+
+- `LEGACY_PACKAGES = ()` dans
+  `tests/architecture/test_no_legacy_imports_in_rewrite.py` :
+  plus aucun paquet legacy.
+- `test_legacy_canonical_parity.py` supprimé (Sprint H.5) — la
+  table de parité est sans objet à v2.0.
+- `test_layer_imports_are_legal[layer-X]` passe pour toutes les
+  couches.
+
+### Migration depuis 1.x
+
+```python
+# AVANT (1.x)
+from picarones.cli import cli
+from picarones.engines.tesseract import TesseractEngine
+from picarones.measurements.runner import run_benchmark
+from picarones.pipelines import OCRLLMPipeline, PipelineMode
+from picarones.report.generator import ReportGenerator
+
+# APRÈS (2.0)
+from picarones.interfaces.cli import cli
+from picarones.adapters.ocr.tesseract import TesseractAdapter
+from picarones.app.services.benchmark_runner import run_benchmark_via_service
+from picarones.pipeline.llm_pipeline_config import OCRLLMPipelineConfig
+from picarones.reports.html.generator import ReportGenerator
+```
+
+### Statistiques
+
+- 4126 tests passing, 0 failed.
+- ~10 paquets legacy supprimés.
+- ~50000 LOC de legacy retirées.
+- Architecture 8 couches respectée (vérifiée par 4 tests
+  architecturaux : layer_imports, no_legacy_imports,
+  layer_dependencies, file_budgets).
+
+---
+
 ## [Unreleased] — towards 1.3.0 (release institutionnelle BnF) — 2026-05
 
 > Section unique conforme à Keep-a-Changelog.  Les chantiers actifs

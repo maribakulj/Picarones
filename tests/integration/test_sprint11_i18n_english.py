@@ -230,39 +230,39 @@ class TestI18nModule:
     """Vérifie le module picarones.i18n."""
 
     def test_get_labels_fr(self):
-        from picarones.reports_v2.i18n import get_labels
+        from picarones.reports.i18n import get_labels
         labels = get_labels("fr")
         assert labels["tab_ranking"] == "Classement"
         assert labels["html_lang"] == "fr"
         assert labels["date_locale"] == "fr-FR"
 
     def test_get_labels_en(self):
-        from picarones.reports_v2.i18n import get_labels
+        from picarones.reports.i18n import get_labels
         labels = get_labels("en")
         assert labels["tab_ranking"] == "Ranking"
         assert labels["html_lang"] == "en"
         assert labels["date_locale"] == "en-GB"
 
     def test_get_labels_fallback(self):
-        from picarones.reports_v2.i18n import get_labels
+        from picarones.reports.i18n import get_labels
         # Langue inconnue → bascule sur fr
         labels = get_labels("de")
         assert labels["tab_ranking"] == "Classement"
 
     def test_all_fr_keys_present_in_en(self):
-        from picarones.reports_v2.i18n import TRANSLATIONS
+        from picarones.reports.i18n import TRANSLATIONS
         fr_keys = set(TRANSLATIONS["fr"].keys())
         en_keys = set(TRANSLATIONS["en"].keys())
         missing = fr_keys - en_keys
         assert not missing, f"Clés présentes en FR mais absentes en EN : {missing}"
 
     def test_supported_langs(self):
-        from picarones.reports_v2.i18n import SUPPORTED_LANGS
+        from picarones.reports.i18n import SUPPORTED_LANGS
         assert "fr" in SUPPORTED_LANGS
         assert "en" in SUPPORTED_LANGS
 
     def test_footer_labels(self):
-        from picarones.reports_v2.i18n import get_labels
+        from picarones.reports.i18n import get_labels
         fr = get_labels("fr")
         en = get_labels("en")
         assert "footer_generated" in fr
@@ -270,7 +270,7 @@ class TestI18nModule:
         assert fr["footer_generated"] != en["footer_generated"]
 
     def test_hallucination_labels_translated(self):
-        from picarones.reports_v2.i18n import get_labels
+        from picarones.reports.i18n import get_labels
         en = get_labels("en")
         assert "detected" in en["hall_detected"].lower()
         assert "⚠" in en["hall_detected"]
@@ -285,8 +285,8 @@ class TestEnglishReport:
 
     @pytest.fixture(scope="class")
     def english_html(self, tmp_path_factory):
-        from picarones.fixtures import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         tmp = tmp_path_factory.mktemp("report_en")
@@ -297,8 +297,8 @@ class TestEnglishReport:
 
     @pytest.fixture(scope="class")
     def french_html(self, tmp_path_factory):
-        from picarones.fixtures import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.generator import ReportGenerator
 
         bm = generate_sample_benchmark(n_docs=3, seed=42)
         tmp = tmp_path_factory.mktemp("report_fr")
@@ -356,15 +356,15 @@ class TestEnglishReport:
         assert len(data["engines"]) == 5
 
     def test_report_generator_default_lang_is_fr(self):
-        from picarones.fixtures import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=2, seed=1)
         gen = ReportGenerator(bm)
         assert gen.lang == "fr"
 
     def test_report_generator_lang_en(self):
-        from picarones.fixtures import generate_sample_benchmark
-        from picarones.reports_v2.html.generator import ReportGenerator
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.generator import ReportGenerator
         bm = generate_sample_benchmark(n_docs=2, seed=1)
         gen = ReportGenerator(bm, lang="en")
         assert gen.lang == "en"
@@ -379,7 +379,7 @@ class TestDemoLangFlag:
 
     def test_demo_lang_en(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import demo_cmd
+        from picarones.interfaces.cli import demo_cmd
 
         runner = CliRunner()
         out_file = str(tmp_path / "demo_en.html")
@@ -394,7 +394,7 @@ class TestDemoLangFlag:
 
     def test_demo_lang_fr_default(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import demo_cmd
+        from picarones.interfaces.cli import demo_cmd
 
         runner = CliRunner()
         out_file = str(tmp_path / "demo_fr.html")
@@ -405,7 +405,7 @@ class TestDemoLangFlag:
 
     def test_demo_invalid_lang_rejected(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import demo_cmd
+        from picarones.interfaces.cli import demo_cmd
 
         runner = CliRunner()
         out_file = str(tmp_path / "demo_de.html")
@@ -423,7 +423,7 @@ class TestWebLangCookie:
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
-        from picarones.web.app import app
+        from picarones.interfaces.web.app import app
         return TestClient(app)
 
     def test_get_lang_default(self, client):

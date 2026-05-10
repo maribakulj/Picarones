@@ -214,8 +214,8 @@ engines): GPT-4o, Claude, Mistral Large, Ollama (local). See
 
 The `Engine` table is regenerated automatically by
 `scripts/gen_readme_tables.py` — adding a new adapter under
-`picarones/adapters/legacy_engines/` makes the next CI run update
-this table or fail.
+`picarones/adapters/ocr/` makes the next CI run update this table
+or fail.
 
 ---
 
@@ -235,7 +235,6 @@ this table or fail.
 | `picarones import` | Import a corpus from a remote source (IIIF, HF, HTR-United) |
 | `picarones info` | Display version and system information |
 | `picarones metrics` | Compute CER/WER between two text files |
-| `picarones pipeline` | Run / compare composed pipelines from a YAML spec (Sprint 70) |
 | `picarones report` | Generate an HTML report from JSON results |
 | `picarones robustness` | Run robustness analysis with degraded images |
 | `picarones run` | Run a full benchmark on a corpus |
@@ -286,6 +285,7 @@ when running. Summary:
 | `GET` | `/api/reports` | Api Reports |
 | `GET` | `/api/status` | Api Status |
 | `GET` | `/health` | Health |
+| `GET` | `/metrics` | Metrics Endpoint |
 | `GET` | `/reports/{filename}` | Serve Report |
 
 <!-- /generated:endpoints -->
@@ -326,13 +326,13 @@ picarones/
 ├── pipeline/       Layer 4 — canonical pipeline executor
 ├── adapters/       Layer 5 — external libs (OCR, LLM, VLM, corpus)
 ├── app/            Layer 6 — application services
-├── reports_v2/     Layer 7 — HTML / JSON / CSV report renderers
+├── reports/     Layer 7 — HTML / JSON / CSV report renderers
 └── interfaces/     Layer 8 — CLI Click, Web FastAPI
 ```
 
 Legacy paths (`core/, measurements/, engines/, llm/, pipelines/,
 report/, modules/`) still present as shims, in active retirement
-(see `docs/migration/`).  Strict 8-layer architecture: imports flow
+(see `docs/archives/migration/`).  Strict 8-layer architecture: imports flow
 outer → inner. Enforced by
 `tests/architecture/test_layer_dependencies.py`. See
 [`docs/explanation/architecture.md`](docs/explanation/architecture.md)
@@ -395,7 +395,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~5040 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~4550 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

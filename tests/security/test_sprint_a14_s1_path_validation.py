@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.web.security import (
+from picarones.interfaces.web.security import (
     PathValidationError,
     safe_report_name,
     validated_path,

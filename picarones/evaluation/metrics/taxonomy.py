@@ -14,9 +14,9 @@ la taxonomie Picarones :
 | 7      | segmentation_error| Fusion ou fragmentation de tokens (mots/lignes)    |
 | 8      | oov_character     | Caractère hors-vocabulaire du moteur               |
 | 9      | lacuna            | Texte présent dans le GT absent de l'OCR           |
-| 10     | over_normalization| Sur-normalisation LLM (voir pipelines/)            |
+| 10     | over_normalization| Sur-normalisation LLM (voir evaluation/metrics/)   |
 
-Note : la classe 10 est calculée par picarones/pipelines/over_normalization.py.
+Note : la classe 10 est calculée par picarones/evaluation/metrics/over_normalization.py.
 """
 
 from __future__ import annotations

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from picarones.reports_v2.html import HtmlReportRenderer as ReportService
+from picarones.reports.html import HtmlReportRenderer as ReportService
 from picarones.domain.evaluation_spec import EvaluationView
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.run_manifest import RunManifest

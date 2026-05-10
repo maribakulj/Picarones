@@ -1,13 +1,7 @@
-"""``TesseractAdapter`` natif — Sprint A14-S30.
+"""``TesseractAdapter`` — adapter natif pour Tesseract 5.
 
-Migration native du legacy ``picarones.engines.tesseract.TesseractEngine``
-vers le contrat ``BaseOCRAdapter`` (S26).  **Pas un shim** : la classe
-implémente directement le contrat du nouveau monde, sans héritage du
-legacy.
-
-Le legacy ``TesseractEngine`` reste en place pour les callers qui
-n'ont pas encore migré ; sa suppression viendra au S46 quand la
-parité sera atteinte sur tous les adapters.
+Implémente le contrat ``BaseOCRAdapter`` (couche 5) :
+``execute(inputs, params, context) → dict[ArtifactType, Artifact]``.
 
 Cas d'usage BnF
 ---------------
@@ -52,10 +46,9 @@ Anti-sur-ingénierie
 -------------------
 - Pas de retry — Tesseract échoue rarement sur une image valide,
   et un appelant peut wrapper si besoin.
-- Pas d'extraction de confidences (legacy S47) — reporté à un
-  sprint dédié qui définira ``ConfidenceArtifact`` typé.  La
-  fonctionnalité reste disponible via le legacy
-  ``picarones.engines.tesseract.TesseractEngine`` jusqu'au S46.
+- Pas d'extraction de confidences pour l'instant : à ajouter
+  quand un caller en aura besoin (un ``ConfidenceArtifact`` typé
+  reste à définir).
 - Pas de validation de l'encodage de l'image — Tesseract gère.
 - Pas de support batch — un appel par image (le runner gère le
   parallélisme inter-documents).

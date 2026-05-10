@@ -17,7 +17,7 @@ n'indique pas :
 - le **commit Picarones** utilisé pour produire le rapport,
 - les **paquets Python** installés au moment du run.
 
-Le module `picarones.report.snapshot` agrège ces cinq dimensions et
+Le module `picarones.reports.html.snapshot` agrège ces cinq dimensions et
 les embarque **dans le JSON du rapport**, sous la clé
 `report_data["snapshots"]`. Le rapport HTML reste auto-portant : un
 lecteur peut tout retrouver sans accès au repo source.
@@ -25,7 +25,7 @@ lecteur peut tout retrouver sans accès au repo source.
 ## Ce qu'un snapshot contient
 
 ```python
-from picarones.report.snapshot import snapshot_all
+from picarones.reports.html.snapshot import snapshot_all
 
 snap = snapshot_all(
     lang="fr",

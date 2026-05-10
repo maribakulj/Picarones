@@ -1,0 +1,143 @@
+"""Sprint S6 — garde-fous de reproductibilité institutionnelle.
+
+Ces tests verrouillent les contraintes de déploiement BnF :
+
+S6.1 / S6.2 — Tesseract version pinée dans Dockerfile
+S6.3 — Bornes supérieures sur les dépendances Python
+S6.4 — OLLAMA_ORIGINS restreint en docker-compose
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+# ──────────────────────────────────────────────────────────────────────
+# S6.2 — Le Dockerfile pin Tesseract à une version Debian précise
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestTesseractInDockerfile:
+    """Le Dockerfile doit installer ``tesseract-ocr`` + les 6
+    modèles de langues du corpus institutionnel BnF (fra, lat,
+    eng, deu, ita, spa).
+
+    Sprint S6.1 a tenté un pin exact ``=5.3.0-2`` mais Debian
+    point-release rebump fréquemment, cassant le build.  La
+    reproductibilité passe désormais par :
+
+    1. Base image Python pinée par digest SHA256.
+    2. ``requirements-docker.lock`` côté Python.
+    3. ``RunManifest.dependencies_lock`` qui capture la version
+       Tesseract effective au runtime (``tesseract --version``).
+    """
+
+    def setup_method(self) -> None:
+        self.text = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    def test_tesseract_ocr_installed(self) -> None:
+        # Pattern : ``tesseract-ocr`` au début d'un mot (suivi de
+        # whitespace, ``\``, ou ``=``), pour ne pas matcher
+        # ``tesseract-ocr-fra`` etc.
+        assert re.search(r"\btesseract-ocr(?:[\s\\=]|$)", self.text), (
+            "Le Dockerfile n'installe pas ``tesseract-ocr``."
+        )
+
+    def test_all_language_models_installed(self) -> None:
+        """Les modèles de langues du corpus BnF doivent tous être
+        installés (fra, lat, eng, deu, ita, spa).
+        """
+        languages = ("fra", "lat", "eng", "deu", "ita", "spa")
+        for lang in languages:
+            pattern = rf"tesseract-ocr-{lang}(?:[\s\\=]|$)"
+            assert re.search(pattern, self.text), (
+                f"Modèle ``tesseract-ocr-{lang}`` non installé dans "
+                f"le Dockerfile."
+            )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# S6.3 — Bornes supérieures sur les dépendances core
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestDependencyUpperBounds:
+    """Sans borne supérieure, ``pip install picarones`` en 2027 peut
+    remonter ``click==9.0`` qui casse l'API."""
+
+    def setup_method(self) -> None:
+        self.text = (REPO_ROOT / "pyproject.toml").read_text(
+            encoding="utf-8",
+        )
+
+    def test_core_deps_have_upper_bound(self) -> None:
+        """Chaque dépendance core listée doit avoir un caplock
+        ``<X.0`` (où X est la majeure suivante)."""
+        # Cherche le bloc ``dependencies = [...]``.
+        m = re.search(
+            r"^dependencies\s*=\s*\[(.*?)^\]",
+            self.text,
+            re.DOTALL | re.MULTILINE,
+        )
+        assert m, "Bloc ``dependencies`` introuvable dans pyproject.toml"
+        block = m.group(1)
+        # Liste les lignes ``"name>=X.Y..."``.
+        dep_lines = re.findall(r'"([a-zA-Z][\w\-]*)>=[^"]+"', block)
+
+        unbounded = []
+        for name in dep_lines:
+            # Pattern ``"name>=X.Y...,<Z..."`` ou ``"name>=X.Y...,<Z.W"``
+            pattern = rf'"{re.escape(name)}>=[^"]+,\s*<[^"]+"'
+            if not re.search(pattern, block):
+                unbounded.append(name)
+
+        assert not unbounded, (
+            f"Dépendances sans borne supérieure : {unbounded}.\n"
+            f"Ajouter ``<MAJEURE_SUIVANTE.0`` à chacune dans "
+            f"pyproject.toml."
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# S6.4 — OLLAMA_ORIGINS n'est pas ``*`` par défaut
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestOllamaOriginsRestricted:
+    """``OLLAMA_ORIGINS=*`` permet à n'importe quel site web d'appeler
+    l'API Ollama interne via le navigateur de l'utilisateur (CSRF
+    cross-origin)."""
+
+    def test_docker_compose_does_not_set_ollama_origins_wildcard(
+        self,
+    ) -> None:
+        text = (REPO_ROOT / "docker-compose.yml").read_text(
+            encoding="utf-8",
+        )
+        # ``OLLAMA_ORIGINS=*`` brut (sans variable d'env override)
+        # doit être absent.
+        assert "OLLAMA_ORIGINS=*" not in text, (
+            "``docker-compose.yml`` configure ``OLLAMA_ORIGINS=*`` "
+            "qui désactive la protection CORS de Ollama.  Restreindre "
+            "à un origin explicite ou à une variable d'env "
+            "``${OLLAMA_ORIGINS}`` avec un défaut sécurisé."
+        )
+
+    def test_docker_compose_uses_env_override_for_ollama_origins(
+        self,
+    ) -> None:
+        """La config doit utiliser la forme ``${OLLAMA_ORIGINS:-...}``
+        avec un défaut sécurisé pour permettre une override
+        contrôlée par l'opérateur."""
+        text = (REPO_ROOT / "docker-compose.yml").read_text(
+            encoding="utf-8",
+        )
+        assert "OLLAMA_ORIGINS=${OLLAMA_ORIGINS" in text, (
+            "``docker-compose.yml`` doit utiliser "
+            "``OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-...}`` pour permettre "
+            "une override par variable d'env (avec un défaut "
+            "restrictif)."
+        )

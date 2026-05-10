@@ -6,7 +6,7 @@ la synthèse factuelle en tête du rapport.
 ## Architecture
 
 ```
-picarones/core/narrative/
+picarones/domain/narrative/
 ├── __init__.py              # API publique + pipeline build_synthesis
 ├── facts.py                 # Modèle Fact, FactType, FactImportance, DetectorRegistry
 ├── detectors.py             # 12 détecteurs (un par FactType)
@@ -41,8 +41,8 @@ Dans `detectors.py`, écrivez une fonction pure qui prend le dict
 `@register_detector` :
 
 ```python
-from picarones.core.narrative.facts import Fact, FactImportance, FactType
-from picarones.core.narrative.registry import register_detector
+from picarones.domain.narrative.facts import Fact, FactImportance, FactType
+from picarones.domain.narrative.registry import register_detector
 
 
 @register_detector(
@@ -193,9 +193,9 @@ Pour ajouter une nouvelle langue (ex. allemand) :
 
 1. Créez `templates/de.yaml` en copiant la structure de `fr.yaml` et en
    traduisant chaque entrée.
-2. Ajoutez `de.json` dans `picarones/report/i18n/` pour les libellés
+2. Ajoutez `de.json` dans `picarones/reports/html/i18n/` pour les libellés
    d'interface.
-3. Ajoutez `de.yaml` dans `picarones/report/glossary/` pour le glossaire.
+3. Ajoutez `de.yaml` dans `picarones/reports/html/glossary/` pour le glossaire.
 4. Le code détecte automatiquement la langue via `load_glossary("de")`,
    `get_labels("de")`, et `_load_templates("de")` — aucun code à modifier.
 
@@ -209,7 +209,7 @@ picarones demo --output /tmp/demo.html --docs 8
 
 Si la synthèse ne contient pas votre fait, vérifiez :
 1. Que votre détecteur retourne bien quelque chose sur les données de
-   démo (`grep -A 20 "def generate_sample_benchmark" picarones/fixtures.py`).
+   démo (`grep -A 20 "def generate_sample_benchmark" picarones/evaluation/synthetic.py`).
 2. Que l'importance est suffisante (> `MEDIUM`) pour passer le filtre
    par défaut de l'arbitre.
 3. Que votre type n'est pas en collision avec un autre déjà retenu pour
@@ -255,9 +255,9 @@ Depuis le Sprint 23, `select_facts` accepte un argument optionnel
 `type_order` :
 
 ```python
-from picarones.core.narrative import build_synthesis
-from picarones.core.narrative.arbiter import select_facts, DEFAULT_TYPE_ORDER
-from picarones.core.narrative.facts import FactType
+from picarones.domain.narrative import build_synthesis
+from picarones.domain.narrative.arbiter import select_facts, DEFAULT_TYPE_ORDER
+from picarones.domain.narrative.facts import FactType
 
 # Réordonnancement : on remonte vitesse et coût avant qualité.
 custom = (

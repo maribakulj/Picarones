@@ -24,7 +24,7 @@ class FactType(str, Enum):
 
 ### 2. Add the FR + EN templates
 
-`picarones/measurements/narrative/templates/fr.yaml`:
+`picarones/reports/narrative/templates/fr.yaml`:
 
 ```yaml
 your_new_fact: >-
@@ -37,7 +37,7 @@ Same in `en.yaml` with the English version.
 ### 3. Implement the detector
 
 In an existing detector module (e.g.
-`picarones/measurements/narrative/detectors/quality.py` for
+`picarones/reports/narrative/detectors/quality.py` for
 quality-related facts) or a new one if a new family is justified:
 
 ```python
@@ -66,10 +66,10 @@ input — the anti-hallucination test would catch it.
 
 ### 4. Register the detector in the package `__init__`
 
-`picarones/measurements/narrative/detectors/__init__.py`:
+`picarones/reports/narrative/detectors/__init__.py`:
 
 ```python
-from picarones.measurements.narrative.detectors.quality import (
+from picarones.evaluation.metrics.narrative.detectors.quality import (
     # ...
     detect_your_new_fact,
 )
@@ -79,7 +79,7 @@ And add it to `__all__`.
 
 ### 5. Update the arbiter ordering
 
-`picarones/measurements/narrative/arbiter.py` — append your new
+`picarones/reports/narrative/arbiter.py` — append your new
 type to `_FALLBACK_TYPE_ORDER` at the right position.
 
 ### 6. Write tests

@@ -55,7 +55,7 @@ focus on a domain. Tests marked `network` are excluded by default
 
 - **ruff** lints: `ruff check picarones/ tests/` (config in
   `pyproject.toml`).
-- **mypy** strict on `picarones/core/`, lax elsewhere (Sprint A1).
+- **mypy** strict on `picarones/domain/`, lax elsewhere (Sprint A1).
 - **No `except Exception: pass`** — replace by
   `logger.warning("[module] degraded feature: %s", e)`.
 - **Logger per module**: `logger = logging.getLogger(__name__)`.

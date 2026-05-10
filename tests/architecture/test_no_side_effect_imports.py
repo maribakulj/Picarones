@@ -42,7 +42,7 @@ NEW_LAYERS: tuple[str, ...] = (
     "adapters",
     "app",
     "interfaces",
-    "reports_v2",
+    "reports",
 )
 
 

@@ -2,6 +2,48 @@
 
 > Sprint A9 du plan de remédiation institutionnelle
 > ([`docs/audits/remediation-plan-2026-05.md`](../audits/remediation-plan-2026-05.md)).
+> Étendu au Sprint S6 (déploiement institutionnel BnF).
+
+## Pré-requis avant tout tag (Sprint S6)
+
+| Vérif | Commande | Cible |
+|---|---|---|
+| Tests verts | `pytest tests/ -q` | 0 failed |
+| Lint propre | `ruff check picarones/ tests/` | All checks passed |
+| Type strict | `python -m mypy picarones/domain/` | 0 erreur |
+| Sécurité statique | `bandit -ll -r picarones/` | 0 HIGH |
+| CVEs deps | `pip-audit` | aucune CVE non-mitigée dans le runtime |
+| CHANGELOG | section `## [X.Y.Z] — YYYY-MM-DD` présente | |
+| Compteurs doc | `python scripts/gen_readme_tables.py --check` | exit 0 |
+
+## Mode public vs institutionnel
+
+Pour un déploiement BnF (mode institutionnel), s'assurer que les
+variables d'environnement de production sont prêtes **avant** de
+tagger.  L'app refuse de démarrer sans (Sprint S6.9).
+
+| Variable | Public (HF Space) | Institutionnel |
+|---|---|---|
+| `PICARONES_PUBLIC_MODE` | `1` | non set |
+| `PICARONES_CSRF_REQUIRED` | non set | `1` |
+| `PICARONES_CSRF_SECRET` | non set | **OBLIGATOIRE** |
+| `PICARONES_LOG_FORMAT` | non set | `json` (recommandé pour ops) |
+
+### Génération du CSRF secret
+
+```bash
+# 32 bytes hex
+openssl rand -hex 32
+
+# Persister dans le secret manager institutionnel :
+#   - Vault : ``vault kv put secret/picarones csrf=<hex>``
+#   - AWS Secrets Manager : ``aws secretsmanager create-secret``
+#   - Kubernetes : ``kubectl create secret generic picarones-csrf``
+#   - Docker Compose : ``.env`` non versionné
+```
+
+**Ne JAMAIS** committer ce secret dans un Dockerfile, un
+docker-compose.yml versionné, ou un dépôt git public.
 
 ## Vue d'ensemble
 

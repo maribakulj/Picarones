@@ -8,8 +8,8 @@ Service applicatif qui assemble :
 
 Le rendu de rapport (HTML, JSON, CSV) est **injecté par le caller**
 via le paramètre ``report_renderer`` — le service ``app/`` ne peut
-pas importer ``reports_v2/`` car cette couche est plus externe
-(``domain → … → app → reports_v2 → interfaces``).  Cette inversion
+pas importer ``reports/`` car cette couche est plus externe
+(``domain → … → app → reports → interfaces``).  Cette inversion
 de dépendance garantit que :
 
 - L'orchestrateur n'est pas couplé à un format de sortie spécifique.
@@ -45,7 +45,10 @@ from typing import Any, Callable
 from picarones.app.results import ReportRenderer, RunResult
 from picarones.app.schemas import RunSpec, resolve_adapter_class
 from picarones.app.services.benchmark_service import BenchmarkService
-from picarones.app.services.dependencies import capture_dependencies_lock
+from picarones.app.services.dependencies import (
+    capture_dependencies_lock,
+    capture_system_binaries_lock,
+)
 from picarones.app.services.corpus_service import (
     CorpusImportError,
     CorpusService,
@@ -74,8 +77,6 @@ from picarones.pipeline import (
 # ──────────────────────────────────────────────────────────────────────
 # Résultat structuré d'un run orchestré
 # ──────────────────────────────────────────────────────────────────────
-
-
 
 
 @dataclass(frozen=True)
@@ -148,7 +149,7 @@ class RunOrchestrator:
             written_path`` qui rend le rapport.  Si ``None`` (défaut)
             OU si ``spec.report_html`` est vide, aucun rapport n'est
             émis.  L'inversion de dépendance évite à
-            ``app/services/`` d'importer ``reports_v2/`` (couche plus
+            ``app/services/`` d'importer ``reports/`` (couche plus
             externe — interdit par l'architecture).
 
         Raises
@@ -184,7 +185,10 @@ class RunOrchestrator:
         )
 
         # 6. Capture du verrou de dépendances pour la reproductibilité.
+        # Sprint S8.5 — capture aussi les binaires système (Tesseract,
+        # etc.) qui ne sont pas couverts par le wheel ``pytesseract``.
         deps_lock = capture_dependencies_lock()
+        bin_lock = capture_system_binaries_lock()
 
         result = bench.run(
             corpus=corpus_spec,
@@ -195,6 +199,7 @@ class RunOrchestrator:
             context_factory=_make_context_factory(spec.code_version),
             adapter_kwargs=adapter_kwargs,
             dependencies_lock=deps_lock,
+            system_binaries_lock=bin_lock,
             metadata={"orchestrator": "picarones.app.services.run_orchestrator"},
         )
 
@@ -204,7 +209,7 @@ class RunOrchestrator:
 
         # 7. Rapport optionnel — délégué au renderer injecté.
         # Inversion de dépendance : ``app/`` ne peut pas importer
-        # ``reports_v2/`` (plus externe).  Le caller fournit un
+        # ``reports/`` (plus externe).  Le caller fournit un
         # callable.
         report_path: Path | None = None
         if report_renderer is not None and spec.report_html:

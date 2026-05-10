@@ -64,7 +64,7 @@ class TestVersion:
     def test_version_cli(self):
         from click.testing import CliRunner
         from picarones import __version__
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
@@ -76,7 +76,7 @@ class TestVersion:
         ``picarones.__version__``."""
         from click.testing import CliRunner
         from picarones import __version__
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, ["--version"])
         assert __version__ in result.output, (
@@ -96,7 +96,7 @@ class TestMainModule:
 
     def test_main_imports_cli(self):
         content = (ROOT / "picarones" / "__main__.py").read_text(encoding="utf-8")
-        assert "from picarones.cli import cli" in content
+        assert "from picarones.interfaces.cli import cli" in content
 
     def test_main_importable(self):
         import importlib
@@ -268,7 +268,7 @@ class TestCLIDemoEndToEnd:
 
     def test_demo_runs_without_error(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, [
             "demo", "--docs", "3",
@@ -278,7 +278,7 @@ class TestCLIDemoEndToEnd:
 
     def test_demo_generates_html_file(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         output = tmp_path / "rapport.html"
         runner.invoke(cli, ["demo", "--docs", "3", "--output", str(output)])
@@ -286,7 +286,7 @@ class TestCLIDemoEndToEnd:
 
     def test_demo_html_contains_expected_content(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         output = tmp_path / "rapport.html"
         runner.invoke(cli, ["demo", "--docs", "3", "--output", str(output)])
@@ -297,7 +297,7 @@ class TestCLIDemoEndToEnd:
 
     def test_demo_with_history_flag(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, [
             "demo", "--docs", "3",
@@ -309,7 +309,7 @@ class TestCLIDemoEndToEnd:
 
     def test_demo_with_robustness_flag(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         runner = CliRunner()
         result = runner.invoke(cli, [
             "demo", "--docs", "3",
@@ -320,7 +320,7 @@ class TestCLIDemoEndToEnd:
 
     def test_demo_with_json_output(self, tmp_path):
         from click.testing import CliRunner
-        from picarones.cli import cli
+        from picarones.interfaces.cli import cli
         import json
         runner = CliRunner()
         json_out = tmp_path / "results.json"

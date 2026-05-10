@@ -87,10 +87,10 @@ component_management:
       name: App services
       paths:
         - picarones/app/**
-    - component_id: reports_v2
-      name: Reports v2
+    - component_id: reports
+      name: Reports
       paths:
-        - picarones/reports_v2/**
+        - picarones/reports/**
     - component_id: interfaces
       name: Interfaces (CLI, web)
       paths:

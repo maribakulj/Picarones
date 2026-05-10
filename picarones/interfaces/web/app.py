@@ -1,381 +1,220 @@
-"""``create_app`` — Sprint A14-S35.
+"""Interface web Picarones — orchestrateur FastAPI.
 
-Squelette FastAPI du nouveau monde.  **Pas un shim** sur le legacy
-``picarones.web.app`` — c'est une app neuve, écrite pour consommer
-directement les services du Sprint S17+ (``BenchmarkService``,
-``RegistryService``, ``RunOrchestrator``, ``WorkspaceManager``,
-``CorpusService``).
+Lance avec :
 
-Le legacy ``picarones.web.app`` reste en place jusqu'au S46.
+.. code-block:: bash
 
-Architecture
-------------
-- ``create_app(app_state) → FastAPI`` : factory qui construit l'app
-  avec les services injectés. Pas de singleton global — chaque
-  ``create_app`` produit une instance indépendante.
-- ``WebAppState`` : container immuable des services injectés
-  (services + workspace root + version).
-- Endpoint ``GET /health`` : liveness probe pour Docker / k8s.
-- Endpoint ``GET /version`` : version + flags (mode public, etc.).
-- Endpoints corpus/benchmark/jobs : ajoutés aux S36-S37 via routers
-  dédiés.
+    picarones serve [--port 8000] [--host 127.0.0.1]
+    # ou directement :
+    uvicorn picarones.web.app:app --reload --port 8000
 
-Anti-sur-ingénierie
--------------------
-- Pas de middleware CSP/CSRF dans S35 — ajoutés au S38 quand on
-  servira des templates HTML (le squelette S35 est API-only).
-- Pas de lifespan (rien à initialiser au démarrage — les services
-  sont injectés déjà construits).
-- Pas de mount static (S38).
-- Pas de jobs queue (S37).
+L'application est intentionnellement minimaliste : elle se contente
+d'instancier ``FastAPI``, de monter le middleware de sécurité (CSP,
+en-têtes durcis), de servir les fichiers statiques, puis d'inclure
+les 11 routers thématiques de :mod:`picarones.web.routers`. Toute la
+logique métier vit dans les sous-modules :
 
-Chaque sprint S36-S38 ajoute incrémentalement sans toucher au
-squelette : on monte des routers, on attache des middlewares, on
-mount des fichiers statiques.
+- :mod:`picarones.web.state` — singletons et helpers transverses
+- :mod:`picarones.web.models` — Pydantic schemas
+- :mod:`picarones.web.corpus_utils` — parsing XML, analyse corpus
+- :mod:`picarones.web.engine_utils` — détection moteurs, capacités
+- :mod:`picarones.web.benchmark_utils` — workers threadés
+- :mod:`picarones.web.config_utils` — validation config utilisateur
+- :mod:`picarones.web.routers.*` — 11 ``APIRouter`` thématiques
 """
 
 from __future__ import annotations
 
 import logging
+import sqlite3
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from fastapi import FastAPI
+
+# Sprint F (plan v2.0) — interfaces/ ne peut pas importer ``picarones`` racine.
+_picarones = __import__("importlib").import_module("picarones")
+__version__ = getattr(_picarones, "__version__", "unknown")
+from picarones.interfaces.web import state
+from picarones.interfaces.web.routers import (
+    benchmark as _benchmark_router,
+    config as _config_router,
+    corpus as _corpus_router,
+    engines as _engines_router,
+    history as _history_router,
+    home as _home_router,
+    importers as _importers_router,
+    normalization as _normalization_router,
+    reports as _reports_router,
+    synthesis as _synthesis_router,
+    system as _system_router,
+)
+from picarones.interfaces.web.security import csp_middleware, csrf_middleware
 
 _logger = logging.getLogger(__name__)
 
-from picarones.adapters.storage import JobStore
-from picarones.app.services import (
-    BenchmarkService,
-    CorpusService,
-    JobRunner,
-    RegistryService,
-    RunOrchestrator,
-    WorkspaceManager,
-)
-from picarones.interfaces.web.i18n import (
-    DEFAULT_LANGUAGE,
-    SUPPORTED_LANGUAGES,
-    translate,
-)
-from picarones.interfaces.web.security import (
-    AuthenticationBackend,
-    AuthenticationMiddleware,
-    BodySizeLimitMiddleware,
-    RateLimitMiddleware,
-    SecurityHeadersMiddleware,
-)
 
-_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
-_STATIC_DIR = Path(__file__).resolve().parent / "static"
+# ──────────────────────────────────────────────────────────────────────────
+# Lifespan
+# ──────────────────────────────────────────────────────────────────────────
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Hook de démarrage : valide la config + nettoie les jobs orphelins.
 
-@dataclass(frozen=True)
-class WebAppState:
-    """Container immuable des services injectés dans l'app web.
-
-    Attributes
-    ----------
-    workspace:
-        ``WorkspaceManager`` du run en cours.
-    registry:
-        ``RegistryService`` (registres de métriques + projecteurs
-        pré-bootstrap).
-    corpus:
-        ``CorpusService`` (import ZIP, détection patterns).
-    benchmark:
-        ``BenchmarkService`` (orchestration runner + vues +
-        persistance).
-    orchestrator:
-        ``RunOrchestrator`` (workflow YAML → bench → HTML report).
-    version:
-        Version du code Picarones à afficher dans
-        ``GET /version``.
-
-    Notes
-    -----
-    Frozen : aucun service ne change de référence après le démarrage
-    de l'app.  Pour reconstruire l'état (test isolé), créer une
-    nouvelle ``WebAppState``.
+    1. Sprint S6.9 — ``validate_csrf_config()`` : refuse de démarrer
+       si ``PICARONES_CSRF_REQUIRED=1`` sans ``PICARONES_CSRF_SECRET``
+       stable (sinon tous les tokens CSRF sont invalidés à chaque
+       restart, UX cassée et signal de mauvaise config masqué).
+    2. Au démarrage, tous les jobs encore en statut ``pending`` ou
+       ``running`` en base sont forcément orphelins (le processus
+       précédent est mort sans les finir).  On les bascule en
+       ``interrupted`` pour ne pas laisser d'état mensonger sur le
+       tableau de bord.
     """
+    # Étape 1 — validation config (échec rapide si dangereux).
+    from picarones.interfaces.web.security import validate_csrf_config
+    validate_csrf_config()
 
-    workspace: WorkspaceManager
-    registry: RegistryService
-    corpus: CorpusService
-    benchmark: BenchmarkService
-    orchestrator: RunOrchestrator
-    job_store: JobStore | None = None
-    job_runner: JobRunner | None = None
-    version: str = "1.0.0"
-
-
-class HealthResponse(BaseModel):
-    """Schéma JSON pour ``GET /health``."""
-
-    status: str = "ok"
-
-
-class VersionResponse(BaseModel):
-    """Schéma JSON pour ``GET /version``."""
-
-    version: str
-    workspace_root: str
-    n_metrics: int
-    n_projectors: int
+    # Étape 2 — nettoyage jobs orphelins.
+    # NB : on accède via ``state.JOB_STORE`` (pas un import direct) pour
+    # que les fixtures de tests qui ré-affectent ``state.JOB_STORE`` à
+    # un store isolé soient effectivement vues par le lifespan.
+    try:
+        state.JOB_STORE.mark_orphaned_jobs_interrupted()
+    except sqlite3.Error as exc:  # pragma: no cover — défense en profondeur
+        # Si la base de jobs est cassée au démarrage, on log en ``error``
+        # (pas ``warning``) — c'est un signal opérationnel : l'app
+        # tourne dans un état dégradé, le tableau de bord va être incorrect.
+        _logger.error(
+            "[jobs] mark_orphaned_jobs_interrupted ÉCHOUÉ — "
+            "base SQLite inaccessible (%s) : le tableau de bord "
+            "affichera des jobs zombies.", exc,
+        )
+    yield
 
 
-def create_app(
-    state: WebAppState,
-    *,
-    enable_security_headers: bool = True,
-    max_body_bytes: int | None = 100 * 1024 * 1024,
-    rate_limit_per_minute: int | None = 60,
-    rate_limit_trust_proxy_count: int = 0,
-    auth_backend: AuthenticationBackend | None = None,
-) -> FastAPI:
-    """Construit une instance FastAPI consommant l'``WebAppState``.
+# ──────────────────────────────────────────────────────────────────────────
+# Instance FastAPI
+# ──────────────────────────────────────────────────────────────────────────
 
-    Pas de singleton global : chaque appel produit une nouvelle app
-    indépendante.
+app = FastAPI(
+    title="Picarones",
+    description=(
+        "Plateforme de comparaison de moteurs OCR/HTR pour documents patrimoniaux"
+    ),
+    version=__version__,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    lifespan=_lifespan,
+)
 
-    Parameters
-    ----------
-    state:
-        ``WebAppState`` immuable injectée dans tous les endpoints.
-    enable_security_headers:
-        Si ``True`` (défaut), monte ``SecurityHeadersMiddleware``
-        avec CSP strict + X-Frame-Options + nosniff + Referrer-Policy
-        + Permissions-Policy.  Mettre à ``False`` uniquement si un
-        reverse proxy en amont applique déjà ces en-têtes.
-    max_body_bytes:
-        Si non ``None`` (défaut 100 MiB), monte ``BodySizeLimitMiddleware``
-        pour rejeter les uploads dépassant la taille.  ``None`` désactive
-        le check (mode dev / tests).
-    rate_limit_per_minute:
-        Si non ``None`` (défaut 60), monte ``RateLimitMiddleware`` avec
-        cette limite par IP par minute.  ``None`` désactive (mode
-        public sans rate limit).
-    rate_limit_trust_proxy_count:
-        Nombre de proxies fiables devant l'app.  ``0`` (défaut) →
-        ``X-Forwarded-For`` ignoré, ``request.client.host`` utilisé.
-        ``1`` → un seul proxy en amont (ex. nginx local) ; ``2`` →
-        deux ; etc.  **Ne pas surdéclarer** : un client peut alors
-        forger XFF pour spoofer son IP.
-    auth_backend:
-        Backend d'authentification optionnel.  Si ``None`` (défaut),
-        mode public total (cohérent avec HuggingFace Space).  Sinon,
-        ``AuthenticationMiddleware`` valide chaque requête sauf
-        ``/health`` et ``/version`` (sondes infra).
+# ──────────────────────────────────────────────────────────────────────────
+# Sprint S3.2 — Handler exception global
+# ──────────────────────────────────────────────────────────────────────────
 
-    Returns
-    -------
-    FastAPI
-        Instance prête à être lancée par ``uvicorn`` ou consommée
-        par ``TestClient``.
+
+def register_global_exception_handler(target_app: FastAPI) -> None:
+    """Enregistre un handler ``Exception`` qui :
+
+    1. Logue le détail (message + traceback) au niveau ERROR avec
+       le ``request_id`` quand disponible — l'équipe ops peut
+       corréler la 500 au log.
+    2. Retourne au client un JSON minimaliste sans stack trace ni
+       message interne.  Format :
+       ``{"error": "internal_error", "request_id": "...", "detail": "..."}``.
+
+    Sans ce handler, FastAPI renvoie soit la stack trace au client
+    (en mode debug), soit un 500 vide non corrélable côté ops.
     """
-    if not isinstance(state, WebAppState):
-        raise TypeError(
-            f"create_app : state doit être WebAppState, "
-            f"reçu {type(state).__name__}.",
+    import uuid
+
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    @target_app.exception_handler(Exception)
+    async def _handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # Tente de récupérer un request_id si un middleware l'a posé
+        # dans request.state ; sinon en génère un éphémère pour
+        # corréler client ↔ log.
+        rid = getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
+        _logger.error(
+            "[web] exception non capturée — request_id=%s path=%s method=%s : %s",
+            rid,
+            request.url.path,
+            request.method,
+            exc,
+            exc_info=True,
         )
-
-    # Lifespan hook (S48) : nettoyage des jobs zombies au boot.
-    # Tout job en statut ``pending`` ou ``running`` au démarrage du
-    # process est forcément orphelin (le process précédent est mort
-    # sans le finir).  On les bascule en ``interrupted`` pour ne pas
-    # laisser d'état mensonger sur le tableau de bord.
-    @asynccontextmanager
-    async def _lifespan(_app: FastAPI):
-        if state.job_store is not None:
-            try:
-                n = state.job_store.mark_orphaned_jobs_interrupted()
-                if n > 0:
-                    _logger.info(
-                        "[lifespan] %d job(s) orphelin(s) marqué(s) "
-                        "interrupted au boot.", n,
-                    )
-            except Exception as exc:  # noqa: BLE001 — défense en profondeur
-                _logger.error(
-                    "[lifespan] mark_orphaned_jobs_interrupted ÉCHOUÉ "
-                    "— jobs zombies possibles : %s", exc,
-                )
-        yield
-
-    app = FastAPI(
-        title="Picarones",
-        description=(
-            "Plateforme de benchmark OCR/HTR pour documents patrimoniaux. "
-            "API du nouveau monde (Sprint A14-S35+)."
-        ),
-        version=state.version,
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-        lifespan=_lifespan,
-    )
-
-    # On stocke l'état dans app.state.picarones pour permettre aux
-    # endpoints (S36+) d'y accéder via Request.app.state.picarones
-    # — namespace explicite pour ne pas collisionner avec d'autres
-    # extensions FastAPI.
-    app.state.picarones = state
-
-    # ──────────────────────────────────────────────────────────────
-    # Sécurité (S49) — middlewares opt-out via paramètres explicites.
-    # L'ordre d'enregistrement compte : Starlette exécute les
-    # middlewares dans l'ordre inverse de l'ajout (LIFO).  On veut
-    # que les premiers ajoutés (rate limit, body size) tournent en
-    # PREMIER sur la requête entrante — donc on les ajoute APRÈS
-    # les headers de réponse.  Pratique : ajouter dans l'ordre
-    # « réponse → requête » de l'extérieur vers l'intérieur.
-    # ──────────────────────────────────────────────────────────────
-    if enable_security_headers:
-        app.add_middleware(SecurityHeadersMiddleware)
-    if rate_limit_per_minute is not None:
-        app.add_middleware(
-            RateLimitMiddleware,
-            max_requests=rate_limit_per_minute,
-            window_seconds=60.0,
-            trust_proxy_count=rate_limit_trust_proxy_count,
-        )
-    if max_body_bytes is not None:
-        app.add_middleware(BodySizeLimitMiddleware, max_bytes=max_body_bytes)
-    if auth_backend is not None:
-        app.add_middleware(AuthenticationMiddleware, backend=auth_backend)
-
-    # ──────────────────────────────────────────────────────────────
-    # Templates Jinja2 + static (S38)
-    # ──────────────────────────────────────────────────────────────
-    templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
-    app.state.templates = templates
-    if _STATIC_DIR.is_dir():
-        app.mount(
-            "/static",
-            StaticFiles(directory=str(_STATIC_DIR)),
-            name="static",
-        )
-
-    # ──────────────────────────────────────────────────────────────
-    # Routers métier (S36+)
-    # ──────────────────────────────────────────────────────────────
-    # Import paresseux pour éviter les cycles : `routers/__init__.py`
-    # importe les routers individuels, qui n'ont pas besoin de
-    # `WebAppState` au moment de leur définition (ils consomment via
-    # `request.app.state.picarones` à chaque appel).
-    from picarones.interfaces.web.routers import (
-        benchmark_router,
-        corpus_router,
-        jobs_router,
-    )
-    app.include_router(corpus_router)
-    app.include_router(benchmark_router)
-    app.include_router(jobs_router)
-
-    # ──────────────────────────────────────────────────────────────
-    # Endpoints squelette (sondes santé/version)
-    # ──────────────────────────────────────────────────────────────
-
-    @app.get("/", response_class=HTMLResponse)
-    async def home_page(
-        request: Request, lang: str = DEFAULT_LANGUAGE,
-    ) -> HTMLResponse:
-        """Page d'accueil HTML — résume le workspace + runs + jobs.
-
-        Le paramètre ``lang`` accepte ``"fr"`` ou ``"en"`` (cf.
-        ``interfaces/web/i18n``).  Toute autre valeur retombe sur le
-        défaut avec warning loggé par ``i18n.translate``.
-        """
-        if lang not in SUPPORTED_LANGUAGES:
-            lang = DEFAULT_LANGUAGE
-
-        # Lit les runs et les jobs *via* les services injectés — pas
-        # de logique métier ici, juste de l'agrégation pour la vue.
-        from picarones.interfaces.web.routers.benchmark import (
-            _read_manifest,
-            _runs_dir,
-            _summarize,
-        )
-        # Pour des workspaces utilisateur standard (< 100 runs), le
-        # scan filesystem à chaque requête reste sous la milliseconde.
-        # Pour un déploiement multi-tenants (> 1000 runs), un cache LRU
-        # avec invalidation sur mtime du runs_dir serait pertinent.
-        # On limite déjà la liste à 20 runs pour borner la page.
-        MAX_RUNS_DISPLAYED = 20
-        runs_dir = _runs_dir(state)
-        runs: list[dict] = []
-        if runs_dir.exists():
-            # Tri ordre décroissant (mtime) pour avoir les plus
-            # récents en tête, puis cap à MAX_RUNS_DISPLAYED.
-            entries = sorted(
-                (e for e in runs_dir.iterdir() if e.is_dir()),
-                key=lambda e: e.stat().st_mtime,
-                reverse=True,
-            )[:MAX_RUNS_DISPLAYED]
-            for entry in entries:
-                manifest_path = entry / "run_manifest.json"
-                if not manifest_path.exists():
-                    continue
-                manifest = _read_manifest(manifest_path)
-                if manifest is None:
-                    continue
-                runs.append(_summarize(manifest, run_id=entry.name).model_dump())
-
-        jobs: list[dict] = []
-        if state.job_store is not None:
-            jobs = [
-                {
-                    "job_id": j.job_id,
-                    "status": j.status,
-                    "progress": j.progress,
-                }
-                for j in state.job_store.list(limit=10)
-            ]
-
-        return templates.TemplateResponse(
-            request=request,
-            name="home.html.j2",
-            context={
-                "lang": lang,
-                "version": state.version,
-                "n_metrics": len(state.registry.metrics),
-                "n_projectors": len(state.registry.projectors),
-                "workspace_root": str(state.workspace.root),
-                "runs": runs,
-                "jobs": jobs,
-                "t": lambda key: translate(key, lang),
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "internal_error",
+                "request_id": rid,
+                "detail": (
+                    "Une erreur interne est survenue.  Le détail technique "
+                    "a été loggé côté serveur ; communiquer ce request_id "
+                    "au support."
+                ),
             },
         )
 
-    @app.get("/health", response_model=HealthResponse)
-    async def health() -> HealthResponse:
-        """Liveness probe — toujours ``200 OK`` si l'app a démarré.
 
-        Pas de dépendance aux services backends : on veut détecter
-        un crash de l'app, pas un crash transitoire d'un service.
-        """
-        return HealthResponse(status="ok")
-
-    @app.get("/version", response_model=VersionResponse)
-    async def version() -> VersionResponse:
-        """Affiche la version du code et un compte rapide des
-        registres pour vérifier que le bootstrap a bien eu lieu."""
-        return VersionResponse(
-            version=state.version,
-            workspace_root=str(state.workspace.root),
-            n_metrics=len(state.registry.metrics),
-            n_projectors=len(state.registry.projectors),
-        )
-
-    return app
+register_global_exception_handler(app)
 
 
-__all__ = [
-    "HealthResponse",
-    "VersionResponse",
-    "WebAppState",
-    "create_app",
-]
+# Sprint S6.5 — logs JSON structurés si ``PICARONES_LOG_FORMAT=json``.
+# Opt-in pour ne pas casser les déploiements existants qui parsent
+# le format texte humain.
+from picarones.interfaces.web.observability import (
+    install_json_logging,
+    is_json_logging_requested,
+    request_id_middleware,
+)
+if is_json_logging_requested():
+    install_json_logging()
+    _logger.info("[observability] JsonLogFormatter installé.")
+
+
+# Middleware request_id — pose ``request.state.request_id`` et
+# expose ``X-Request-Id`` en réponse.  Toujours actif (coût négligeable).
+app.middleware("http")(request_id_middleware)
+
+# Middleware CSP + en-têtes durcis (X-Frame-Options, etc.)
+app.middleware("http")(csp_middleware)
+
+# Sprint A4 (B-11) — protection CSRF, gated par PICARONES_CSRF_REQUIRED.
+# En mode public (HuggingFace Space) : bypass complet, pas de cookie.
+# En mode institutionnel : double-submit cookie + signature HMAC-SHA256.
+# Le middleware s'enregistre toujours mais devient no-op si la variable
+# d'env n'est pas activée — coût ~0 en mode public.
+app.middleware("http")(csrf_middleware)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Fichiers statiques
+# ──────────────────────────────────────────────────────────────────────────
+
+_STATIC_DIR = Path(__file__).parent / "static"
+if _STATIC_DIR.is_dir():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Routers thématiques
+# ──────────────────────────────────────────────────────────────────────────
+
+# Ordre indifférent fonctionnellement, mais regroupé par domaine
+# pour la lisibilité (info → données → processus → présentation).
+app.include_router(_system_router.router)
+app.include_router(_engines_router.router)
+app.include_router(_corpus_router.router)
+app.include_router(_normalization_router.router)
+app.include_router(_config_router.router)
+app.include_router(_synthesis_router.router)
+app.include_router(_history_router.router)
+app.include_router(_reports_router.router)
+app.include_router(_importers_router.router)
+app.include_router(_benchmark_router.router)
+app.include_router(_home_router.router)

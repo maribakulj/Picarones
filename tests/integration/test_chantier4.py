@@ -5,7 +5,7 @@ Couvre :
 - Sous-chantier 4.A : ``normalize_llm_content`` + ``log_http_error``
   factorisés dans :mod:`picarones.llm.base`, propagés aux 4 adapters.
 - Sous-chantier 4.B : helpers HTTP factorisés dans
-  :mod:`picarones.extras.importers._http`, Gallica et IIIF y délèguent.
+  :mod:`picarones.adapters.corpus._http`, Gallica et IIIF y délèguent.
 - Sous-chantier 4.C : 3 nouvelles sous-commandes CLI ``diagnose``,
   ``economics``, ``edition`` qui mappent un profil de calcul
   (chantier 2) à un workflow.
@@ -23,7 +23,7 @@ import pytest
 
 class TestNormalizeLlmContent:
     def test_str_passes_through(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content("hello") == "hello"
         # Idempotence : retourne l'objet exact pour str
@@ -31,18 +31,18 @@ class TestNormalizeLlmContent:
         assert normalize_llm_content(s) is s
 
     def test_none_returns_empty(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content(None) == ""
 
     def test_empty_string_passes(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content("") == ""
 
     def test_list_of_chunks_with_text_attr(self):
         """Cas Mistral SDK : list[ContentChunk]. Sprint 15 fix."""
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         class MockChunk:
             def __init__(self, text):
@@ -53,18 +53,18 @@ class TestNormalizeLlmContent:
 
     def test_list_of_dicts_with_text_key(self):
         """Cas Anthropic SDK : list[dict] avec clé 'text'."""
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         result = normalize_llm_content([{"text": "a"}, {"text": "b"}])
         assert result == "ab"
 
     def test_list_of_strings(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content(["foo", "bar"]) == "foobar"
 
     def test_mixed_list(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         class MockChunk:
             def __init__(self, text):
@@ -76,12 +76,12 @@ class TestNormalizeLlmContent:
         assert result == "abc"
 
     def test_none_in_list_skipped(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         assert normalize_llm_content([None, "a", None, "b"]) == "ab"
 
     def test_object_with_text_attribute(self):
-        from picarones.llm.base import normalize_llm_content
+        from picarones.adapters.llm.base import normalize_llm_content
 
         class TextHolder:
             text = "hello"
@@ -90,7 +90,7 @@ class TestNormalizeLlmContent:
 
 class TestLogHttpError:
     def test_401_logs_invalid_key(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         class FakeExc(Exception):
             status_code = 401
@@ -102,7 +102,7 @@ class TestLogHttpError:
                    for r in caplog.records)
 
     def test_429_logs_rate_limit(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         class FakeExc(Exception):
             status_code = 429
@@ -113,7 +113,7 @@ class TestLogHttpError:
                    for r in caplog.records)
 
     def test_5xx_logs_server_error(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         class FakeExc(Exception):
             status_code = 503
@@ -124,7 +124,7 @@ class TestLogHttpError:
                    for r in caplog.records)
 
     def test_no_status_code_logs_generic(self, caplog):
-        from picarones.llm.base import log_http_error
+        from picarones.adapters.llm.base import log_http_error
 
         with caplog.at_level("WARNING"):
             log_http_error("Foo", "bar", ValueError("random"))
@@ -136,20 +136,20 @@ class TestLlmAdaptersInheritEnvVar:
     """Le chantier 4 a ajouté ``api_key_env_var`` aux 3 adapters cloud."""
 
     def test_mistral_declares_env_var(self):
-        from picarones.llm.mistral_adapter import MistralAdapter
+        from picarones.adapters.llm.mistral_adapter import MistralAdapter
         assert MistralAdapter.api_key_env_var == "MISTRAL_API_KEY"
 
     def test_openai_declares_env_var(self):
-        from picarones.llm.openai_adapter import OpenAIAdapter
+        from picarones.adapters.llm.openai_adapter import OpenAIAdapter
         assert OpenAIAdapter.api_key_env_var == "OPENAI_API_KEY"
 
     def test_anthropic_declares_env_var(self):
-        from picarones.llm.anthropic_adapter import AnthropicAdapter
+        from picarones.adapters.llm.anthropic_adapter import AnthropicAdapter
         assert AnthropicAdapter.api_key_env_var == "ANTHROPIC_API_KEY"
 
     def test_ollama_no_env_var(self):
         """Ollama est local — pas de clé API."""
-        from picarones.llm.ollama_adapter import OllamaAdapter
+        from picarones.adapters.llm.ollama_adapter import OllamaAdapter
         assert OllamaAdapter.api_key_env_var is None
 
 
@@ -160,40 +160,42 @@ class TestLlmAdaptersInheritEnvVar:
 
 class TestHttpHelpers:
     def test_validate_http_url_accepts_https(self):
-        from picarones.extras.importers._http import validate_http_url
+        from picarones.adapters.corpus._http import validate_http_url
         validate_http_url("https://gallica.bnf.fr/test")  # ne lève pas
 
     def test_validate_http_url_accepts_http(self):
-        from picarones.extras.importers._http import validate_http_url
-        validate_http_url("http://localhost:8080/x")
+        from picarones.adapters.corpus._http import validate_http_url
+        # Sprint S1.6 : ``localhost`` désormais refusé (anti-SSRF).
+        # On utilise un hostname public valide à la place.
+        validate_http_url("http://example.org/x")
 
     @pytest.mark.parametrize("scheme", ["file", "ftp", "data", "javascript", "ssh"])
     def test_validate_http_url_rejects_other_schemes(self, scheme):
-        from picarones.extras.importers._http import validate_http_url
+        from picarones.adapters.corpus._http import validate_http_url
         with pytest.raises(ValueError, match="non autorisé"):
             validate_http_url(f"{scheme}://example.com/x")
 
 
 class TestIiifAliasesDelegateToHttp:
     """Les noms ``_validate_url`` et ``_download_url`` exposés depuis
-    :mod:`picarones.extras.importers.iiif` doivent rester disponibles
+    :mod:`picarones.adapters.corpus.iiif` doivent rester disponibles
     (rétrocompat des tests Sprint 4) — ils délèguent aux helpers
     factorisés."""
 
     def test_iiif_validate_url_is_alias(self):
-        from picarones.extras.importers import iiif
-        from picarones.extras.importers._http import validate_http_url
+        from picarones.adapters.corpus import iiif
+        from picarones.adapters.corpus._http import validate_http_url
         assert iiif._validate_url is validate_http_url
 
     def test_iiif_download_url_is_alias(self):
-        from picarones.extras.importers import iiif
-        from picarones.extras.importers._http import download_url
+        from picarones.adapters.corpus import iiif
+        from picarones.adapters.corpus._http import download_url
         assert iiif._download_url is download_url
 
 
 class TestGallicaDelegatesToHttp:
     def test_gallica_validate_url_delegates(self):
-        from picarones.extras.importers.gallica import GallicaClient
+        from picarones.adapters.corpus.gallica import GallicaClient
         client = GallicaClient()
         # Doit accepter https
         client._validate_url("https://gallica.bnf.fr/x")
@@ -204,18 +206,16 @@ class TestGallicaDelegatesToHttp:
     def test_gallica_uses_iiif_for_image_download(self):
         """``GallicaClient.import_document`` délègue à IIIFImporter."""
         # Lecture statique du source — pas d'appel réseau.
-        # Chantier 5 (3 cercles) : le contenu vit désormais dans
-        # ``picarones/extras/importers/gallica.py`` ; le module
-        # historique ``picarones.extras.importers.gallica`` est un alias.
+        # Phase 8 (post-Chantier 5) : le contenu vit désormais dans
+        # ``picarones/adapters/corpus/gallica.py`` (canonique).
         from pathlib import Path
         gallica_src = (
             Path(__file__).parent.parent.parent
-            / "picarones" / "extras" / "importers" / "gallica.py"
+            / "picarones" / "adapters" / "corpus" / "gallica.py"
         ).read_text(encoding="utf-8")
         # Confirme que Gallica importe IIIFImporter
         assert "IIIFImporter" in gallica_src
-        assert "from picarones.extras.importers.iiif" in gallica_src or \
-            "from picarones.extras.importers.iiif" in gallica_src
+        assert "from picarones.adapters.corpus.iiif" in gallica_src
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -228,7 +228,7 @@ class TestCliWorkflows:
         from pathlib import Path
 
         cli_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "cli" / "_workflows.py"
+            Path(__file__).parent.parent.parent / "picarones" / "interfaces" / "cli" / "_workflows.py"
         ).read_text(encoding="utf-8")
         # Vérification statique : les 3 commandes existent
         assert '@cli.command("diagnose")' in cli_src
@@ -241,7 +241,7 @@ class TestCliWorkflows:
     def test_workflows_map_correct_profile(self):
         from pathlib import Path
         cli_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "cli" / "_workflows.py"
+            Path(__file__).parent.parent.parent / "picarones" / "interfaces" / "cli" / "_workflows.py"
         ).read_text(encoding="utf-8")
         # Chaque commande doit fixer le bon profil
         # diagnose → diagnostics, economics → economics, edition → philological
@@ -257,7 +257,7 @@ class TestCliWorkflows:
         from pathlib import Path
 
         cli_src = (
-            Path(__file__).parent.parent.parent / "picarones" / "cli" / "_workflows.py"
+            Path(__file__).parent.parent.parent / "picarones" / "interfaces" / "cli" / "_workflows.py"
         ).read_text(encoding="utf-8")
         tree = ast.parse(cli_src)
         funcs = {
@@ -271,7 +271,7 @@ class TestCliWorkflows:
         try:
             from click.testing import CliRunner
 
-            from picarones.cli import cli as cli_group
+            from picarones.interfaces.cli import cli as cli_group
         except ImportError:
             pytest.skip("click non installé")
 

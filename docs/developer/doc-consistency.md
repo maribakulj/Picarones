@@ -30,11 +30,11 @@ Vérifie que :
 
 | Item | Source de vérité | Sens du contrat |
 |---|---|---|
-| Moteurs OCR | `picarones/engines/*.py` | Tout moteur listé dans le tableau « Supported Engines » du README doit avoir un adapter |
-| Commandes CLI | `picarones/cli/*.py` (Click) | Toute commande listée dans le README doit apparaître dans `picarones --help` |
-| Endpoints API | `picarones/web/app.py` (`app.openapi()`) | Tout endpoint listé doit exister dans la spec OpenAPI |
+| Moteurs OCR | `picarones/adapters/ocr/*.py` | Tout moteur listé dans le tableau « Supported Engines » du README doit avoir un adapter |
+| Commandes CLI | `picarones/interfaces/cli/*.py` (Click) | Toute commande listée dans le README doit apparaître dans `picarones --help` |
+| Endpoints API | `picarones/interfaces/web/app.py` (`app.openapi()`) | Tout endpoint listé doit exister dans la spec OpenAPI |
 | Compteur de tests | `pytest --collect-only` | Toute mention « N tests » ou « N passed » doit être à 5 % près du baseline |
-| Variables `AWS_*` | `picarones/engines/aws*.py` | Si documentées, un adapter doit exister |
+| Variables `AWS_*` | `picarones/adapters/ocr/aws*.py` | Si documentées, un adapter doit exister |
 
 **Direction unidirectionnelle** : on vérifie que ce qui est *annoncé*
 existe — pas que tout ce qui existe est annoncé. La direction réciproque
@@ -126,8 +126,8 @@ et accepte si l'un des mots `reporté`, `abandonné`, `non implémenté`,
 
 | Vous modifiez… | Vous devez aussi… |
 |---|---|
-| `picarones/engines/<X>.py` (nouveau) | Ajouter une ligne dans le tableau « Supported Engines » du README |
-| `picarones/cli/_<X>.py` (nouveau) | Ajouter la commande dans la table CLI du README |
+| `picarones/adapters/ocr/<X>.py` (nouveau) | Ajouter une ligne dans le tableau « Supported Engines » du README |
+| `picarones/interfaces/cli/_<X>.py` (nouveau) | Ajouter la commande dans la table CLI du README |
 | Un nouveau endpoint FastAPI | Ajouter dans la table « API endpoints » du README |
 | Le nombre de tests | Mettre à jour les 3 mentions dans README (l/583, l/623, l/660) |
 | Une promesse SPECS qui devient sans objet | Soit retirer la mention, soit ajouter dans le bloc `known-abandoned`, soit ajouter une note locale |

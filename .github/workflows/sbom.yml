@@ -1,0 +1,99 @@
+# Sprint S8.3 — Software Bill of Materials au format CycloneDX.
+#
+# Pourquoi
+# --------
+# Une institution publique (BnF, université, archive nationale) qui
+# déploie Picarones doit pouvoir auditer la chaîne d'approvisionnement
+# logicielle :
+#
+# - Quelles dépendances sont utilisées ?
+# - Quelles versions exactes ?
+# - Quelles licences ?
+# - Y a-t-il des CVE connues sur ces deps ?
+#
+# CycloneDX est le standard SBOM piloté par OWASP.  L'artefact JSON
+# produit ici peut être ingéré par Dependency-Track, Snyk, ou tout
+# scanner SBOM standard.
+#
+# Stratégie
+# ---------
+# - Sur chaque push main + sur chaque tag → génération SBOM.
+# - Sur chaque PR → génération + diff vs main (informationnel).
+# - Artefact uploadé en pièce jointe du workflow ; sur tag, attaché
+#   à la GitHub Release.
+
+name: SBOM (CycloneDX)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Picarones (runtime extras)
+        run: |
+          python -m pip install --upgrade pip
+          # Installation pour figer les versions résolues dans
+          # l'environnement.  ``[dev,web]`` couvre la surface
+          # utilisée par la CI ; les extras LLM/OCR cloud ne sont
+          # pas inclus pour rester sous la taille raisonnable du
+          # SBOM (un déployeur institutionnel choisira ses extras).
+          pip install -e ".[dev,web]"
+
+      - name: Install cyclonedx-bom
+        run: pip install "cyclonedx-bom>=4.0,<6.0"
+
+      - name: Generate CycloneDX JSON SBOM
+        run: |
+          # ``cyclonedx-py environment`` introspecte le venv courant.
+          # ``--output-format JSON`` + ``--output-file`` produit un
+          # fichier nommé.
+          mkdir -p sbom-output
+          cyclonedx-py environment \
+              --output-format JSON \
+              --output-file sbom-output/picarones-sbom.cdx.json
+          echo "SBOM size : $(wc -c < sbom-output/picarones-sbom.cdx.json) bytes"
+          # Nombre de composants (sanity check).
+          python -c "
+          import json
+          with open('sbom-output/picarones-sbom.cdx.json') as f:
+              data = json.load(f)
+          n = len(data.get('components', []))
+          print(f'Components: {n}')
+          assert n > 0, 'SBOM vide — cyclonedx-py n a pas vu le venv'
+          "
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: picarones-sbom-${{ github.sha }}
+          path: sbom-output/
+          retention-days: 90
+
+      - name: Attach to GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sbom-output/picarones-sbom.cdx.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

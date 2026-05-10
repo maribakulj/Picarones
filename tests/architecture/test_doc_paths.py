@@ -85,13 +85,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #:   avant la migration (ces moteurs n'ont jamais été implémentés).
 #:   ``SPECS.md`` a été corrigé en place vers
 #:   ``picarones/adapters/legacy_engines/base.py``.
-#: - 132 (sprint « Lot F — report/ → reports_v2/ », 2026-05-07) :
+#: - 132 (sprint « Lot F — report/ → reports/ », 2026-05-07) :
 #:   suppression des 37 shims ``picarones/report/`` (29 *_render.py,
 #:   2 helpers, 6 modules + glossary).  38 nouveaux chemins cassés
 #:   héritage : 29 dans ``CHANGELOG.md`` + 8 dans ``docs/audits/*.md``
 #:   et ``docs/migration/legacy-retirement-plan.md`` — tous
 #:   intouchables.  Le doc actif ``docs/reference/views.md`` a été
-#:   corrigé en place vers les chemins ``picarones/reports_v2/html/{views,
+#:   corrigé en place vers les chemins ``picarones/reports/html/{views,
 #:   generator, renderers, templates}``.
 #: - 134 (sprint « Lot G — core/{diff_utils, xml_utils} », 2026-05-07) :
 #:   suppression des 2 derniers shims de ``picarones/core/``.  Le
@@ -116,7 +116,34 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ``picarones.pipeline.legacy_*``.  Les docs concernées
 # (CHANGELOG.md, audits, sub-plans) gardent volontairement les
 # anciens chemins pour la traçabilité historique.
-BROKEN_PATHS_BASELINE = 141
+# Sprint H.5 : -11 broken paths — fix des refs actives dans
+# docs/how-to/cli-workflows.md, narrative-engine, normalization-profiles,
+# doc-consistency, SESSION_HANDOVER.
+# Sprint H.2.d : +1 — suppression de ``adapters/legacy_engines/``.
+# Sprint H.4 : +3 — suppression des stubs canoniques
+# ``interfaces/cli/{run,report,import_corpus}.py`` et promotion de
+# ``interfaces/{cli,web}/_legacy/`` vers ``interfaces/{cli,web}/``
+# (les anciens chemins ``_legacy/`` apparaissent dans CHANGELOG +
+# audits historiques, intouchables).
+# Sprint H.6 : +2 — la section CHANGELOG 2.0 référence
+# ``picarones/cli/__init__.py`` et ``picarones/engines/tesseract.py``
+# dans le bloc « Migration depuis 1.x » (intouchables : c'est
+# justement le but du bloc).
+# Sprint H.8 : +2 — la suppression du shim ``picarones/i18n.py`` et
+# la migration de l'exemple de docstring dans ``robustness.py``
+# vers ``adapters.ocr.tesseract`` cassent quelques refs dans des
+# audits historiques (CHANGELOG, docs/audits/).
+# Sprint H.9 : -7 — nettoyage massif de ~17 fichiers ``docs/`` qui
+# pointaient vers les paquets supprimés (``picarones.measurements.*``
+# / ``picarones.core.*`` / ``picarones.engines.*`` / ``picarones.cli.*``
+# / ``picarones.web.*`` / ``picarones.report.*`` / etc.) re-pointent
+# désormais vers les chemins canoniques.  ``docs/migration/`` archivée
+# vers ``docs/archives/migration/`` (les refs internes y restent
+# intentionnellement, c'est de l'historique).
+# Sprint S7 : +1 — suppression du shim ``picarones/pipeline/spec.py``
+# (deprecation period 1.x → 2.0 expirée).  Quelques refs historiques
+# au shim subsistent dans ``CHANGELOG.md`` / ``docs/audits/``.
+BROKEN_PATHS_BASELINE = 163
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

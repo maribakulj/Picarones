@@ -1,0 +1,326 @@
+
+<!-- ════ Vue 4 : Analyses ══════════════════════════════════════════ -->
+<div id="view-analyses" class="view">
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <h3 data-i18n="h_cer_dist">Distribution du CER par moteur</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-cer-hist" role="img" aria-label="Distribution des CER par moteur" data-a11y-label="Distribution des CER par moteur"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_radar">Profil des moteurs (radar)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-radar" role="img" aria-label="Profil radar par moteur" data-a11y-label="Profil radar par moteur"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.5rem" data-i18n="radar_note">
+        Axe radar : CER, WER, MER, WIL — valeurs inversées (plus c'est haut, meilleur est le moteur).
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_cer_doc">CER par document (tous moteurs)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-cer-doc" role="img" aria-label="CER par document" data-a11y-label="CER par document"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_duration">Temps d'exécution moyen (secondes/document)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-duration" role="img" aria-label="Durée d'inférence par moteur" data-a11y-label="Durée d'inférence par moteur"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3 data-i18n="h_quality_cer">Qualité image ↔ CER (scatter plot)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-quality-cer" role="img" aria-label="Corrélation qualité d'image / CER" data-a11y-label="Corrélation qualité d'image / CER"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="quality_cer_note">
+        Chaque point = un document. Axe X = score qualité image [0–1]. Axe Y = CER. Corrélation négative attendue.
+      </div>
+    </div>
+
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_taxonomy">Taxonomie des erreurs par moteur</h3>
+      <div class="chart-canvas-wrap" style="max-height:300px">
+        <canvas id="chart-taxonomy" role="img" aria-label="Taxonomie d'erreurs par moteur" data-a11y-label="Taxonomie d'erreurs par moteur"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="taxonomy_note">
+        Distribution des classes d'erreurs (classes 1–9 de la taxonomie Picarones).
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Courbe de fiabilité -->
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_reliability">Courbes de fiabilité</h3>
+      <div class="chart-canvas-wrap" style="max-height:300px">
+        <canvas id="chart-reliability" role="img" aria-label="Diagramme de fiabilité (calibration)" data-a11y-label="Diagramme de fiabilité (calibration)"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="reliability_note">
+        Pour les X% documents les plus faciles (triés par CER croissant), quel est le CER moyen cumulé ?
+        Une courbe basse = moteur performant même sur les documents faciles.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Intervalles de confiance -->
+    <div class="chart-card">
+      <h3 data-i18n="h_bootstrap">Intervalles de confiance à 95 % (bootstrap)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-bootstrap-ci" role="img" aria-label="Intervalles de confiance bootstrap" data-a11y-label="Intervalles de confiance bootstrap"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="bootstrap_note">
+        IC à 95% sur le CER moyen par moteur (1000 itérations bootstrap).
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Diagramme de Venn -->
+    <div class="chart-card">
+      <h3 data-i18n="h_venn">Erreurs communes / exclusives (Venn)</h3>
+      <div id="venn-container" style="min-height:260px;display:flex;align-items:center;justify-content:center"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem technical" data-i18n="venn_note">
+        Intersection des ensembles d'erreurs entre les 2 ou 3 premiers concurrents.
+        Erreurs communes = segments partagés.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Tests de Wilcoxon -->
+    <div class="chart-card technical">
+      <h3 data-i18n="h_pairwise">Tests de Wilcoxon — comparaisons par paires</h3>
+      <div id="wilcoxon-table-container" style="overflow-x:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="pairwise_note">
+        Test signé-rangé de Wilcoxon (non-paramétrique). Seuil α = 0.05.
+      </div>
+    </div>
+
+    <!-- Sprint 7 — Clustering des erreurs -->
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_clusters">Clustering des patterns d'erreurs</h3>
+      <div id="error-clusters-container"></div>
+    </div>
+
+    <!-- Sprint 10 — Scatter Gini vs CER moyen -->
+    <div class="chart-card">
+      <h3 data-i18n="h_gini_cer">Gini vs CER moyen <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="gini_cer_ideal">— idéal : bas-gauche</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-gini-cer" role="img" aria-label="Gini vs CER" data-a11y-label="Gini vs CER"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="gini_cer_note">
+        Axe X = CER moyen, Axe Y = coefficient de Gini. Un moteur idéal a CER bas ET Gini bas (erreurs rares et uniformes).
+      </div>
+    </div>
+
+    <!-- Sprint 10 — Scatter ratio longueur vs ancrage -->
+    <div class="chart-card">
+      <h3 data-i18n="h_ratio_anchor">Ratio longueur vs ancrage <span style="font-size:.72rem;font-weight:400;color:var(--text-muted)" data-i18n="ratio_anchor_subtitle">— hallucinations VLM</span></h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-ratio-anchor" role="img" aria-label="Score d'ancrage par moteur" data-a11y-label="Score d'ancrage par moteur"></canvas>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="ratio_anchor_note">
+        Axe X = score d'ancrage trigrammes [0–1]. Axe Y = ratio longueur sortie/GT.
+        Zone ⚠️ : ancrage &lt; 0.5 ou ratio &gt; 1.2 → hallucinations probables.
+      </div>
+    </div>
+
+    <!-- Sprint 19 — Vue Pareto coût/qualité ────────────────────────── -->
+    <div class="chart-card pareto-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_pareto">Compromis qualité / coût</h3>
+      <div class="pareto-toolbar">
+        <button class="pareto-toggle active" data-axis="cost" onclick="setParetoAxis('cost')"
+                data-i18n="pareto_axis_cost">Coût € / 1000 pages</button>
+        <button class="pareto-toggle" data-axis="speed" onclick="setParetoAxis('speed')"
+                data-i18n="pareto_axis_speed">Vitesse (s / page)</button>
+        <button class="pareto-toggle pareto-experimental" data-axis="co2"
+                onclick="setParetoAxis('co2')" data-i18n="pareto_axis_co2"
+                title="Estimation expérimentale">Carbone (g CO₂)</button>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="pareto-chart" role="img" aria-label="Front Pareto coût/qualité" data-a11y-label="Front Pareto coût/qualité"></canvas></div>
+      <div id="pareto-method-note" class="pareto-note" data-i18n="pareto_note">
+        Les moteurs sur la frontière de Pareto (en évidence) sont ceux pour
+        lesquels aucun autre moteur n'offre simultanément un meilleur CER ET
+        un meilleur coût. Prix indicatifs (table interne, datée). Le mode
+        carbone est expérimental.
+      </div>
+      <details class="pareto-assumptions">
+        <summary data-i18n="pareto_assumptions_summary">Hypothèses détaillées par moteur</summary>
+        <ul id="pareto-assumptions-list"></ul>
+      </details>
+    </div>
+
+    <!-- Sprint 43 — Calibration des moteurs (ECE, MCE, reliability diagram) -->
+    {% if calibration_summary_html or reliability_diagrams_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_calibration">Calibration des moteurs</h3>
+      <div class="calibration-grid"
+           style="display:grid;gap:1.2rem;align-items:start">
+        {% if calibration_summary_html %}
+        <div>{{ calibration_summary_html | safe }}</div>
+        {% endif %}
+        {% if reliability_diagrams_html %}
+        <div>{{ reliability_diagrams_html | safe }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="calibration_note">
+        ECE (Expected Calibration Error) : moyenne pondérée des écarts
+        |confiance − précision| par bin. Plus l'ECE est bas, plus le
+        moteur est honnête sur sa fiabilité — la diagonale du diagramme
+        représente la calibration parfaite. Un ECE élevé signale qu'on
+        ne peut pas se fier au score de confiance pour cibler la
+        relecture humaine.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Sprint 41 — Précision sur entités nommées (NER) -->
+    {% if ner_summary_html or ner_per_category_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_ner">Précision sur entités nommées</h3>
+      <div class="ner-grid"
+           style="display:grid;gap:1.2rem;align-items:start">
+        {% if ner_summary_html %}
+        <div>{{ ner_summary_html | safe }}</div>
+        {% endif %}
+        {% if ner_per_category_html %}
+        <div>{{ ner_per_category_html | safe }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="ner_note">
+        F1 calculé par alignement IoU ≥ 0,5 sur les spans (labels
+        case-insensitive). Plus le F1 est haut, plus le moteur restitue
+        fidèlement les entités nommées (personnes, lieux, dates) — ce
+        qui prédit l'utilité aval pour l'indexation prosopographique.
+        Cette métrique mesure conjointement OCR + extracteur NER ; le
+        modèle d'extraction lui-même peut halluciner.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Sprint 62 — Profil philologique (6 sections : unicode_blocks,
+         abbreviations, mufi, early_modern, modern_archives, roman_numerals).
+         Adaptive : n'apparaît que si au moins un module a du signal. -->
+    {% if philological_profile_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ philological_profile_html | safe }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 86 — A.II.5 : recherchabilité fuzzy + précision sur
+         séquences numériques. Adaptive : n'apparaît que si au moins
+         un moteur a du signal. -->
+    {% if searchability_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ searchability_html | safe }}
+    </div>
+    {% endif %}
+    {% if numerical_sequences_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ numerical_sequences_html | safe }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 87 — A.II.2 : lisibilité (delta Flesch). Adaptive :
+         n'apparaît que si au moins un moteur a du signal. -->
+    {% if readability_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ readability_html | safe }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 89 — A.II.8b : spécialisation inter-moteurs.
+         Adaptive : n'apparaît que si ≥ 2 moteurs avec taxonomie. -->
+    {% if specialization_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ specialization_html | safe }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 37 — Analyse inter-moteurs (divergence taxonomique + oracle gap) -->
+    {% if divergence_matrix_html or oracle_gap_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      <h3 data-i18n="h_inter_engine">Analyse inter-moteurs</h3>
+      <div class="inter-engine-grid"
+           style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+        {% if divergence_matrix_html %}
+        <div>{{ divergence_matrix_html | safe }}</div>
+        {% endif %}
+        {% if oracle_gap_html %}
+        <div>{{ oracle_gap_html | safe }}</div>
+        {% endif %}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.6rem"
+           data-i18n="inter_engine_note">
+        Plus la divergence est élevée, plus deux moteurs se trompent sur des
+        classes d'erreurs différentes — ils sont alors candidats à un voting
+        ensemble. L'oracle est la borne supérieure du recall token-level
+        atteignable par ce voting (proxy bag-of-words).
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Chantier 3 (post-Sprint 97) — vues thématiques composées
+         qui regroupent les renderers orphelins en sections
+         collapsibles. Adaptive : ne s'affichent que si la vue
+         retourne du contenu (au moins une sous-section avec signal). -->
+    {% if economics_view_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ economics_view_html | safe }}
+    </div>
+    {% endif %}
+    {% if advanced_taxonomy_view_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ advanced_taxonomy_view_html | safe }}
+    </div>
+    {% endif %}
+    {% if diagnostics_view_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ diagnostics_view_html | safe }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint « câblage des modules test-only » (mai 2026) :
+         4 sections issues de ``report_data.extra_metrics``.
+         Adaptive : ne s'affichent que si le calcul a remonté du signal. -->
+    {% if rare_token_recall_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ rare_token_recall_html | safe }}
+    </div>
+    {% endif %}
+    {% if taxonomy_cooccurrence_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ taxonomy_cooccurrence_html | safe }}
+    </div>
+    {% endif %}
+    {% if taxonomy_intra_doc_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ taxonomy_intra_doc_html | safe }}
+    </div>
+    {% endif %}
+    {% if marginal_cost_html %}
+    <div class="chart-card" style="grid-column:1/-1">
+      {{ marginal_cost_html | safe }}
+    </div>
+    {% endif %}
+
+    <!-- Sprint 7 — Matrice de corrélation -->
+    <div class="chart-card technical" style="grid-column:1/-1">
+      <h3 data-i18n="h_correlation">Matrice de corrélation entre métriques</h3>
+      <div style="margin-bottom:.5rem">
+        <label style="font-size:.82rem;font-weight:600"><span data-i18n="corr_engine_label">Moteur :</span>
+          <select id="corr-engine-select" onchange="renderCorrelationMatrix()"
+            style="padding:.25rem .5rem;border-radius:6px;border:1px solid var(--border);margin-left:.25rem"></select>
+        </label>
+      </div>
+      <div id="corr-matrix-container" style="overflow-x:auto"></div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:.4rem" data-i18n="corr_note">
+        Coefficient de Pearson entre les métriques CER, WER, qualité image, ligatures, diacritiques.
+        Vert = corrélation positive, Rouge = corrélation négative.
+      </div>
+    </div>
+
+  </div>
+</div>

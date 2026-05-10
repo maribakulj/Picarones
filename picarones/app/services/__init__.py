@@ -52,7 +52,7 @@ from picarones.app.services.run_orchestrator import (
     RunOrchestrator,
 )
 
-# Le rendu HTML vit dans la couche ``reports_v2/`` (cible documentée
+# Le rendu HTML vit dans la couche ``reports/`` (cible documentée
 # du rewrite — un rapport est un format de sortie, pas un service).
 # Un caller qui veut juste générer un HTML l'importe directement
 # depuis là.

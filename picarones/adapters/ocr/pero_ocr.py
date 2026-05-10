@@ -1,12 +1,5 @@
 """``PeroOCRAdapter`` natif — Sprint A14-S31.
-
-Migration native du legacy ``picarones.engines.pero_ocr.PeroOCREngine``
-vers le contrat ``BaseOCRAdapter`` (S26).  **Pas un shim** : la classe
 implémente directement le contrat du nouveau monde, sans héritage du
-legacy.
-
-Le legacy ``PeroOCREngine`` reste en place pour les callers qui
-n'ont pas encore migré ; sa suppression viendra au S46 quand la
 parité sera atteinte sur tous les adapters.
 
 Cas d'usage BnF
@@ -42,8 +35,7 @@ Comportement
 Anti-sur-ingénierie
 -------------------
 - Pas de support GPU explicite (Pero OCR le gère via la config).
-- Pas de retry, pas d'extraction de confidences (legacy S48 —
-  reportées au sprint ``ConfidenceArtifact``).
+- Pas de retry, pas d'extraction de confidences (à ajouter quand un caller en aura besoin).
 - ``_parser`` lazy-init — si l'instance est sérialisée pour
   ProcessPool, le parser est re-instancié dans le worker (cohérent
   avec Pero OCR qui charge ses modèles à l'instanciation).

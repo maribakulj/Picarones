@@ -67,7 +67,7 @@ picarones/
   app/               # Couche 6 — services applicatifs
     services/
     schemas/
-  reports_v2/        # Couche 7 — rendu HTML / JSON / CSV
+  reports/        # Couche 7 — rendu HTML / JSON / CSV
     html/
     json/
     csv/

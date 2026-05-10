@@ -1,9 +1,5 @@
 """``AzureDocIntelAdapter`` natif — Sprint A14-S34.
-
-Migration native du legacy ``picarones.engines.azure_doc_intel`` vers
 ``BaseOCRAdapter`` (S26).  **Pas un shim**.
-
-Le legacy reste en place jusqu'au S46.
 
 Cas d'usage BnF
 ---------------
@@ -52,7 +48,7 @@ Comportement
 
 Anti-sur-ingénierie
 -------------------
-- Pas d'extraction de confidences (legacy S51 — reportée).
+- Pas d'extraction de confidences (à ajouter quand un caller en aura besoin).
 - Pas de support multi-langue dans une même requête.
 - Pas de retry au-delà du polling (qui est un retry implicite).
 """
@@ -60,6 +56,7 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import urllib.error
@@ -71,6 +68,8 @@ from picarones.adapters._retry import call_with_retry
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
+
+logger = logging.getLogger(__name__)
 
 
 class AzureDocIntelAdapter(BaseOCRAdapter):
@@ -307,8 +306,14 @@ class AzureDocIntelAdapter(BaseOCRAdapter):
             body = ""
             try:
                 body = exc.read().decode("utf-8")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as read_exc:  # noqa: BLE001
+                # Best-effort : si on ne peut pas lire le body de
+                # l'erreur HTTP, on lève quand même avec le code seul.
+                # Audit S7 — pas de ``pass`` silencieux.
+                logger.debug(
+                    "[%s] body Azure HTTP illisible : %s",
+                    self.name, read_exc,
+                )
             raise OCRAdapterError(
                 f"{self.name} : Azure Document Intelligence erreur "
                 f"{exc.code} : {body}",

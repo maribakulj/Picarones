@@ -86,7 +86,7 @@ produit ou consomme une autre représentation : ALTO, PAGE XML, entités
 nommées, ordre de lecture. C'est le verrou qui empêche tout l'axe B et qui
 limite déjà des métriques de l'axe A (Layout F1, reading order F1).
 
-**Refonte de `picarones/core/corpus.py`.** La classe `Document` actuelle
+**Refonte de `picarones/domain/corpus.py`.** La classe `Document` actuelle
 porte `image_path`, `ground_truth: str`, `ocr_text`. La nouvelle version
 porte une GT structurée :
 
@@ -135,7 +135,7 @@ texte` de manière implicite. Pour qu'un même runner puisse exécuter un
 mappeur ALTO ou un rewriter, il faut une interface plus générale dont
 `BaseOCREngine` devient un cas particulier.
 
-**Création de `picarones/core/modules.py`.**
+**Création de `picarones/domain/module_protocol.py`.**
 
 ```python
 class ArtifactType(str, Enum):
@@ -442,7 +442,7 @@ nouvelle dans le rapport.
 
 **A.II.1.a — Précision sur entités nommées (NER).**
 
-Nouveau module `picarones/measurements/ner.py`. Backends : spaCy multilingue,
+Nouveau module `picarones/evaluation/metrics/ner.py`. Backends : spaCy multilingue,
 Stanza, modèle HIPE pour les corpus historiques. Choix paramétré par
 profil (`fr_core_news_lg`, `xx_ent_wiki_sm`, `hipe2022`).
 
@@ -464,7 +464,7 @@ glossaire (entrée `ner_score`).
 
 **A.II.1.b — Score de calibration des moteurs.**
 
-Nouveau module `picarones/measurements/calibration.py`. Tous les moteurs cibles
+Nouveau module `picarones/evaluation/metrics/calibration.py`. Tous les moteurs cibles
 fournissent une confidence par token ou par ligne (Tesseract `tsv`
 output, Pero OCR via `PageLayout`, Mistral OCR via `confidence`, Google
 Vision via `Word.confidence`). Ajout d'un champ

@@ -1,0 +1,237 @@
+{
+  "corpus": {
+    "document_count": 2,
+    "name": "test_corpus_s5",
+    "source": "/fixtures/corpus.zip"
+  },
+  "engine_reports": [
+    {
+      "aggregated_metrics": {
+        "cer": {
+          "max": 0.05,
+          "mean": 0.025,
+          "median": 0.025,
+          "min": 0.0,
+          "stdev": 0.035355
+        },
+        "cer_caseless": {
+          "max": 0.05,
+          "mean": 0.025,
+          "median": 0.025,
+          "min": 0.0,
+          "stdev": 0.035355
+        },
+        "cer_nfc": {
+          "max": 0.05,
+          "mean": 0.025,
+          "median": 0.025,
+          "min": 0.0,
+          "stdev": 0.035355
+        },
+        "document_count": 2,
+        "failed_count": 0,
+        "mer": {
+          "max": 0.05,
+          "mean": 0.025,
+          "median": 0.025,
+          "min": 0.0,
+          "stdev": 0.035355
+        },
+        "wer": {
+          "max": 0.1,
+          "mean": 0.05,
+          "median": 0.05,
+          "min": 0.0,
+          "stdev": 0.070711
+        },
+        "wer_normalized": {
+          "max": 0.1,
+          "mean": 0.05,
+          "median": 0.05,
+          "min": 0.0,
+          "stdev": 0.070711
+        },
+        "wil": {
+          "max": 0.1,
+          "mean": 0.05,
+          "median": 0.05,
+          "min": 0.0,
+          "stdev": 0.070711
+        }
+      },
+      "document_results": [
+        {
+          "doc_id": "doc1",
+          "duration_seconds": 1.5,
+          "engine_error": null,
+          "ground_truth": "Bonjour le monde",
+          "hypothesis": "Bonjour le monde",
+          "image_path": "/fixtures/doc1.jpg",
+          "metrics": {
+            "cer": 0.0,
+            "cer_caseless": 0.0,
+            "cer_nfc": 0.0,
+            "error": null,
+            "hypothesis_length": 16,
+            "mer": 0.0,
+            "reference_length": 16,
+            "wer": 0.0,
+            "wer_normalized": 0.0,
+            "wil": 0.0
+          }
+        },
+        {
+          "doc_id": "doc2",
+          "duration_seconds": 2.0,
+          "engine_error": null,
+          "ground_truth": "Au revoir",
+          "hypothesis": "Au revoir!",
+          "image_path": "/fixtures/doc2.jpg",
+          "metrics": {
+            "cer": 0.05,
+            "cer_caseless": 0.05,
+            "cer_nfc": 0.05,
+            "error": null,
+            "hypothesis_length": 10,
+            "mer": 0.05,
+            "reference_length": 9,
+            "wer": 0.1,
+            "wer_normalized": 0.1,
+            "wil": 0.1
+          }
+        }
+      ],
+      "engine_config": {
+        "lang": "fra"
+      },
+      "engine_name": "engine_alpha",
+      "engine_version": "1.0.0"
+    },
+    {
+      "aggregated_metrics": {
+        "cer": {
+          "max": 0.0625,
+          "mean": 0.03125,
+          "median": 0.03125,
+          "min": 0.0,
+          "stdev": 0.044194
+        },
+        "cer_caseless": {
+          "max": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "min": 0.0,
+          "stdev": 0.0
+        },
+        "cer_nfc": {
+          "max": 0.0625,
+          "mean": 0.03125,
+          "median": 0.03125,
+          "min": 0.0,
+          "stdev": 0.044194
+        },
+        "document_count": 2,
+        "failed_count": 0,
+        "mer": {
+          "max": 0.0625,
+          "mean": 0.03125,
+          "median": 0.03125,
+          "min": 0.0,
+          "stdev": 0.044194
+        },
+        "wer": {
+          "max": 0.333333,
+          "mean": 0.166666,
+          "median": 0.166666,
+          "min": 0.0,
+          "stdev": 0.235702
+        },
+        "wer_normalized": {
+          "max": 0.333333,
+          "mean": 0.166666,
+          "median": 0.166666,
+          "min": 0.0,
+          "stdev": 0.235702
+        },
+        "wil": {
+          "max": 0.111111,
+          "mean": 0.055556,
+          "median": 0.055556,
+          "min": 0.0,
+          "stdev": 0.078567
+        }
+      },
+      "document_results": [
+        {
+          "doc_id": "doc1",
+          "duration_seconds": 2.5,
+          "engine_error": null,
+          "ground_truth": "Bonjour le monde",
+          "hypothesis": "Bonjour Ie monde",
+          "image_path": "/fixtures/doc1.jpg",
+          "metrics": {
+            "cer": 0.0625,
+            "cer_caseless": 0.0,
+            "cer_nfc": 0.0625,
+            "error": null,
+            "hypothesis_length": 16,
+            "mer": 0.0625,
+            "reference_length": 16,
+            "wer": 0.333333,
+            "wer_normalized": 0.333333,
+            "wil": 0.111111
+          }
+        },
+        {
+          "doc_id": "doc2",
+          "duration_seconds": 1.8,
+          "engine_error": null,
+          "ground_truth": "Au revoir",
+          "hypothesis": "Au revoir",
+          "image_path": "/fixtures/doc2.jpg",
+          "metrics": {
+            "cer": 0.0,
+            "cer_caseless": 0.0,
+            "cer_nfc": 0.0,
+            "error": null,
+            "hypothesis_length": 9,
+            "mer": 0.0,
+            "reference_length": 9,
+            "wer": 0.0,
+            "wer_normalized": 0.0,
+            "wil": 0.0
+          }
+        }
+      ],
+      "engine_config": {
+        "lang": "fra"
+      },
+      "engine_name": "engine_beta",
+      "engine_version": "2.1.3"
+    }
+  ],
+  "metadata": {
+    "deterministic": true,
+    "sprint": "S5"
+  },
+  "picarones_version": "2.0.0-test",
+  "ranking": [
+    {
+      "documents": 2,
+      "engine": "engine_alpha",
+      "failed": 0,
+      "mean_cer": 0.025,
+      "mean_wer": 0.05,
+      "median_cer": 0.025
+    },
+    {
+      "documents": 2,
+      "engine": "engine_beta",
+      "failed": 0,
+      "mean_cer": 0.03125,
+      "mean_wer": 0.166666,
+      "median_cer": 0.03125
+    }
+  ],
+  "run_date": "2026-05-09T00:00:00+00:00"
+}

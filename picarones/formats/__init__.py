@@ -13,7 +13,7 @@ Sous-packages :
 - ``pagexml/`` — PAGE XML (PRIMA, transkribus).
 - ``text/`` — normalisation texte (NFC, casefold, profils
   diplomatiques, exclusion de caractères).  Cible du déplacement
-  de ``picarones.measurements.normalization`` au Sprint S9.
+  de ``picarones.formats.text.normalization`` au Sprint S9.
 
 Règle d'import : ces modules peuvent importer ``lxml`` et
 ``defusedxml``.  Ils ne doivent **jamais** importer un moteur OCR

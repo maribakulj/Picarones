@@ -73,21 +73,25 @@ def test_all_paths_resolve_to_same_classes() -> None:
     assert DomainInitial == CanonInitial == PkgInitial
 
 
-def test_legacy_spec_module_is_deprecated_shim() -> None:
-    """``picarones.pipeline.spec`` reste exposé avec
-    ``DeprecationWarning`` jusqu'à la 2.0 (cf. shim S59).
+def test_legacy_spec_module_no_longer_importable() -> None:
+    """Sprint S7 — le shim ``picarones.pipeline.spec`` (deprecation
+    period 1.x → 2.0) a été supprimé.  L'import doit lever
+    ``ModuleNotFoundError``.
 
-    La couverture détaillée du contrat (warning émis, classes
-    identiques) vit dans ``tests/api_stability/test_deprecated_aliases``.
+    Avant v2.0, ce module était un shim qui réexportait
+    ``picarones.domain.pipeline_spec`` avec ``DeprecationWarning``.
+    À v2.0, la suppression dure le rend non-importable — les
+    callers externes doivent migrer vers le chemin canonique.
     """
     import importlib
     import sys
-    import warnings
 
     sys.modules.pop("picarones.pipeline.spec", None)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        mod = importlib.import_module("picarones.pipeline.spec")
-    assert hasattr(mod, "PipelineSpec")
-    assert hasattr(mod, "PipelineStep")
-    assert hasattr(mod, "INITIAL_STEP_ID")
+    try:
+        importlib.import_module("picarones.pipeline.spec")
+    except ModuleNotFoundError:
+        return  # Comportement attendu à v2.0
+    raise AssertionError(
+        "``picarones.pipeline.spec`` est encore importable.  "
+        "Le shim devait être supprimé en S7."
+    )

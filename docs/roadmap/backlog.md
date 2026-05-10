@@ -118,7 +118,7 @@ exister à la livraison BnF.
 
 ### 2.4 Suppression de la dette d'imports magiques
 
-- Plus de `import picarones.measurements as _trigger_metric_registration`
+- Plus de `import picarones.evaluation.metrics as _trigger_metric_registration`
   dans `picarones/__init__.py`.
 - Registres construits explicitement par un service au démarrage.
 - Entry points Python pour les modules tiers (`picarones.metrics`,
@@ -133,20 +133,20 @@ Le Sprint S11 a migré 5 LLM (base + openai/mistral/anthropic/ollama)
 (_fallback_log).  L'ancien emplacement est un re-export.
 
 **Adapters OCR** (5 fichiers : tesseract, pero_ocr, mistral_ocr,
-google_vision, azure_doc_intel) restent dans `picarones/engines/`.
+google_vision, azure_doc_intel) restent dans `picarones/adapters/ocr/`.
 Tous importent `engines/base.py` qui hérite de `core.modules.BaseModule`.
 Migration différée jusqu'au S20 quand `core.modules` aura disparu
 (remplacé par le protocole `StepExecutor` du S6).
 
 **Importers patrimoniaux** (3 fichiers : iiif, gallica, escriptorium)
-restent dans `picarones/extras/importers/`.  Tous importent
+restent dans `picarones/evaluation/metrics/importers/`.  Tous importent
 `core.corpus.{Corpus, Document}`.  Migration différée jusqu'au
 déplacement de `core.corpus` vers `domain/` (sprint dédié).
 
 ### 2.5c Migration des fichiers `measurements/*.py` restants vers `evaluation/metrics/`
 
 Le Sprint S10 a migré 23 fichiers de calcul autonomes.  17 fichiers
-restent dans `picarones/measurements/` à migrer.
+restent dans `picarones/evaluation/metrics/` à migrer.
 
 **Catégorie B — utilisent `@register_metric`** (singleton global
 `core.metric_registry` à supprimer au S20) :

@@ -31,18 +31,29 @@ classifiers = [
     "Natural Language :: French",
 ]
 dependencies = [
-    "click>=8.1.0",
-    "jiwer>=3.0.0",
-    "Pillow>=10.0.0",
-    "pyyaml>=6.0.0",
-    "pytesseract>=0.3.10",
-    "tqdm>=4.66.0",
-    "numpy>=1.24.0",
-    "jinja2>=3.1.0",
+    # Sprint S6.3 — toutes les dépendances core ont une borne
+    # supérieure (caplock major) pour éviter qu'un ``pip install
+    # picarones`` futur ramène une version 2 d'un paquet et casse
+    # silencieusement l'API.  Les majeures suivantes sont validées
+    # sur le repo ; passage à une majeure supérieure = sprint
+    # explicite (mise à jour des bornes ICI + tests d'équivalence).
+    "click>=8.1.0,<9.0",
+    "jiwer>=3.0.0,<5.0",
+    "Pillow>=10.0.0,<13.0",
+    "pyyaml>=6.0.0,<7.0",
+    "pytesseract>=0.3.10,<0.4",
+    "tqdm>=4.66.0,<5.0",
+    "numpy>=1.24.0,<3.0",
+    "jinja2>=3.1.0,<4.0",
     # XML parsing sécurisé contre les attaques XXE / Billion Laughs.
-    # Utilisé par ``picarones.web.corpus_utils`` pour le parsing ALTO/PAGE
-    # quand un utilisateur uploade un corpus XML.
-    "defusedxml>=0.7.1",
+    # Utilisé par ``picarones.interfaces.web.corpus_utils`` pour le parsing
+    # ALTO/PAGE quand un utilisateur uploade un corpus XML.
+    "defusedxml>=0.7.1,<0.8",
+    # Pydantic — types immutables de la couche 1 (``picarones.domain``).
+    # Déclaré explicitement pour que les installs minimaux (sans
+    # ``[web]`` qui le ramènerait via FastAPI) bénéficient des modèles
+    # validés au moment de la déserialisation YAML.
+    "pydantic>=2.0,<3.0",
 ]
 
 [project.urls]
@@ -118,7 +129,7 @@ all = [
 ]
 
 [project.scripts]
-picarones = "picarones.cli:cli"
+picarones = "picarones.interfaces.cli:cli"
 
 # ──────────────────────────────────────────────────────────────────
 # Sprint A9 (M-5) — version dynamique via setuptools_scm.
@@ -144,18 +155,19 @@ include = ["picarones*"]
 [tool.setuptools.package-data]
 picarones = [
     "prompts/*.txt",
-    "web/static/*.css",
-    "web/static/*.js",
-    "web/templates/*.j2",
-    "web/templates/*.html",
-    "report/templates/*.j2",
-    "report/templates/*.html",
-    "report/templates/*.css",
-    "report/templates/*.js",
-    "report/i18n/*.json",
-    "measurements/narrative/templates/*.yaml",
     "data/*.yaml",
-    "report/glossary/*.yaml",
+    "interfaces/web/static/*.css",
+    "interfaces/web/static/*.js",
+    "interfaces/web/templates/*.html",
+    "interfaces/web/templates/*.j2",
+    "reports/_helpers/vendor/*.js",
+    "reports/glossary/*.yaml",
+    "reports/html/templates/*.css",
+    "reports/html/templates/*.html",
+    "reports/html/templates/*.j2",
+    "reports/html/templates/*.js",
+    "reports/i18n/*.json",
+    "reports/narrative/templates/*.yaml",
 ]
 
 [tool.pytest.ini_options]
@@ -165,14 +177,11 @@ testpaths = ["tests"]
 # Windows) — utilisé par les tests CLI E2E qui résolvent leurs mock
 # adapters via dotted path (``importlib.import_module("tests.fixtures.…")``).
 pythonpath = ["."]
-# Exclusion par défaut : markers ``network``, ``live`` et
-# ``regression`` non sélectionnés.  Override en local via
-# ``pytest -m network`` ou ``pytest -m live`` (avec env vars /
-# binaires correctement configurés).  Le marker ``regression``
-# (harness legacy ↔ rewrite) est lent ; opt-in via
-# ``pytest -m regression`` ou run dédié en CI.  ``-m ""`` pour
-# tout exécuter.
-addopts = "-v --tb=short -m 'not network and not live and not regression'"
+# Exclusion par défaut : markers ``network`` et ``live`` non
+# sélectionnés.  Override en local via ``pytest -m network`` ou
+# ``pytest -m live`` (avec env vars / binaires correctement
+# configurés).  ``-m ""`` pour tout exécuter.
+addopts = "-v --tb=short -m 'not network and not live'"
 # Sprint A1 (M-15) : aucun test individuel ne doit dépasser 5 minutes.
 # Mode "thread" car certains tests utilisent ProcessPoolExecutor qui est
 # incompatible avec le timeout en mode "signal" sur certaines plateformes.
@@ -191,7 +200,6 @@ markers = [
     "slow: tests longs (corpus de référence, intégration cloud) ; non bloquants en dev local",
     "network: tests qui hit le réseau réel ; exclus par défaut",
     "live: tests d'intégration contre vraie API/binaire (Tesseract, Anthropic, OpenAI, Mistral) ; exclus par défaut, opt-in en local via 'pytest -m live'",
-    "regression: harness de régression legacy ↔ rewrite (tests/regression/legacy_vs_rewrite/) ; exclus par défaut, opt-in via 'pytest -m regression' ou job CI dédié",
 ]
 
 # ──────────────────────────────────────────────────────────────────
@@ -225,14 +233,9 @@ exclude_lines = [
 # Sprint A1 (M-4) — type-checking gradient.
 #
 # Stratégie : ``picarones.domain`` est en mode ``strict`` car c'est la
-# couche 1 du rewrite (types purs, Pydantic + stdlib only) — l'API
-# publique stable et la base de l'architecture concentrique. Les autres
-# couches passent en mode permissif (``ignore_missing_imports`` + pas
-# de strict) — au fur et à mesure des sprints suivants, on monte le
-# niveau (Sprint A11 resserre `picarones.measurements`).
-# Note : avant les Lots A-G de la migration legacy → rewrite, ce strict
-# ciblait ``picarones.core`` ; ce paquet a été entièrement supprimé,
-# son contenu est désormais dans ``domain/``, ``evaluation/`` et ``formats/``.
+# couche 1 (types purs, Pydantic + stdlib only) — l'API publique stable
+# et la base de l'architecture concentrique. Les autres couches passent
+# en mode permissif (``ignore_missing_imports`` + pas de strict).
 # ──────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.11"
@@ -241,10 +244,15 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 no_implicit_optional = true
-# Les imports vers les autres cercles sont suivis silencieusement
-# pour éviter de propager les erreurs des cercles non encore typés.
-# Sprint A11 resserrera progressivement.
+# Les imports vers les autres couches sont suivis silencieusement
+# pour éviter de propager les erreurs des couches non encore typées.
 follow_imports = "silent"
+# Sprint S3.6 — plugin Pydantic obligatoire pour que ``mypy --strict``
+# sur ``picarones.domain`` reconnaisse les ``BaseModel`` correctement.
+# Sans plugin, ``BaseModel`` est traité comme ``Any`` et chaque
+# ``class X(BaseModel)`` génère un faux positif
+# ``Class cannot subclass "BaseModel"``.
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "picarones.domain.*"

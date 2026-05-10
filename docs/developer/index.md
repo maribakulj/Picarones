@@ -17,31 +17,26 @@ picarones/
 │   ├── corpus.py        # CorpusSpec
 │   ├── documents.py     # DocumentRef
 │   ├── pipeline_spec.py # PipelineSpec, PipelineStep (Pydantic immutable)
-│   ├── module_protocol.py # BaseModule (ABC, en cours de retrait au profit de StepExecutor)
+│   ├── module_protocol.py # BaseModule (ABC)
 │   ├── facts.py         # Fact, FactType, registre narratif
 │   └── …
 ├── formats/             # Layer 2 — parsing/serialization (ALTO 4, PAGE XML, JSON)
 ├── evaluation/          # Layer 3 — métriques et calcul
-│   ├── metrics/         # ~30 métriques (CER/WER, MUFI, philological, NER, …)
+│   ├── metrics/         # ~37 métriques (CER/WER, MUFI, philological, NER, …)
 │   ├── statistics/      # Wilcoxon, Friedman/Nemenyi, bootstrap, Pareto
-│   ├── views/, projectors/  # EvaluationView (S13+), projecteurs Alto/Page/CanonicalToText
-│   ├── corpus.py        # Document, Corpus, GTLevel (legacy en cours de retrait)
-│   ├── pipeline.py      # PipelineRunner legacy (en cours de retrait)
+│   ├── views/, projectors/  # EvaluationView, projecteurs Alto/Page/CanonicalToText
+│   ├── corpus.py        # Document, Corpus, GTLevel
 │   └── benchmark_result.py # BenchmarkResult, EngineReport, DocumentResult
 ├── pipeline/            # Layer 4 — PipelineExecutor canonique (instance-based)
 ├── adapters/            # Layer 5 — adapters externes (libs externes autorisées)
-│   ├── ocr/             # Tesseract, Pero, Mistral OCR, Google Vision, Azure DI
+│   ├── ocr/             # Tesseract, Pero, Mistral OCR, Google Vision, Azure DI, Precomputed
 │   ├── llm/             # OpenAI, Anthropic, Mistral, Ollama
 │   ├── vlm/             # Adapters VLM (zero-shot)
-│   ├── corpus/          # IIIF, Gallica, HTR-United, HuggingFace
-│   ├── storage/         # ArtifactStore, JobStore
-│   └── legacy_engines/, legacy_modules/  # legacy BaseModule-based, en retrait
-├── app/                 # Layer 6 — services applicatifs (BenchmarkService, …)
-├── reports_v2/          # Layer 7 — rendu HTML / JSON / CSV (22 renderers + 5 vues)
+│   ├── corpus/          # IIIF, Gallica, HTR-United, HuggingFace, eScriptorium
+│   └── storage/         # ArtifactStore, JobStore
+├── app/                 # Layer 6 — services applicatifs (BenchmarkService, RunOrchestrator, JobRunner, benchmark_runner)
+├── reports/             # Layer 7 — rendu HTML / JSON / CSV (22 renderers + 5 vues)
 └── interfaces/          # Layer 8 — CLI Click, Web FastAPI
-
-# Arborescence legacy en cours de retrait (cf. docs/migration/) :
-# core/, measurements/, engines/, llm/, pipelines/, report/, modules/
 ```
 
 Règle d'import stricte : les flèches d'import vont uniquement

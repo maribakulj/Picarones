@@ -19,12 +19,13 @@ on:
   workflow_dispatch:  # Déclenchement manuel
   pull_request:
     paths:
-      # Une PR qui touche le runner, la normalisation ou les engines
-      # déclenche aussi le check (cas où on veut prouver qu'un refactor
-      # ne dégrade rien).
-      - 'picarones/measurements/runner.py'
-      - 'picarones/measurements/normalization.py'
-      - 'picarones/engines/**'
+      # Une PR qui touche le runner de benchmark, la normalisation ou
+      # les adapters OCR déclenche aussi le check (cas où on veut
+      # prouver qu'un refactor ne dégrade rien).
+      - 'picarones/app/services/benchmark_runner.py'
+      - 'picarones/app/services/benchmark_service.py'
+      - 'picarones/formats/text/normalization.py'
+      - 'picarones/adapters/ocr/**'
       - '.github/workflows/perf_regression.yml'
 
 permissions:

@@ -1,21 +1,23 @@
 # API publique stable de Picarones
 
 > **Statut** : ce document décrivait l'API publique du Cercle 1
-> historique (`picarones.core/`).  Le projet est en cours de
+> historique (`picarones.domain/`).  Le projet est en cours de
 > retrait du legacy vers une **architecture 8 couches**
 > (`domain → formats → evaluation → pipeline → adapters → app
 > → reports_v2 → interfaces`, cf.
 > [`docs/explanation/architecture.md`](../explanation/architecture.md)).
 >
 > **Pendant la migration** (jusqu'à la version 2.0), l'API
-> publique est en cours de refonte.  Tous les chemins legacy
-> (`picarones.core.X`, `picarones.measurements.X`, etc.) sont
-> des shims `DeprecationWarning` qui ré-exportent depuis le
-> canonique.  Les nouveaux imports doivent utiliser les chemins
-> canoniques (`picarones.domain.*`, `picarones.evaluation.*`).
->
-> Le tableau de parité legacy ↔ canonique vit dans
-> [`tests/architecture/test_legacy_canonical_parity.py`](../../tests/architecture/test_legacy_canonical_parity.py).
+> publique est en cours de refonte.  Les chemins legacy
+> top-level (`picarones.domain.*`, `picarones.evaluation.metrics.*`,
+> `picarones.adapters.ocr.*`, `picarones.adapters.*`,
+> `picarones.reports.html.*`, `picarones.adapters.llm.*`,
+> `picarones.interfaces.cli.*`, `picarones.evaluation.metrics.*`,
+> `picarones.evaluation.synthetic`) ont **tous été supprimés**.  Les
+> nouveaux imports doivent utiliser les chemins canoniques
+> (`picarones.domain.*`, `picarones.evaluation.*`,
+> `picarones.adapters.*`, `picarones.reports.htmls.*`,
+> `picarones.interfaces.*`).
 
 ## Définition
 
@@ -93,7 +95,7 @@ class EngineReport:      # agrégat moteur sur tout le corpus
 class BenchmarkResult:   # résultat global multi-moteurs
 ```
 
-### `picarones.measurements.metrics`
+### `picarones.evaluation.metrics.text_metrics`
 
 ```python
 class MetricsResult:     # CER, WER, MER, WIL + variantes diplomatique/caseless
@@ -101,10 +103,10 @@ def compute_metrics(reference, hypothesis, char_exclude=None) -> MetricsResult
 def aggregate_metrics(results: list) -> dict
 ```
 
-### `picarones.measurements.runner`
+### `picarones.app.services.benchmark_runner`
 
 ```python
-def run_benchmark(
+def run_benchmark_via_service(
     corpus, engines,
     output_json=None,
     show_progress=True,
@@ -116,8 +118,15 @@ def run_benchmark(
     cancel_event=None,
     entity_extractor=None,
     profile="standard",
+    normalization_profile=None,
 ) -> BenchmarkResult
 ```
+
+Sprint D du plan v2.0 — adapter de compatibilité qui présente
+l'API mono-call historique de
+``measurements.runner.run_benchmark`` (supprimé en D.6.b) en
+s'appuyant en interne sur ``BenchmarkService`` (rewrite).
+Prouvé numériquement équivalent en D.1.e.
 
 ### `picarones.pipeline.legacy_runner`
 
@@ -157,7 +166,7 @@ class PipelineComparisonResult:
 def compare_pipelines(specs, corpus, factories=None) -> PipelineComparisonResult
 ```
 
-### `picarones.measurements.pipeline_spec_loader`
+### `picarones.evaluation.metrics.pipeline_spec_loader`
 
 ```python
 class PipelineSpecLoadError(ValueError):
@@ -207,7 +216,7 @@ def run_document_hooks(profile, *, ground_truth, hypothesis, image_path, corpus_
 def run_corpus_aggregators(profile, document_results) -> dict
 ```
 
-### `picarones.measurements.builtin_metrics`
+### `picarones.evaluation.metrics.builtin_metrics`
 
 Métriques scalaires natives, enregistrées dans le registre typé :
 
@@ -221,7 +230,7 @@ def wil(reference, hypothesis) -> float
 def text_preservation_after_reconstruction(reference_text, hypothesis_alto) -> float
 ```
 
-### `picarones.measurements.alto_metrics`
+### `picarones.evaluation.metrics.alto_metrics`
 
 Métriques (ALTO, ALTO) + helper :
 
@@ -234,7 +243,7 @@ def alto_text_mer(reference_alto, hypothesis_alto) -> float
 def alto_text_wil(reference_alto, hypothesis_alto) -> float
 ```
 
-### `picarones.web.jobs`
+### `picarones.interfaces.web.jobs`
 
 Persistance des jobs benchmark (utilisé par l'interface web) :
 
@@ -260,10 +269,10 @@ def reset_default_store(...)
 
 ### Ce que nous ne garantissons pas
 
-- **Modules `picarones.measurements/`** : peuvent évoluer librement.
-  Quand ils changent, les shims rétrocompat dans `picarones.core/`
+- **Modules `picarones.evaluation.metrics/`** : peuvent évoluer librement.
+  Quand ils changent, les shims rétrocompat dans `picarones.domain/`
   reflètent ces changements.
-- **Modules `picarones.extras/`** : statut variable selon le
+- **Modules `picarones.evaluation.metrics/`** : statut variable selon le
   sous-package (academic / governance / historical / importers).
   Voir `docs/explanation/architecture.md`.
 - **Comportement des renderers HTML** : la structure des fichiers HTML
@@ -291,31 +300,31 @@ de l'API publique stable. Ils peuvent évoluer ou être retirés en
 version mineure si une RFC le justifie.
 
 ```python
-# Mesures (déplacées vers picarones.measurements/)
-from picarones.measurements.confusion import build_confusion_matrix
-from picarones.measurements.taxonomy import classify_errors
-from picarones.measurements.calibration import compute_calibration_metrics
+# Mesures (déplacées vers picarones.evaluation.metrics/)
+from picarones.evaluation.metrics.confusion import build_confusion_matrix
+from picarones.evaluation.metrics.taxonomy import classify_errors
+from picarones.evaluation.metrics.calibration import compute_calibration_metrics
 # ... ~40 modules métriques ...
 
-# Moteur narratif (déplacé vers picarones.measurements.narrative/)
-from picarones.measurements.narrative import build_synthesis
+# Moteur narratif (déplacé vers picarones.evaluation.metrics.narrative/)
+from picarones.evaluation.metrics.narrative import build_synthesis
 from picarones.domain.facts import Fact, FactType, FactImportance
-from picarones.measurements.narrative.detectors import detect_global_leader_cer
+from picarones.evaluation.metrics.narrative.detectors import detect_global_leader_cer
 
-# Plugins (déplacés vers picarones.extras/)
-from picarones.core.taxonomy_intra_doc import compute_taxonomy_position_heatmap
-from picarones.core.unicode_blocks import compute_unicode_block_accuracy
-from picarones.core.module_policy import ModuleManifest
+# Plugins (déplacés vers picarones.evaluation.metrics/)
+from picarones.evaluation.metrics.taxonomy_intra_doc import compute_taxonomy_position_heatmap
+from picarones.evaluation.metrics.unicode_blocks import compute_unicode_block_accuracy
+from picarones.evaluation.metrics.module_policy import ModuleManifest
 from picarones.importers.iiif import IIIFImporter
 ```
 
 Pour les **nouvelles** intégrations, préférer les chemins canoniques :
 
-- `picarones.measurements.X` pour les mesures.
-- `picarones.measurements.narrative.X` pour le moteur narratif.
-- `picarones.extras.historical.X` pour les modules philologiques.
-- `picarones.extras.importers.X` pour les importers.
-- `picarones.extras.academic.X` / `picarones.extras.governance.X` pour
+- `picarones.evaluation.metrics.X` pour les mesures.
+- `picarones.evaluation.metrics.narrative.X` pour le moteur narratif.
+- `picarones.evaluation.metrics.X` pour les modules philologiques.
+- `picarones.adapters.corpus.X` pour les importers.
+- `picarones.evaluation.metrics.academic.X` / `picarones.evaluation.metrics.governance.X` pour
   les plugins niche / gouvernance.
 
 ## Voir aussi

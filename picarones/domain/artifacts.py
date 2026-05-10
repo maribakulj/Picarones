@@ -1,14 +1,11 @@
-"""``Artifact`` et ``ArtifactType`` — Sprint A14-S4.
+"""``Artifact`` et ``ArtifactType``.
 
 Toute sortie d'une étape de pipeline est un **artefact traçable** :
 identifiant stable, type explicite, hash du contenu, provenance.
 
-Différences avec ``picarones.core.modules.ArtifactType`` (Sprint 33)
--------------------------------------------------------------------
-L'ancien ``ArtifactType`` historique a 6 valeurs :
-``IMAGE, TEXT, ALTO, PAGE, ENTITIES, READING_ORDER``.  Le nouveau
-en a 9, avec deux distinctions importantes pour les vues d'évaluation
-introduites aux Sprints S13-S18 :
+L'enum ``ArtifactType`` a 9 valeurs canoniques + 3 aliases courts
+pour les types texte/ALTO/PAGE.  Distinctions clés pour les vues
+d'évaluation :
 
 - **``RAW_TEXT`` vs ``CORRECTED_TEXT``** — un OCR brut et un texte
   corrigé par un LLM ont la même structure (string) mais des contrats
@@ -103,47 +100,40 @@ class ArtifactType(str, Enum):
     #: reliability diagram).
     CONFIDENCES = "confidences"
 
-    #: Aliases legacy pour rétrocompat avec ``picarones.core.modules``
-    #: (Phase 4-bis du retrait du legacy).  Le mécanisme natif d'Enum
-    #: Python rend ces noms équivalents aux canoniques :
+    #: Aliases courts pour les types texte/ALTO/PAGE.  Le mécanisme
+    #: natif d'Enum Python rend ces noms équivalents aux canoniques :
     #:
     #: >>> ArtifactType.TEXT is ArtifactType.RAW_TEXT
     #: True
     #:
-    #: Le mapping sémantique TEXT → RAW_TEXT est documenté dans
-    #: ``docs/migration/regression-tolerances.md``.  À supprimer en 2.0
-    #: une fois tous les callers legacy retirés.
+    #: Utilisés par les ``@register_metric(...)`` qui déclarent leurs
+    #: signatures de manière concise.
     TEXT = "raw_text"
     ALTO = "alto_xml"
     PAGE = "page_xml"
 
     @classmethod
     def _missing_(cls, value: object) -> "ArtifactType | None":
-        """Accepte les valeurs string legacy (``"text"``, ``"alto"``,
+        """Accepte les chaînes courtes (``"text"``, ``"alto"``,
         ``"page"``) en plus des valeurs canoniques.
 
-        Ce hook est invoqué par ``ArtifactType("text")`` (lecture YAML
-        legacy par exemple) — sans lui, ``ValueError``.  À supprimer
-        en 2.0 avec les aliases legacy ci-dessus.
+        Permet aux specs YAML d'utiliser indifféremment l'un ou
+        l'autre nom.
         """
-        legacy_map: dict[str, "ArtifactType"] = {
+        short_map: dict[str, "ArtifactType"] = {
             "text": cls.RAW_TEXT,
             "alto": cls.ALTO_XML,
             "page": cls.PAGE_XML,
         }
         if not isinstance(value, str):
             return None
-        return legacy_map.get(value)
+        return short_map.get(value)
 
 
-#: Map valeur canonique → valeur string legacy.  Permet aux dicts
-#: indexés par ``ArtifactType.value`` (junction_metrics du runner
-#: legacy, etc.) de présenter les **deux** clés pendant la phase de
-#: migration : un caller rewrite qui cherche ``["raw_text"]`` et un
-#: test legacy qui cherche ``["text"]`` voient le même résultat.
-#:
-#: Phase 4-bis du retrait du legacy.  Sera retiré en 2.0 quand tous
-#: les callers utilisent les valeurs canoniques.
+#: Map valeur canonique → valeur string courte.  Permet aux dicts
+#: indexés par ``ArtifactType.value`` de présenter les **deux** clés :
+#: un caller qui cherche ``["raw_text"]`` et un caller qui cherche
+#: ``["text"]`` voient le même résultat.
 LEGACY_VALUE_ALIASES: dict[str, str] = {
     "raw_text": "text",
     "alto_xml": "alto",

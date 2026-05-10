@@ -7,7 +7,7 @@ Permet d'utiliser Picarones sans que la commande ``picarones`` soit dans le PATH
     python -m picarones --help
 """
 
-from picarones.cli import cli
+from picarones.interfaces.cli import cli
 
 if __name__ == "__main__":
     cli()

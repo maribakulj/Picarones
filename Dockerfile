@@ -114,10 +114,31 @@ WORKDIR /app
 # Sprint A14 (correctif Trivy) : ``apt-get upgrade -y`` avant install
 # pour récupérer les patches de sécurité Debian (libssl3t64, libc6,
 # openssl, etc.) — la base image Python ne les inclut pas par défaut.
+#
+# Sprint S6.1 — reproductibilité institutionnelle (BnF) :
+#
+# ``tesseract-ocr`` n'est PAS pinné à une version exacte (ex :
+# ``=5.3.0-2``) car Debian point-release rebump fréquemment :
+# ``5.3.0-2`` → ``5.3.0-2+deb12u1`` → ``5.3.4-1``.  Un pin exact
+# casse le build dès que la version disparaît du miroir.
+#
+# Le contrat de reproductibilité repose plutôt sur :
+#
+# 1. La base image Python pinée par digest SHA256 (cf. ``ARG
+#    PYTHON_BASE_IMAGE`` ci-dessus) — Debian bookworm garantit la
+#    stabilité ABI au sein du même point-release.
+# 2. ``requirements-docker.lock`` qui fige les versions Python.
+# 3. Le ``RunManifest.dependencies_lock`` capture la version
+#    Tesseract effective au runtime (``tesseract --version``)
+#    pour traçabilité scientifique.
+#
+# Si une version mineure de Tesseract introduit une régression
+# CER, le mainteneur peut pinner explicitement ICI à ce moment-là
+# (avec une note CHANGELOG).
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-        # Tesseract OCR 5 et modèles de langues
+        # Tesseract OCR 5 + modèles de langues (Debian bookworm).
         tesseract-ocr \
         tesseract-ocr-fra \
         tesseract-ocr-lat \

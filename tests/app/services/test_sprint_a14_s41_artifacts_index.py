@@ -25,7 +25,7 @@ from picarones.domain import (
     utcnow,
 )
 from picarones.pipeline.types import PipelineResult, StepResult
-from picarones.reports_v2.html.render import HtmlReportRenderer
+from picarones.reports.html.render import HtmlReportRenderer
 
 
 def _make_run_result_with_artifacts() -> RunResult:

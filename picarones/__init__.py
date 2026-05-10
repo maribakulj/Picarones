@@ -2,8 +2,8 @@
 
 Licence Apache 2.0.
 
-API publique du Cercle 1 (abstractions stables) ré-exportée ici pour
-permettre :
+API publique des couches 1 & 3 (abstractions stables) ré-exportée
+ici pour permettre :
 
 >>> from picarones import Corpus, Document, BaseModule, ArtifactType
 >>> from picarones import BenchmarkResult, EngineReport, DocumentResult
@@ -11,12 +11,12 @@ permettre :
 Pour les implémentations (calcul de métriques, runner, adapters OCR…),
 utiliser les sous-packages explicites :
 
->>> from picarones.measurements.runner import run_benchmark
->>> from picarones.measurements.metrics import compute_metrics
->>> from picarones.adapters.legacy_engines.tesseract import TesseractEngine
+>>> from picarones.app.services.benchmark_runner import run_benchmark_via_service
+>>> from picarones.evaluation.metrics.text_metrics import compute_metrics
+>>> from picarones.adapters.ocr.tesseract import TesseractAdapter
 
 Voir ``docs/explanation/architecture.md`` pour la cartographie complète des
-3 cercles, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
+8 couches, et ``docs/reference/api-stable.md`` pour le contrat de stabilité.
 """
 
 from __future__ import annotations
@@ -35,19 +35,18 @@ except ImportError:
         from importlib.metadata import version as _get_version
         __version__ = _get_version("picarones")
     except Exception:  # noqa: BLE001
-        __version__ = "1.0.0"
+        __version__ = "2.0.0"
 
 __author__ = "Picarones contributors"
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# API publique — Cercle 1 uniquement
+# API publique — couches stables (domain + evaluation)
 # ──────────────────────────────────────────────────────────────────────────
 
 from picarones.evaluation.corpus import (
     Corpus,
     Document,
-    GTLevel,
     TextGT,
     AltoGT,
     PageGT,
@@ -69,13 +68,6 @@ from picarones.domain.facts import (
     FactImportance,
     FactType,
 )
-from picarones.pipeline.legacy_runner import (
-    PipelineResult,
-    PipelineRunner,
-    PipelineSpec,
-    PipelineStep,
-    StepResult,
-)
 from picarones.evaluation.metric_registry import (
     MetricSpec,
     compute_at_junction,
@@ -83,13 +75,11 @@ from picarones.evaluation.metric_registry import (
     select_metrics,
 )
 
-# Sprint A3 — trigger d'enregistrement du registre typé (Sprint 34).
-# L'import de ``picarones.measurements`` provoque l'exécution des
-# décorateurs ``@register_metric`` sur ``cer``, ``wer``, ``mer``,
-# ``wil`` + ~15 métriques philologiques + reading order + NER + ALTO.
-# Ce trigger remplace l'ancien import croisé Cercle 1 → Cercle 2 dans
-# ``core/pipeline.py`` (violation B-1/B-2 du même esprit).
-import picarones.measurements as _trigger_metric_registration  # noqa: F401, E402
+# Trigger d'enregistrement du registre typé : l'import de
+# ``picarones.evaluation.metrics`` provoque l'exécution des décorateurs
+# ``@register_metric`` sur ``cer``, ``wer``, ``mer``, ``wil`` + ~15
+# métriques philologiques + reading order + NER + ALTO.
+import picarones.evaluation.metrics as _trigger_metric_registration  # noqa: F401, E402
 
 __all__ = [
     "__version__",
@@ -97,7 +87,6 @@ __all__ = [
     # Corpus
     "Corpus",
     "Document",
-    "GTLevel",
     "TextGT",
     "AltoGT",
     "PageGT",
@@ -118,12 +107,6 @@ __all__ = [
     "Fact",
     "FactImportance",
     "FactType",
-    # Pipelines composées (axe B)
-    "PipelineResult",
-    "PipelineRunner",
-    "PipelineSpec",
-    "PipelineStep",
-    "StepResult",
     # Registre de métriques typées
     "MetricSpec",
     "compute_at_junction",

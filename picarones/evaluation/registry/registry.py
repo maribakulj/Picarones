@@ -8,13 +8,10 @@ pas de décorateur magique.
 
 Différence avec ``picarones.evaluation.metric_registry``
 --------------------------------------------------------
-L'autre registre (relocalisé depuis ``picarones.core.metric_registry``
-en Phase 4-ter) utilise un dict module-level
-``_METRIC_REGISTRY`` rempli par un décorateur ``@register_metric``
-appliqué au top-level d'autres modules.  Conséquence : un
-``import picarones`` charge ~50 sous-modules pour amorcer le
-registre — anti-pattern documenté dans
-``BACKLOG_POST_LIVRAISON.md`` §2.4.
+L'autre registre utilise un dict module-level ``_METRIC_REGISTRY``
+rempli par un décorateur ``@register_metric`` appliqué au top-level
+d'autres modules.  Conséquence : un ``import picarones`` charge
+~50 sous-modules pour amorcer le registre.
 
 Ici, ``MetricRegistry`` est une classe instanciable :
 

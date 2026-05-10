@@ -45,7 +45,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README_PATH = REPO_ROOT / "README.md"
-ENGINES_DIR = REPO_ROOT / "picarones" / "adapters" / "legacy_engines"
+ENGINES_DIR = REPO_ROOT / "picarones" / "adapters" / "ocr"
 
 #: Marqueur HTML qui désactive un check sur la ligne. Format :
 #: ``<!-- doc-check: skip-engine -->``, ``skip-cli``, ``skip-endpoint``.
@@ -226,7 +226,7 @@ def test_listed_engines_have_adapter() -> None:
 
 def _real_cli_commands() -> set[str]:
     """Retourne l'ensemble des commandes effectivement exposées."""
-    from picarones.cli import cli
+    from picarones.interfaces.cli import cli
 
     return set(cli.commands.keys())
 
@@ -274,7 +274,7 @@ def test_listed_cli_commands_exist() -> None:
 def _real_api_endpoints() -> set[str]:
     """Retourne l'ensemble des chemins exposés par l'app FastAPI."""
     try:
-        from picarones.web.app import app
+        from picarones.interfaces.web.app import app
     except Exception as exc:  # pragma: no cover — défense en profondeur
         pytest.skip(f"FastAPI app non importable : {exc}")
     spec = app.openapi()

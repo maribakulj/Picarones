@@ -18,7 +18,7 @@ une lib externe non autorisée pour sa couche.
     app/services   │
        ▲           │
     interfaces     ┘ cercle 5 — transport (CLI, web)
-    reports_v2
+    reports
 
 Règles encodées (les "couches plus internes" sont autorisées) :
 
@@ -29,7 +29,7 @@ Règles encodées (les "couches plus internes" sont autorisées) :
 - ``adapters``     : domain + pipeline + formats + libs externes.
 - ``app``          : domain + evaluation + pipeline + formats + adapters.
 - ``interfaces``   : app + libs transport (fastapi, click, ...).
-- ``reports_v2``   : domain + evaluation + stdlib + jinja2.
+- ``reports``   : domain + evaluation + stdlib + jinja2.
 
 Compatibilité ascendante : ce test ne touche **pas** aux anciens
 packages (``picarones.core``, ``picarones.measurements``, etc.) qui
@@ -73,7 +73,7 @@ LAYER_ORDER: tuple[str, ...] = (
     "pipeline",
     "adapters",
     "app",
-    "reports_v2",
+    "reports",
     "interfaces",
 )
 
@@ -123,7 +123,7 @@ EXTERNAL_ALLOWED: dict[str, frozenset[str]] = {
         "httpx", "anyio", "h11", "httpcore",
         "multipart",
     }),
-    "reports_v2": frozenset({
+    "reports": frozenset({
         "pydantic", "typing_extensions", "annotated_types",
         "jinja2", "markupsafe", "yaml",
         # Phase 5 : ``_helpers/assets.py`` (relocalisé depuis

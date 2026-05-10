@@ -20,7 +20,7 @@ le chercheur arbitre selon son budget.
 
 Dépendance
 ----------
-S'appuie sur ``picarones.measurements.pricing`` (Sprint 20) qui expose
+S'appuie sur ``picarones.evaluation.metrics.pricing`` (Sprint 20) qui expose
 ``EngineCost.cost_per_1k_pages_eur`` et
 ``co2_per_1k_pages_g``.
 """

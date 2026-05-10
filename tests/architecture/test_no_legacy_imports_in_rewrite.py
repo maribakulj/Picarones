@@ -1,7 +1,7 @@
 """Garde-fou : aucun module du rewrite n'importe depuis le legacy.
 
 L'arborescence post-rewrite (``domain → formats → evaluation →
-pipeline → adapters → app → reports_v2 → interfaces``) doit être
+pipeline → adapters → app → reports → interfaces``) doit être
 **autonome**.  Le legacy peut s'appuyer sur le rewrite (re-exports),
 mais l'inverse romprait l'invariant — chaque retrait de paquet
 legacy au cours des phases 1-11 ferait planter le rewrite.
@@ -37,21 +37,14 @@ REWRITE_PACKAGES: tuple[str, ...] = (
     "pipeline",
     "adapters",
     "app",
-    "reports_v2",
+    "reports",
     "interfaces",
 )
 
 #: Paquets legacy.  Importables uniquement depuis l'intérieur du
 #: legacy lui-même (ou depuis les tests, qui valident la migration
 #: en cours).
-LEGACY_PACKAGES: tuple[str, ...] = (
-    "measurements",
-    "llm",
-    "pipelines",
-    "web",
-    "cli",
-    "extras",
-)
+LEGACY_PACKAGES: tuple[str, ...] = ()
 
 #: Pattern qui matche un import déclaré dans le code source.
 #:
@@ -129,7 +122,7 @@ def test_rewrite_modules_dont_import_from_legacy() -> None:
     1. Le code legacy importé existe en équivalent dans le rewrite
        → migrer l'import.
     2. Il n'existe pas encore → la fonctionnalité doit être inscrite
-       au plan ``docs/migration/legacy-retirement-plan.md`` comme
+       au plan ``docs/archives/migration/legacy-retirement-plan.md`` comme
        bloquante avant le retrait du paquet legacy concerné.
     """
     offenders: list[tuple[str, int, str]] = []
@@ -153,7 +146,7 @@ def test_rewrite_modules_dont_import_from_legacy() -> None:
             f"{sample}{more}\n\n"
             "Soit migrer l'import vers l'équivalent rewrite, soit "
             "inscrire la fonctionnalité manquante dans "
-            "``docs/migration/legacy-retirement-plan.md`` comme "
+            "``docs/archives/migration/legacy-retirement-plan.md`` comme "
             "bloquante.",
         )
 

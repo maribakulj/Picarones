@@ -20,7 +20,7 @@ Pour qu'un module soit acceptable :
 3. Il fournit un `ModuleManifest` avec **5 champs obligatoires** :
    `name`, `version`, `author`, `license`, `description`.
 4. Il passe `audit_module(MyClass, manifest)` (cf.
-   `picarones.core.module_policy`).
+   `picarones.evaluation.metrics.module_policy`).
 
 Un module qui ne passe pas l'audit n'est **pas exécutable**. Pas
 exécutable = pas dans la pipeline, pas dans le rapport.
@@ -44,7 +44,7 @@ structuré et un audit automatique au chargement.
 ## Manifest — champs obligatoires
 
 ```python
-from picarones.core.module_policy import ModuleManifest
+from picarones.evaluation.metrics.module_policy import ModuleManifest
 
 manifest = ModuleManifest(
     name="my-llm-correcteur",
@@ -102,7 +102,7 @@ class MyLlmCorrecteur(BaseModule):
 ## Audit automatique
 
 ```python
-from picarones.core.module_policy import audit_module
+from picarones.evaluation.metrics.module_policy import audit_module
 
 result = audit_module(MyLlmCorrecteur, manifest)
 if not result.passed:
@@ -123,8 +123,8 @@ L'audit vérifie :
 ## Stratégie d'ouverture en deux temps
 
 Picarones est aujourd'hui en **phase fermée** : seuls les modules
-officiels (ceux dans `picarones/engines/`, `picarones/llm/`,
-`picarones/pipelines/`) sont garantis stables. Les modules contribués
+officiels (ceux dans `picarones/adapters/ocr/`, `picarones/adapters/llm/`,
+`picarones/pipeline/`) sont garantis stables. Les modules contribués
 externes sont acceptés via PR sur le repo principal après audit.
 
 La **phase ouverte** sera déclenchée quand 5–6 modules officiels
@@ -138,7 +138,7 @@ les fournir.
 
 Quand une pipeline composée est exécutée, le rapport HTML expose un
 bloc **« Modules audités »** (cf.
-`picarones.report.module_audit_render.build_module_audit_html`) qui
+`picarones.reports.html.module_audit_render.build_module_audit_html`) qui
 liste pour chaque module :
 
 - statut d'audit (✓ vert ou ✗ rouge avec compte des checks échoués) ;

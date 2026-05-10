@@ -1,8 +1,0 @@
-# Corpus synthétiques générés par le harness à chaque run.
-# Reproductibles : même contenu, même rendu PIL → mêmes octets.
-# On ne versionne pas pour garder le repo léger ; le test
-# ``test_corpus_generation_is_idempotent`` garantit qu'on ne
-# régénère pas si les fichiers existent déjà (utile pour les
-# runs CI avec cache).
-*.png
-*.gt.txt
