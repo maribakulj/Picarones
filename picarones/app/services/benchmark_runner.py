@@ -645,15 +645,48 @@ def build_adapter_resolver(
     """
     name_to_executor: dict[str, Any] = {}
 
+    def _is_equivalent_executor(a: Any, b: Any) -> bool:
+        """Deux executors sont *fonctionnellement* équivalents s'ils
+        ont le même type et le même état (``__dict__`` complet,
+        sans filtrer les ``_*`` car la convention Picarones range
+        la config sous ``_name``/``_lang``/``_psm`` — voir
+        ``TesseractAdapter.__init__``).
+
+        Cas concret : deux ``CompetitorConfig`` qui utilisent
+        ``tesseract`` avec la même langue — l'un en mode OCR seul,
+        l'autre encapsulé dans un pipeline OCR+LLM — créent deux
+        instances ``TesseractAdapter`` distinctes (objets Python
+        différents) mais avec exactement le même état.  Avant ce
+        fix, le resolver levait ``collision impossible à résoudre``
+        ; désormais il accepte la 2e registration (idempotente).
+        """
+        if type(a) is not type(b):
+            return False
+        try:
+            return a.__dict__ == b.__dict__
+        except AttributeError:
+            return False
+
     def _register(name: str, executor: Any) -> None:
         existing = name_to_executor.get(name)
-        if existing is not None and existing is not executor:
-            raise PicaronesError(
-                f"Adapter resolver : nom {name!r} enregistré "
-                "deux fois avec des instances différentes — "
-                "collision impossible à résoudre.",
-            )
-        name_to_executor[name] = executor
+        if existing is None:
+            name_to_executor[name] = executor
+            return
+        if existing is executor:
+            return
+        if _is_equivalent_executor(existing, executor):
+            # Même nom + état équivalent → registration idempotente.
+            # On garde la 1re instance, la 2e est silencieusement
+            # déduplique.  Le pipeline qui réfère ``name`` exécutera
+            # la 1re instance — comportement identique du point de
+            # vue résultat (Tesseract est sans état applicatif).
+            return
+        raise PicaronesError(
+            f"Adapter resolver : nom {name!r} enregistré "
+            "deux fois avec des instances de configuration "
+            "différente — renommer une des deux pour disambiguer "
+            "(par ex. via le champ ``name`` du constructeur).",
+        )
 
     for engine in engines:
         if _is_canonical_adapter(engine):
