@@ -88,7 +88,7 @@ class TestDifferentConfigsStillCollide:
         adapter_fra = TesseractAdapter(lang="fra", psm=6)
         adapter_eng = TesseractAdapter(lang="eng", psm=6)
 
-        with pytest.raises(PicaronesError, match="renommer|disambiguer"):
+        with pytest.raises(PicaronesError, match="enregistré deux fois|configurations différentes"):
             build_adapter_resolver([adapter_fra, adapter_eng])
 
     def test_different_psm_same_name_raises(self) -> None:
@@ -97,7 +97,7 @@ class TestDifferentConfigsStillCollide:
         adapter_psm6 = TesseractAdapter(lang="fra", psm=6)
         adapter_psm3 = TesseractAdapter(lang="fra", psm=3)
 
-        with pytest.raises(PicaronesError, match="renommer|disambiguer"):
+        with pytest.raises(PicaronesError, match="enregistré deux fois|configurations différentes"):
             build_adapter_resolver([adapter_psm6, adapter_psm3])
 
     def test_different_types_same_name_raises(self) -> None:
@@ -122,7 +122,7 @@ class TestDifferentConfigsStillCollide:
         tesseract.__dict__["_name"] = precomputed.name
 
         assert tesseract.name == precomputed.name
-        with pytest.raises(PicaronesError, match="renommer|disambiguer"):
+        with pytest.raises(PicaronesError, match="enregistré deux fois|configurations différentes"):
             build_adapter_resolver([tesseract, precomputed])
 
 

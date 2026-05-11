@@ -100,12 +100,27 @@ class TestEngineFromCompetitorOCROnly:
     ``BaseOCRAdapter`` directement, prêt à être enregistré."""
 
     def test_tesseract_only_returns_adapter(self) -> None:
+        """Le ``name`` est dérivé de ``(engine_id, ocr_model)`` pour
+        que deux configs distinctes obtiennent automatiquement des
+        identifiants différents au resolver (cf. S9 fix)."""
         comp = CompetitorConfig(
             name="t", ocr_engine="tesseract", llm_provider="",
             ocr_model="fra",
         )
         engine = _engine_from_competitor(comp)
-        assert engine.name == "tesseract"
+        assert engine.name == "tesseract_fra"
+
+    def test_tesseract_only_different_lang_distinct_name(self) -> None:
+        """Garantie anti-collision : ``lang=eng`` et ``lang=fra``
+        produisent des ``name`` distincts au resolver."""
+        comp_fra = CompetitorConfig(
+            ocr_engine="tesseract", llm_provider="", ocr_model="fra",
+        )
+        comp_eng = CompetitorConfig(
+            ocr_engine="tesseract", llm_provider="", ocr_model="eng",
+        )
+        assert _engine_from_competitor(comp_fra).name == "tesseract_fra"
+        assert _engine_from_competitor(comp_eng).name == "tesseract_eng"
 
     def test_unknown_engine_raises_runtime_error(self) -> None:
         """``RuntimeError`` (et pas ``ValueError`` brut) — c'est le

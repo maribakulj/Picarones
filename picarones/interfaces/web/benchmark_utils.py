@@ -64,6 +64,41 @@ def _build_llm_adapter(comp: CompetitorConfig) -> Any:
         raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
 
 
+def _sanitize_name_suffix(value: str) -> str:
+    """Réduit ``value`` à un suffixe d'identifiant alphanum + ``_-``.
+
+    Les adapters OCR canoniques (``TesseractAdapter`` etc.) valident
+    ``name`` contre ce charset au constructeur — on doit pré-sanitizer
+    avant de leur passer un name dérivé d'``ocr_model`` qui peut
+    contenir ``.``, ``:``, espaces, etc.  Exemples :
+    ``"mistral-ocr-latest"`` → ``"mistral-ocr-latest"`` (intact),
+    ``"prebuilt-read"`` → ``"prebuilt-read"``,
+    ``"DOCUMENT_TEXT_DETECTION"`` → idem.
+    """
+    return "".join(c if c.isalnum() or c in "_-" else "_" for c in value)
+
+
+def _ocr_adapter_name(engine_id: str, ocr_model: str) -> str:
+    """Nom canonique de l'adapter OCR pour un couple ``(engine, model)``.
+
+    Deux ``CompetitorConfig`` qui partagent exactement le même couple
+    obtiennent le même ``name`` (donc le resolver les déduplique
+    proprement).  Deux configs différentes obtiennent des noms
+    distincts — pas de collision silencieuse, pas de bricolage côté
+    resolver.
+
+    Convention : ``{engine_id}_{model_sanitized}`` quand ``model`` est
+    non vide ; sinon ``{engine_id}`` seul (cas de l'engine OCR seul
+    en mode corpus ou avec model par défaut implicite).
+    """
+    if not ocr_model:
+        return engine_id
+    suffix = _sanitize_name_suffix(ocr_model)
+    if not suffix:
+        return engine_id
+    return f"{engine_id}_{suffix}"
+
+
 def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig.
 
@@ -95,21 +130,30 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     if not is_corpus_ocr:
         from picarones.adapters.ocr.factory import ocr_adapter_from_name
 
+        # Le ``name`` de l'adapter est dérivé de (engine_id, ocr_model)
+        # pour que deux competitors avec la même config aient le même
+        # name (donc déduplique sans collision) et que deux configs
+        # distinctes (ex. lang=fra vs lang=eng) aient des names
+        # distincts — pas de collision silencieuse au resolver.
+        adapter_name = _ocr_adapter_name(engine_id, comp.ocr_model)
         try:
             if engine_id == "tesseract":
                 ocr = ocr_adapter_from_name(
                     "tesseract",
+                    name=adapter_name,
                     lang=comp.ocr_model or "fra",
                     psm=6,
                 )
             elif engine_id == "mistral_ocr":
                 ocr = ocr_adapter_from_name(
                     "mistral_ocr",
+                    name=adapter_name,
                     model=comp.ocr_model or "mistral-ocr-latest",
                 )
             elif engine_id == "google_vision":
                 ocr = ocr_adapter_from_name(
                     "google_vision",
+                    name=adapter_name,
                     feature_type=(
                         (comp.ocr_model or "DOCUMENT_TEXT_DETECTION").upper()
                     ),
@@ -117,6 +161,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
             elif engine_id == "azure_doc_intel":
                 ocr = ocr_adapter_from_name(
                     "azure_doc_intel",
+                    name=adapter_name,
                     model_id=comp.ocr_model or "prebuilt-read",
                 )
             else:

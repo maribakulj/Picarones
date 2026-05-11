@@ -647,18 +647,18 @@ def build_adapter_resolver(
 
     def _is_equivalent_executor(a: Any, b: Any) -> bool:
         """Deux executors sont *fonctionnellement* équivalents s'ils
-        ont le même type et le même état (``__dict__`` complet,
-        sans filtrer les ``_*`` car la convention Picarones range
-        la config sous ``_name``/``_lang``/``_psm`` — voir
-        ``TesseractAdapter.__init__``).
+        ont le même type et le même état (``__dict__`` complet).
 
         Cas concret : deux ``CompetitorConfig`` qui utilisent
         ``tesseract`` avec la même langue — l'un en mode OCR seul,
-        l'autre encapsulé dans un pipeline OCR+LLM — créent deux
-        instances ``TesseractAdapter`` distinctes (objets Python
-        différents) mais avec exactement le même état.  Avant ce
-        fix, le resolver levait ``collision impossible à résoudre``
-        ; désormais il accepte la 2e registration (idempotente).
+        l'autre encapsulé dans un pipeline OCR+LLM.  Le factory web
+        leur donne le même ``name`` (dérivé de la config) → la 2e
+        registration ici est trivialement idempotente.
+
+        Sécurité : la comparaison ``__dict__`` inclut TOUS les
+        attributs (privés ``_name``/``_lang``/``_psm`` ou publics).
+        Une config différente (lang≠, psm≠) → ``__dict__`` différents
+        → équivalence False → collision réelle remontée.
         """
         if type(a) is not type(b):
             return False
@@ -675,17 +675,22 @@ def build_adapter_resolver(
         if existing is executor:
             return
         if _is_equivalent_executor(existing, executor):
-            # Même nom + état équivalent → registration idempotente.
-            # On garde la 1re instance, la 2e est silencieusement
-            # déduplique.  Le pipeline qui réfère ``name`` exécutera
-            # la 1re instance — comportement identique du point de
-            # vue résultat (Tesseract est sans état applicatif).
+            # Même nom + état strictement identique → 2e registration
+            # idempotente.  Cas attendu : le factory web a déjà donné
+            # le même ``name`` aux deux instances pour signifier
+            # qu'elles sont interchangeables.
             return
+        # Configs vraiment différentes sous le même name → bug en
+        # amont (le factory devait donner des names distincts).  On
+        # remonte explicitement plutôt que de masquer.
         raise PicaronesError(
-            f"Adapter resolver : nom {name!r} enregistré "
-            "deux fois avec des instances de configuration "
-            "différente — renommer une des deux pour disambiguer "
-            "(par ex. via le champ ``name`` du constructeur).",
+            f"Adapter resolver : nom {name!r} enregistré deux fois "
+            f"avec des configurations différentes "
+            f"({type(existing).__name__} vs "
+            f"{type(executor).__name__}, états distincts).  "
+            "Probable régression dans le factory : deux engines "
+            "logiquement distincts doivent recevoir des ``name`` "
+            "distincts.",
         )
 
     for engine in engines:

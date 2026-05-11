@@ -84,6 +84,11 @@ FILE_BUDGETS: dict[str, int] = {
     # migrés depuis ``measurements/`` vers la couche canonique.
     "picarones/evaluation/metrics/history.py": 720,        # actuel 615
     "picarones/evaluation/metrics/robustness.py": 850,     # actuel 742
+    # Sprint S9 — ajout des helpers ``_sanitize_name_suffix`` et
+    # ``_ocr_adapter_name`` qui dérivent un identifiant unique pour
+    # chaque (engine_id, ocr_model) côté factory web — fix complet
+    # de la collision resolver.
+    "picarones/interfaces/web/benchmark_utils.py": 510,    # actuel 443
     # (Phase 7.D — ``pipeline/legacy_runner.py`` et
     # ``pipeline/legacy_pipeline_benchmark.py`` supprimés.)
     # Phase 8 — importers IIIF/Gallica déplacés vers ``adapters/corpus/``.
