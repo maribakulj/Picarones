@@ -124,18 +124,29 @@ class TestPerDocumentCharacterAnalysis:
         assert dr.taxonomy is not None
         assert dr.taxonomy["counts"]["diacritic_error"] >= 1
 
-    def test_empty_ground_truth_skips_analysis(
+    def test_standard_profile_activates_companion_hooks(
         self, tmp_path: Path,
     ) -> None:
-        """Pas de signal mesurable → tous les champs valent ``None``."""
-        corpus = _make_corpus(tmp_path, gt="")
-        adapter = _MangleOCR(hypothesis="anything")
+        """Le câblage du système de hooks active toutes les analyses
+        document-level enregistrées en profil ``standard`` — pas
+        seulement les trois champs de la vue caractères.  Ce test
+        documente le contrat : si un nouveau hook est ajouté à
+        ``builtin_hooks._STANDARD_PROFILES``, il devient
+        automatiquement disponible dans le runner.
+        """
+        corpus = _make_corpus(tmp_path, gt="café noir")
+        adapter = _MangleOCR(hypothesis="cafe noir")
         bm = run_benchmark_via_service(corpus, [adapter])
 
         dr = bm.engine_reports[0].document_results[0]
-        assert dr.confusion_matrix is None
-        assert dr.char_scores is None
-        assert dr.taxonomy is None
+        # Les trois cibles de la vue "Analyse des caractères".
+        assert dr.confusion_matrix is not None
+        assert dr.char_scores is not None
+        assert dr.taxonomy is not None
+        # Et les compagnons enregistrés dans le même profil.
+        assert dr.structure is not None
+        assert dr.line_metrics is not None
+        assert dr.hallucination_metrics is not None
 
 
 class TestEngineLevelAggregates:
@@ -188,6 +199,31 @@ class TestEngineLevelAggregates:
         assert "aggregated_confusion" in report_dict
         assert "aggregated_char_scores" in report_dict
         assert "aggregated_taxonomy" in report_dict
+
+
+class TestProfilePropagation:
+    def test_minimal_profile_disables_hooks(
+        self, tmp_path: Path,
+    ) -> None:
+        """``profile="minimal"`` court-circuite tous les hooks doc-level
+        et corpus-level — preuve que le runner consomme bien le
+        registre ``metric_hooks`` (et non un calcul inline).
+        """
+        corpus = _make_corpus(tmp_path, gt="café")
+        adapter = _MangleOCR(hypothesis="cafe")
+        bm = run_benchmark_via_service(
+            corpus, [adapter], profile="minimal",
+        )
+
+        dr = bm.engine_reports[0].document_results[0]
+        assert dr.confusion_matrix is None
+        assert dr.char_scores is None
+        assert dr.taxonomy is None
+
+        report = bm.engine_reports[0]
+        assert report.aggregated_confusion is None
+        assert report.aggregated_char_scores is None
+        assert report.aggregated_taxonomy is None
 
 
 class TestPartialDirPath:
