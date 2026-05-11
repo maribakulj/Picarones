@@ -19,6 +19,7 @@ mono-call ergonomique et restitue un ``BenchmarkResult``.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -210,6 +211,7 @@ def run_result_to_benchmark_result(
     engines: list[Any],
     char_exclude: Any | None = None,
     normalization_profile: Any | None = None,
+    profile: str = "standard",
 ) -> Any:
     """Transpose un ``RunResult`` (couche 4) en ``BenchmarkResult`` (couche 3).
 
@@ -228,10 +230,19 @@ def run_result_to_benchmark_result(
        sinon ``RAW_TEXT``) depuis l'``Artifact.uri``.
     3. Lit l'``ocr_intermediate`` (RAW_TEXT) si le pipeline a un
        step OCR amont.
-    4. Calcule les métriques CER/WER via ``compute_metrics``.
+    4. Calcule les métriques CER/WER via ``compute_metrics`` puis
+       exécute les hooks document-level enregistrés pour ``profile``
+       via ``picarones.evaluation.metric_hooks.run_document_hooks``
+       (confusion unicode, ligatures, diacritiques, taxonomie,
+       structure, hallucination, philological, searchability,
+       readability, etc.).
     5. Construit un ``DocumentResult`` avec ``engine_error``
        extrait des ``step_results``.
-    6. Aggrège les métriques par engine via ``aggregate_metrics``.
+    6. Aggrège les métriques par engine via ``aggregate_metrics`` et
+       exécute les agrégateurs corpus-level via
+       ``run_corpus_aggregators`` pour alimenter
+       ``EngineReport.aggregated_*`` (la vue HTML "Analyse des
+       caractères" et les vues sœurs lisent ces champs).
     7. Reconstitue ``pipeline_info`` pour les engines pipeline
        (mode, prompt, llm_model, llm_provider, pipeline_steps).
 
@@ -263,6 +274,16 @@ def run_result_to_benchmark_result(
         DocumentResult,
         EngineReport,
     )
+    from picarones.evaluation.metric_hooks import (
+        run_corpus_aggregators,
+        run_document_hooks,
+    )
+    # Import nécessaire : les hooks ``builtin`` s'enregistrent dans le
+    # registre global au moment de l'import du module (décorateurs).
+    # Sans cette ligne, ``run_document_hooks(profile="standard", ...)``
+    # retournerait un dict vide et la vue HTML "Analyse des caractères"
+    # tomberait sur ses placeholders.
+    import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
     from picarones.evaluation.metric_result import aggregate_metrics
     from picarones.evaluation.metrics.text_metrics import compute_metrics
 
@@ -273,6 +294,7 @@ def run_result_to_benchmark_result(
             f"run_result={len(run_result.document_results)}.",
         )
 
+    corpus_lang = _resolve_corpus_lang(corpus)
     engine_reports: list[Any] = []
 
     for engine_idx, engine in enumerate(engines):
@@ -304,6 +326,20 @@ def run_result_to_benchmark_result(
                 hypothesis=text_final,
             )
 
+            hook_values = run_document_hooks(
+                profile=profile,
+                ground_truth=document.ground_truth,
+                hypothesis=text_final,
+                image_path=str(document.image_path or ""),
+                corpus_lang=corpus_lang,
+                ocr_result=_OCRResultLike(
+                    success=(engine_error is None and bool(text_final)),
+                    token_confidences=_extract_token_confidences(
+                        pipeline_result,
+                    ),
+                ),
+            )
+
             doc_results.append(
                 DocumentResult(
                     doc_id=document.doc_id,
@@ -315,11 +351,13 @@ def run_result_to_benchmark_result(
                     engine_error=engine_error,
                     ocr_intermediate=ocr_intermediate,
                     pipeline_metadata=pipeline_metadata,
+                    **hook_values,
                 ),
             )
 
         aggregated = aggregate_metrics([d.metrics for d in doc_results])
         pipeline_info = _build_pipeline_info(engine)
+        agg_values = run_corpus_aggregators(profile, doc_results)
 
         engine_reports.append(
             EngineReport(
@@ -329,6 +367,7 @@ def run_result_to_benchmark_result(
                 document_results=doc_results,
                 aggregated_metrics=aggregated,
                 pipeline_info=pipeline_info,
+                **agg_values,
             ),
         )
 
@@ -474,6 +513,51 @@ def _safe_engine_version(engine: Any) -> str:
         return str(v) if v else "unknown"
     except Exception:  # noqa: BLE001
         return "unknown"
+
+
+@dataclass
+class _OCRResultLike:
+    """Shim minimal consommé par ``run_document_hooks``.
+
+    Les hooks utilisent deux attributs : ``success`` (filtre
+    ``requires_success``) et ``token_confidences`` (filtre
+    ``requires_token_confidences`` + entrée du hook calibration).
+    Le runner canonique manipule des ``PipelineResult`` et non des
+    ``OCRResult`` legacy — ce shim fournit juste les deux attributs
+    nécessaires sans tirer le modèle legacy.
+    """
+
+    success: bool
+    token_confidences: list | None = None
+
+
+def _resolve_corpus_lang(corpus: "Corpus") -> str:
+    """Récupère la langue du corpus pour le hook ``readability``.
+
+    Cherche dans ``corpus.metadata`` (clés ``lang`` ou ``language``)
+    puis tombe sur ``"fr"`` (cohérent avec le défaut de
+    ``compute_readability_metrics``).
+    """
+    metadata = getattr(corpus, "metadata", None) or {}
+    for key in ("lang", "language"):
+        value = metadata.get(key) if isinstance(metadata, dict) else None
+        if value:
+            return str(value)
+    return "fr"
+
+
+def _extract_token_confidences(pipeline_result: Any) -> list | None:
+    """Récupère les confidences au token si un step OCR en a publié.
+
+    Les adapters canoniques n'exposent pas encore systématiquement
+    ces données ; le hook calibration retombera silencieusement via
+    ``requires_token_confidences`` quand ``None``.
+    """
+    for step in getattr(pipeline_result, "step_results", ()) or ():
+        confidences = getattr(step, "token_confidences", None)
+        if confidences:
+            return list(confidences)
+    return None
 
 
 def _is_canonical_adapter(engine: Any) -> bool:
@@ -1001,6 +1085,7 @@ def run_benchmark_via_service(
             engines=engines,
             char_exclude=char_exclude,
             normalization_profile=normalization_profile,
+            profile=profile,
             code_version=code_version,
             progress_callback=progress_callback,
             timeout_seconds=timeout_seconds,
@@ -1013,6 +1098,7 @@ def run_benchmark_via_service(
             partial_dir=Path(partial_dir),
             char_exclude=char_exclude,
             normalization_profile=normalization_profile,
+            profile=profile,
             code_version=code_version,
             progress_callback=progress_callback,
             timeout_seconds=timeout_seconds,
@@ -1173,6 +1259,7 @@ def _run_benchmark_unified(
     engines: list[Any],
     char_exclude: Any | None,
     normalization_profile: Any | None,
+    profile: str,
     code_version: str,
     progress_callback: Callable[[str, int, str], None] | None,
     timeout_seconds: float,
@@ -1218,6 +1305,7 @@ def _run_benchmark_unified(
             engines=engines,
             char_exclude=char_exclude,
             normalization_profile=normalization_profile,
+            profile=profile,
         )
 
 
@@ -1228,6 +1316,7 @@ def _run_benchmark_with_partial(
     partial_dir: Path,
     char_exclude: Any | None,
     normalization_profile: Any | None,
+    profile: str,
     code_version: str,
     progress_callback: Callable[[str, int, str], None] | None,
     timeout_seconds: float,
@@ -1252,6 +1341,9 @@ def _run_benchmark_with_partial(
         EngineReport,
     )
     from picarones.evaluation.corpus import Corpus as LegacyCorpus
+    from picarones.evaluation.metric_hooks import run_corpus_aggregators
+    # Force l'auto-enregistrement des hooks builtin (décorateurs).
+    import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
     from picarones.evaluation.metric_result import aggregate_metrics
 
     partial_dir.mkdir(parents=True, exist_ok=True)
@@ -1337,6 +1429,7 @@ def _run_benchmark_with_partial(
                     engines=[engine],
                     char_exclude=char_exclude,
                     normalization_profile=normalization_profile,
+                    profile=profile,
                 )
                 new_doc_results = list(
                     sub_report.engine_reports[0].document_results,
@@ -1353,6 +1446,7 @@ def _run_benchmark_with_partial(
 
         aggregated = aggregate_metrics([d.metrics for d in all_doc_results])
         pipeline_info = _build_pipeline_info(engine)
+        agg_values = run_corpus_aggregators(profile, all_doc_results)
 
         engine_reports.append(
             EngineReport(
@@ -1362,6 +1456,7 @@ def _run_benchmark_with_partial(
                 document_results=all_doc_results,
                 aggregated_metrics=aggregated,
                 pipeline_info=pipeline_info,
+                **agg_values,
             ),
         )
 

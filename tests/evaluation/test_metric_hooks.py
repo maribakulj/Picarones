@@ -21,6 +21,35 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _isolate_hook_registry():
+    """Restaure les registres globaux ``_DOCUMENT_HOOKS`` et
+    ``_CORPUS_AGGREGATORS`` après chaque test.
+
+    Plusieurs tests de ce fichier enregistrent des hooks dans le
+    profil ``"standard"`` (parfois avec ``attribute="image_path"``,
+    qui entre en collision avec l'argument fixe passé par le runner).
+    Sans cette isolation, un test pollue tous les consommateurs du
+    registre qui s'exécutent après lui — typiquement
+    ``run_benchmark_via_service`` côté ``app/services``, qui plante
+    avec ``TypeError: got multiple values for keyword argument 'image_path'``.
+
+    On force l'import de ``builtin_hooks`` avant de snapshotter pour
+    capturer les 12+12 hooks historiques dans la baseline (sinon les
+    tests qui vérifient leur présence verraient un registre vide).
+    """
+    import picarones.evaluation.metric_hooks as mh
+    import picarones.evaluation.metrics.builtin_hooks  # noqa: F401
+
+    docs_snapshot = list(mh._DOCUMENT_HOOKS)
+    corpus_snapshot = list(mh._CORPUS_AGGREGATORS)
+    try:
+        yield
+    finally:
+        mh._DOCUMENT_HOOKS[:] = docs_snapshot
+        mh._CORPUS_AGGREGATORS[:] = corpus_snapshot
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # 1. Profils : constantes + validation
 # ──────────────────────────────────────────────────────────────────────────
