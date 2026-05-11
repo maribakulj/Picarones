@@ -144,6 +144,62 @@ def _ocr_adapter_name(engine_id: str, ocr_model: str) -> str:
     return f"{engine_id}_{suffix}"
 
 
+#: Sprint S9 — registry centralisée des engines OCR supportés par
+#: l'UI web.  Chaque entrée mappe ``engine_id`` → fonction qui
+#: transforme l'``ocr_model`` reçu de l'UI en dict de kwargs pour
+#: ``ocr_adapter_from_name(engine_id, **kwargs)``.
+#:
+#: Pourquoi une registry plutôt que des elif
+#: -----------------------------------------
+#: Avant S9, la fonction ``_engine_from_competitor`` avait 4
+#: branches ``elif`` qui répétaient le pattern
+#: ``ocr_adapter_from_name(engine_id, name=adapter_name, ...)``.
+#: Si un dev ajoutait une 5e branche en oubliant ``name=...``, le
+#: bug de collision resolver Tesseract pouvait revenir pour le
+#: nouveau moteur.  Avec la registry :
+#:
+#: 1. Le ``name`` est injecté automatiquement par la fonction
+#:    appelante — il n'est plus possible de l'oublier dans une
+#:    branche.
+#: 2. Le test paramétré ``test_ocr_kwargs_for_*`` itère cette
+#:    table directement → ajouter un engine sans test associé
+#:    est impossible (le test échoue immédiatement sur la nouvelle
+#:    entrée).
+_OCR_KWARGS_BUILDERS: dict[str, Any] = {
+    "tesseract": lambda model: {
+        "lang": model or "fra",
+        "psm": 6,
+    },
+    "mistral_ocr": lambda model: {
+        "model": model or "mistral-ocr-latest",
+    },
+    "google_vision": lambda model: {
+        "feature_type": (model or "DOCUMENT_TEXT_DETECTION").upper(),
+    },
+    "azure_doc_intel": lambda model: {
+        "model_id": model or "prebuilt-read",
+    },
+}
+
+
+def _build_ocr_kwargs(engine_id: str, ocr_model: str) -> dict[str, Any]:
+    """Construit le dict complet de kwargs pour
+    ``ocr_adapter_from_name(engine_id, **kwargs)`` à partir de
+    la config UI ``(engine_id, ocr_model)``.
+
+    Le ``name`` est dérivé via ``_ocr_adapter_name`` et toujours
+    inclus — c'est la garantie systémique que deux competitors
+    avec des configs distinctes auront des names distincts au
+    resolver (cf. Sprint S9 — bug Tesseract collision).
+    """
+    builder = _OCR_KWARGS_BUILDERS.get(engine_id)
+    if builder is None:
+        raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+    kwargs = builder(ocr_model)
+    kwargs["name"] = _ocr_adapter_name(engine_id, ocr_model)
+    return kwargs
+
+
 def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig.
 
@@ -175,42 +231,13 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     if not is_corpus_ocr:
         from picarones.adapters.ocr.factory import ocr_adapter_from_name
 
-        # Le ``name`` de l'adapter est dérivé de (engine_id, ocr_model)
-        # pour que deux competitors avec la même config aient le même
-        # name (donc déduplique sans collision) et que deux configs
-        # distinctes (ex. lang=fra vs lang=eng) aient des names
-        # distincts — pas de collision silencieuse au resolver.
-        adapter_name = _ocr_adapter_name(engine_id, comp.ocr_model)
+        # Sprint S9 — dispatch uniforme via ``_OCR_KWARGS_BUILDERS``.
+        # Le ``name`` est dérivé systématiquement de
+        # ``(engine_id, ocr_model)`` par ``_build_ocr_kwargs`` — il
+        # n'est plus possible de l'oublier pour un nouveau moteur.
         try:
-            if engine_id == "tesseract":
-                ocr = ocr_adapter_from_name(
-                    "tesseract",
-                    name=adapter_name,
-                    lang=comp.ocr_model or "fra",
-                    psm=6,
-                )
-            elif engine_id == "mistral_ocr":
-                ocr = ocr_adapter_from_name(
-                    "mistral_ocr",
-                    name=adapter_name,
-                    model=comp.ocr_model or "mistral-ocr-latest",
-                )
-            elif engine_id == "google_vision":
-                ocr = ocr_adapter_from_name(
-                    "google_vision",
-                    name=adapter_name,
-                    feature_type=(
-                        (comp.ocr_model or "DOCUMENT_TEXT_DETECTION").upper()
-                    ),
-                )
-            elif engine_id == "azure_doc_intel":
-                ocr = ocr_adapter_from_name(
-                    "azure_doc_intel",
-                    name=adapter_name,
-                    model_id=comp.ocr_model or "prebuilt-read",
-                )
-            else:
-                raise ValueError(f"Moteur OCR inconnu : {engine_id}")
+            kwargs = _build_ocr_kwargs(engine_id, comp.ocr_model)
+            ocr = ocr_adapter_from_name(engine_id, **kwargs)
         except ValueError as exc:
             # Adapter indisponible (dépendance optionnelle absente)
             # → message utilisateur, comme avant la migration.
