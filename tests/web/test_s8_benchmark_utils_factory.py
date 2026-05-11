@@ -191,12 +191,23 @@ class TestEngineFromCompetitorPipeline:
         assert "ministral" in pipeline.pipeline_name
 
     def test_default_prompt_file_when_not_specified(self) -> None:
+        """``prompt_file`` vide → chargement du contenu du prompt
+        par défaut (``correction_medieval_french.txt``).  Cf. S9 :
+        ``prompt_template`` contient désormais le CONTENU lu sur
+        disque, pas le filename brut."""
         comp = CompetitorConfig(
             name="t", ocr_engine="tesseract", llm_provider="mistral",
             llm_model="m", ocr_model="fra", prompt_file="",
         )
         pipeline = _engine_from_competitor(comp)
-        assert pipeline.prompt_template == "correction_medieval_french.txt"
+        # Le template ne doit PAS être le filename littéral.
+        assert pipeline.prompt_template != "correction_medieval_french.txt"
+        # Et doit être un vrai prompt substituable (placeholder
+        # ``{ocr_output}`` ou ``{text}``).
+        assert (
+            "{ocr_output}" in pipeline.prompt_template
+            or "{text}" in pipeline.prompt_template
+        )
 
 
 class TestEngineFromCompetitorCorpusOCR:

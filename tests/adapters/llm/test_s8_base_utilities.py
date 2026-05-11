@@ -117,7 +117,9 @@ class TestSubstitutePromptVariables:
     def test_rewrite_format_unknown_variable_raises(self) -> None:
         """Le mode rewrite passe par ``str.format`` → variable
         inconnue lève ``KeyError`` (comportement strict d'origine
-        documenté)."""
+        documenté).  Le filtrage "filename → contenu" se fait au
+        niveau ``OCRLLMPipelineConfig.__post_init__`` (Sprint S9),
+        pas ici."""
         with pytest.raises(KeyError):
             _substitute_prompt_variables(
                 "{unknown_var}", text="x", image_b64=None,

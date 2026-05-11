@@ -32,6 +32,51 @@ from picarones.interfaces.web.models import (
 )
 from picarones.interfaces.web.state import BenchmarkJob, iso_now
 
+#: Répertoire de la bibliothèque de prompts embarquée — la même
+#: que celle validée par ``validated_prompt_filename`` côté router.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
+
+
+def _load_prompt_content(prompt_filename: str) -> str:
+    """Charge le contenu d'un prompt embarqué depuis
+    ``picarones/prompts/``.
+
+    Avant le rewrite v2.0, l'``OCRLLMPipeline`` legacy lisait elle-
+    même le fichier depuis disque.  Au cours du sprint H.2.c-d, ce
+    chargement a disparu — le pipeline canonique
+    ``OCRLLMPipelineConfig`` accepte un ``prompt_template`` string
+    et n'a aucune connaissance du système de fichiers, donc le
+    factory web (``_engine_from_competitor``) doit lire le fichier
+    AVANT d'instancier le pipeline.
+
+    Sans ce loader, le LLM recevait le filename brut comme prompt
+    (par ex. ``"correction_early_modern_english.txt"``) et répondait
+    avec du méta-discours sur le fichier au lieu de corriger l'OCR.
+
+    Raises
+    ------
+    FileNotFoundError
+        Si le fichier n'existe pas dans ``picarones/prompts/``.
+    """
+    prompt_path = _PROMPTS_DIR / prompt_filename
+    # Défense en profondeur : refuse de remonter hors du dossier
+    # prompts (le filename est censé être déjà validé par
+    # ``validated_prompt_filename`` côté router, mais on re-vérifie
+    # car ce factory est aussi appelable directement).
+    resolved = prompt_path.resolve()
+    if not resolved.is_relative_to(_PROMPTS_DIR.resolve()):
+        raise ValueError(
+            f"Prompt filename invalide : {prompt_filename!r} pointe "
+            f"hors de la bibliothèque embarquée.",
+        )
+    if not resolved.is_file():
+        raise FileNotFoundError(
+            f"Prompt introuvable : {prompt_filename!r} dans "
+            f"{_PROMPTS_DIR}.  Fichiers disponibles : "
+            f"{sorted(p.name for p in _PROMPTS_DIR.glob('*.txt'))}",
+        )
+    return resolved.read_text(encoding="utf-8")
+
 
 def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
     """Format Server-Sent Events.
@@ -189,7 +234,12 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
     from picarones.pipeline.llm_pipeline_config import OCRLLMPipelineConfig
 
-    prompt = comp.prompt_file or "correction_medieval_french.txt"
+    # Le ``prompt_file`` reçu de l'UI est un NOM de fichier ; le
+    # pipeline canonique attend le CONTENU du prompt (string brute).
+    # On charge ici, sinon le LLM reçoit le filename comme prompt
+    # et répond avec du méta-discours au lieu de corriger l'OCR.
+    prompt_filename = comp.prompt_file or "correction_medieval_french.txt"
+    prompt_content = _load_prompt_content(prompt_filename)
 
     if is_corpus_ocr:
         pipeline_name = comp.name or f"corpus_ocr → {comp.llm_model or comp.llm_provider}"
@@ -200,7 +250,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
         ocr_adapter=ocr,
         llm_adapter=llm,
         mode=mode,
-        prompt_template=prompt,
+        prompt_template=prompt_content,
         pipeline_name=pipeline_name,
     )
 

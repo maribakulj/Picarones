@@ -90,6 +90,22 @@ class OCRLLMPipelineConfig:
                 "OCRLLMPipelineConfig : mode 'zero_shot' ne doit pas "
                 "avoir d'``ocr_adapter`` (le VLM lit l'image directement).",
             )
+        # Sprint S9 — garde-fou minimal contre l'oubli de chargement
+        # du contenu : un template non-vide sans aucune accolade ne
+        # peut pas être un prompt LLM substituable.  Capture le cas
+        # ``correction_*.txt`` passé tel quel comme template (cf.
+        # tests/integration/test_s9_prompt_loading_defenses.py pour
+        # le contexte du bug).
+        if self.prompt_template and "{" not in self.prompt_template:
+            raise ValueError(
+                "OCRLLMPipelineConfig : ``prompt_template`` ne contient "
+                "aucune accolade — un prompt LLM substituable a au "
+                "moins un placeholder ``{ocr_output}``, ``{text}`` ou "
+                "``{image_b64}``.  Probable cause : un filename a été "
+                "injecté au lieu du contenu (charge via "
+                "``Path(prompts_dir / filename).read_text()`` avant "
+                "d'instancier).",
+            )
 
     @property
     def name(self) -> str:
