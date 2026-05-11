@@ -1,24 +1,20 @@
-"""Sprint S9 — défenses anti-régression pour la classe de bugs
-"filename passé à la place du contenu".
+"""Sprint S9 — garde-fous anti-régression pour le bug
+"filename passé à la place du contenu" (post-correction LLM).
 
-Trois niveaux de garde-fou indépendants :
+Deux niveaux de garde-fou :
 
 1. **Contrat ``OCRLLMPipelineConfig.__post_init__``** : refuse un
-   ``prompt_template`` non-vide sans placeholder substituable.
-   Catch le bug au point de violation du contrat (instanciation).
+   ``prompt_template`` non-vide sans aucune accolade.  Check
+   minimal qui capture le cas ``correction_*.txt`` injecté tel
+   quel comme template.
 
-2. **Substitution ``_substitute_prompt_variables``** : refuse de
-   "substituer" un template sans placeholder.  Defense en
-   profondeur si quelqu'un court-circuite le constructeur (par ex.
-   via ``object.__setattr__`` ou un fichier frozen dataclass
-   patché).
-
-3. **Test d'intégration** : mock du LLM qui capture le prompt
-   réellement envoyé, exécution d'un pipeline réel, assertion
-   que le prompt capturé est le **contenu** du fichier prompt
-   (pas le filename).  C'est le filet que la suite de tests
-   pré-S9 n'avait pas — chaque couche était testée en isolation,
-   personne ne vérifiait le bout-en-bout du flux post-correction.
+2. **Test d'intégration** : mock du LLM qui capture le prompt
+   réellement envoyé, exécution du factory web → pipeline → LLM,
+   assertion que le prompt capturé est le **contenu** du fichier
+   prompt (pas le filename).  C'est le filet manquant pré-S9
+   qui aurait pris le bug en amont — chaque couche était testée
+   en isolation, personne ne vérifiait le bout-en-bout du flux
+   post-correction.
 """
 
 from __future__ import annotations
@@ -45,33 +41,30 @@ class TestPipelineConfigRefusesInvalidTemplate:
             OCRLLMPipelineConfig,
         )
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="accolade|filename"):
             OCRLLMPipelineConfig(
                 ocr_adapter=TesseractAdapter(lang="fra"),
                 llm_adapter=OpenAIAdapter(model="gpt-4o"),
                 mode="text_only",
                 prompt_template="correction_early_modern_english.txt",
             )
-        msg = str(exc_info.value)
-        assert "placeholder" in msg.lower()
-        # Le message doit pointer le diagnostic : ressemble à un filename.
-        assert "fichier" in msg.lower() or "filename" in msg.lower()
 
-    def test_random_string_without_placeholder_rejected(self) -> None:
-        """Pas qu'un filename — toute string sans placeholder est
-        refusée car sémantiquement vide pour la post-correction."""
+    def test_string_without_brace_rejected(self) -> None:
+        """Toute string non-vide sans accolade est refusée — pas
+        seulement les filenames.  Le LLM recevrait une string fixe
+        qui ignore l'OCR."""
         from picarones.adapters.llm.openai_adapter import OpenAIAdapter
         from picarones.adapters.ocr.tesseract import TesseractAdapter
         from picarones.pipeline.llm_pipeline_config import (
             OCRLLMPipelineConfig,
         )
 
-        with pytest.raises(ValueError, match="placeholder"):
+        with pytest.raises(ValueError, match="accolade"):
             OCRLLMPipelineConfig(
                 ocr_adapter=TesseractAdapter(lang="fra"),
                 llm_adapter=OpenAIAdapter(model="gpt-4o"),
                 mode="text_only",
-                prompt_template="Corrige ce texte.",  # pas de placeholder
+                prompt_template="Corrige ce texte.",
             )
 
     def test_empty_template_still_allowed(self) -> None:
@@ -119,49 +112,19 @@ class TestPipelineConfigRefusesInvalidTemplate:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Niveau 2 — substitution helper
-# ──────────────────────────────────────────────────────────────────────
-
-
-class TestSubstituteRejectsTemplateWithoutPlaceholder:
-    """``_substitute_prompt_variables`` est la dernière ligne de
-    défense avant que le template atteigne le LLM.  S'il arrive
-    sans placeholder, on lève."""
-
-    def test_string_without_placeholder_raises(self) -> None:
-        from picarones.adapters.llm.base import _substitute_prompt_variables
-
-        with pytest.raises(ValueError, match="placeholder|filename"):
-            _substitute_prompt_variables(
-                "correction_medieval_french.txt",
-                text="hello",
-                image_b64=None,
-            )
-
-    def test_empty_string_returns_empty(self) -> None:
-        """Edge case : empty template → format() retourne ""
-        (pas un placeholder mais pas un bug non plus)."""
-        from picarones.adapters.llm.base import _substitute_prompt_variables
-
-        # ``""`` n'a pas ``{text}`` non plus → lève selon la nouvelle
-        # défense.  Documenté comme contrat : un template sans
-        # placeholder n'est jamais valide pour la substitution.
-        with pytest.raises(ValueError):
-            _substitute_prompt_variables("", text="x", image_b64=None)
-
-
-# ──────────────────────────────────────────────────────────────────────
-# Niveau 3 — intégration LLM end-to-end (filet manquant pré-S9)
+# Niveau 2 — intégration LLM end-to-end (filet manquant pré-S9)
 # ──────────────────────────────────────────────────────────────────────
 
 
 class TestEndToEndPromptReachesLLM:
-    """Le filet manquant : un test qui capture le prompt réel
-    envoyé au LLM lors d'une post-correction, et vérifie qu'il
-    contient bien le contenu chargé depuis disque (pas un
+    """Le filet manquant pré-S9 : un test qui capture le prompt
+    réel envoyé au LLM lors d'une post-correction, et vérifie
+    qu'il contient bien le contenu chargé depuis disque (pas un
     filename, pas une string fixe).
 
-    C'est exactement le test qui aurait pris le bug initialement.
+    C'est exactement le test qui aurait pris le bug initialement —
+    le restant des défenses est superflu tant que ce filet tourne
+    en CI.
     """
 
     def test_llm_receives_loaded_prompt_content(self, monkeypatch) -> None:
