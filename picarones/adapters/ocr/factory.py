@@ -60,7 +60,7 @@ _SUPPORTED: tuple[str, ...] = (
 
 
 def ocr_adapter_from_name(
-    name: str, **kwargs: Any,
+    name: str, /, **kwargs: Any,
 ) -> BaseOCRAdapter:
     """Instancie un ``BaseOCRAdapter`` canonique par son nom court.
 
@@ -69,6 +69,11 @@ def ocr_adapter_from_name(
     name:
         Identifiant court du moteur (cf. liste des alias dans le
         docstring du module).  Insensible à la casse.
+        **Positional-only** : doit être passé en argument positionnel
+        et non par kwarg.  Cela libère le nom ``name`` dans
+        ``**kwargs`` pour qu'il puisse être forwardé au constructeur
+        de l'adapter cible (utile pour donner une identité unique à
+        l'instance — cf. ``TesseractAdapter(name=...)``).
     **kwargs:
         Arguments propagés au constructeur de l'adapter cible.
         Les kwargs non reconnus par le constructeur lèveront un
