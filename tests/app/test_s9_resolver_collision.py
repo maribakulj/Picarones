@@ -60,7 +60,10 @@ class TestStandaloneAndPipelineWithSameOCR:
             ocr_adapter=tesseract_in_pipeline,
             llm_adapter=MistralAdapter(model="mistral-small-latest"),
             mode="text_only",
-            prompt_template="correction_medieval_french.txt",
+            # Template avec placeholder valide (la défense
+            # ``__post_init__`` Sprint S9 refuse les templates sans
+            # placeholder substituable — cf. test_s9_prompt_loading_defenses).
+            prompt_template="Corrige : {ocr_output}",
             pipeline_name="tesseract:fra → mistral-small-latest",
         )
 

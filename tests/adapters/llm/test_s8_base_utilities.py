@@ -114,11 +114,14 @@ class TestSubstitutePromptVariables:
         )
         assert result == "x|"
 
-    def test_rewrite_format_unknown_variable_raises(self) -> None:
-        """Le mode rewrite passe par ``str.format`` → variable
-        inconnue lève ``KeyError`` (comportement strict d'origine
-        documenté)."""
-        with pytest.raises(KeyError):
+    def test_template_without_known_placeholder_raises(self) -> None:
+        """Sprint S9 — la défense au niveau substitution refuse
+        tout template qui n'a aucun placeholder connu
+        (``{ocr_output}``, ``{text}``, ``{image_b64}``).  Avant
+        S9, ce test attendait un ``KeyError`` de ``str.format`` ;
+        le contrat est maintenant strict en amont : pas de
+        placeholder = template invalide."""
+        with pytest.raises(ValueError, match="placeholder|filename"):
             _substitute_prompt_variables(
                 "{unknown_var}", text="x", image_b64=None,
             )

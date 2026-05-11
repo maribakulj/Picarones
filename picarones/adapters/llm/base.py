@@ -162,6 +162,21 @@ def _substitute_prompt_variables(
             .replace("{ocr_output}", text)
             .replace("{image_b64}", image_b64 or "")
         )
+    # Convention rewrite : ``{text}`` est l'unique placeholder.
+    # Défense en profondeur (Sprint S9) : si la string n'a aucun
+    # placeholder de substitution, ``template.format(text=text)``
+    # retournerait la string inchangée sans erreur — ce qui faisait
+    # passer un filename (``correction_*.txt``) au LLM en prod.
+    # On lève maintenant explicitement : un template sans
+    # placeholder est sémantiquement vide (le LLM ignorerait l'OCR).
+    if "{text}" not in template:
+        raise ValueError(
+            "Prompt template invalide : aucun placeholder "
+            "``{ocr_output}``, ``{text}`` ou ``{image_b64}`` "
+            "trouvé.  Le LLM recevrait une string fixe.  "
+            "Probable cause : un filename a été injecté au "
+            "lieu du contenu du fichier prompt.",
+        )
     return template.format(text=text)
 
 
@@ -434,8 +449,13 @@ class BaseLLMAdapter(ABC):
         #    de l'adapter — pattern historique).
         # 3. Prompt par langue selon ``self.config["lang"]``.
         # 4. Fallback FR.
+        # ``""`` est traité comme "pas fourni" (au même titre que
+        # ``None``) — on tombe sur le défaut de l'adapter.  Avant
+        # Sprint S9, ``""`` était propagé jusqu'à
+        # ``_substitute_prompt_variables`` qui retournait ``""``
+        # silencieusement, laissant le LLM voir une string vide.
         param_prompt = params.get("prompt_template") if params else None
-        if param_prompt is not None:
+        if param_prompt:
             prompt_template = param_prompt
         else:
             custom_prompt = self.config.get("correction_prompt")

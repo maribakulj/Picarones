@@ -90,6 +90,41 @@ class OCRLLMPipelineConfig:
                 "OCRLLMPipelineConfig : mode 'zero_shot' ne doit pas "
                 "avoir d'``ocr_adapter`` (le VLM lit l'image directement).",
             )
+        # Garde-fou Sprint S9 — anti-régression du bug "filename passé
+        # à la place du contenu" (cf. ``tests/web/test_s9_prompt_loading.py``).
+        # ``prompt_template`` est censé être le contenu BRUT du prompt
+        # (déjà lu depuis disque par le caller), pas un identifiant de
+        # ressource.  Un template sans aucun placeholder de substitution
+        # est sémantiquement invalide : le LLM recevrait une string fixe
+        # qui ignore le texte OCR et halluciinerait une réponse plausible.
+        # Le filename ``correction_*.txt`` était précisément ce cas.
+        if self.prompt_template:
+            has_placeholder = any(
+                marker in self.prompt_template
+                for marker in ("{ocr_output}", "{text}", "{image_b64}")
+            )
+            if not has_placeholder:
+                # Heuristique pour aider au diagnostic : si la string
+                # ressemble à un filename, on le dit explicitement.
+                looks_like_filename = (
+                    self.prompt_template.endswith(".txt")
+                    and "\n" not in self.prompt_template
+                    and len(self.prompt_template) < 256
+                )
+                hint = (
+                    " (la string ressemble à un nom de fichier — "
+                    "as-tu oublié de charger le contenu via "
+                    "``Path(prompts_dir / filename).read_text()`` "
+                    "avant de l'injecter ?)"
+                    if looks_like_filename else ""
+                )
+                raise ValueError(
+                    "OCRLLMPipelineConfig : ``prompt_template`` ne "
+                    "contient aucun placeholder substituable "
+                    "(``{ocr_output}``, ``{text}`` ou ``{image_b64}``). "
+                    "Le LLM recevrait une string fixe et ignorerait "
+                    f"le texte OCR.{hint}",
+                )
 
     @property
     def name(self) -> str:
