@@ -36,15 +36,18 @@ FILE_BUDGETS: dict[str, int] = {
     # ``benchmark_runner`` : façade publique de ``BenchmarkService``,
     # entry point pour CLI/web.  God-module historique en cours de
     # split (Phase 6 audit code-quality, 1700 → 1329 LOC).
-    # Extractions effectuées :
+    # Extractions effectuées (rounds 1-4) :
     # - ``_benchmark_ner`` (NER aggregation, ~100 LOC)
     # - ``_benchmark_persistence`` (JSON dump, ~15 LOC)
     # - ``_benchmark_adapter_resolver`` (engine→spec + resolver, ~250 LOC)
     # - ``_benchmark_conversions`` (document/corpus + helpers GT, ~230 LOC)
-    # Prochaine extraction prévue : execution
-    # (``_run_benchmark_unified`` + ``_run_benchmark_with_partial``,
-    # ~500 LOC).
-    "picarones/app/services/benchmark_runner.py": 1140,  # actuel 1100
+    # - ``_benchmark_execution`` (BenchmarkService orchestration, ~140 LOC)
+    # Bilan : 1700 → 961 LOC (-43 %).  Restent
+    # ``_run_benchmark_unified`` et ``_run_benchmark_with_partial`` qui
+    # dépendent de trop d'helpers internes (NER attach, fingerprint,
+    # partial store) pour une extraction propre — laissé pour une
+    # PR dédiée.
+    "picarones/app/services/benchmark_runner.py": 1000,  # actuel 961
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # Phase 4.6 audit code-quality (2026-05) — commentaires retirés :
