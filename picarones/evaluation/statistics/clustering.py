@@ -6,7 +6,10 @@ Regroupe les substitutions OCR/HTR fréquentes en clusters lisibles
 
 from __future__ import annotations
 
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -108,8 +111,11 @@ def cluster_errors(
                         })
                         matched = True
                         break
-                except re.error:
-                    pass
+                except re.error as exc:
+                    logger.warning(
+                        "[clustering] pattern d'erreur invalide '%s' ignoré : %s",
+                        _pat, exc,
+                    )
 
             if not matched:
                 # Regrouper les substitutions restantes par paire de caractères

@@ -369,8 +369,11 @@ class RobustnessAnalyzer:
                         finally:
                             try:
                                 os.unlink(tmp_path)
-                            except OSError:
-                                pass
+                            except OSError as exc:
+                                logger.debug(
+                                    "[robustness] cleanup tmp file %s échoué : %s",
+                                    tmp_path, exc,
+                                )
 
                     if doc_cers:
                         cer_per_level.append(sum(doc_cers) / len(doc_cers))

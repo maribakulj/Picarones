@@ -207,11 +207,15 @@ class JobStore:
                     )
             try:
                 conn.execute("PRAGMA journal_mode = WAL;")
-            except sqlite3.Error:  # pragma: no cover
+            except sqlite3.Error as exc:  # pragma: no cover
                 # WAL non supporté (FAT32, NFS sans verrous) : on
                 # reste en rollback journal, fonctionnel mais moins
                 # concurrent en lecture.
-                pass
+                logger.info(
+                    "[job_store] PRAGMA WAL refusé (%s) — fallback "
+                    "rollback journal (perte concurrence lectures)",
+                    exc,
+                )
 
     @classmethod
     def _apply_migrations(

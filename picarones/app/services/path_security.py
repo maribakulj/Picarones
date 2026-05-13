@@ -31,11 +31,14 @@ Anti-sur-ingénierie
 
 from __future__ import annotations
 
+import logging
 import shutil
 import uuid
 from pathlib import Path
 
 from picarones.domain.errors import PicaronesError
+
+logger = logging.getLogger(__name__)
 
 
 class PathValidationError(PicaronesError, ValueError):
@@ -432,10 +435,13 @@ def _on_rmtree_error(func, path, exc_info):
     import stat
     try:
         os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
-    except OSError:
+    except OSError as exc:
         # Le chmod lui-même a échoué — on laisse la prochaine
         # tentative remonter l'erreur originale.
-        pass
+        logger.debug(
+            "[path_security] chmod IWRITE échoué sur %s (cleanup Windows ?) : %s",
+            path, exc,
+        )
     func(path)
 
 

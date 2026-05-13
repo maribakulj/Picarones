@@ -419,8 +419,11 @@ class IIIFImporter:
             try:
                 from tqdm import tqdm
                 iterator = tqdm(canvases, desc="Import IIIF", unit="page")
-            except ImportError:
-                pass
+            except ImportError as exc:
+                logger.debug(
+                    "[iiif] tqdm indisponible (%s) — import sans progress bar",
+                    exc,
+                )
 
         for canvas in iterator:
             doc_id = f"{_slugify(canvas.label) or f'canvas_{canvas.index+1:04d}'}"

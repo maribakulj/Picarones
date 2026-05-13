@@ -1539,11 +1539,15 @@ def _execute_via_benchmark_service(
             )
             try:
                 progress_callback(engine_name, idx, doc.id)
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 # On ignore silencieusement les erreurs du
                 # callback (un caller qui crashe ne doit pas faire
-                # tomber le benchmark).  Même contrat ici.
-                pass
+                # tomber le benchmark).  Logge en debug pour
+                # diagnostic en cas de comportement bizarre.
+                logger.debug(
+                    "[benchmark_runner] progress_callback raised, ignoring: %s",
+                    exc,
+                )
         return RunContext(
             document_id=doc.id,
             code_version=code_version,
