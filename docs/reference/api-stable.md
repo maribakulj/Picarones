@@ -1,36 +1,43 @@
 # API publique stable de Picarones
 
-> **Statut** : ce document décrivait l'API publique du Cercle 1
-> historique (`picarones.domain/`).  Le projet est en cours de
-> retrait du legacy vers une **architecture 8 couches**
-> (`domain → formats → evaluation → pipeline → adapters → app
-> → reports_v2 → interfaces`, cf.
-> [`docs/explanation/architecture.md`](../explanation/architecture.md)).
+> **Statut v2.0 (mai 2026)** : la migration vers l'architecture
+> 8 couches canoniques est terminée.  Tous les paquets legacy
+> top-level (`picarones.core`, `picarones.measurements`,
+> `picarones.engines`, `picarones.modules`, `picarones.report`,
+> `picarones.llm`, `picarones.pipelines`, `picarones.cli`,
+> `picarones.web`, `picarones.extras`) ainsi que les sous-paquets
+> transitoires (`adapters/legacy_engines/`, `adapters/legacy_pipelines/`,
+> `interfaces/{cli,web}/_legacy/`) ont été **supprimés**.  Plus aucun
+> shim, plus aucun `DeprecationWarning` rétrocompat.
 >
-> **Pendant la migration** (jusqu'à la version 2.0), l'API
-> publique est en cours de refonte.  Les chemins legacy
-> top-level (`picarones.domain.*`, `picarones.evaluation.metrics.*`,
-> `picarones.adapters.ocr.*`, `picarones.adapters.*`,
-> `picarones.reports.html.*`, `picarones.adapters.llm.*`,
-> `picarones.interfaces.cli.*`, `picarones.evaluation.metrics.*`,
-> `picarones.evaluation.synthetic`) ont **tous été supprimés**.  Les
-> nouveaux imports doivent utiliser les chemins canoniques
-> (`picarones.domain.*`, `picarones.evaluation.*`,
-> `picarones.adapters.*`, `picarones.reports.htmls.*`,
-> `picarones.interfaces.*`).
+> **Architecture canonique (cf.
+> [`docs/explanation/architecture.md`](../explanation/architecture.md))** :
+> `domain → formats → evaluation → pipeline → adapters → app →
+> reports → interfaces`.
+>
+> **Chantier post-rewrite (mai 2026, branche
+> `claude/fix-module-rewiring-MHssX`)** : réconciliation des
+> contrats UI/API/runner après la migration.  Ruptures API
+> visibles côté consommateur :
+>
+> - `CompetitorConfig` → `PipelineConfig`.
+> - `PipelineConfig.ocr_engine` → `PipelineConfig.engine_name`
+>   (le field accepte aussi `corpus` et des VLMs zero-shot — le
+>   préfixe `ocr_` était trompeur).
+> - `PipelineConfig.pipeline_mode` typé `Literal["text_only",
+>   "text_and_image", "zero_shot"]` ; toute autre valeur (y compris
+>   les anciens alias `post_correction_text` /
+>   `post_correction_image`) est rejetée en 422.
 
 ## Définition
 
 L'API publique stable de Picarones est constituée des classes,
-fonctions, constantes et types listés ci-dessous, désormais
-exportés depuis l'arborescence canonique.
+fonctions, constantes et types listés ci-dessous, exportés depuis
+l'arborescence canonique 8 couches.
 
 Ce qui n'est pas dans cette liste peut évoluer à tout moment
-sans bump majeur.
-
-Les imports historiques restent fonctionnels via shims pendant
-la migration ; ils ne font **pas** partie de l'API publique
-stable et émettent un `DeprecationWarning`.
+sans bump majeur — utiliser ces points d'entrée pour une intégration
+durable.
 
 ## Test automatique
 
@@ -293,39 +300,91 @@ Un bump majeur sera nécessaire pour :
 - Casser le format de sérialisation du `BenchmarkResult.to_json()`.
 - Renommer un module de l'arborescence canonique.
 
-## Modules historiques rétrocompat (non canoniques)
+## Chemins canoniques par couche
 
-Les imports suivants continuent à fonctionner mais ne font pas partie
-de l'API publique stable. Ils peuvent évoluer ou être retirés en
-version mineure si une RFC le justifie.
+L'arborescence v2.0 expose des points d'entrée stables organisés par
+couche.  Toutes les intégrations doivent passer par ces chemins —
+plus de path legacy disponible.
+
+### Couche 3 — `picarones.evaluation`
 
 ```python
-# Mesures (déplacées vers picarones.evaluation.metrics/)
+# Métriques (CER/WER + métriques avancées)
 from picarones.evaluation.metrics.confusion import build_confusion_matrix
 from picarones.evaluation.metrics.taxonomy import classify_errors
 from picarones.evaluation.metrics.calibration import compute_calibration_metrics
-# ... ~40 modules métriques ...
 
-# Moteur narratif (déplacé vers picarones.evaluation.metrics.narrative/)
-from picarones.evaluation.metrics.narrative import build_synthesis
+# Moteur narratif (Cercle 7 → reports/, mais le contrat est en
+# couche 3 pour rester accessible aux consommateurs externes)
+from picarones.reports.narrative import build_synthesis
 from picarones.domain.facts import Fact, FactType, FactImportance
-from picarones.evaluation.metrics.narrative.detectors import detect_global_leader_cer
 
-# Plugins (déplacés vers picarones.evaluation.metrics/)
-from picarones.evaluation.metrics.taxonomy_intra_doc import compute_taxonomy_position_heatmap
+# Modules philologiques (Sprints 55-60)
 from picarones.evaluation.metrics.unicode_blocks import compute_unicode_block_accuracy
 from picarones.evaluation.metrics.module_policy import ModuleManifest
-from picarones.importers.iiif import IIIFImporter
 ```
 
-Pour les **nouvelles** intégrations, préférer les chemins canoniques :
+### Couche 5 — `picarones.adapters`
 
-- `picarones.evaluation.metrics.X` pour les mesures.
-- `picarones.evaluation.metrics.narrative.X` pour le moteur narratif.
-- `picarones.evaluation.metrics.X` pour les modules philologiques.
-- `picarones.adapters.corpus.X` pour les importers.
-- `picarones.evaluation.metrics.academic.X` / `picarones.evaluation.metrics.governance.X` pour
-  les plugins niche / gouvernance.
+```python
+# OCR (factory canonique)
+from picarones.adapters.ocr import ocr_adapter_from_name
+from picarones.adapters.ocr import (
+    TesseractAdapter, PeroOCRAdapter, KrakenAdapter, CalamariAdapter,
+    MistralOCRAdapter, GoogleVisionAdapter, AzureDocIntelAdapter,
+    PrecomputedTextAdapter,
+)
+
+# LLM
+from picarones.adapters.llm.openai_adapter import OpenAIAdapter
+from picarones.adapters.llm.anthropic_adapter import AnthropicAdapter
+from picarones.adapters.llm.mistral_adapter import MistralAdapter
+from picarones.adapters.llm.ollama_adapter import OllamaAdapter
+
+# Importers de corpus distants
+from picarones.adapters.corpus.iiif import IIIFImporter
+from picarones.adapters.corpus.htr_united import HTRUnitedCatalogue
+from picarones.adapters.corpus.huggingface import HuggingFaceImporter
+```
+
+### Couche 6 — `picarones.app.services`
+
+```python
+# Orchestration benchmark
+from picarones.app.services.benchmark_runner import run_benchmark_via_service
+from picarones.app.services.corpus_service import CorpusService
+from picarones.app.services.path_security import (
+    WorkspaceManager,
+    validated_path,
+    safe_report_name,
+    validated_prompt_filename,
+)
+from picarones.app.services.partial_store import (
+    compute_run_fingerprint,
+    partial_path_for_engine,
+)
+```
+
+### Couche 7 — `picarones.reports.html`
+
+```python
+from picarones.reports.html.generator import ReportGenerator
+```
+
+### Couche 8 — `picarones.interfaces`
+
+```python
+# CLI : exposée comme entry point ``picarones`` (cf. pyproject.toml).
+# Pas d'API Python stable — l'invocation est ``picarones run/diagnose/…``.
+
+# Web : FastAPI app (intégration via ASGI).
+from picarones.interfaces.web.app import app
+from picarones.interfaces.web.models import (
+    PipelineConfig, PipelineMode,
+    BenchmarkRequest, BenchmarkRunRequest,
+    NormalizationProfileId, TesseractLang, ReportLang,
+)
+```
 
 ## Voir aussi
 
