@@ -528,8 +528,13 @@ def _engine_config_for_fingerprint(engine: Any) -> dict:
             # Hasher le prompt pour éviter de polluer le nom du fichier
             # partiel avec un prompt multi-lignes (et de fuiter le
             # contenu d'un prompt institutionnel dans un nom de fichier).
+            # SHA-1 utilisé comme identifiant de cache uniquement
+            # (fingerprint partial store, pas une garantie crypto) —
+            # ``usedforsecurity=False`` neutralise le faux positif
+            # bandit B324 et exprime l'intention pour le reviewer.
             cfg["prompt_sha1"] = hashlib.sha1(
                 str(prompt).encode("utf-8"),
+                usedforsecurity=False,
             ).hexdigest()[:12]
         llm = getattr(engine, "llm_adapter", None)
         if llm is not None:
