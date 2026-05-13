@@ -20,9 +20,12 @@ Attributs exposés
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
-OCRLLMMode = Literal["text_only", "text_and_image", "zero_shot"]
+# Phase 7.1 audit code-quality (2026-05) : alias historique conservé
+# pour les callers existants ; la source de vérité unique vit
+# désormais dans :data:`picarones.domain.pipeline_spec.PipelineMode`.
+from picarones.domain.pipeline_spec import PipelineMode as OCRLLMMode
 
 
 @dataclass(frozen=True)

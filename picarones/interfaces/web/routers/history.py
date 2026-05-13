@@ -23,13 +23,6 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from picarones.interfaces.web.security import (
-    PathValidationError,
-    compute_workspace_roots,
-    validated_path,
-)
-from picarones.interfaces.web.state import UPLOADS_DIR
-
 router = APIRouter()
 _logger = logging.getLogger(__name__)
 
@@ -50,15 +43,13 @@ async def api_history_regressions(
     from picarones.evaluation.metrics.history import BenchmarkHistory
 
     if db_path:
-        try:
-            resolved = validated_path(
-                db_path,
-                allowed_roots=compute_workspace_roots(UPLOADS_DIR),
-                must_exist=False,
-            )
-        except PathValidationError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        effective_db_path: Optional[str] = str(resolved)
+        # Phase 7.2 audit code-quality : helper centralisé pour la
+        # validation chemin → HTTPException 400.
+        from picarones.interfaces.web._path_helpers import validated_user_path
+
+        effective_db_path: Optional[str] = str(
+            validated_user_path(db_path, must_exist=False),
+        )
     else:
         env_db = os.environ.get("PICARONES_HISTORY_DB", "").strip()
         effective_db_path = env_db or None

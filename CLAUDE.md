@@ -116,7 +116,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **4750 passed, 16 skipped, 8 deselected, 2 xfailed, 0 failed**
+`pytest tests/` → **4800 passed, 16 skipped, 8 deselected, 2 xfailed, 0 failed**
 (post-audit code-quality, mai 2026).  Les deselected sont les markers
 `live` (5 tests d'intégration contre vraie API/binaire) + `network`
 (3 tests qui hit le réseau réel), opt-in en local via `pytest -m live`

@@ -1189,7 +1189,7 @@ def run_benchmark_via_service(
 # et ``_aggregate_ner_metrics`` restent ici comme alias pour ne pas
 # casser les appels internes (les autres fonctions du runner s'y
 # réfèrent) et les tests qui patchent ces symboles via monkeypatch.
-from picarones.app.services._benchmark_ner import (
+from picarones.app.services._benchmark_ner import (  # noqa: F401
     aggregate_ner_metrics as _aggregate_ner_metrics,
     attach_ner_metrics_to_benchmark as _attach_ner_metrics_to_benchmark,
 )
