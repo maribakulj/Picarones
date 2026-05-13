@@ -337,8 +337,13 @@ class BenchmarkHistory:
         params.append(limit)
 
         conn = self._connect()
+        # Faux positif bandit B608 : ``clauses`` est construit à partir
+        # de littéraux internes (``"engine_name = ?"``, ``"corpus_name = ?"``,
+        # ``"timestamp >= ?"``) — aucune entrée utilisateur n'est
+        # concaténée dans la requête.  Les *valeurs* (engine, corpus,
+        # since, limit) passent par ``?``-placeholders.
         rows = conn.execute(
-            f"SELECT * FROM runs {where} ORDER BY timestamp ASC LIMIT ?",
+            f"SELECT * FROM runs {where} ORDER BY timestamp ASC LIMIT ?",  # nosec B608
             params,
         ).fetchall()
 

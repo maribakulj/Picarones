@@ -54,6 +54,7 @@ warnings.warn(
 )
 
 
+from picarones.adapters.corpus._http import download_url, validate_http_url
 from picarones.evaluation.corpus import Corpus, Document
 
 if TYPE_CHECKING:
@@ -162,9 +163,15 @@ class EScriptoriumClient:
         url = f"{self.base_url}/api/{path.lstrip('/')}"
         if params:
             url += "?" + urllib.parse.urlencode(params)
+        # Anti-SSRF — refuse loopback, lien-local, RFC 1918, metadata cloud.
+        # Cohérence avec IIIF/Gallica/HTR-United qui passent par _http.
+        try:
+            validate_http_url(url)
+        except ValueError as exc:
+            raise RuntimeError(str(exc)) from exc
         req = urllib.request.Request(url, headers=self._headers())
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             raise RuntimeError(
@@ -178,12 +185,17 @@ class EScriptoriumClient:
     def _post(self, path: str, payload: dict) -> dict:
         """Effectue une requête POST avec payload JSON."""
         url = f"{self.base_url}/api/{path.lstrip('/')}"
+        # Anti-SSRF — cf. _get.
+        try:
+            validate_http_url(url)
+        except ValueError as exc:
+            raise RuntimeError(str(exc)) from exc
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             url, data=data, headers=self._headers(), method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:  # noqa: S310
                 body = resp.read().decode("utf-8")
                 return json.loads(body) if body else {}
         except urllib.error.HTTPError as exc:
@@ -406,11 +418,17 @@ class EScriptoriumClient:
             if out_path and part.image_url and download_images:
                 ext = Path(urllib.parse.urlparse(part.image_url).path).suffix or ".jpg"
                 local_img = out_path / f"part_{part.pk:05d}{ext}"
+                # Anti-SSRF + retry exponentiel — utilise download_url plutôt
+                # que urlretrieve qui ne valide pas l'URL.
                 try:
-                    urllib.request.urlretrieve(part.image_url, local_img)
+                    image_bytes = download_url(part.image_url)
+                    local_img.write_bytes(image_bytes)
                     image_path = str(local_img)
-                except Exception as exc:
-                    logger.warning("Impossible de télécharger l'image %s: %s", part.image_url, exc)
+                except (ValueError, RuntimeError) as exc:
+                    logger.warning(
+                        "[escriptorium] Impossible de télécharger l'image %s : %s",
+                        part.image_url, exc,
+                    )
 
                 # Sauvegarder la GT
                 gt_path = out_path / f"part_{part.pk:05d}.gt.txt"

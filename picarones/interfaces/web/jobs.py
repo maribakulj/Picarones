@@ -231,8 +231,13 @@ class JobStore:
         values.append(time.time())
         values.append(job_id)
         with self._conn() as c:
+            # Faux positif bandit B608 : ``fields`` est construit
+            # uniquement à partir de littéraux internes (``"status = ?"``,
+            # ``"total_docs = ?"`` etc.) — aucune entrée utilisateur
+            # n'est concaténée dans la requête.  Les *valeurs* passent
+            # toutes par ``?``-placeholders (paramètre ``values``).
             c.execute(
-                f"UPDATE jobs SET {', '.join(fields)} WHERE job_id = ?",
+                f"UPDATE jobs SET {', '.join(fields)} WHERE job_id = ?",  # nosec B608
                 values,
             )
 
