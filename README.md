@@ -261,7 +261,6 @@ when running. Summary:
 |--------|----------|---------|
 | `GET` | `/` | Index |
 | `POST` | `/api/benchmark/run` | Api Benchmark Run |
-| `POST` | `/api/benchmark/start` | Api Benchmark Start |
 | `POST` | `/api/benchmark/{job_id}/cancel` | Api Benchmark Cancel |
 | `GET` | `/api/benchmark/{job_id}/status` | Api Benchmark Status |
 | `GET` | `/api/benchmark/{job_id}/stream` | Api Benchmark Stream |

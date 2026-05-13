@@ -141,18 +141,13 @@ LEGACY_VALUE_ALIASES: dict[str, str] = {
 }
 
 
-def expand_legacy_keys(d: dict) -> dict:
-    """Pour chaque clé canonique de ``d`` qui a un alias legacy
-    (cf. :data:`LEGACY_VALUE_ALIASES`), copie la valeur sous l'alias.
-
-    Mute le dict en place ET le retourne (chainable).  Idempotent :
-    si la clé legacy existe déjà avec une valeur différente, on ne
-    l'écrase pas (un override explicite gagne).
-    """
-    for canonical, legacy in LEGACY_VALUE_ALIASES.items():
-        if canonical in d and legacy not in d:
-            d[legacy] = d[canonical]
-    return d
+# ``expand_legacy_keys`` retiré en Phase 4.3 audit code-quality (2026-05).
+# Aucun caller en production ; le ``LEGACY_VALUE_ALIASES`` ci-dessus
+# reste actif via ``evaluation/metrics/module_policy.py:301`` pour
+# canonicaliser les types des manifests legacy ("text" → "raw_text").
+# Si une nouvelle politique exige le dépliage inverse (canonique +
+# alias dans le même dict), réintroduire la fonction sous un nom
+# explicite côté usage.
 
 
 def compute_content_hash(payload: bytes) -> str:

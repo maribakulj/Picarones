@@ -1,23 +1,31 @@
-"""Garde-fou : aucun module du rewrite n'importe depuis le legacy.
+"""Garde-fou : aucun module du rewrite n'importe depuis le legacy
+**et** aucun paquet legacy ne ressuscite sous son ancien nom.
 
-L'arborescence post-rewrite (``domain → formats → evaluation →
-pipeline → adapters → app → reports → interfaces``) doit être
-**autonome**.  Le legacy peut s'appuyer sur le rewrite (re-exports),
-mais l'inverse romprait l'invariant — chaque retrait de paquet
-legacy au cours des phases 1-11 ferait planter le rewrite.
+L'arborescence canonique 8 couches (``domain → formats → evaluation
+→ pipeline → adapters → app → reports → interfaces``) est autonome
+depuis la v2.0 (mai 2026).  Tous les paquets legacy historiquement
+listés ont été supprimés au cours des sprints A-H.
 
-Ce test scanne tous les fichiers Python des paquets rewrite et
-rejette toute déclaration d'import qui pointe vers un paquet
-legacy.
+Phase 4.5 de l'audit code-quality (2026-05) : avant cette refonte,
+``LEGACY_PACKAGES = ()`` rendait ``test_rewrite_modules_dont_import_from_legacy``
+**vacuement vrai** (boucle sur un itérable vide → toujours OK).  Le
+test passait mais ne vérifiait rien.
 
-Listes de référence
--------------------
+Refonte en deux invariants actifs :
 
-Les paquets sont déclarés ici de manière explicite — un nouveau
-paquet rewrite ou legacy doit être inscrit consciemment, pas
-auto-détecté.  Cela évite qu'une erreur de structure (un paquet
-posé au mauvais endroit) ne soit silencieusement classée par
-heuristique.
+1. ``test_no_resurrected_legacy_package_directory`` : aucun dossier
+   au nom d'un paquet legacy historique ne réapparaît dans
+   ``picarones/``.  Si quelqu'un recrée ``picarones/core/`` ou
+   ``picarones/web/``, le test plante.
+
+2. ``test_no_imports_of_resurrected_legacy_module`` : aucun fichier
+   du rewrite n'importe depuis ces noms supprimés (même par
+   ``picarones.web.app:app`` dans une string, scope du sister test
+   ``test_no_legacy_picarones_web_references`` côté entry points).
+
+Le garde-fou structurel (``test_layer_dependencies.py``) couvre
+les imports inter-couches sains ; ce fichier couvre spécifiquement
+la **non-régression du retrait du legacy**.
 """
 
 from __future__ import annotations
@@ -28,8 +36,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: Paquets de l'arborescence rewrite (cible 2.0).  Ne doivent
-#: jamais importer depuis :data:`LEGACY_PACKAGES`.
+#: Paquets de l'arborescence canonique v2.0.
 REWRITE_PACKAGES: tuple[str, ...] = (
     "domain",
     "formats",
@@ -41,22 +48,38 @@ REWRITE_PACKAGES: tuple[str, ...] = (
     "interfaces",
 )
 
-#: Paquets legacy.  Importables uniquement depuis l'intérieur du
-#: legacy lui-même (ou depuis les tests, qui valident la migration
-#: en cours).
-LEGACY_PACKAGES: tuple[str, ...] = ()
+#: Noms de paquets historiquement legacy, supprimés au cours des
+#: sprints A-H (mai 2026).  Si l'un d'eux réapparaît :
+#:
+#: - Soit le retrait a été partiellement annulé (régression).
+#: - Soit un nouveau paquet a réutilisé un nom homonyme.  Dans ce
+#:   cas, le retirer de cette liste avec un commentaire expliquant
+#:   pourquoi le sens a changé.
+#:
+#: Source : CHANGELOG v2.0 et ``docs/archives/migration/``.
+RESURRECTED_LEGACY_NAMES: tuple[str, ...] = (
+    "core",
+    "measurements",
+    "engines",
+    "modules",
+    "report",
+    "llm",
+    "pipelines",
+    "cli",
+    "web",
+    "extras",
+)
+
+#: Sous-paquets transitoires retirés en parallèle.  Format
+#: ``parent/sub`` pour matcher le chemin filesystem.
+RESURRECTED_LEGACY_SUBPACKAGES: tuple[tuple[str, str], ...] = (
+    ("adapters", "legacy_engines"),
+    ("adapters", "legacy_pipelines"),
+    ("interfaces/cli", "_legacy"),
+    ("interfaces/web", "_legacy"),
+)
 
 #: Pattern qui matche un import déclaré dans le code source.
-#:
-#: Couvre :
-#:
-#: - ``from picarones.X import ...``
-#: - ``import picarones.X``
-#: - ``import picarones.X as Y``
-#:
-#: Ne couvre PAS les imports différés via ``importlib.import_module``
-#: ou ``__import__`` — le test architectural cible la déclaration
-#: statique, pas la résolution dynamique.
 _IMPORT_RE = re.compile(
     r"^\s*(?:from|import)\s+picarones\.([a-z_][a-z_0-9]*)",
     re.MULTILINE,
@@ -74,14 +97,12 @@ def _rewrite_modules() -> list[Path]:
     return sorted(out)
 
 
-def _scan_legacy_imports(path: Path) -> list[tuple[int, str]]:
-    """Retourne la liste des ``(numéro_de_ligne, import_legacy)``
-    trouvés dans ``path``.
-
-    Utilise l'AST pour capturer les imports indentés (à l'intérieur
-    de fonctions, ``TYPE_CHECKING``, etc.) — un grep simple raterait
-    ces cas.
-    """
+def _scan_legacy_imports(
+    path: Path,
+    forbidden_top_levels: set[str],
+) -> list[tuple[int, str]]:
+    """``(lineno, import_text)`` pour chaque import qui pointe vers
+    un nom legacy ressuscité."""
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
@@ -91,15 +112,17 @@ def _scan_legacy_imports(path: Path) -> list[tuple[int, str]]:
     try:
         tree = ast.parse(text, filename=str(path))
     except SyntaxError:
-        # On laisse les autres tests d'archi attraper les fichiers
-        # cassés.
         return []
-    legacy_set = set(LEGACY_PACKAGES)
+
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             mod = node.module or ""
             parts = mod.split(".")
-            if len(parts) >= 2 and parts[0] == "picarones" and parts[1] in legacy_set:
+            if (
+                len(parts) >= 2
+                and parts[0] == "picarones"
+                and parts[1] in forbidden_top_levels
+            ):
                 offenders.append((node.lineno, f"from {mod} import ..."))
         elif isinstance(node, ast.Import):
             for alias in node.names:
@@ -107,28 +130,64 @@ def _scan_legacy_imports(path: Path) -> list[tuple[int, str]]:
                 if (
                     len(parts) >= 2
                     and parts[0] == "picarones"
-                    and parts[1] in legacy_set
+                    and parts[1] in forbidden_top_levels
                 ):
                     offenders.append((node.lineno, f"import {alias.name}"))
     return offenders
 
 
-def test_rewrite_modules_dont_import_from_legacy() -> None:
-    """Aucun fichier des paquets rewrite n'a d'import legacy.
+# --------------------------------------------------------------------------
+# Invariant 1 — aucun dossier legacy ne réapparaît dans picarones/
+# --------------------------------------------------------------------------
 
-    Si ce test échoue, le rewrite a une dépendance qui empêchera
-    le retrait du paquet legacy concerné.  Deux fixes possibles :
 
-    1. Le code legacy importé existe en équivalent dans le rewrite
-       → migrer l'import.
-    2. Il n'existe pas encore → la fonctionnalité doit être inscrite
-       au plan ``docs/archives/migration/legacy-retirement-plan.md`` comme
-       bloquante avant le retrait du paquet legacy concerné.
+def test_no_resurrected_legacy_package_directory() -> None:
+    """Aucun dossier au nom d'un paquet legacy historique n'existe
+    sous ``picarones/``.
+
+    Si ce test échoue, soit un retrait a été annulé (régression),
+    soit un nouveau paquet a homonymie accidentelle — dans les deux
+    cas, l'attention du reviewer est requise.
     """
+    resurrected: list[str] = []
+    for name in RESURRECTED_LEGACY_NAMES:
+        path = REPO_ROOT / "picarones" / name
+        if path.is_dir():
+            resurrected.append(f"picarones/{name}/")
+
+    for parent, sub in RESURRECTED_LEGACY_SUBPACKAGES:
+        path = REPO_ROOT / "picarones" / parent / sub
+        if path.is_dir():
+            resurrected.append(f"picarones/{parent}/{sub}/")
+
+    assert not resurrected, (
+        "Paquet(s) legacy ressuscité(s) :\n"
+        + "\n".join(f"  - {p}" for p in resurrected)
+        + "\n\nLe retrait v2.0 (sprints A-H) avait acté la suppression "
+        "définitive.  Si la réintroduction est intentionnelle, retirer "
+        "le nom de ``RESURRECTED_LEGACY_NAMES`` / "
+        "``RESURRECTED_LEGACY_SUBPACKAGES`` avec un commentaire dans "
+        "ce fichier (pourquoi le sens a changé)."
+    )
+
+
+# --------------------------------------------------------------------------
+# Invariant 2 — aucun import du rewrite ne cible un nom legacy
+# --------------------------------------------------------------------------
+
+
+def test_no_imports_of_resurrected_legacy_module() -> None:
+    """Aucun fichier du rewrite n'importe ``picarones.<legacy_name>...``.
+
+    Même si l'invariant 1 garantit l'absence du dossier, un import
+    statique pourrait subsister dans le code et planter à l'exécution.
+    Ce test attrape ce drift plus tôt.
+    """
+    forbidden = set(RESURRECTED_LEGACY_NAMES)
     offenders: list[tuple[str, int, str]] = []
     for path in _rewrite_modules():
         rel = path.relative_to(REPO_ROOT).as_posix()
-        for lineno, import_text in _scan_legacy_imports(path):
+        for lineno, import_text in _scan_legacy_imports(path, forbidden):
             offenders.append((rel, lineno, import_text))
 
     if offenders:
@@ -141,36 +200,17 @@ def test_rewrite_modules_dont_import_from_legacy() -> None:
             else ""
         )
         raise AssertionError(
-            f"\n{len(offenders)} import(s) legacy détecté(s) dans le "
-            "rewrite.  Le retrait du legacy en sera bloqué.\n\n"
-            f"{sample}{more}\n\n"
-            "Soit migrer l'import vers l'équivalent rewrite, soit "
-            "inscrire la fonctionnalité manquante dans "
-            "``docs/archives/migration/legacy-retirement-plan.md`` comme "
-            "bloquante.",
+            f"\n{len(offenders)} import(s) ciblant un nom legacy "
+            f"ressuscité :\n\n{sample}{more}\n\n"
+            "Le code source rewrite ne doit pas importer depuis les "
+            "paquets supprimés en v2.0.  Migrer l'import vers la "
+            "couche canonique correspondante."
         )
 
 
-def test_legacy_packages_match_directory_structure() -> None:
-    """Cohérence : les noms déclarés dans :data:`LEGACY_PACKAGES`
-    correspondent à des dossiers réels.
-
-    Quand un paquet legacy est supprimé (au fil des phases), il faut
-    le retirer aussi de cette liste — sinon le test ci-dessus ne
-    refusera plus les imports vers ce paquet désormais inexistant
-    (ce serait quand même un import cassé, pris par d'autres tests,
-    mais incohérent).
-    """
-    missing = []
-    for pkg in LEGACY_PACKAGES:
-        if not (REPO_ROOT / "picarones" / pkg).is_dir():
-            missing.append(pkg)
-    assert not missing, (
-        f"Paquet(s) déclaré(s) dans LEGACY_PACKAGES mais sans "
-        f"dossier correspondant : {missing}.  Si ces paquets ont été "
-        "retirés au cours d'une phase de migration, mettre à jour "
-        "LEGACY_PACKAGES ici."
-    )
+# --------------------------------------------------------------------------
+# Cohérence : les paquets rewrite existent bien
+# --------------------------------------------------------------------------
 
 
 def test_rewrite_packages_match_directory_structure() -> None:

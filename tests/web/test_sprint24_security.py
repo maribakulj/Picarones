@@ -325,25 +325,31 @@ class TestPublicModeBlocksLLMBenchmark:
         r = client.post("/api/benchmark/run", json=body)
         assert r.status_code == 403, r.text
 
-    def test_start_blocks_cloud_ocr_engine(self, client_public):
+    def test_run_blocks_cloud_ocr_engine(self, client_public):
+        """Phase 4.2 audit code-quality : migré depuis l'ancien
+        endpoint ``/api/benchmark/start`` (supprimé v2.0)."""
         client, corpus_path = client_public
         body = {
             "corpus_path": corpus_path,
-            "engines": ["google_vision"],
+            "competitors": [
+                {"name": "google_vision", "engine_name": "google_vision"},
+            ],
         }
-        r = client.post("/api/benchmark/start", json=body)
+        r = client.post("/api/benchmark/run", json=body)
         assert r.status_code == 403, r.text
 
-    def test_start_allows_local_tesseract(self, client_public, monkeypatch):
+    def test_run_allows_local_tesseract(self, client_public, monkeypatch):
         # Sous mode public, un benchmark Tesseract local doit passer le
         # garde-fou (le fait qu'il échoue ensuite faute de Tesseract est
         # hors-périmètre — on vérifie juste que ce n'est pas un 403).
         client, corpus_path = client_public
         body = {
             "corpus_path": corpus_path,
-            "engines": ["tesseract"],
+            "competitors": [
+                {"name": "tesseract", "engine_name": "tesseract"},
+            ],
         }
-        r = client.post("/api/benchmark/start", json=body)
+        r = client.post("/api/benchmark/run", json=body)
         assert r.status_code != 403, r.text
 
 

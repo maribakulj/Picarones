@@ -40,8 +40,9 @@ _MAX_ENGINE_LIST = 32
 _MAX_COMPETITORS = 32
 """Nombre max de concurrents composés par benchmark/run."""
 
-# Codes ISO Tesseract acceptés pour le paramètre ``lang`` de
-# ``BenchmarkRequest``. Liste explicite plutôt que ``str`` ouvert
+# Codes ISO Tesseract acceptés pour le paramètre ``lang`` (historiquement
+# transporté par ``BenchmarkRequest``, désormais via ``PipelineConfig.ocr_model``
+# selon le moteur cible).  Liste explicite plutôt que ``str`` ouvert
 # pour rejeter au plus tôt une valeur fantaisiste qui transiterait
 # vers ``pytesseract`` en pure perte.
 TesseractLang = Literal[
@@ -86,17 +87,11 @@ Phase 2 du chantier post-rewrite : suppression du fallback silencieux
 chaîne arbitraire et la mappait sur ``text_only``."""
 
 
-class BenchmarkRequest(BaseModel):
-    corpus_path: str = Field(min_length=1, max_length=_MAX_PATH)
-    engines: list[str] = Field(default=["tesseract"], max_length=_MAX_ENGINE_LIST)
-    normalization_profile: NormalizationProfileId = "nfc"
-    char_exclude: str = Field(default="", max_length=_MAX_CHAR_EXCLUDE)
-    """Caractères à ignorer (séparés par virgule, ex: ``"',–"``)."""
-    output_dir: str = Field(default="./rapports/", max_length=_MAX_PATH)
-    report_name: str = Field(default="", max_length=_MAX_NAME)
-    lang: TesseractLang = "fra"
-    report_lang: ReportLang = "fr"
-    """Langue du rapport HTML : ``fr`` ou ``en``."""
+# ``BenchmarkRequest`` (mode legacy à liste de moteurs plats) a été
+# supprimé en Phase 4.2 audit code-quality (2026-05) — les clients
+# utilisent désormais ``BenchmarkRunRequest`` avec
+# ``competitors: list[PipelineConfig]``.  Rupture API documentée
+# dans CHANGELOG v2.0.
 
 
 class HTRUnitedImportRequest(BaseModel):
@@ -157,7 +152,6 @@ __all__ = [
     "ReportLang",
     "NormalizationProfileId",
     "PipelineMode",
-    "BenchmarkRequest",
     "HTRUnitedImportRequest",
     "HuggingFaceImportRequest",
     "PipelineConfig",

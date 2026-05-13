@@ -26,7 +26,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from picarones.interfaces.web.models import (
-    BenchmarkRequest,
     BenchmarkRunRequest,
     PipelineConfig,
 )
@@ -376,9 +375,11 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         # signature et a été prouvé numériquement équivalent au runner
         # legacy via ``TestEquivalenceLegacyVsRewrite`` (Sprint D.1.e).
         # Les paramètres ``profile``, ``partial_dir``,
-        # ``entity_extractor``, ``max_workers`` ne sont pas encore
-        # portés vers ``BenchmarkService`` (Sprint D.2.b-f) — leur
-        # absence n'affecte pas le runner web qui ne les utilise pas.
+        # ``entity_extractor`` ne sont pas portés vers
+        # ``BenchmarkService`` — leur absence n'affecte pas le runner
+        # web qui ne les utilise pas.  Phase 4.1 audit code-quality
+        # (2026-05) : ``max_workers`` retiré (était inactif, passe
+        # par ``CorpusRunner.max_in_flight``).
         result = run_benchmark_via_service(
             corpus=corpus,
             engines=engines,
@@ -415,76 +416,16 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         job.add_event("error", {"message": f"Erreur : {exc}"})
 
 
-def _legacy_request_to_run_request(req: BenchmarkRequest) -> BenchmarkRunRequest:
-    """Convertit un ``BenchmarkRequest`` legacy en ``BenchmarkRunRequest``.
-
-    Phase 4 du chantier post-rewrite : ``/api/benchmark/start`` est
-    rétrocompatible mais délègue désormais au worker v2 unifié.  La
-    conversion mappe chaque ``engine_name`` en ``PipelineConfig``
-    (OCR seul, sans LLM) en préservant ``lang`` pour Tesseract.
-
-    Garantit qu'un patch sécurité/méthodologique appliqué au chemin
-    canonique (v2) s'applique aussi au chemin legacy — l'éviction
-    progressive de ``/start`` peut se faire sans double maintenance.
-    """
-    competitors: list[PipelineConfig] = []
-    for engine_name in req.engines:
-        # ``ocr_model`` véhicule le ``lang`` Tesseract via la registry
-        # ``_OCR_KWARGS_BUILDERS`` ; pour les autres engines on laisse
-        # vide (l'adapter utilise son défaut).
-        model = req.lang if engine_name.lower() in ("tesseract", "tess") else ""
-        competitors.append(
-            PipelineConfig(
-                name="",
-                engine_name=engine_name,
-                ocr_model=model,
-                llm_provider="",
-                llm_model="",
-                pipeline_mode="",
-                prompt_file="",
-            ),
-        )
-    return BenchmarkRunRequest(
-        corpus_path=req.corpus_path,
-        competitors=competitors,
-        normalization_profile=req.normalization_profile,
-        char_exclude=req.char_exclude,
-        output_dir=req.output_dir,
-        report_name=req.report_name,
-        report_lang=req.report_lang,
-    )
-
-
-def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
-    """Worker historique de ``/api/benchmark/start``.
-
-    Phase 4 du chantier post-rewrite : unifié avec ``run_benchmark_thread_v2``
-    via conversion ``BenchmarkRequest → BenchmarkRunRequest``.  Avant
-    cette unification, deux workers indépendants implémentaient
-    presque la même logique → tout patch (sécurité, méthodologie)
-    devait être dupliqué, et il était facile d'en oublier un.
-
-    Marqué deprecated dans les logs ; à supprimer dans une release
-    future après que tous les consommateurs aient migré vers
-    ``/api/benchmark/run``.
-    """
-    import logging as _logging
-    _logging.getLogger(__name__).warning(
-        "[benchmark] /api/benchmark/start est déprécié — utiliser "
-        "/api/benchmark/run (PipelineConfig).  Phase 4 du chantier "
-        "post-rewrite : le worker legacy délègue désormais au v2 unifié.",
-    )
-    job.add_event("log", {
-        "message": (
-            "Note : /api/benchmark/start est déprécié — utiliser "
-            "/api/benchmark/run pour les nouveaux clients."
-        ),
-    })
-    return run_benchmark_thread_v2(job, _legacy_request_to_run_request(req))
+# ──────────────────────────────────────────────────────────────────────
+# Phase 4.2 audit code-quality (2026-05) — ``_legacy_request_to_run_request``
+# et ``run_benchmark_thread`` supprimés avec l'endpoint
+# ``POST /api/benchmark/start``.  Les clients utilisent désormais
+# ``POST /api/benchmark/run`` avec ``BenchmarkRunRequest`` directement.
+# Rupture API documentée dans CHANGELOG v2.0.
+# ──────────────────────────────────────────────────────────────────────
 
 
 __all__ = [
     "sse_format",
-    "run_benchmark_thread",
     "run_benchmark_thread_v2",
 ]

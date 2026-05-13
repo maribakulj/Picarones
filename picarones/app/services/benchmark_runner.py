@@ -1025,11 +1025,6 @@ def run_benchmark_via_service(
     partial_dir: str | Path | None = None,
     entity_extractor: Callable[[str], list[dict]] | None = None,
     profile: str = "standard",
-    # ---- Paramètres non encore portés vers BenchmarkService ----
-    # Sprint D.2 du plan v2.0 — features marginales restantes :
-    # ``max_workers`` (le rewrite a son propre max_in_flight via
-    # ``CorpusRunner``).
-    max_workers: int = 4,  # noqa: ARG001
 ) -> Any:
     """Façade ``run_benchmark`` →
     ``BenchmarkService`` rewrite.
@@ -1057,9 +1052,10 @@ def run_benchmark_via_service(
     Les paramètres suivants sont **acceptés mais ignorés** dans
     cette MVP — le rewrite gère ces aspects nativement :
 
-    - ``show_progress`` (tqdm),
-    - ``max_workers`` (le rewrite ``CorpusRunner`` a son propre
-      ``max_in_flight``, branché à 2 par défaut).
+    - ``show_progress`` (tqdm).
+
+    Pour régler le parallélisme corpus-wide, passer par
+    ``CorpusRunner.max_in_flight`` directement (couche pipeline).
 
     Profil de mesures (D.2.f)
     -------------------------

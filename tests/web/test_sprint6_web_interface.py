@@ -548,17 +548,23 @@ class TestFastAPIHuggingFace:
 
 class TestFastAPIBenchmark:
 
+    # Phase 4.2 audit code-quality (2026-05) : tous les tests migrés
+    # depuis ``/api/benchmark/start`` (legacy v1.x, supprimé v2.0)
+    # vers ``/api/benchmark/run`` avec format ``competitors``.
+    def _tesseract_competitor(self):
+        return {"name": "tesseract", "engine_name": "tesseract"}
+
     def test_start_missing_corpus(self, client):
-        r = client.post("/api/benchmark/start", json={
+        r = client.post("/api/benchmark/run", json={
             "corpus_path": "/nonexistent/path/xyz",
-            "engines": ["tesseract"],
+            "competitors": [self._tesseract_competitor()],
         })
         assert r.status_code == 400
 
     def test_start_valid_corpus(self, client, tmp_corpus):
-        r = client.post("/api/benchmark/start", json={
+        r = client.post("/api/benchmark/run", json={
             "corpus_path": str(tmp_corpus),
-            "engines": ["tesseract"],
+            "competitors": [self._tesseract_competitor()],
         })
         assert r.status_code == 200
         d = r.json()
@@ -570,9 +576,9 @@ class TestFastAPIBenchmark:
         assert r.status_code == 404
 
     def test_status_valid_job(self, client, tmp_corpus):
-        r = client.post("/api/benchmark/start", json={
+        r = client.post("/api/benchmark/run", json={
             "corpus_path": str(tmp_corpus),
-            "engines": ["tesseract"],
+            "competitors": [self._tesseract_competitor()],
         })
         job_id = r.json()["job_id"]
         r2 = client.get(f"/api/benchmark/{job_id}/status")
@@ -587,18 +593,18 @@ class TestFastAPIBenchmark:
         assert r.status_code == 404
 
     def test_cancel_valid_job(self, client, tmp_corpus):
-        r = client.post("/api/benchmark/start", json={
+        r = client.post("/api/benchmark/run", json={
             "corpus_path": str(tmp_corpus),
-            "engines": ["tesseract"],
+            "competitors": [self._tesseract_competitor()],
         })
         job_id = r.json()["job_id"]
         r2 = client.post(f"/api/benchmark/{job_id}/cancel")
         assert r2.status_code == 200
 
     def test_job_status_fields(self, client, tmp_corpus):
-        r = client.post("/api/benchmark/start", json={
+        r = client.post("/api/benchmark/run", json={
             "corpus_path": str(tmp_corpus),
-            "engines": ["tesseract"],
+            "competitors": [self._tesseract_competitor()],
         })
         job_id = r.json()["job_id"]
         r2 = client.get(f"/api/benchmark/{job_id}/status")

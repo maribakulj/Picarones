@@ -268,12 +268,13 @@ class TestCliWorkflows:
     @pytest.mark.parametrize("cmd_name", ["diagnose", "economics", "edition"])
     def test_command_help_works(self, cmd_name):
         """Les 3 commandes répondent à --help sans crash."""
-        try:
-            from click.testing import CliRunner
+        # Phase 4.4 audit code-quality : ``click`` est une dep
+        # obligatoire (pyproject.toml ``click>=8.1.0``) — le
+        # ``pytest.skip("click non installé")`` était un zombie
+        # vacuement vrai qui masquait l'absence d'exécution réelle.
+        from click.testing import CliRunner
 
-            from picarones.interfaces.cli import cli as cli_group
-        except ImportError:
-            pytest.skip("click non installé")
+        from picarones.interfaces.cli import cli as cli_group
 
         runner = CliRunner()
         result = runner.invoke(cli_group, [cmd_name, "--help"])
@@ -287,12 +288,10 @@ class TestCliWorkflows:
         génèrent le HTML automatiquement à côté du JSON ; les options
         ``--no-html`` (skip HTML pour CI/scripts) et ``--html-lang``
         (fr/en) doivent être visibles dans ``--help``."""
-        try:
-            from click.testing import CliRunner
+        # Phase 4.4 audit code-quality — cf. test_command_help_works.
+        from click.testing import CliRunner
 
-            from picarones.interfaces.cli import cli as cli_group
-        except ImportError:
-            pytest.skip("click non installé")
+        from picarones.interfaces.cli import cli as cli_group
 
         runner = CliRunner()
         result = runner.invoke(cli_group, [cmd_name, "--help"])

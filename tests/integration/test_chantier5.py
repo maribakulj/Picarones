@@ -135,13 +135,16 @@ class TestDetectorsPackage:
 
 
 class TestCliPackage:
+    # Phase 4.4 audit code-quality (2026-05) — les 5 ``try/except
+    # ImportError → pytest.skip("click non installé")`` étaient des
+    # zombies vacuement vrais : ``click`` est dep obligatoire
+    # (``pyproject.toml`` ``click>=8.1.0,<9.0``).  Skip = jamais
+    # exécuté.  Remplacés par des imports directs qui plantent
+    # franchement si l'environnement est cassé.
+
     def test_cli_is_now_a_package(self):
-        try:
-            import picarones.interfaces.cli as cli_pkg
-        except ImportError as exc:
-            if "click" in str(exc):
-                pytest.skip("click non installé")
-            raise
+        import picarones.interfaces.cli as cli_pkg
+
         assert hasattr(cli_pkg, "__path__"), (
             "picarones.cli devrait être un package depuis le chantier 5"
         )
@@ -149,23 +152,15 @@ class TestCliPackage:
     def test_cli_group_still_exported(self):
         """L'entry-point ``picarones.cli:cli`` (pyproject.toml) doit
         rester valide après le chantier 5."""
-        try:
-            from picarones.interfaces.cli import cli
-        except ImportError as exc:
-            if "click" in str(exc):
-                pytest.skip("click non installé")
-            raise
+        from picarones.interfaces.cli import cli
+
         assert cli is not None
 
     def test_helpers_still_exported(self):
         """``_setup_logging`` et ``_engine_from_name`` restent accessibles
         depuis ``picarones.cli`` (les sous-modules les utilisent)."""
-        try:
-            import picarones.interfaces.cli as cli_pkg
-        except ImportError as exc:
-            if "click" in str(exc):
-                pytest.skip("click non installé")
-            raise
+        import picarones.interfaces.cli as cli_pkg
+
         assert callable(cli_pkg._setup_logging)
         assert callable(cli_pkg._engine_from_name)
 
@@ -177,12 +172,8 @@ class TestCliPackage:
         "_robustness",
     ])
     def test_submodule_loaded(self, submodule):
-        try:
-            import picarones.interfaces.cli as cli_pkg
-        except ImportError as exc:
-            if "click" in str(exc):
-                pytest.skip("click non installé")
-            raise
+        import picarones.interfaces.cli as cli_pkg
+
         assert hasattr(cli_pkg, submodule), (
             f"{submodule} non chargé en cascade — les commandes de cette "
             "famille ne seraient pas enregistrées"
@@ -201,12 +192,7 @@ class TestCliPackage:
         a été retirée — elle exposait le runner legacy ``PipelineRunner``
         désormais supprimé.  Le compteur historique passe de 15 à 14.
         """
-        try:
-            from picarones.interfaces.cli import cli
-        except ImportError as exc:
-            if "click" in str(exc):
-                pytest.skip("click non installé")
-            raise
+        from picarones.interfaces.cli import cli
         assert hasattr(cli, "commands"), (
             "le groupe cli devrait avoir un attribut commands (Click Group)"
         )
