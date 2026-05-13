@@ -1097,3 +1097,54 @@ class TestPipelineConfigEngineNameRename:
                 "Le router refuse le payload avec engine_name : "
                 f"{r.text}"
             )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 10. Phase 4.4 — JS is_demo HTR-United badge
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestHtrUnitedDemoBadgeBinding:
+    """Phase 4.4 du chantier post-rewrite : l'API
+    ``/api/htr-united/catalogue`` retourne ``is_demo`` ; le frontend
+    doit afficher un badge visible quand le serveur a fallback sur
+    le catalogue embarqué (réseau distant indisponible).
+
+    Avant : l'UI annonçait "Catalogue HTR-United" sans distinguer
+    démo vs remote — vecteur de confusion utilisateur."""
+
+    def test_template_exposes_demo_banner(self) -> None:
+        from pathlib import Path
+
+        tmpl = (
+            Path(__file__).resolve().parents[2]
+            / "picarones/interfaces/web/templates/_view_import.html"
+        )
+        html = tmpl.read_text(encoding="utf-8")
+        assert "htr-demo-banner" in html, (
+            "Le bandeau ``htr-demo-banner`` doit exister dans "
+            "_view_import.html pour afficher le mode démo"
+        )
+        assert "htr_demo_badge" in html, (
+            "L'i18n key ``htr_demo_badge`` doit être présente"
+        )
+
+    def test_js_updates_banner_from_is_demo_flag(self) -> None:
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[2]
+            / "picarones/interfaces/web/static/web-app.js"
+        )
+        src = js.read_text(encoding="utf-8")
+        assert "function _updateHtrDemoBanner" in src, (
+            "_updateHtrDemoBanner doit être défini"
+        )
+        # initHTRFilters et searchHTRUnited doivent l'appeler.
+        assert "_updateHtrDemoBanner(Boolean(d.is_demo))" in src, (
+            "initHTRFilters et searchHTRUnited doivent passer "
+            "le flag is_demo au binding UI"
+        )
+        # i18n key déclarée FR + EN.
+        assert "htr_demo_badge:" in src
+        assert "htr_demo_note:" in src

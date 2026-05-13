@@ -116,6 +116,8 @@ const T = {
     engines_llm_title: "LLMs disponibles",
     import_htr_title: "Import HTR-United",
     import_htr_desc: "Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.",
+    htr_demo_badge: "Mode démo",
+    htr_demo_note: "le catalogue distant est inaccessible ; affichage d'un échantillon embarqué.  Pour le catalogue complet, vérifier la connectivité réseau du serveur.",
     import_hf_title: "Import HuggingFace Datasets",
     import_hf_desc: "Datasets OCR/HTR publics depuis HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).",
     import_search_label: "Recherche",
@@ -200,6 +202,8 @@ const T = {
     engines_llm_title: "Available LLMs",
     import_htr_title: "Import from HTR-United",
     import_htr_desc: "Community catalogue of HTR/OCR datasets for heritage documents.",
+    htr_demo_badge: "Demo mode",
+    htr_demo_note: "the remote catalogue is unreachable; showing an embedded sample.  For the full catalogue, check the server's network connectivity.",
     import_hf_title: "Import from HuggingFace Datasets",
     import_hf_desc: "Public OCR/HTR datasets from HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).",
     import_search_label: "Search",
@@ -866,10 +870,25 @@ async function loadEngines() {
 }
 
 // ─── HTR-United ──────────────────────────────────────────────────────────────
+function _updateHtrDemoBanner(isDemo) {
+  /** Affiche / masque le bandeau "Mode démo" sous le titre HTR-United.
+   *
+   * Phase 4.4 du chantier post-rewrite : l'endpoint
+   * ``/api/htr-united/catalogue`` retourne désormais le champ
+   * ``is_demo`` (``true`` quand le serveur ne peut pas joindre le
+   * catalogue distant et fallback sur l'échantillon embarqué).  Avant,
+   * l'UI annonçait "Catalogue HTR-United" sans distinguer mode démo
+   * vs catalogue complet, vecteur de confusion utilisateur. */
+  const el = document.getElementById("htr-demo-banner");
+  if (!el) return;
+  el.style.display = isDemo ? "block" : "none";
+}
+
 async function initHTRFilters() {
   try {
     const r = await fetch("/api/htr-united/catalogue");
     const d = await r.json();
+    _updateHtrDemoBanner(Boolean(d.is_demo));
     const langSel = document.getElementById("htr-lang-filter");
     const scriptSel = document.getElementById("htr-script-filter");
     langSel.innerHTML = `<option value="">${t("all")}</option>`;
@@ -893,6 +912,7 @@ async function searchHTRUnited() {
     const url = `/api/htr-united/catalogue?query=${encodeURIComponent(q)}&language=${encodeURIComponent(lang2)}&script=${encodeURIComponent(script)}`;
     const r = await fetch(url);
     const d = await r.json();
+    _updateHtrDemoBanner(Boolean(d.is_demo));
     if (d.entries.length === 0) {
       container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
       return;
