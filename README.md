@@ -284,6 +284,7 @@ when running. Summary:
 | `POST` | `/api/lang/{lang_code}` | Api Set Lang |
 | `GET` | `/api/models/{provider}` | Api Models |
 | `GET` | `/api/normalization/profiles` | Api Normalization Profiles |
+| `POST` | `/api/normalization/profiles/preview` | Api Normalization Profile Preview |
 | `GET` | `/api/reports` | Api Reports |
 | `GET` | `/api/status` | Api Status |
 | `GET` | `/health` | Health |

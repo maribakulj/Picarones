@@ -164,7 +164,9 @@ FILE_BUDGETS: dict[str, int] = {
     # Phase 4.5 du chantier post-rewrite — ajout de
     # ``_html_path_from_json`` + ``generate_html``/``html_lang`` aux 4
     # workflows + génération HTML automatique côté ``_run_workflow``.
-    "picarones/interfaces/cli/_workflows.py": 620,  # actuel ~585
+    # Phase 3.3 audit code-quality (2026-05) — ajout de l'option
+    # ``--normalization-profile`` + résolution builtin/YAML (~30 LOC).
+    "picarones/interfaces/cli/_workflows.py": 660,  # actuel ~621
     # ``__init__.py`` du legacy CLI — plus gros que les autres car il
     # contient les commandes ``info``, ``engines``, ``metrics``,
     # ``report``, ``demo``.
