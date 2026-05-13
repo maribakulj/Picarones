@@ -75,11 +75,45 @@ from picarones.evaluation.metric_registry import (
     select_metrics,
 )
 
-# Trigger d'enregistrement du registre typé : l'import de
-# ``picarones.evaluation.metrics`` provoque l'exécution des décorateurs
-# ``@register_metric`` sur ``cer``, ``wer``, ``mer``, ``wil`` + ~15
-# métriques philologiques + reading order + NER + ALTO.
-import picarones.evaluation.metrics as _trigger_metric_registration  # noqa: F401, E402
+def register_default_metrics() -> None:
+    """Charge le registre des métriques typées par défaut.
+
+    Phase 5.3 audit code-quality (2026-05) : avant cette refonte,
+    l'enregistrement passait par un ``import picarones.evaluation.metrics``
+    side-effect en tête de module (anti-pattern dénoncé par
+    ``test_no_side_effect_imports``).  La fonction ci-dessous extrait
+    la logique en un appel explicite, **testable** et **idempotent**
+    (Python met en cache les modules — un second appel ne déclenche
+    aucun side-effect).
+
+    L'enregistrement reste **auto-déclenché** au premier import du
+    paquet ``picarones`` pour préserver l'API publique :
+
+    >>> from picarones import register_metric  # déclenche l'auto-import
+    >>> @register_metric(name="custom", ...)
+    ... def my_metric(ref, hyp): ...
+
+    Pour les consumers qui veulent un contrôle explicite (par exemple
+    avant de fork() un worker), appeler ``register_default_metrics()``
+    une fois au démarrage est sûr.
+
+    Importe les sous-modules :
+
+    - ``picarones.evaluation.metrics`` — déclencheur global des
+      ``@register_metric``, ``@register_document_metric`` et
+      ``@register_corpus_aggregator`` (~37 métriques scalaires +
+      ~25 agrégateurs corpus-level).
+    """
+    # ``importlib.import_module`` plutôt qu'``import`` en local pour
+    # rendre l'intention explicite (« je veux le side-effect du
+    # module »).  Idempotent grâce au cache ``sys.modules``.
+    import importlib
+    importlib.import_module("picarones.evaluation.metrics")
+
+
+# Auto-déclenchement préservé pour compat des callers existants —
+# voir docstring de ``register_default_metrics``.
+register_default_metrics()
 
 __all__ = [
     "__version__",
@@ -112,4 +146,6 @@ __all__ = [
     "compute_at_junction",
     "register_metric",
     "select_metrics",
+    # Phase 5.3 audit code-quality — API d'enregistrement explicite.
+    "register_default_metrics",
 ]

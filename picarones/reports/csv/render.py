@@ -50,7 +50,7 @@ import csv
 import io
 from typing import Any
 
-from picarones.app.results import RunResult
+from picarones.pipeline.run_result import RunResult
 
 
 class CsvReportRenderer:

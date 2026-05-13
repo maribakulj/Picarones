@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import json
 
-from picarones.app.results import RunResult
+from picarones.pipeline.run_result import RunResult
 
 
 class JsonReportRenderer:

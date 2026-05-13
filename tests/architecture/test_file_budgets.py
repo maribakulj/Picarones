@@ -52,7 +52,10 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/evaluation/metrics/modern_archives.py": 700,  # actuel 599
     "picarones/evaluation/metrics/builtin_hooks.py": 700,  # actuel 590
     "picarones/evaluation/metrics/history.py": 720,        # actuel 615
-    "picarones/evaluation/metrics/robustness.py": 850,     # actuel 742
+    # Phase 3.1 audit code-quality (2026-05) : retrait des 5 helpers
+    # pure-Python ``_apply_*`` + stub ``_degrade_pure_python`` (~300 LOC
+    # mortes) → budget dégonflé de 850 à 650.
+    "picarones/evaluation/metrics/robustness.py": 650,     # actuel 578
     "picarones/interfaces/web/benchmark_utils.py": 600,    # actuel 520
     # Importers IIIF / Gallica.
     "picarones/adapters/corpus/iiif.py": 675,             # actuel 567
