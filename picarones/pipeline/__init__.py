@@ -1,4 +1,4 @@
-"""Cercle 2 — Pipeline execution.
+"""Couche 4 — Pipeline execution.
 
 Exécution séquentielle ou DAG-branchante d'une chaîne de modules
 tiers (``StepExecutor``).  Picarones ne fournit **aucun module

@@ -1,4 +1,4 @@
-"""Cercle 5 — Interfaces (CLI, web).
+"""Couche 8 — Interfaces (CLI, web).
 
 Couches de transport.  Code mince qui parse des arguments / des
 requêtes HTTP, appelle un service applicatif, retourne une réponse.

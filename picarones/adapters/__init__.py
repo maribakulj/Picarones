@@ -1,4 +1,4 @@
-"""Cercle 3 — Adapters.
+"""Couche 5 — Adapters.
 
 Implémentations concrètes des contrats du domain.  C'est ici que
 vivent les dépendances externes lourdes (pytesseract, pero_ocr,

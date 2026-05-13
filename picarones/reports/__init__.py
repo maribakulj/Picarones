@@ -1,4 +1,4 @@
-"""Cercle 3 — Reports.
+"""Couche 7 — Reports.
 
 Sortie en différents formats à partir d'un ``RunResult`` persisté.
 Le rapport est une **vue** des artefacts et des résultats
