@@ -126,6 +126,11 @@ def build_report_data(
         "taxonomy_intra_doc": compute_taxonomy_intra_doc_section(benchmark),
         # Sprint 91 (A.II.6) : matrice de coût marginal entre paires de moteurs.
         "marginal_cost": compute_marginal_cost_section(engines_summary),
+        # Phase 3.2 audit code-quality — incidents d'importer (fallback
+        # mode démo HTR-United, fallback recherche HuggingFace, etc.)
+        # propagés au détecteur narratif ``IMPORTER_FALLBACK_TRIGGERED``.
+        # Liste vide si aucun fallback n'a eu lieu.
+        "importer_fallbacks": (benchmark.metadata or {}).get("importer_fallbacks", []),
     }
 
 

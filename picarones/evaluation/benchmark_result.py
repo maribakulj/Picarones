@@ -364,6 +364,17 @@ class EngineReport:
     delta_median, delta_min, delta_max, n_over_normalized,
     n_under_normalized, over_normalized_rate}``.  ``None`` si
     aucun document n'avait de ``readability_metrics``."""
+    # Phase 3.4 audit code-quality (2026-05) — câblage de
+    # ``aggregate_over_normalization`` (classe 10 de la taxonomie).
+    aggregated_over_normalization: Optional[dict] = None
+    """Sur-normalisation LLM agrégée corpus-wide.
+
+    Format ``{score, total_correct_ocr_words, over_normalized_count,
+    document_count}`` produit par
+    :func:`picarones.evaluation.metrics.over_normalization.aggregate_over_normalization`.
+    ``None`` si aucun document n'a porté de
+    ``pipeline_metadata["over_normalization"]`` (cas d'un benchmark
+    OCR seul, sans étape LLM)."""
 
     def __post_init__(self) -> None:
         if not self.aggregated_metrics and self.document_results:
@@ -450,6 +461,8 @@ class EngineReport:
             )
         if self.aggregated_readability is not None:
             d["aggregated_readability"] = self.aggregated_readability
+        if self.aggregated_over_normalization is not None:
+            d["aggregated_over_normalization"] = self.aggregated_over_normalization
         return d
 
     @classmethod
@@ -487,6 +500,9 @@ class EngineReport:
                 "aggregated_numerical_sequences",
             ),
             aggregated_readability=data.get("aggregated_readability"),
+            aggregated_over_normalization=data.get(
+                "aggregated_over_normalization",
+            ),
         )
 
 

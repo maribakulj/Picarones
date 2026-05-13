@@ -22,8 +22,18 @@ la graphie originale.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
+
+from picarones.evaluation.metric_hooks import (
+    PROFILE_DIAGNOSTICS,
+    PROFILE_FULL,
+    PROFILE_PHILOLOGICAL,
+    register_corpus_aggregator,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -111,7 +121,16 @@ def detect_over_normalization(
 
 
 def aggregate_over_normalization(results: list[Optional[OverNormalizationResult]]) -> dict:
-    """Agrège les résultats de sur-normalisation sur un ensemble de documents."""
+    """Agrège les résultats de sur-normalisation sur un ensemble de documents.
+
+    Fonction pure utilitaire — reçoit directement une liste de
+    :class:`OverNormalizationResult` (typiquement le retour de
+    :func:`detect_over_normalization`).  Pour l'agrégation à partir
+    d'une liste de :class:`DocumentResult` produite par un benchmark,
+    le hook décoré :func:`_aggregate_over_normalization_hook`
+    (auto-enregistré) extrait l'information depuis
+    ``dr.pipeline_metadata["over_normalization"]``.
+    """
     valid = [r for r in results if r is not None]
     if not valid:
         return {"score": None, "total_correct_ocr_words": 0, "over_normalized_count": 0}
@@ -126,3 +145,63 @@ def aggregate_over_normalization(results: list[Optional[OverNormalizationResult]
         "over_normalized_count": total_over,
         "document_count": len(valid),
     }
+
+
+# ---------------------------------------------------------------------------
+# Hook d'agrégation corpus-level — Phase 3.4 audit code-quality (2026-05)
+# ---------------------------------------------------------------------------
+#
+# Le calcul ``detect_over_normalization`` est branché en amont (synthétique
+# + pipelines OCR+LLM réels) et stocke son résultat dans
+# ``dr.pipeline_metadata["over_normalization"]`` (déjà sous forme de dict
+# via ``OverNormalizationResult.as_dict()``).  Le hook ci-dessous
+# l'extrait et invoque l'agrégateur pur ; la valeur retournée alimente
+# l'attribut ``EngineReport.aggregated_over_normalization``.
+#
+# Profils : disponible pour ``philological`` (analyse fine du LLM),
+# ``diagnostics`` (audit du pipeline) et ``full``.
+
+
+def _from_metadata_dict(meta: Optional[dict]) -> Optional[OverNormalizationResult]:
+    """Reconstruit un :class:`OverNormalizationResult` depuis le dict
+    stocké dans ``pipeline_metadata`` (forme ``as_dict()``)."""
+    if not isinstance(meta, dict):
+        return None
+    try:
+        return OverNormalizationResult(
+            total_correct_ocr_words=int(meta.get("total_correct_ocr_words", 0)),
+            over_normalized_count=int(meta.get("over_normalized_count", 0)),
+            over_normalized_passages=list(meta.get("over_normalized_passages", []) or []),
+        )
+    except (TypeError, ValueError) as exc:
+        logger.warning(
+            "[over_normalization] dict metadata mal formé, ignoré : %s", exc,
+        )
+        return None
+
+
+@register_corpus_aggregator(
+    name="over_normalization",
+    attribute="aggregated_over_normalization",
+    profiles=(PROFILE_PHILOLOGICAL, PROFILE_DIAGNOSTICS, PROFILE_FULL),
+)
+def _aggregate_over_normalization_hook(doc_results: list) -> Optional[dict]:
+    """Agrégateur corpus-level — auto-enregistré.
+
+    Extrait ``pipeline_metadata["over_normalization"]`` de chaque
+    document, reconstruit un :class:`OverNormalizationResult`, et
+    délègue à :func:`aggregate_over_normalization` (logique pure).
+    Retourne ``None`` si aucun document n'avait de données — pas
+    d'attribut ajouté au :class:`EngineReport` dans ce cas.
+    """
+    extracted = [
+        _from_metadata_dict(
+            getattr(dr, "pipeline_metadata", {}).get("over_normalization")
+            if hasattr(dr, "pipeline_metadata")
+            else None
+        )
+        for dr in doc_results
+    ]
+    if not any(r is not None for r in extracted):
+        return None
+    return aggregate_over_normalization(extracted)

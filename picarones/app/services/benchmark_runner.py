@@ -372,11 +372,25 @@ def run_result_to_benchmark_result(
             ),
         )
 
+    # Phase 3.2 audit code-quality — consommer le journal des
+    # fallbacks d'importer (HTR-United, HuggingFace, etc.).  La liste
+    # est vidée à la fin du benchmark pour que le run suivant
+    # n'hérite pas des incidents du précédent.  Le détecteur narratif
+    # ``IMPORTER_FALLBACK_TRIGGERED`` (history.py:280) lit
+    # ``benchmark_data["importer_fallbacks"]`` propagé par
+    # ``build_report_data``.
+    from picarones.adapters.corpus._fallback_log import consume_fallback_log
+    fallbacks = consume_fallback_log()
+    metadata: dict[str, Any] = {}
+    if fallbacks:
+        metadata["importer_fallbacks"] = fallbacks
+
     return BenchmarkResult(
         corpus_name=corpus.name,
         corpus_source=str(corpus.source_path) if corpus.source_path else None,
         document_count=len(documents),
         engine_reports=engine_reports,
+        metadata=metadata,
     )
 
 
@@ -1532,11 +1546,19 @@ def _run_benchmark_with_partial(
         # ``all_doc_results``.
         _delete_partial(partial_path)
 
+    # Phase 3.2 audit code-quality — cf. _run_benchmark_unified.
+    from picarones.adapters.corpus._fallback_log import consume_fallback_log
+    fallbacks = consume_fallback_log()
+    metadata: dict[str, Any] = {}
+    if fallbacks:
+        metadata["importer_fallbacks"] = fallbacks
+
     return BenchmarkResult(
         corpus_name=corpus.name,
         corpus_source=str(corpus.source_path) if corpus.source_path else None,
         document_count=len(corpus.documents),
         engine_reports=engine_reports,
+        metadata=metadata,
     )
 
 
