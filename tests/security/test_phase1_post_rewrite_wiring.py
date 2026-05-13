@@ -946,16 +946,24 @@ class TestUploadPurgeTaskWired:
     def test_lifespan_starts_purge_task(self, monkeypatch) -> None:
         """Au démarrage de l'app FastAPI, un ``asyncio.create_task`` doit
         emballer ``upload_purge_task``.  On patch la fonction pour
-        l'observer puis on enclenche le lifespan."""
+        l'observer puis on enclenche le lifespan.
+
+        Polling actif au lieu de ``time.sleep`` fixe : robuste aux
+        runners CI lents (Windows en particulier peut prendre > 100 ms
+        pour scheduler la première tâche asyncio)."""
+        import asyncio
+        import threading
+        import time
+
         from fastapi.testclient import TestClient
 
-        observed: dict = {"started": False, "uploads_root": None}
+        started_event = threading.Event()
+        observed: dict = {"uploads_root": None}
 
         async def _fake_purge_task(uploads_root):
-            observed["started"] = True
             observed["uploads_root"] = uploads_root
+            started_event.set()
             # Boucle infinie minimale — annulée au shutdown.
-            import asyncio
             try:
                 while True:
                     await asyncio.sleep(3600)
@@ -972,13 +980,15 @@ class TestUploadPurgeTaskWired:
         from picarones.interfaces.web.app import app
 
         with TestClient(app):
-            # Le lifespan a démarré ; la tâche tourne en arrière-plan.
-            # On laisse à asyncio le temps de la lancer.
-            import time
-            time.sleep(0.05)
+            # Polling 2 s avec slot 10 ms — assez de marge pour
+            # les runners GitHub Actions lents (macOS / Windows).
+            deadline = time.monotonic() + 2.0
+            while not started_event.is_set() and time.monotonic() < deadline:
+                time.sleep(0.01)
 
-        assert observed["started"] is True, (
-            "upload_purge_task aurait dû être démarrée par le lifespan"
+        assert started_event.is_set(), (
+            "upload_purge_task aurait dû être démarrée par le lifespan "
+            "dans les 2 s suivant TestClient(app).__enter__()"
         )
 
     def test_purge_protects_active_corpus(self, tmp_path: Path) -> None:
