@@ -39,8 +39,10 @@ class TestProvenanceRecord:
         assert not p1.is_compatible_with(p4)  # parameters_hash diffère
 
     def test_frozen(self) -> None:
+        from pydantic import ValidationError
+
         p = ProvenanceRecord(code_version="1.0.0")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             p.code_version = "1.0.1"  # type: ignore[misc]
 
     def test_json_roundtrip(self) -> None:

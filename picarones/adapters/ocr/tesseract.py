@@ -56,12 +56,21 @@ Anti-sur-ingénierie
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
 from picarones.adapters.output_paths import resolve_output_path
 from picarones.domain.artifacts import Artifact, ArtifactType
+
+#: Codes langue Tesseract acceptés : ISO 639-3 (3 lettres ASCII)
+#: éventuellement combinés par ``+`` (ex. ``"fra+eng"``).  Le ``lang``
+#: étant in fine passé à la ligne de commande Tesseract via
+#: pytesseract, on refuse tout caractère qui pourrait être interprété
+#: comme un flag ou un séparateur (espaces, ``--``, ``/``, etc.).
+#: Phase 1.2 de l'audit code-quality (2026-05).
+_TESSERACT_LANG_RE = re.compile(r"^[a-zA-Z]{3,}(?:\+[a-zA-Z]{3,})*$")
 
 
 class TesseractAdapter(BaseOCRAdapter):
@@ -122,6 +131,15 @@ class TesseractAdapter(BaseOCRAdapter):
             raise OCRAdapterError(
                 f"TesseractAdapter : name invalide {name!r} — "
                 "alphanumérique + _ - uniquement.",
+            )
+        # Anti-injection ligne de commande Tesseract — refuse les
+        # espaces, ``--user-words``, ``/``, etc.  ``lang`` est in fine
+        # concaténé à ``tesseract -l <lang>``.
+        if not _TESSERACT_LANG_RE.fullmatch(lang):
+            raise OCRAdapterError(
+                f"TesseractAdapter : lang invalide {lang!r} — "
+                "format attendu : code ISO 639-3 (3+ lettres ASCII), "
+                "optionnellement combiné via ``+`` (ex. ``fra+eng``).",
             )
         if not 0 <= psm <= 13:
             raise OCRAdapterError(

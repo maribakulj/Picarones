@@ -7,6 +7,195 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — Audit code-quality (mai 2026)
+
+Branche `claude/code-quality-audit-EeY0r` — audit implacable du repo
+suite à la migration v2.0, suivi de 12 sprints correctifs (Phases 0
+à 12 du plan d'audit).
+
+### BREAKING — ruptures API v2.0
+
+Toutes ces ruptures sont **immédiates**, sans calendrier de
+dépréciation (règle de l'audit : « soit on supprime, soit on garde
+et on développe »).  Migration directe documentée ci-dessous.
+
+- **`POST /api/benchmark/start` retiré** au profit de
+  `POST /api/benchmark/run`.  Le modèle Pydantic
+  `BenchmarkRequest` (liste de moteurs plats) est remplacé par
+  `BenchmarkRunRequest` (liste de `PipelineConfig`).  Helpers
+  associés supprimés : `_legacy_request_to_run_request`,
+  `run_benchmark_thread` (v1 ; `run_benchmark_thread_v2` reste).
+  Migration :
+
+  ```python
+  # avant (v1.x)
+  POST /api/benchmark/start
+  {"corpus_path": "...", "engines": ["tesseract", "pero_ocr"]}
+
+  # après (v2.0)
+  POST /api/benchmark/run
+  {
+      "corpus_path": "...",
+      "competitors": [
+          {"name": "tesseract", "engine_name": "tesseract"},
+          {"name": "pero_ocr", "engine_name": "pero_ocr"},
+      ],
+  }
+  ```
+
+- **`run_benchmark_via_service(..., max_workers=4)` retiré** —
+  paramètre absorbé sans effet via `# noqa: ARG001`.  Le rewrite
+  passe par `CorpusRunner.max_in_flight` directement.
+
+- **`expand_legacy_keys()` retiré** de `picarones.domain.artifacts` —
+  0 caller en production.  Le dict `LEGACY_VALUE_ALIASES` reste
+  vivant pour le canonicalisation des manifests legacy.
+
+- **JSON `BenchmarkResult` pré-v2.0 plus relisibles** — le retrait
+  de `expand_legacy_keys` interdit le round-trip depuis des sorties
+  v1.x.  Régénérer les benchmarks de référence.
+
+- **Paramètre `text_hint` retiré** de
+  `picarones.evaluation.synthetic._make_placeholder_png` (était
+  jamais lu).
+
+### Added — features inachevées débloquées
+
+- **Agrégation sur-normalisation LLM corpus-wide** :
+  `aggregate_over_normalization` câblée via
+  `@register_corpus_aggregator(name="over_normalization", ...)`
+  (profils `philological`, `diagnostics`, `full`).  Le hook
+  extrait depuis `DocumentResult.pipeline_metadata["over_normalization"]`
+  et alimente `EngineReport.aggregated_over_normalization`.
+  Round-trip JSON préservé.
+
+- **Journal de fallbacks importer end-to-end** : la chaîne
+  `record_fallback → consume_fallback_log → BenchmarkResult.metadata
+  → build_report_data → narrative.detect_importer_fallback` est
+  désormais branchée.  Un fallback HTR-United mode démo apparaît
+  dans la synthèse narrative avec traçabilité (URL, raison).
+
+- **Profils de normalisation YAML versionnables** :
+  - CLI : `picarones run --normalization-profile <ID-OR-PATH>` —
+    accepte un identifiant builtin ou un fichier `.yaml`
+    versionné dans git.
+  - API : `POST /api/normalization/profiles/preview` — valide un
+    YAML utilisateur et retourne le profil sérialisé (preview, pas
+    de persistance).  Limite 64 KiB côté Pydantic.
+
+- **`register_default_metrics()` exposée publiquement** —
+  remplace le side-effect `import picarones.evaluation.metrics`
+  opaque en tête de `picarones/__init__.py`.  Idempotente
+  (`sys.modules` cache).  Auto-déclenchement préservé pour
+  rétrocompat.
+
+- **`RunResult` accessible depuis `picarones.pipeline.run_result`** —
+  déplacé de `app.results` (compat shim conservé) vers la couche 4
+  pour respecter l'orientation des couches (`reports/` ne peut
+  plus importer depuis `app/`).
+
+### Changed — architecture & lisibilité
+
+- **8 `__init__.py` de couche** : renumérotation `Cercle N`
+  (incohérent, max 5, doublons) → `Couche N` (1 à 8, ordre du
+  manifeste).
+- **`benchmark_runner.py`** : 1 700 → 1 584 LOC.  Extractions :
+  - `_benchmark_ner.py` (NER aggregation, ~100 LOC).
+  - `_benchmark_persistence.py` (sérialisation JSON, ~15 LOC).
+  Budget `test_file_budgets` resserré de 1 750 à 1 620.
+- **`robustness.py`** : 850 → 578 LOC.  Suppression des 5 helpers
+  pure-Python `_apply_*` et du stub `_degrade_pure_python` (Pillow
+  est dep obligatoire, fallback sans valeur).
+- **`PipelineMode` unifié** : source unique
+  `picarones.domain.pipeline_spec.PipelineMode`.  Les 3 alias
+  historiques (`OCRLLMMode`, `OCRLLMPipelineMode`, `PipelineMode`)
+  deviennent des re-exports.
+- **Validation chemin web factorisée** : helpers
+  `validated_user_path` / `validated_user_output_dir` dans
+  `interfaces/web/_path_helpers.py` ; 2 routers migrés.
+- **eScriptorium anti-SSRF** : `_get`, `_post` et le téléchargement
+  d'image utilisent désormais `validate_http_url` et
+  `download_url` (cohérence avec IIIF/Gallica/HTR-United).
+- **Tesseract `lang` validation** : regex
+  `^[a-zA-Z]{3,}(\+[a-zA-Z]{3,})*$` rejette les injections CLI
+  (`fra --user-words /etc/passwd`).
+- **CI : sync compteurs bloquant** — nouveau job ``sync-counters``
+  exécute `scripts/gen_readme_tables.py --check`.
+- **CI : 7 nouveaux tests d'architecture** verrouillent les
+  invariants pour bloquer la régression :
+  - `test_no_zombie_skips.py` (interdit `pytest.skip` sur dep
+    obligatoire).
+  - `test_no_legacy_imports_in_rewrite.py` refondu — test actif
+    contre la résurrection des paquets legacy supprimés (au lieu
+    d'un `LEGACY_PACKAGES = ()` vacuement vrai).
+  - `test_no_broad_pytest_raises.py` — refuse les
+    `pytest.raises(Exception)` (ratchet, baseline 24).
+  - `test_logger_prefix.py` — refuse les logs sans préfixe
+    `[<module>]` (ratchet, baseline 46).
+  - `test_live_test_markers.py` — chaque fonction dans
+    `tests/integration/live/` porte `@pytest.mark.live`.
+  - `test_reports_layer_strict.py` — interdit les imports
+    `reports/ → {adapters, app, interfaces}`.
+  - `test_pipeline_mode_single_source.py` — refuse toute nouvelle
+    redéfinition de `Literal["text_only", "text_and_image", "zero_shot"]`.
+  - `test_api_stable_modules_exist.py` — chaque module cité dans
+    `api-stable.md` doit s'importer.
+
+### Removed
+
+- **`POST /api/benchmark/start`** + helpers (cf. BREAKING).
+- **`BenchmarkRequest`** modèle Pydantic v1 (cf. BREAKING).
+- **`max_workers`**, **`text_hint`** paramètres morts.
+- **`expand_legacy_keys()`** (cf. BREAKING).
+- **5 helpers `_apply_*`** + **`_degrade_pure_python`** dans
+  robustness.py (~300 LOC).
+- **7 `pytest.skip("click non installé")`** zombies dans
+  `tests/integration/test_chantier{4,5}.py` (click est dep
+  obligatoire — skip vacuement vrai).
+- **4 modules fantômes** retirés de `docs/reference/api-stable.md`
+  (`pipeline.legacy_runner`, `pipeline.legacy_pipeline_benchmark`,
+  `pipeline.legacy_pipeline_comparison`,
+  `evaluation.metrics.pipeline_spec_loader`).
+
+### Fixed
+
+- **`app.py`** : entry point HuggingFace cassé
+  (`picarones.web.app:app` → `picarones.interfaces.web.app:app`).
+- **8 `except: pass` silencieux** : tous remplacés par
+  `logger.warning("[<module>] ...")` ou `logger.debug(...)` selon
+  criticité (friedman_nemenyi, image_quality, iiif, clustering,
+  path_security, benchmark_runner, job_store, robustness).
+- **10 `pytest.raises(Exception)` trop larges** : précisés en
+  `FrozenInstanceError` ou `pydantic.ValidationError`.
+- **README.md** : retrait du paragraphe « Legacy paths still
+  present as shims » (faux depuis v2.0) ; `mypy picarones/core/`
+  → `mypy picarones/domain/`.
+- **CLAUDE.md** : compteur tests synchronisé (4 700 → réel),
+  auto-contradiction « 12 vs 9 skipped » résolue, 18 → 20
+  détecteurs, 22 → 28 renderers.
+- **Faux positifs bandit B608** documentés avec `# nosec` et
+  commentaire de justification (sites SQL où les `fields`
+  interpolés sont des littéraux internes, valeurs via `?`).
+- **eScriptorium** : urlretrieve sans validation → `download_url`
+  avec anti-SSRF.
+
+### Security
+
+- **SSRF résiduel eScriptorium** fermé (`_get`, `_post`,
+  téléchargement images).
+- **Injection CLI Tesseract** bloquée (regex sur `lang`).
+- **Aucune CVE** introduite (pip-audit vert).
+
+### Stats
+
+- **+158 nouveaux tests** (4 686 → 4 784 passing).  Ruff propre,
+  bandit propre (1 LOW résiduel inoffensif), 0 régression.
+- **12 nouveaux modules** créés (helpers extraits + tests
+  d'invariant).
+- **~600 LOC mortes supprimées**.
+
+---
+
 ## [Unreleased] — Chantier post-rewrite (mai 2026)
 
 Branche `claude/fix-module-rewiring-MHssX` — réconciliation des chemins

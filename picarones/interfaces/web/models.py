@@ -40,8 +40,9 @@ _MAX_ENGINE_LIST = 32
 _MAX_COMPETITORS = 32
 """Nombre max de concurrents composés par benchmark/run."""
 
-# Codes ISO Tesseract acceptés pour le paramètre ``lang`` de
-# ``BenchmarkRequest``. Liste explicite plutôt que ``str`` ouvert
+# Codes ISO Tesseract acceptés pour le paramètre ``lang`` (historiquement
+# transporté par ``BenchmarkRequest``, désormais via ``PipelineConfig.ocr_model``
+# selon le moteur cible).  Liste explicite plutôt que ``str`` ouvert
 # pour rejeter au plus tôt une valeur fantaisiste qui transiterait
 # vers ``pytesseract`` en pure perte.
 TesseractLang = Literal[
@@ -67,36 +68,18 @@ Liste alignée sur ``measurements.normalization.NORMALIZATION_PROFILES``
 répercutée ici sous peine de rejet Pydantic au niveau API web.
 Sprint A14-S1 — alignement README ↔ web models ↔ runtime."""
 
-PipelineMode = Literal["text_only", "text_and_image", "zero_shot"]
-"""Modes de pipeline OCR+LLM acceptés par ``PipelineConfig``.
-
-Aligné sur :class:`picarones.pipeline.llm_pipeline_config.OCRLLMMode` —
-toute valeur hors de ces 3 littéraux est rejetée 422 par Pydantic.
-
-Sémantique :
-
-- ``text_only`` — l'OCR amont produit un texte brut, le LLM le corrige
-  sans voir l'image (post-correction texte).
-- ``text_and_image`` — l'OCR amont produit un texte ; le VLM le corrige
-  en s'appuyant sur l'image (post-correction multimodale).
-- ``zero_shot`` — pas d'OCR amont ; un VLM transcrit l'image directement.
-
-Phase 2 du chantier post-rewrite : suppression du fallback silencieux
-``mode_map.get(comp.pipeline_mode, 'text_only')`` qui acceptait toute
-chaîne arbitraire et la mappait sur ``text_only``."""
+# Phase 7.1 audit code-quality (2026-05) : ``PipelineMode`` est désormais
+# importé depuis :data:`picarones.domain.pipeline_spec.PipelineMode`
+# (source de vérité unique).  L'alias local préserve l'API publique
+# de ce module pour les callers historiques.
+from picarones.domain.pipeline_spec import PipelineMode  # noqa: E402
 
 
-class BenchmarkRequest(BaseModel):
-    corpus_path: str = Field(min_length=1, max_length=_MAX_PATH)
-    engines: list[str] = Field(default=["tesseract"], max_length=_MAX_ENGINE_LIST)
-    normalization_profile: NormalizationProfileId = "nfc"
-    char_exclude: str = Field(default="", max_length=_MAX_CHAR_EXCLUDE)
-    """Caractères à ignorer (séparés par virgule, ex: ``"',–"``)."""
-    output_dir: str = Field(default="./rapports/", max_length=_MAX_PATH)
-    report_name: str = Field(default="", max_length=_MAX_NAME)
-    lang: TesseractLang = "fra"
-    report_lang: ReportLang = "fr"
-    """Langue du rapport HTML : ``fr`` ou ``en``."""
+# ``BenchmarkRequest`` (mode legacy à liste de moteurs plats) a été
+# supprimé en Phase 4.2 audit code-quality (2026-05) — les clients
+# utilisent désormais ``BenchmarkRunRequest`` avec
+# ``competitors: list[PipelineConfig]``.  Rupture API documentée
+# dans CHANGELOG v2.0.
 
 
 class HTRUnitedImportRequest(BaseModel):
@@ -157,7 +140,6 @@ __all__ = [
     "ReportLang",
     "NormalizationProfileId",
     "PipelineMode",
-    "BenchmarkRequest",
     "HTRUnitedImportRequest",
     "HuggingFaceImportRequest",
     "PipelineConfig",

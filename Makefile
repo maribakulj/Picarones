@@ -109,6 +109,34 @@ doc-check:  ## Audit de cohérence README/SPECS/CHANGELOG (Sprint A2)
 	  $(PYTHON) -m pytest tests/docs/ -q --tb=short --no-header; \
 	fi
 
+sync-counters:  ## Régénère README/CLAUDE.md avec les compteurs réels (script gen_readme_tables.py)
+	@if [ -x $(VENV_BIN)/python ]; then \
+	  $(VENV_BIN)/python scripts/gen_readme_tables.py; \
+	else \
+	  $(PYTHON) scripts/gen_readme_tables.py; \
+	fi
+
+sync-counters-check:  ## CI : échoue si README/CLAUDE.md divergent du code (compteurs tests + tables)
+	@if [ -x $(VENV_BIN)/python ]; then \
+	  $(VENV_BIN)/python scripts/gen_readme_tables.py --check; \
+	else \
+	  $(PYTHON) scripts/gen_readme_tables.py --check; \
+	fi
+
+docs:  ## Construit le site mkdocs en mode strict (échoue sur les warnings)
+	@if [ -x $(VENV_BIN)/python ]; then \
+	  $(VENV_BIN)/python -m mkdocs build --strict; \
+	else \
+	  $(PYTHON) -m mkdocs build --strict; \
+	fi
+
+docs-serve:  ## Lance mkdocs en mode dev (http://localhost:8000)
+	@if [ -x $(VENV_BIN)/python ]; then \
+	  $(VENV_BIN)/python -m mkdocs serve; \
+	else \
+	  $(PYTHON) -m mkdocs serve; \
+	fi
+
 typecheck:  ## Vérification de types avec mypy (si installé)
 	@$(VENV_BIN)/python -m mypy $(PACKAGE)/ --ignore-missing-imports --no-strict-optional 2>/dev/null \
 	  || echo "mypy non installé : pip install mypy"

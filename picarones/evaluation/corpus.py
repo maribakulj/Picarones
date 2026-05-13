@@ -450,14 +450,14 @@ def load_corpus_from_directory(
     for image_path in image_paths:
         gt_path = image_path.with_name(image_path.stem + gt_suffix)
         if not gt_path.exists():
-            logger.debug("Pas de fichier GT pour %s — ignoré.", image_path.name)
+            logger.debug("[corpus] Pas de fichier GT pour %s — ignoré.", image_path.name)
             skipped += 1
             continue
 
         try:
             ground_truth = gt_path.read_text(encoding=encoding).strip()
         except OSError as exc:
-            logger.warning("Impossible de lire %s : %s — ignoré.", gt_path, exc)
+            logger.warning("[corpus] Impossible de lire %s : %s — ignoré.", gt_path, exc)
             skipped += 1
             continue
 
@@ -469,7 +469,7 @@ def load_corpus_from_directory(
                 ocr_text = ocr_path.read_text(encoding=encoding).strip()
                 ocr_text_loaded += 1
             except OSError as exc:
-                logger.warning("Impossible de lire %s : %s — OCR bruité ignoré.", ocr_path, exc)
+                logger.warning("[corpus] Impossible de lire %s : %s — OCR bruité ignoré.", ocr_path, exc)
 
         # GT multi-niveaux (Sprint 32) — détection automatique des fichiers additionnels
         ground_truths: dict[ArtifactType, GTPayload] = {
@@ -496,22 +496,22 @@ def load_corpus_from_directory(
         )
 
     if skipped:
-        logger.info("%d image(s) ignorée(s) faute de fichier GT.", skipped)
+        logger.info("[corpus] %d image(s) ignorée(s) faute de fichier GT.", skipped)
 
     if ocr_text_loaded:
         logger.info(
-            "Corpus '%s' chargé : %d documents (%d avec OCR bruité — post-correction disponible).",
+            "[corpus] Corpus '%s' chargé : %d documents (%d avec OCR bruité — post-correction disponible).",
             corpus_name, len(documents), ocr_text_loaded,
         )
     else:
-        logger.info("Corpus '%s' chargé : %d documents.", corpus_name, len(documents))
+        logger.info("[corpus] Corpus '%s' chargé : %d documents.", corpus_name, len(documents))
 
     if extra_levels_loaded:
         levels_summary = ", ".join(
             f"{lvl.value}={n}" for lvl, n in sorted(extra_levels_loaded.items(), key=lambda x: x[0].value)
         )
         logger.info(
-            "Corpus '%s' — niveaux de GT additionnels chargés : %s",
+            "[corpus] Corpus '%s' — niveaux de GT additionnels chargés : %s",
             corpus_name, levels_summary,
         )
 

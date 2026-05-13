@@ -1,4 +1,4 @@
-"""Cercle 2 — Evaluation.
+"""Couche 3 — Evaluation.
 
 Vues d'évaluation, projecteurs et calculs de métriques.
 

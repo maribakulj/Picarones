@@ -46,19 +46,19 @@ Le runtime résout les ``adapter_name`` en instances via le
 
 from __future__ import annotations
 
-from typing import Literal
-
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.errors import PicaronesError
 from picarones.domain.pipeline_spec import (
     INITIAL_STEP_ID,
+    PipelineMode as OCRLLMPipelineMode,
     PipelineSpec,
     PipelineStep,
 )
 
 
-#: Modes supportés — alignés sur ``picarones.pipelines.base.PipelineMode``.
-OCRLLMPipelineMode = Literal["text_only", "text_and_image", "zero_shot"]
+# Phase 7.1 audit code-quality (2026-05) : ``OCRLLMPipelineMode`` est
+# désormais un alias de ``picarones.domain.pipeline_spec.PipelineMode``
+# importé en tête de fichier — plus de définition locale.
 
 
 def make_ocr_llm_pipeline_spec(

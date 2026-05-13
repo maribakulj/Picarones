@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 
 import pytest
+from pydantic import ValidationError
 
 from picarones.domain import (
     Artifact,
@@ -115,7 +116,7 @@ class TestArtifactCreation:
 
     def test_content_hash_must_be_64_hex(self) -> None:
         # Trop court
-        with pytest.raises(Exception):  # pydantic ValidationError
+        with pytest.raises(ValidationError):
             Artifact(
                 id="x", document_id="d1", type=ArtifactType.RAW_TEXT,
                 content_hash="abc",
@@ -143,11 +144,11 @@ class TestArtifactCreation:
 class TestArtifactImmutability:
     def test_frozen_blocks_attribute_mutation(self) -> None:
         a = Artifact(id="x", document_id="d1", type=ArtifactType.RAW_TEXT)
-        with pytest.raises(Exception):  # pydantic ValidationError
+        with pytest.raises(ValidationError):
             a.id = "y"  # type: ignore[misc]
 
     def test_extra_fields_rejected(self) -> None:
-        with pytest.raises(Exception):  # pydantic ValidationError
+        with pytest.raises(ValidationError):
             Artifact(  # type: ignore[call-arg]
                 id="x", document_id="d1", type=ArtifactType.RAW_TEXT,
                 bogus_field="oops",

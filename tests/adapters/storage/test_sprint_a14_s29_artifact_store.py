@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import json
 import threading
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
@@ -105,7 +106,7 @@ class TestArtifactKeyDataclass:
 
     def test_frozen(self) -> None:
         k = _basic_key()
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             k.adapter_name = "different"  # type: ignore[misc]
 
 
@@ -548,5 +549,5 @@ class TestStoredArtifactDataclass:
         sa = StoredArtifact(
             key="k", artifact=_make_artifact(), payload=b"x",
         )
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             sa.payload = b"y"  # type: ignore[misc]

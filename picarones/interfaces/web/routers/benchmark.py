@@ -1,9 +1,31 @@
-"""Router des endpoints de benchmark : start, status, cancel, stream, run.
+"""Router des endpoints de benchmark : status, cancel, stream, run.
 
 Le ``stream`` SSE supporte la reprise via ``Last-Event-ID`` (Sprint 26).
-``start`` lance un benchmark à liste de moteurs ; ``run`` accepte des
-``PipelineConfig`` composés (OCR + LLM, pipelines mutualisés) —
-deux endpoints distincts pour deux UX historiquement séparées.
+``run`` accepte des ``PipelineConfig`` composés (OCR + LLM, pipelines
+mutualisés).
+
+**Rupture v2.0** (Phase 4.2 audit code-quality) — l'endpoint legacy
+``POST /api/benchmark/start`` qui acceptait un ``BenchmarkRequest``
+plat (``engines: list[str]``) a été supprimé.  Les clients doivent
+migrer vers ``POST /api/benchmark/run`` avec
+``competitors: list[PipelineConfig]``.  Pour une migration directe,
+construire un ``PipelineConfig`` par nom de moteur :
+
+.. code-block:: python
+
+    # avant (v1.x)
+    POST /api/benchmark/start
+    {"corpus_path": "...", "engines": ["tesseract", "pero_ocr"]}
+
+    # après (v2.0)
+    POST /api/benchmark/run
+    {
+        "corpus_path": "...",
+        "competitors": [
+            {"name": "tesseract", "engine_name": "tesseract"},
+            {"name": "pero_ocr", "engine_name": "pero_ocr"},
+        ],
+    }
 """
 
 from __future__ import annotations
@@ -18,11 +40,10 @@ from fastapi.responses import StreamingResponse
 
 from picarones.interfaces.web import state
 from picarones.interfaces.web.benchmark_utils import (
-    run_benchmark_thread,
     run_benchmark_thread_v2,
     sse_format,
 )
-from picarones.interfaces.web.models import BenchmarkRequest, BenchmarkRunRequest
+from picarones.interfaces.web.models import BenchmarkRunRequest
 from picarones.interfaces.web.security import (
     PathValidationError,
     assert_engines_allowed,
@@ -42,13 +63,7 @@ def _start_job_thread(
     worker: Callable[..., None],
     req,
 ) -> None:
-    """Démarre ``worker`` dans un thread daemon en libérant le sémaphore à la fin.
-
-    Helper partagé par les deux endpoints qui lancent un benchmark
-    (``/api/benchmark/start`` et ``/api/benchmark/run``). Garantit
-    que ``JOBS_SEMAPHORE`` est libéré, succès ou échec, sans avoir
-    à dupliquer le ``try/finally`` au site d'appel.
-    """
+    """Démarre ``worker`` dans un thread daemon en libérant le sémaphore à la fin."""
     def _release_after_worker():
         try:
             worker(job, req)
@@ -56,69 +71,6 @@ def _start_job_thread(
             state.JOBS_SEMAPHORE.release()
 
     threading.Thread(target=_release_after_worker, daemon=True).start()
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# Lancement legacy : liste de moteurs (BenchmarkRequest)
-# ──────────────────────────────────────────────────────────────────────────
-
-@router.post("/api/benchmark/start")
-async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
-    """Lance un benchmark sur une liste de moteurs OCR (mode legacy)."""
-    # Sprint 24 — mode public : refuse les moteurs OCR cloud mutualisés.
-    # Vérifié AVANT la validation des chemins pour que la réponse
-    # 403 mode public reste prioritaire (cf. tests sprint24).
-    try:
-        assert_engines_allowed(req.engines)
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc))
-
-    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur
-    # contre les racines workspace autorisées.  Bloque les chemins
-    # absolus arbitraires, la traversée (``..``), les liens symboliques
-    # vers l'extérieur, etc.
-    workspace_roots = compute_workspace_roots(UPLOADS_DIR)
-    try:
-        validated_path(
-            req.corpus_path,
-            allowed_roots=workspace_roots,
-            must_be_dir=True,
-        )
-        # ``output_dir`` peut ne pas encore exister, on valide juste
-        # qu'il sera créé dans une racine autorisée.
-        validated_path(
-            req.output_dir,
-            allowed_roots=workspace_roots,
-            must_exist=False,
-        )
-    except PathValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    # Sprint 24 — rate limit + sémaphore concurrents.
-    state.enforce_rate_limit(request)
-    if not state.JOBS_SEMAPHORE.acquire(blocking=False):
-        raise HTTPException(
-            status_code=429,
-            detail=(
-                f"Trop de benchmarks concurrents (max "
-                f"{get_max_concurrent_jobs()}). Réessayer plus tard."
-            ),
-        )
-
-    job_id = str(uuid.uuid4())
-    job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
-    # Phase 4 du chantier post-rewrite : le payload du job contient
-    # désormais le ``corpus_path`` actif, pour que la tâche de purge
-    # ``upload_purge_task`` puisse identifier les corpus référencés
-    # par des jobs en cours et ne pas les supprimer.  Avant ce
-    # branchement, la purge supprimait potentiellement des corpus
-    # actifs dont les uploads étaient plus anciens que la rétention.
-    state.JOB_STORE.create_job(job_id, payload={"corpus": req.corpus_path})
-    state.register_job(job)
-    state.cleanup_old_jobs()
-
-    _start_job_thread(job, run_benchmark_thread, req)
-    return {"job_id": job_id, "status": "pending"}
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -136,8 +88,8 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
 
     # Mode public : refuse les pipelines LLM mutualisés et les moteurs
     # OCR cloud sollicités par n'importe quel concurrent.
-    # Vérifié AVANT la validation des chemins (cf. /api/benchmark/start
-    # pour le rationale).
+    # Vérifié AVANT la validation des chemins pour que la réponse 403
+    # mode public reste prioritaire sur l'erreur de chemin.
     try:
         for comp in req.competitors:
             assert_engines_allowed([comp.engine_name] if comp.engine_name else [])
@@ -145,10 +97,9 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur
-    # (cf. /api/benchmark/start).  Idempotent : refuse un corpus_path
-    # absolu hors workspaces, et refuse un output_dir qui s'évaderait
-    # via ``..`` ou symlinks.
+    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur.
+    # Idempotent : refuse un corpus_path absolu hors workspaces, et
+    # refuse un output_dir qui s'évaderait via ``..`` ou symlinks.
     workspace_roots = compute_workspace_roots(UPLOADS_DIR)
     try:
         validated_path(

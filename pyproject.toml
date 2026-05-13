@@ -124,9 +124,13 @@ ocr-cloud = [
 # distincts (``picarones-historical``, ``picarones-importers``) est
 # documentée dans ``docs/developer/module-policy.md`` (Sprint 97) et
 # n'a plus besoin d'être réservée par un extra vide.
-# Installation complète (tous les extras sauf les OCR cloud)
+#
+# Installation **vraiment complète** : tous les extras déclarés
+# ci-dessus, OCR cloud et docs inclus.  Le nom ``all`` ne doit pas
+# tromper le contributeur — si un extra apparaît plus haut, il doit
+# apparaître ici.  Phase 2.6 de l'audit code-quality (2026-05).
 all = [
-    "picarones[web,hf,llm,dev]",
+    "picarones[dev,docs,web,stats,ner,hf,pero,kraken,calamari,llm,ocr-cloud]",
 ]
 
 [project.scripts]

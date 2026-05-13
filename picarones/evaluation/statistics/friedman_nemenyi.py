@@ -12,10 +12,13 @@ calcul (ce module) et présentation (l'autre).
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Optional
 
 from picarones.evaluation.statistics.wilcoxon import _normal_sf
+
+logger = logging.getLogger(__name__)
 
 # Valeurs critiques de la distribution du Studentized Range divisées par √2,
 # pour df = ∞ (approximation usuelle pour Nemenyi). Source : tables de Tukey.
@@ -59,8 +62,12 @@ def _chi_square_sf(x: float, df: int) -> float:
     try:
         from scipy.stats import chi2 as _chi2  # type: ignore[import-untyped]
         return float(_chi2.sf(x, df))
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.warning(
+            "[friedman_nemenyi] scipy.stats indisponible (%s) — "
+            "fallback approximation Wilson-Hilferty (précis ≥ df=3)",
+            exc,
+        )
     # Wilson-Hilferty : transforme chi² en approximation normale
     z = (((x / df) ** (1.0 / 3.0)) - (1.0 - 2.0 / (9.0 * df))) / math.sqrt(2.0 / (9.0 * df))
     return _normal_sf(z)

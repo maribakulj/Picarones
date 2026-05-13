@@ -1,4 +1,4 @@
-"""Cercle 1 — Domain.
+"""Couche 1 — Domain.
 
 Types purs et abstractions du modèle métier de Picarones.
 

@@ -1,4 +1,4 @@
-"""Cercle 4 — Application services.
+"""Couche 6 — Application services.
 
 Couche d'orchestration : reçoit des requêtes (DTO Pydantic) depuis
 ``interfaces/``, valide tout (chemins sandboxés, quotas, mode

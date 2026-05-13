@@ -48,43 +48,11 @@ def _make_app(monkeypatch, tmp_path):
 
 
 class TestSemaphoreFull429:
-    def test_start_returns_429_when_semaphore_exhausted(
-        self, monkeypatch, tmp_path,
-    ) -> None:
-        """``/api/benchmark/start`` doit retourner 429 (pas planter)
-        quand ``JOBS_SEMAPHORE.acquire(blocking=False)`` retourne
-        False — le worker ops a bien un signal d'epuisement."""
-        from fastapi.testclient import TestClient
-
-        from picarones.interfaces.web import state as web_state
-
-        # Crée le corpus et le rapports/ exigés par la validation.
-        corpus = tmp_path / "corpus_dir"
-        corpus.mkdir()
-        rapports = tmp_path / "rapports"
-        rapports.mkdir()
-
-        # Sémaphore capacité 0 — jamais acquérable.
-        monkeypatch.setattr(
-            web_state, "JOBS_SEMAPHORE", threading.Semaphore(0),
-        )
-
-        app = _make_app(monkeypatch, tmp_path)
-        with TestClient(app) as client:
-            r = client.post(
-                "/api/benchmark/start",
-                json={
-                    "corpus_path": str(corpus),
-                    "engines": ["tesseract"],
-                    "output_dir": str(rapports),
-                    "lang": "fra",
-                },
-            )
-            assert r.status_code == 429, r.text
-            assert (
-                "concurrents" in r.text.lower()
-                or "max" in r.text.lower()
-            )
+    # Phase 4.2 audit code-quality (2026-05) : l'ancienne méthode
+    # ``test_start_returns_429_when_semaphore_exhausted`` (testant
+    # ``/api/benchmark/start``, supprimé en v2.0) a été retirée —
+    # le test ``/api/benchmark/run`` ci-dessous couvre le même
+    # invariant (sémaphore plein → 429) sur l'endpoint canonique.
 
     def test_run_returns_429_when_semaphore_exhausted(
         self, monkeypatch, tmp_path,

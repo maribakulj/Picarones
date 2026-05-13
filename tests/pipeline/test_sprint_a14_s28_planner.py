@@ -32,6 +32,8 @@ Couvre :
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from picarones.domain.artifacts import Artifact, ArtifactType
@@ -449,7 +451,7 @@ class TestExecutionPlanAPI:
             ),),
         )
         plan = PipelinePlanner().plan(spec)
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             plan.spec = None  # type: ignore[misc]
 
     def test_step_input_binding_frozen(self) -> None:
@@ -457,7 +459,7 @@ class TestExecutionPlanAPI:
             input_type=ArtifactType.IMAGE,
             source_step_id="x",
         )
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             b.source_step_id = "y"  # type: ignore[misc]
 
     def test_resolved_step_frozen(self) -> None:
@@ -472,7 +474,7 @@ class TestExecutionPlanAPI:
         )
         plan = PipelinePlanner().plan(spec)
         rs = plan.resolved_steps[0]
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             rs.step = None  # type: ignore[misc]
 
     def test_metric_junction_frozen(self) -> None:
@@ -481,7 +483,7 @@ class TestExecutionPlanAPI:
             artifact_type=ArtifactType.RAW_TEXT,
             candidate_metrics=("cer",),
         )
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             j.candidate_metrics = ()  # type: ignore[misc]
 
 
@@ -555,7 +557,10 @@ class TestPipelineExecutorWithPlanner:
         executor = PipelineExecutor(
             adapter_resolver=lambda n: _OCRStub(),
         )
-        with pytest.raises(Exception, match="ExecutionPlan"):
+        # ``PipelineExecutor.run_plan`` lève ``PicaronesError`` quand
+        # l'argument ``plan`` n'est pas un ``ExecutionPlan``.
+        from picarones.domain.errors import PicaronesError
+        with pytest.raises(PicaronesError, match="ExecutionPlan"):
             executor.run_plan(
                 plan="not a plan",  # type: ignore[arg-type]
                 document=DocumentRef(id="d1"),
@@ -621,7 +626,8 @@ class TestPipelineExecutorWithPlanner:
         assert plan.metric_junctions  # non vide grâce au registry injecté
 
     def test_planner_must_be_pipeline_planner(self) -> None:
-        with pytest.raises(Exception, match="PipelinePlanner"):
+        from picarones.domain.errors import PicaronesError
+        with pytest.raises(PicaronesError, match="PipelinePlanner"):
             PipelineExecutor(
                 adapter_resolver=lambda n: _OCRStub(),
                 planner="not a planner",  # type: ignore[arg-type]

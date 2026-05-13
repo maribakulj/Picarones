@@ -1,4 +1,4 @@
-"""Cercle 2 — Formats documentaires.
+"""Couche 2 — Formats documentaires.
 
 Parsers, writers et validateurs pour les formats d'entrée/sortie
 patrimoniaux.  Tout le code XML / namespaces / parsing vit ici, à

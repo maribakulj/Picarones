@@ -24,7 +24,6 @@ Usage
 from __future__ import annotations
 
 import logging
-import math
 import os
 import tempfile
 from dataclasses import dataclass, field
@@ -71,163 +70,18 @@ ALL_DEGRADATION_TYPES = list(DEGRADATION_LEVELS.keys())
 # Dégradation d'image (pure Python + stdlib, optionnellement Pillow/NumPy)
 # ---------------------------------------------------------------------------
 
-def _apply_gaussian_noise(pixels: list[list[list[int]]], sigma: float, rng_seed: int = 0) -> list[list[list[int]]]:
-    """Applique du bruit gaussien (pure Python)."""
-    import random
-    rng = random.Random(rng_seed)
-    h = len(pixels)
-    w = len(pixels[0]) if h > 0 else 0
-    result = []
-    for y in range(h):
-        row = []
-        for x in range(w):
-            pixel = []
-            for c in pixels[y][x]:
-                noise = rng.gauss(0, sigma)
-                val = int(c + noise)
-                pixel.append(max(0, min(255, val)))
-            row.append(pixel)
-        result.append(row)
-    return result
-
-
-def _apply_box_blur(pixels: list[list[list[int]]], radius: int) -> list[list[list[int]]]:
-    """Applique un flou de boîte (approximation du flou gaussien, pure Python)."""
-    if radius <= 0:
-        return pixels
-    h = len(pixels)
-    w = len(pixels[0]) if h > 0 else 0
-    channels = len(pixels[0][0]) if h > 0 and w > 0 else 3
-
-    def blur_pass(data: list[list[list[int]]]) -> list[list[list[int]]]:
-        out = []
-        for y in range(h):
-            row = []
-            for x in range(w):
-                totals = [0] * channels
-                count = 0
-                for dy in range(-radius, radius + 1):
-                    for dx in range(-radius, radius + 1):
-                        ny, nx = y + dy, x + dx
-                        if 0 <= ny < h and 0 <= nx < w:
-                            for c in range(channels):
-                                totals[c] += data[ny][nx][c]
-                            count += 1
-                row.append([t // count for t in totals])
-            out.append(row)
-        return out
-
-    return blur_pass(pixels)
-
-
-def _apply_rotation_simple(pixels: list[list[list[int]]], angle_deg: float) -> list[list[list[int]]]:
-    """Rotation avec interpolation au plus proche voisin (pure Python).
-
-    Pour des angles faibles, l'effet est réaliste.
-    """
-    if angle_deg == 0:
-        return pixels
-    h = len(pixels)
-    w = len(pixels[0]) if h > 0 else 0
-    channels = len(pixels[0][0]) if h > 0 and w > 0 else 3
-
-    angle_rad = math.radians(angle_deg)
-    cos_a = math.cos(angle_rad)
-    sin_a = math.sin(angle_rad)
-    cx, cy = w / 2, h / 2
-
-    result = [[[245, 240, 232][:channels] for _ in range(w)] for _ in range(h)]
-    for y in range(h):
-        for x in range(w):
-            # Coordonnées source
-            sx = cos_a * (x - cx) + sin_a * (y - cy) + cx
-            sy = -sin_a * (x - cx) + cos_a * (y - cy) + cy
-            ix, iy = int(round(sx)), int(round(sy))
-            if 0 <= ix < w and 0 <= iy < h:
-                result[y][x] = list(pixels[iy][ix])
-    return result
-
-
-def _apply_resolution_reduction(
-    pixels: list[list[list[int]]], factor: float
-) -> list[list[list[int]]]:
-    """Réduit la résolution puis remonte à la taille originale (pixelisation)."""
-    if factor >= 1.0:
-        return pixels
-    h = len(pixels)
-    w = len(pixels[0]) if h > 0 else 0
-    new_h = max(1, int(h * factor))
-    new_w = max(1, int(w * factor))
-
-    # Downscale
-    small = []
-    for y in range(new_h):
-        row = []
-        src_y = int(y / factor)
-        for x in range(new_w):
-            src_x = int(x / factor)
-            row.append(list(pixels[min(src_y, h - 1)][min(src_x, w - 1)]))
-        small.append(row)
-
-    # Upscale (nearest-neighbor)
-    result = []
-    for y in range(h):
-        row = []
-        src_y = min(int(y * factor), new_h - 1)
-        for x in range(w):
-            src_x = min(int(x * factor), new_w - 1)
-            row.append(list(small[src_y][src_x]))
-        result.append(row)
-    return result
-
-
-def _apply_binarization(
-    pixels: list[list[list[int]]], threshold: int
-) -> list[list[list[int]]]:
-    """Binarise l'image (seuillage fixe sur luminosité)."""
-    h = len(pixels)
-    w = len(pixels[0]) if h > 0 else 0
-    result = []
-
-    # Calculer le seuil Otsu si threshold == 0
-    if threshold == 0:
-        histogram = [0] * 256
-        total = h * w
-        for y in range(h):
-            for x in range(w):
-                p = pixels[y][x]
-                lum = int(0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]) if len(p) >= 3 else p[0]
-                histogram[lum] += 1
-        # Otsu simplifié
-        best_thresh = 128
-        best_var = -1.0
-        total_sum = sum(i * histogram[i] for i in range(256))
-        w0, w1, sum0 = 0, total, 0.0
-        for t in range(256):
-            w0 += histogram[t]
-            if w0 == 0:
-                continue
-            w1 = total - w0
-            if w1 == 0:
-                break
-            sum0 += t * histogram[t]
-            mean0 = sum0 / w0
-            mean1 = (total_sum - sum0) / w1
-            var = w0 * w1 * (mean0 - mean1) ** 2
-            if var > best_var:
-                best_var = var
-                best_thresh = t
-        threshold = best_thresh
-
-    for y in range(h):
-        row = []
-        for x in range(w):
-            p = pixels[y][x]
-            lum = int(0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]) if len(p) >= 3 else p[0]
-            val = 255 if lum >= threshold else 0
-            row.append([val] * len(p))
-        result.append(row)
-    return result
+# ---------------------------------------------------------------------------
+# Dégradation d'image — Pillow (dépendance obligatoire de Picarones)
+# ---------------------------------------------------------------------------
+#
+# Phase 3.1 audit code-quality (2026-05) : les 5 ``_apply_*`` helpers
+# pure-Python (gaussian_noise, box_blur, rotation_simple, resolution,
+# binarization) ont été supprimés ainsi que le stub
+# ``_degrade_pure_python`` qui les attendait.  Raison : ``Pillow`` est
+# dans les dépendances obligatoires (``pyproject.toml`` :
+# ``Pillow>=10.0.0,<13.0``).  Un fallback « sans Pillow » n'a pas de
+# cas d'usage réel et complexifiait la maintenance.  Si Pillow devient
+# un jour optionnel, réintroduire un backend dédié sous un nom explicite.
 
 
 def degrade_image_bytes(
@@ -237,7 +91,9 @@ def degrade_image_bytes(
 ) -> bytes:
     """Dégrade une image PNG et retourne les bytes PNG modifiés.
 
-    Utilise Pillow si disponible, sinon utilise l'implémentation pure Python.
+    Délègue à :func:`_degrade_pillow`.  Si Pillow est introuvable au
+    moment de l'appel (régression de dépendances), l'``ImportError``
+    se propage avec un message clair — pas de fallback silencieux.
 
     Parameters
     ----------
@@ -254,10 +110,7 @@ def degrade_image_bytes(
     bytes
         Bytes de l'image PNG dégradée.
     """
-    try:
-        return _degrade_pillow(png_bytes, degradation_type, level)
-    except ImportError:
-        return _degrade_pure_python(png_bytes, degradation_type, level)
+    return _degrade_pillow(png_bytes, degradation_type, level)
 
 
 def _degrade_pillow(png_bytes: bytes, degradation_type: str, level: float) -> bytes:
@@ -327,23 +180,6 @@ def _degrade_pillow(png_bytes: bytes, degradation_type: str, level: float) -> by
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
-
-
-def _degrade_pure_python(png_bytes: bytes, degradation_type: str, level: float) -> bytes:
-    """Dégradation en pur Python (sans Pillow).
-
-    Décode le PNG, applique la transformation, ré-encode en PNG.
-    Note : n'implémente pas le décodage PNG complet — utilise des stubs.
-    """
-    # Pour l'implémentation pure Python, on applique des transformations
-    # minimales sur les bytes bruts en créant une image de test synthétique.
-    # En pratique, Pillow est presque toujours disponible dans l'environnement Picarones.
-    logger.warning(
-        "Pillow non disponible : dégradation '%s' appliquée en mode dégradé (stub)",
-        degradation_type,
-    )
-    # Retourner l'image originale légèrement modifiée (simulation)
-    return png_bytes
 
 
 # ---------------------------------------------------------------------------
@@ -527,14 +363,17 @@ class RobustnessAnalyzer:
                             doc_cers.append(metrics.cer)
                         except Exception as exc:
                             logger.debug(
-                                "Erreur OCR %s niveau %s=%s: %s",
+                                "[robustness] Erreur OCR %s niveau %s=%s: %s",
                                 engine.name, deg_type, level, exc
                             )
                         finally:
                             try:
                                 os.unlink(tmp_path)
-                            except OSError:
-                                pass
+                            except OSError as exc:
+                                logger.debug(
+                                    "[robustness] cleanup tmp file %s échoué : %s",
+                                    tmp_path, exc,
+                                )
 
                     if doc_cers:
                         cer_per_level.append(sum(doc_cers) / len(doc_cers))
@@ -598,7 +437,7 @@ class RobustnessAnalyzer:
                 _, b64 = img_path.split(",", 1)
                 return base64.b64decode(b64)
             except Exception as exc:
-                logger.debug("Impossible de décoder data URI: %s", exc)
+                logger.debug("[robustness] Impossible de décoder data URI: %s", exc)
                 return None
 
         # Fichier local
@@ -606,7 +445,7 @@ class RobustnessAnalyzer:
         if path.exists():
             return path.read_bytes()
 
-        logger.debug("Image introuvable : %s", img_path)
+        logger.debug("[robustness] Image introuvable : %s", img_path)
         return None
 
     @staticmethod

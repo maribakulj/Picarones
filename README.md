@@ -261,7 +261,6 @@ when running. Summary:
 |--------|----------|---------|
 | `GET` | `/` | Index |
 | `POST` | `/api/benchmark/run` | Api Benchmark Run |
-| `POST` | `/api/benchmark/start` | Api Benchmark Start |
 | `POST` | `/api/benchmark/{job_id}/cancel` | Api Benchmark Cancel |
 | `GET` | `/api/benchmark/{job_id}/status` | Api Benchmark Status |
 | `GET` | `/api/benchmark/{job_id}/stream` | Api Benchmark Stream |
@@ -284,6 +283,7 @@ when running. Summary:
 | `POST` | `/api/lang/{lang_code}` | Api Set Lang |
 | `GET` | `/api/models/{provider}` | Api Models |
 | `GET` | `/api/normalization/profiles` | Api Normalization Profiles |
+| `POST` | `/api/normalization/profiles/preview` | Api Normalization Profile Preview |
 | `GET` | `/api/reports` | Api Reports |
 | `GET` | `/api/status` | Api Status |
 | `GET` | `/health` | Health |
@@ -332,13 +332,16 @@ picarones/
 └── interfaces/     Layer 8 — CLI Click, Web FastAPI
 ```
 
-Legacy paths (`core/, measurements/, engines/, llm/, pipelines/,
-report/, modules/`) still present as shims, in active retirement
-(see `docs/archives/migration/`).  Strict 8-layer architecture: imports flow
-outer → inner. Enforced by
-`tests/architecture/test_layer_dependencies.py`. See
+Strict 8-layer architecture: imports flow outer → inner. Enforced
+by `tests/architecture/test_layer_dependencies.py`. The v2.0
+release (May 2026) removed all legacy top-level packages (`core/`,
+`measurements/`, `engines/`, `llm/`, `pipelines/`, `report/`,
+`modules/`, `cli/`, `web/`, `extras/`) and the transitional
+sub-packages (`adapters/legacy_engines/`, `adapters/legacy_pipelines/`,
+`interfaces/{cli,web}/_legacy/`). See
 [`docs/explanation/architecture.md`](docs/explanation/architecture.md)
-for the full manifesto.
+for the full manifesto and migration history under
+`docs/archives/migration/`.
 
 ---
 
@@ -392,12 +395,13 @@ GitHub Actions: `.github/workflows/`
 ```bash
 pip install -e ".[dev,web]"
 pre-commit install
-pytest tests/ -q
+python -m pytest tests/ -q          # ``python -m`` requis si pytest est uv-installé
 ruff check picarones/ tests/
-python -m mypy picarones/core/
+python -m mypy picarones/domain/    # strict mode (Layer 1)
+python -m mypy picarones/           # lax mode (full tree)
 ```
 
-**Test suite**: ~4700 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~4800 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

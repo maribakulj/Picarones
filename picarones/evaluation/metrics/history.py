@@ -242,7 +242,7 @@ class BenchmarkHistory:
             )
 
         conn.commit()
-        logger.info("Benchmark enregistré dans l'historique : run_id=%s", run_id)
+        logger.info("[history] Benchmark enregistré dans l'historique : run_id=%s", run_id)
         return run_id
 
     def record_single(
@@ -337,8 +337,13 @@ class BenchmarkHistory:
         params.append(limit)
 
         conn = self._connect()
+        # Faux positif bandit B608 : ``clauses`` est construit à partir
+        # de littéraux internes (``"engine_name = ?"``, ``"corpus_name = ?"``,
+        # ``"timestamp >= ?"``) — aucune entrée utilisateur n'est
+        # concaténée dans la requête.  Les *valeurs* (engine, corpus,
+        # since, limit) passent par ``?``-placeholders.
         rows = conn.execute(
-            f"SELECT * FROM runs {where} ORDER BY timestamp ASC LIMIT ?",
+            f"SELECT * FROM runs {where} ORDER BY timestamp ASC LIMIT ?",  # nosec B608
             params,
         ).fetchall()
 
@@ -448,7 +453,7 @@ class BenchmarkHistory:
         """
         entries = self.query(engine=engine, corpus=corpus, limit=1000)
         if len(entries) < 2:
-            logger.info("Pas assez de runs pour détecter une régression (moteur=%s)", engine)
+            logger.info("[history] Pas assez de runs pour détecter une régression (moteur=%s)", engine)
             return None
 
         current = entries[-1]

@@ -81,8 +81,10 @@ class TestMultiLevelGT:
 
 class TestDocumentRefImmutability:
     def test_frozen_blocks_mutation(self) -> None:
+        from pydantic import ValidationError
+
         d = DocumentRef(id="x")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             d.id = "y"  # type: ignore[misc]
 
     def test_json_roundtrip(self) -> None:

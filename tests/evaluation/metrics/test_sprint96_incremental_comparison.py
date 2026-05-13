@@ -288,6 +288,8 @@ class TestPipelineRun:
         assert d["score"] == pytest.approx(0.05)
 
     def test_immutable(self) -> None:
+        from dataclasses import FrozenInstanceError
+
         r = PipelineRun("a", {"x": "1"}, 0.05)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             r.score = 0.10  # type: ignore[misc]

@@ -221,9 +221,14 @@ class TestRunnerApi:
         params = sig.parameters
         # Arguments contractuels — leur présence est garantie pour
         # rester compatible avec les callers historiques.
+        # Phase 4.1 audit code-quality (2026-05) : retrait de
+        # ``max_workers`` (paramètre absorbé sans effet via
+        # ``noqa: ARG001`` ; le rewrite passe par
+        # ``CorpusRunner.max_in_flight``).  Rupture mineure
+        # documentée dans CHANGELOG v2.0.
         for name in [
             "corpus", "engines", "output_json", "show_progress",
-            "char_exclude", "max_workers", "timeout_seconds",
+            "char_exclude", "timeout_seconds",
             "profile",
         ]:
             assert name in params, (

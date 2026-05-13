@@ -51,8 +51,8 @@ from typing import Iterable
 
 from picarones.domain.evaluation_spec import EvaluationView
 from picarones.domain.run_manifest import RunManifest
-from picarones.app.results import RunDocumentResult, RunResult
 from picarones.evaluation.views.base import ViewResult
+from picarones.pipeline.run_result import RunDocumentResult, RunResult
 from picarones.pipeline.types import PipelineResult
 
 

@@ -125,15 +125,23 @@ def analyze_image_quality(image_path: str | Path) -> ImageQualityResult:
         import numpy as np
         from PIL import Image
         return _analyze_with_numpy(path, np, Image)
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.warning(
+            "[image_quality] numpy ou Pillow indisponible (%s) — "
+            "fallback Pillow seul",
+            exc,
+        )
 
     # Essai avec Pillow seul
     try:
         from PIL import Image
         return _analyze_with_pillow(path, Image)
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.warning(
+            "[image_quality] Pillow indisponible (%s) — "
+            "scoring désactivé pour %s",
+            exc, path,
+        )
 
     return ImageQualityResult(
         error="Pillow non disponible (pip install Pillow)",

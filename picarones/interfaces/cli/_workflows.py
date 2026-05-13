@@ -107,6 +107,20 @@ def _validate_cer_threshold(
         "Voir docs/profiles/ pour le détail."
     ),
 )
+@click.option(
+    "--normalization-profile",
+    "normalization_profile",
+    default=None,
+    metavar="ID-OR-PATH",
+    help=(
+        "Profil de normalisation Unicode à appliquer à GT et hypothèses "
+        "avant calcul des métriques.  Soit un identifiant builtin "
+        "(nfc, caseless, medieval_french, early_modern_english, …), "
+        "soit un chemin vers un fichier .yaml/.yml versionné dans git. "
+        "Phase 3.3 audit code-quality — voir "
+        "``docs/how-to/custom-normalization-profile.md`` pour le schéma."
+    ),
+)
 def run_cmd(
     corpus: str,
     engines: str,
@@ -117,6 +131,7 @@ def run_cmd(
     verbose: bool,
     fail_if_cer_above: float | None,
     profile: str,
+    normalization_profile: str | None,
 ) -> None:
     """Lance un benchmark OCR sur un corpus de documents.
 
@@ -131,6 +146,21 @@ def run_cmd(
 
     from picarones.evaluation.corpus import load_corpus_from_directory
     from picarones.app.services.benchmark_runner import run_benchmark_via_service
+    from picarones.interfaces.cli._normalization_arg import (
+        resolve_normalization_profile,
+    )
+
+    # Résolution du profil de normalisation (Phase 3.3 — identifiant
+    # builtin ou chemin YAML versionné).  ``None`` si l'option est
+    # absente — comportement historique (aucune normalisation
+    # explicite côté caller, défauts de la couche text_metrics).
+    try:
+        resolved_norm_profile = resolve_normalization_profile(
+            normalization_profile,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        click.echo(f"Erreur profil normalisation : {exc}", err=True)
+        sys.exit(1)
 
     # Chargement du corpus
     try:
@@ -140,6 +170,11 @@ def run_cmd(
         sys.exit(1)
 
     click.echo(f"Corpus '{corp.name}' — {len(corp)} documents chargés.")
+    if resolved_norm_profile is not None:
+        click.echo(
+            f"Profil normalisation : {resolved_norm_profile.name} "
+            f"({len(resolved_norm_profile.diplomatic_table)} règles diplomatiques)"
+        )
 
     # Instanciation des moteurs
     engine_names = [e.strip() for e in engines.split(",") if e.strip()]
@@ -166,6 +201,7 @@ def run_cmd(
         output_json=output,
         show_progress=not no_progress,
         profile=profile,
+        normalization_profile=resolved_norm_profile,
     )
 
     # Affichage du classement

@@ -8,6 +8,7 @@ des dataclasses pydantic.
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from picarones.domain import (
     ArtifactType,
@@ -50,7 +51,7 @@ class TestMetricSpec:
             name="cer",
             input_types=(ArtifactType.RAW_TEXT, ArtifactType.RAW_TEXT),
         )
-        with pytest.raises(Exception):  # pydantic ValidationError
+        with pytest.raises(ValidationError):
             spec.name = "wer"  # type: ignore[misc]
 
     def test_no_callable_field(self) -> None:
@@ -63,7 +64,7 @@ class TestMetricSpec:
         assert not hasattr(spec, "func")
 
     def test_extra_field_rejected(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             MetricSpec(  # type: ignore[call-arg]
                 name="cer",
                 input_types=(ArtifactType.RAW_TEXT, ArtifactType.RAW_TEXT),
@@ -112,7 +113,7 @@ class TestProjectionSpec:
             target_type=ArtifactType.RAW_TEXT,
             projector_name="alto_to_text",
         )
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             p.projector_name = "other"  # type: ignore[misc]
 
     def test_json_roundtrip(self) -> None:
@@ -204,7 +205,7 @@ class TestEvaluationView:
             name="x",
             candidate_types=frozenset({ArtifactType.RAW_TEXT}),
         )
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             view.name = "y"  # type: ignore[misc]
 
     def test_json_roundtrip(self) -> None:
@@ -256,5 +257,5 @@ class TestEvaluationSpec:
 
     def test_frozen(self) -> None:
         s = EvaluationSpec()
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             s.views = ()  # type: ignore[misc]

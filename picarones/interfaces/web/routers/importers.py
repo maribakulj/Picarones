@@ -7,12 +7,6 @@ import os
 from fastapi import APIRouter, HTTPException, Query
 
 from picarones.interfaces.web.models import HTRUnitedImportRequest, HuggingFaceImportRequest
-from picarones.interfaces.web.security import (
-    PathValidationError,
-    compute_workspace_roots,
-    validated_path,
-)
-from picarones.interfaces.web.state import UPLOADS_DIR
 
 router = APIRouter()
 
@@ -42,23 +36,14 @@ def _htr_united_catalogue():
     return HTRUnitedCatalogue.from_remote(timeout=5)
 
 
-def _validated_output_dir(user_path: str) -> str:
-    """Valide ``output_dir`` reçu d'un importer contre les racines workspace.
-
-    Les endpoints d'import écrivent un corpus distant sur le filesystem
-    du serveur — un ``output_dir`` libre permet d'écrire arbitrairement
-    (path traversal). On valide ici contre :func:`compute_workspace_roots`
-    avant de passer la chaîne au backend.
-    """
-    try:
-        resolved = validated_path(
-            user_path,
-            allowed_roots=compute_workspace_roots(UPLOADS_DIR),
-            must_exist=False,
-        )
-    except PathValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return str(resolved)
+# Phase 7.2 audit code-quality (2026-05) : la fonction
+# ``_validated_output_dir`` (helper local historique) est désormais
+# importée depuis ``interfaces/web/_path_helpers.py`` sous le nom
+# ``validated_user_output_dir`` (factorisation de 3 sites web).  Alias
+# conservé pour ne pas casser les usages locaux.
+from picarones.interfaces.web._path_helpers import (
+    validated_user_output_dir as _validated_output_dir,
+)
 
 
 # ──────────────────────────────────────────────────────────────────────────

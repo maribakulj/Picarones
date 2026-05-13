@@ -54,6 +54,7 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -63,6 +64,23 @@ from picarones.domain.artifacts import ArtifactType
 #: Identifiant d'étape — alphanum + ``_-``.  Doit être un nom court
 #: lisible par un humain dans les logs et le rapport.
 _STEP_ID_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
+
+#: Modes canoniques d'un pipeline OCR+LLM.  Source de vérité unique
+#: depuis la Phase 7.1 audit code-quality (2026-05) — auparavant
+#: dupliqué trois fois (``pipeline/llm_pipeline_config.py:25``,
+#: ``pipeline/llm_pipeline_builder.py:61``,
+#: ``interfaces/web/models.py:71``), avec un risque concret de
+#: divergence si l'un des trois ajoutait un nouveau mode.
+#:
+#: Sémantique :
+#:
+#: - ``text_only`` — l'OCR amont produit un texte brut, le LLM le
+#:   corrige sans voir l'image (post-correction texte pur).
+#: - ``text_and_image`` — l'OCR amont produit un texte ; le VLM le
+#:   corrige en s'appuyant sur l'image (post-correction multimodale).
+#: - ``zero_shot`` — pas d'OCR amont ; un VLM transcrit l'image
+#:   directement.
+PipelineMode = Literal["text_only", "text_and_image", "zero_shot"]
 
 #: Sentinel pour ``inputs_from`` qui désigne les artefacts initiaux
 #: fournis au runner (typiquement ``IMAGE``).
@@ -178,4 +196,4 @@ class PipelineSpec(BaseModel):
         return None
 
 
-__all__ = ["PipelineStep", "PipelineSpec", "INITIAL_STEP_ID"]
+__all__ = ["PipelineMode", "PipelineSpec", "PipelineStep", "INITIAL_STEP_ID"]

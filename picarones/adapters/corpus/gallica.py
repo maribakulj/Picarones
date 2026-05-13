@@ -255,7 +255,7 @@ class GallicaClient:
         try:
             raw = self._fetch_url(url)
         except RuntimeError as exc:
-            logger.error("Erreur recherche SRU Gallica: %s", exc)
+            logger.error("[gallica] Erreur recherche SRU Gallica: %s", exc)
             return []
 
         return self._parse_sru_response(raw, max_results)
@@ -268,7 +268,7 @@ class GallicaClient:
         # on ne baisse pas la garde sur du XML reçu via le réseau.
         root = safe_parse_xml(xml_bytes)
         if root is None:
-            logger.error("Impossible de parser la réponse SRU (XML invalide ou défense XXE déclenchée)")
+            logger.error("[gallica] Impossible de parser la réponse SRU (XML invalide ou défense XXE déclenchée)")
             return records
 
         # Les enregistrements sont dans srw:records/srw:record/srw:recordData
@@ -357,7 +357,7 @@ class GallicaClient:
                 return ""
             return text
         except RuntimeError as exc:
-            logger.debug("OCR non disponible pour %s f%d: %s", ark, page, exc)
+            logger.debug("[gallica] OCR non disponible pour %s f%d: %s", ark, page, exc)
             return ""
 
     def import_document(
@@ -398,7 +398,7 @@ class GallicaClient:
         from picarones.adapters.corpus.iiif import IIIFImporter
 
         manifest_url = f"{_GALLICA_BASE}/ark:/12148/{ark}/manifest.json"
-        logger.info("Import Gallica ARK %s via IIIF : %s", ark, manifest_url)
+        logger.info("[gallica] Import Gallica ARK %s via IIIF : %s", ark, manifest_url)
 
         # Utiliser l'importeur IIIF existant pour les images
         importer = IIIFImporter(manifest_url, max_resolution=max_resolution)
@@ -451,12 +451,12 @@ class GallicaClient:
         try:
             raw = self._fetch_url(url)
         except RuntimeError as exc:
-            logger.error("Erreur fetch métadonnées OAI %s: %s", ark, exc)
+            logger.error("[gallica] Erreur fetch métadonnées OAI %s: %s", ark, exc)
             return {"ark": ark}
         root = safe_parse_xml(raw)
         if root is None:
             logger.error(
-                "Erreur parse XML métadonnées OAI %s (XML invalide ou défense XXE déclenchée)",
+                "[gallica] Erreur parse XML métadonnées OAI %s (XML invalide ou défense XXE déclenchée)",
                 ark,
             )
             return {"ark": ark}

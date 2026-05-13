@@ -123,6 +123,8 @@ class TestYAMLRoundtrip:
     def test_invalid_yaml_raises(self) -> None:
         """Un YAML qui ne respecte pas le schéma de PipelineSpec
         lève une ValidationError pydantic."""
+        from pydantic import ValidationError
+
         bad = "name: x\nsteps:\n  - id: ocr\n    kind: ocr\n    adapter_name: x\n    input_types: [bogus_type]\n"
-        with pytest.raises(Exception):  # pydantic ValidationError
+        with pytest.raises(ValidationError):
             load_spec_from_yaml(bad)

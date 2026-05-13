@@ -318,8 +318,10 @@ class TestEvaluationResultDataclass:
         }
 
     def test_dataclass_is_frozen(self) -> None:
+        from dataclasses import FrozenInstanceError
+
         result = EvaluationResult(metric_values={"cer": 0.0})
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             result.metric_values = {}  # type: ignore[misc]
 
 
@@ -346,7 +348,9 @@ class TestProjectionResultDataclass:
         assert with_proj.has_projection is True
 
     def test_dataclass_is_frozen(self) -> None:
+        from dataclasses import FrozenInstanceError
+
         artifact = Artifact(id="a", document_id="d", type=ArtifactType.RAW_TEXT)
         result = ProjectionResult(artifact=artifact, payload=None, report=None)
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             result.payload = "modified"  # type: ignore[misc]

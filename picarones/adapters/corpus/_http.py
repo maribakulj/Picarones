@@ -168,7 +168,7 @@ def download_url(
         if attempt > 0:
             wait = backoff ** attempt
             logger.debug(
-                "Retry %d/%d dans %.1fs — %s",
+                "[http] Retry %d/%d dans %.1fs — %s",
                 attempt, retries - 1, wait, url,
             )
             time.sleep(wait)
@@ -178,7 +178,7 @@ def download_url(
                 return resp.read()
         except (urllib.error.URLError, urllib.error.HTTPError) as exc:
             last_exc = exc
-            logger.warning("Erreur téléchargement %s : %s", url, exc)
+            logger.warning("[http] Erreur téléchargement %s : %s", url, exc)
     raise RuntimeError(
         f"Impossible de télécharger {url} après {retries} tentatives",
     ) from last_exc

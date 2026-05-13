@@ -45,8 +45,10 @@ class TestRunContext:
         assert ctx.workspace_uri == "/tmp/picarones/runs/abc"
 
     def test_frozen(self) -> None:
+        from pydantic import ValidationError
+
         ctx = RunContext(document_id="d", code_version="v", pipeline_name="p")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ctx.document_id = "x"  # type: ignore[misc]
 
 
@@ -78,7 +80,9 @@ class TestStepResult:
         assert r.error == "Tesseract introuvable"
 
     def test_negative_duration_rejected(self) -> None:
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             StepResult(step_id="x", succeeded=True, duration_seconds=-1.0)
 
 

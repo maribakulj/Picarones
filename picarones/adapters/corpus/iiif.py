@@ -351,11 +351,11 @@ class IIIFImporter:
 
     def load(self) -> "IIIFImporter":
         """Télécharge et parse le manifeste."""
-        logger.info("Téléchargement du manifeste IIIF : %s", self.manifest_url)
+        logger.info("[iiif] Téléchargement du manifeste IIIF : %s", self.manifest_url)
         self._manifest = _fetch_manifest(self.manifest_url)
         self._parser = IIIFManifestParser(self._manifest)
         logger.info(
-            "Manifeste chargé — version IIIF %d — titre : %s — %d canvas",
+            "[iiif] Manifeste chargé — version IIIF %d — titre : %s — %d canvas",
             self._parser.version,
             self._parser.label,
             len(self._parser.canvases()),
@@ -419,14 +419,17 @@ class IIIFImporter:
             try:
                 from tqdm import tqdm
                 iterator = tqdm(canvases, desc="Import IIIF", unit="page")
-            except ImportError:
-                pass
+            except ImportError as exc:
+                logger.debug(
+                    "[iiif] tqdm indisponible (%s) — import sans progress bar",
+                    exc,
+                )
 
         for canvas in iterator:
             doc_id = f"{_slugify(canvas.label) or f'canvas_{canvas.index+1:04d}'}"
 
             if not canvas.image_url:
-                logger.warning("Canvas %s : pas d'URL d'image — ignoré.", canvas.label)
+                logger.warning("[iiif] Canvas %s : pas d'URL d'image — ignoré.", canvas.label)
                 continue
 
             # Ajuster la résolution si max_resolution est défini
@@ -436,7 +439,7 @@ class IIIFImporter:
             try:
                 image_bytes = _download_url(image_url)
             except RuntimeError as exc:
-                logger.error("Canvas %s : erreur téléchargement : %s", canvas.label, exc)
+                logger.error("[iiif] Canvas %s : erreur téléchargement : %s", canvas.label, exc)
                 continue
 
             # Déterminer l'extension de l'image
@@ -473,7 +476,7 @@ class IIIFImporter:
         if not documents:
             raise ValueError("Aucun document importé depuis le manifeste IIIF.")
 
-        logger.info("Import IIIF terminé : %d documents.", len(documents))
+        logger.info("[iiif] Import IIIF terminé : %d documents.", len(documents))
 
         return Corpus(
             name=corpus_name,

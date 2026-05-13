@@ -66,12 +66,16 @@ class TestPipelineStep:
         assert s.id == "step_1-final"
 
     def test_frozen(self) -> None:
+        from pydantic import ValidationError
+
         s = PipelineStep(id="a", kind="b", adapter_name="c")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             s.id = "d"  # type: ignore[misc]
 
     def test_extra_field_rejected(self) -> None:
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             PipelineStep(  # type: ignore[call-arg]
                 id="a", kind="b", adapter_name="c", bogus=42,
             )
@@ -108,6 +112,8 @@ class TestPipelineSpec:
         assert s.step_by_id("missing") is None
 
     def test_frozen(self) -> None:
+        from pydantic import ValidationError
+
         s = PipelineSpec(name="x")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             s.name = "y"  # type: ignore[misc]

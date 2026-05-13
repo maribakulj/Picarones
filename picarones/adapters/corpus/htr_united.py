@@ -259,11 +259,20 @@ class HTRUnitedCatalogue:
             entries = _parse_yml_catalogue(raw)
             return cls(entries, source="remote")
         except (urllib.error.URLError, Exception) as exc:
-            # Fallback démo avec avertissement
+            # Fallback démo avec avertissement.  Phase 3.2 audit
+            # code-quality : enregistrement de l'incident pour le
+            # détecteur narratif ``IMPORTER_FALLBACK_TRIGGERED``.
             logger.warning(
                 "[HTR-United] impossible de charger le catalogue distant (%s) : %s. "
                 "Utilisation des données de démonstration.",
                 _CATALOGUE_URL, exc,
+            )
+            from picarones.adapters.corpus._fallback_log import record_fallback
+            record_fallback(
+                importer="htr_united",
+                operation="catalogue_remote_fetch",
+                error=exc,
+                extra={"url": _CATALOGUE_URL, "fallback_used": "demo"},
             )
             return cls.from_demo()
 

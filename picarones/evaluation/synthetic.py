@@ -189,7 +189,7 @@ def _bad_engine_errors(text: str, rng: random.Random) -> str:
 # Génération d'une image PNG placeholder (pur Python, sans Pillow)
 # ---------------------------------------------------------------------------
 
-def _make_placeholder_png(width: int = 300, height: int = 200, text_hint: str = "") -> bytes:
+def _make_placeholder_png(width: int = 300, height: int = 200) -> bytes:
     """Génère un PNG minimal représentant une page de document (gris clair).
 
     Le PNG est valide et affichable dans tous les navigateurs.
@@ -339,7 +339,7 @@ def generate_sample_benchmark(
 
             # Générer l'image placeholder une fois
             if include_images and doc_id not in image_b64_cache:
-                png = _make_placeholder_png(320, 220, gt[:20])
+                png = _make_placeholder_png(320, 220)
                 image_b64_cache[doc_id] = _png_to_data_uri(png)
 
             if is_pipeline:
