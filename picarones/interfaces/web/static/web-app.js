@@ -477,12 +477,12 @@ function addCompetitor() {
   const mode = document.querySelector("input[name=compose-mode]:checked").value;
   const errEl = document.getElementById("compose-error");
 
-  const comp = { name: "", ocr_engine: "", ocr_model: "",
+  const comp = { name: "", engine_name: "", ocr_model: "",
                   llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "" };
 
   if (mode === "postcorrection") {
     // Post-correction : OCR vient du corpus (.ocr.txt)
-    comp.ocr_engine = "corpus";
+    comp.engine_name = "corpus";
     comp.llm_provider = document.getElementById("compose-llm-provider").value;
     comp.llm_model = document.getElementById("compose-llm-model").value;
     comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
@@ -500,7 +500,7 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
       return;
     }
-    comp.ocr_engine = ocrEngine;
+    comp.engine_name = ocrEngine;
     comp.ocr_model = ocrModel;
     comp.llm_provider = document.getElementById("compose-llm-provider").value;
     comp.llm_model = document.getElementById("compose-llm-model").value;
@@ -519,7 +519,7 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
       return;
     }
-    comp.ocr_engine = ocrEngine;
+    comp.engine_name = ocrEngine;
     comp.ocr_model = ocrModel;
     comp.name = `${ocrEngine}${ocrModel ? " ("+ocrModel+")" : ""}`;
   }
@@ -541,7 +541,7 @@ function renderCompetitors() {
     return;
   }
   container.innerHTML = _competitors.map((c, i) => {
-    const isCorpusOCR = c.ocr_engine === "corpus" || (c.ocr_engine === "" && c.llm_provider);
+    const isCorpusOCR = c.engine_name === "corpus" || (c.engine_name === "" && c.llm_provider);
     const isPipeline = !!c.llm_provider && !isCorpusOCR;
     let badge, detail;
     if (isCorpusOCR) {
@@ -549,10 +549,10 @@ function renderCompetitors() {
       detail = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else if (isPipeline) {
       badge = "⛓ Pipeline";
-      detail = `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+      detail = `${c.engine_name}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else {
       badge = "🔍 OCR";
-      detail = `${c.ocr_engine}:${c.ocr_model}`;
+      detail = `${c.engine_name}:${c.ocr_model}`;
     }
     return `<div class="competitor-card">
       <div class="competitor-info">

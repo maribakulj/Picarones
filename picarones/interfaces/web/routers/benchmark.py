@@ -140,7 +140,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     # pour le rationale).
     try:
         for comp in req.competitors:
-            assert_engines_allowed([comp.ocr_engine] if comp.ocr_engine else [])
+            assert_engines_allowed([comp.engine_name] if comp.engine_name else [])
             assert_llm_provider_allowed(comp.llm_provider)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))

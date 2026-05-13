@@ -49,10 +49,10 @@ def test_two_distinct_configs_coexist_in_resolver(
     des ``name`` distincts au resolver — le bug Tesseract initial,
     généralisé à tous les moteurs supportés."""
     comp_a = PipelineConfig(
-        ocr_engine=engine_id, ocr_model="cfg_a", llm_provider="",
+        engine_name=engine_id, ocr_model="cfg_a", llm_provider="",
     )
     comp_b = PipelineConfig(
-        ocr_engine=engine_id, ocr_model="cfg_b", llm_provider="",
+        engine_name=engine_id, ocr_model="cfg_b", llm_provider="",
     )
     try:
         eng_a = _engine_from_competitor(comp_a)
@@ -83,10 +83,10 @@ def test_standalone_plus_pipeline_same_config_coexist(
     OCR.  Le resolver doit accepter (les 2 instances Python sont
     fonctionnellement équivalentes, déduplication idempotente)."""
     comp_standalone = PipelineConfig(
-        ocr_engine=engine_id, ocr_model="same_config", llm_provider="",
+        engine_name=engine_id, ocr_model="same_config", llm_provider="",
     )
     comp_pipeline = PipelineConfig(
-        ocr_engine=engine_id, ocr_model="same_config",
+        engine_name=engine_id, ocr_model="same_config",
         llm_provider="mistral", llm_model="mistral-small-latest",
         pipeline_mode="text_only",
         prompt_file="correction_medieval_french.txt",

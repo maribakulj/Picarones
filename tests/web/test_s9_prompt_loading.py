@@ -115,7 +115,7 @@ class TestEngineFromCompetitorPassesPromptContent:
     def test_pipeline_template_contains_file_content(self) -> None:
         comp = PipelineConfig(
             name="t",
-            ocr_engine="tesseract",
+            engine_name="tesseract",
             ocr_model="fra",
             llm_provider="mistral",
             llm_model="mistral-small-latest",
@@ -134,7 +134,7 @@ class TestEngineFromCompetitorPassesPromptContent:
         """``prompt_file`` vide → default
         ``correction_medieval_french.txt`` chargé."""
         comp = PipelineConfig(
-            ocr_engine="tesseract", ocr_model="fra",
+            engine_name="tesseract", ocr_model="fra",
             llm_provider="mistral", llm_model="m",
             pipeline_mode="text_only", prompt_file="",
         )
@@ -147,7 +147,7 @@ class TestEngineFromCompetitorPassesPromptContent:
         factory doit lever proprement (pas continuer avec le filename
         comme prompt — c'est le bug d'origine)."""
         comp = PipelineConfig(
-            ocr_engine="tesseract", ocr_model="fra",
+            engine_name="tesseract", ocr_model="fra",
             llm_provider="mistral", llm_model="m",
             pipeline_mode="text_only",
             prompt_file="prompt_que_personne_na_jamais_cree.txt",

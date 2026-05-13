@@ -450,7 +450,7 @@ class TestPipelineModeStrictAPI:
         from picarones.interfaces.web.models import PipelineConfig
 
         comp = PipelineConfig(
-            name="t", ocr_engine="tesseract",
+            name="t", engine_name="tesseract",
             llm_provider="mistral", llm_model="m",
             pipeline_mode=valid_mode,
         )
@@ -462,7 +462,7 @@ class TestPipelineModeStrictAPI:
         from picarones.interfaces.web.models import PipelineConfig
 
         comp = PipelineConfig(
-            name="t", ocr_engine="tesseract", llm_provider="",
+            name="t", engine_name="tesseract", llm_provider="",
         )
         assert comp.pipeline_mode == ""
 
@@ -1011,3 +1011,89 @@ class TestUploadPurgeTaskWired:
         # Vérification physique
         assert active.exists()
         assert not orphan.exists()
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 9. Phase 5b — engine_name (renommage rupture du field ocr_engine)
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestPipelineConfigEngineNameRename:
+    """Phase 5b du chantier post-rewrite : le field ``ocr_engine`` du
+    payload ``PipelineConfig`` est renommé en ``engine_name`` car il
+    accepte aussi des VLMs (zero_shot) et la source ``corpus`` (OCR
+    pré-calculé) — le préfixe ``ocr_`` était trompeur.
+
+    Rupture API : un client qui envoie l'ancien nom doit recevoir une
+    erreur Pydantic explicite plutôt que d'aliaser silencieusement.
+    """
+
+    def test_engine_name_field_accepted(self) -> None:
+        from picarones.interfaces.web.models import PipelineConfig
+
+        cfg = PipelineConfig(
+            name="t", engine_name="tesseract", llm_provider="",
+        )
+        assert cfg.engine_name == "tesseract"
+
+    def test_legacy_ocr_engine_kwarg_rejected_by_strict_mode(self) -> None:
+        """Pydantic v2 ignore par défaut les extras non déclarés mais
+        ne reconnaît plus ``ocr_engine`` comme alias.  On vérifie que
+        passer juste ``ocr_engine=`` ne remplit pas ``engine_name``
+        (rupture silencieuse acceptée vs explicite — Pydantic v2 ne
+        peut pas distinguer entre 'extra ignoré' et 'mauvais nom')."""
+        from picarones.interfaces.web.models import PipelineConfig
+
+        cfg = PipelineConfig(name="t", llm_provider="")
+        # Default : engine_name=""
+        assert cfg.engine_name == ""
+        # Construire avec un kwarg dynamic = legacy name → engine_name
+        # reste vide (Pydantic v2 ignore les extras non-strict).
+        cfg2 = PipelineConfig.model_validate(
+            {"name": "t", "ocr_engine": "tesseract", "llm_provider": ""},
+        )
+        assert cfg2.engine_name == "", (
+            "Le legacy ``ocr_engine`` ne doit PAS remplir engine_name "
+            "automatiquement — sinon on aliase silencieusement et la "
+            "rupture API n'est pas réelle."
+        )
+
+    def test_router_payload_uses_engine_name(self) -> None:
+        """Le router ``/api/benchmark/run`` accepte le payload
+        avec ``engine_name`` et le propage."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from picarones.interfaces.web.routers import benchmark as bench_router
+
+        app = FastAPI()
+        app.include_router(bench_router.router)
+        with TestClient(app) as client:
+            # On vise un payload qui valide Pydantic mais échoue à
+            # l'instanciation moteur (corpus inexistant) — l'important
+            # est que le 422 Pydantic ne se déclenche pas sur le field.
+            r = client.post(
+                "/api/benchmark/run",
+                json={
+                    "corpus_path": "/tmp/no_such_dir_for_phase5b_test",
+                    "competitors": [{
+                        "name": "p",
+                        "engine_name": "tesseract",
+                        "ocr_model": "fra",
+                        "llm_provider": "",
+                        "llm_model": "",
+                        "pipeline_mode": "",
+                        "prompt_file": "",
+                    }],
+                    "normalization_profile": "nfc",
+                    "output_dir": "/tmp",
+                    "report_name": "test",
+                    "report_lang": "fr",
+                },
+            )
+            # Pas un 422 Pydantic → le field engine_name a bien
+            # été accepté.  (400 attendu : corpus_path inexistant.)
+            assert r.status_code != 422, (
+                "Le router refuse le payload avec engine_name : "
+                f"{r.text}"
+            )

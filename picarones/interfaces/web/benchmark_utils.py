@@ -227,12 +227,12 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
     - ``ocr_engine`` = ``""`` + ``llm_provider`` → LLM seul (zero-shot
       ou post-correction).
     """
-    engine_id = comp.ocr_engine
+    engine_id = comp.engine_name
     is_corpus_ocr = engine_id in ("corpus", "")
 
     if is_corpus_ocr and not comp.llm_provider:
         raise ValueError(
-            "ocr_engine='corpus' nécessite un llm_provider "
+            "engine_name='corpus' nécessite un llm_provider "
             "(pour la post-correction ou le zero-shot)"
         )
 
@@ -330,7 +330,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 job.add_event("log", {"message": f"Concurrent : {eng.name}"})
             except Exception as exc:  # noqa: BLE001
                 job.add_event("warning", {
-                    "message": f"Concurrent ignoré '{comp.name or comp.ocr_engine}' : {exc}"
+                    "message": f"Concurrent ignoré '{comp.name or comp.engine_name}' : {exc}"
                 })
 
         if not engines:
@@ -436,7 +436,7 @@ def _legacy_request_to_run_request(req: BenchmarkRequest) -> BenchmarkRunRequest
         competitors.append(
             PipelineConfig(
                 name="",
-                ocr_engine=engine_name,
+                engine_name=engine_name,
                 ocr_model=model,
                 llm_provider="",
                 llm_model="",

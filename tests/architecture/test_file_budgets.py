@@ -161,7 +161,10 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/corpus/htr_united.py": 575,       # actuel 473
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     # Sprint G du plan v2.0 — déplacé vers ``interfaces/cli/``.
-    "picarones/interfaces/cli/_workflows.py": 550,  # actuel 469
+    # Phase 4.5 du chantier post-rewrite — ajout de
+    # ``_html_path_from_json`` + ``generate_html``/``html_lang`` aux 4
+    # workflows + génération HTML automatique côté ``_run_workflow``.
+    "picarones/interfaces/cli/_workflows.py": 620,  # actuel ~585
     # ``__init__.py`` du legacy CLI — plus gros que les autres car il
     # contient les commandes ``info``, ``engines``, ``metrics``,
     # ``report``, ``demo``.

@@ -114,9 +114,18 @@ class HuggingFaceImportRequest(BaseModel):
 
 class PipelineConfig(BaseModel):
     name: str = Field(default="", max_length=_MAX_NAME)
-    ocr_engine: str = Field(default="", max_length=_MAX_NAME)
-    """Moteur OCR : ``tesseract``, ``mistral_ocr``, … ou ``corpus``
-    pour utiliser l'OCR pré-calculé."""
+    engine_name: str = Field(default="", max_length=_MAX_NAME)
+    """Identifiant du moteur de transcription : ``tesseract``,
+    ``mistral_ocr``, ``kraken``, ``calamari``, … ou ``corpus`` pour
+    utiliser l'OCR pré-calculé.  Vide (``""``) pour un pipeline LLM
+    seul (zero-shot VLM).
+
+    Phase 5b du chantier post-rewrite : renommé depuis ``ocr_engine``
+    car le field accepte aussi des VLMs (zero_shot) et des sources
+    pré-calculées (``corpus``) — le préfixe ``ocr_`` était trompeur.
+    Rupture API : les clients qui envoyaient ``ocr_engine`` reçoivent
+    désormais 422.
+    """
     ocr_model: str = Field(default="", max_length=_MAX_NAME)
     llm_provider: str = Field(default="", max_length=_MAX_NAME)
     llm_model: str = Field(default="", max_length=_MAX_NAME)

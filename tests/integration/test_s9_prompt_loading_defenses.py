@@ -181,7 +181,7 @@ class TestEndToEndPromptReachesLLM:
         from picarones.adapters.llm.base import _substitute_prompt_variables
 
         comp = PipelineConfig(
-            ocr_engine="tesseract", ocr_model="fra",
+            engine_name="tesseract", ocr_model="fra",
             llm_provider="mistral", llm_model="mistral-small-latest",
             pipeline_mode="text_only",
             prompt_file="correction_early_modern_english.txt",

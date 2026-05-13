@@ -300,7 +300,7 @@ class TestPublicModeBlocksLLMBenchmark:
             "competitors": [
                 {
                     "name": "test",
-                    "ocr_engine": "tesseract",
+                    "engine_name": "tesseract",
                     "llm_provider": "openai",
                     "llm_model": "gpt-4o",
                     "pipeline_mode": "text_only",
@@ -317,7 +317,7 @@ class TestPublicModeBlocksLLMBenchmark:
             "corpus_path": corpus_path,
             "competitors": [
                 {
-                    "ocr_engine": "mistral_ocr",
+                    "engine_name": "mistral_ocr",
                     "llm_provider": "",
                 },
             ],
