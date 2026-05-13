@@ -6,7 +6,7 @@ Vérifie que :
   ``validated_prompt_filename``, ``PathValidationError``) sont
   accessibles depuis ``picarones.app.services.path_security`` et
   re-exportés par ``picarones.app.services``.
-- ``picarones.web.security`` continue de les exposer (non-régression
+- ``picarones.interfaces.web.security`` continue de les exposer (non-régression
   pour le legacy web).
 - ``WorkspaceManager`` :
   - crée un dossier isolé par session (UUID auto ou ``session_id``

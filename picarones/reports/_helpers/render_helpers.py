@@ -43,7 +43,7 @@ Le choix des couleurs reflète la sémantique métier :
   largement comprise pour vision trichromate normale. **Compromis
   d'accessibilité accepté** : la confusion rouge/vert affecte ~8 %
   des hommes (deutéranopie/protanopie). Une migration vers la
-  palette Okabe-Ito de :mod:`picarones.report.colors` est tracée
+  palette Okabe-Ito de :mod:`picarones.reports._helpers.colors` est tracée
   comme dette dans un sprint dédié.
 - **Diverging** bleu/vert/orange par défaut : vert au centre =
   neutre, extrémités opposées sémantiquement, et ces 3 teintes
@@ -230,7 +230,7 @@ def text_color_for_bg(intensity: float, *, threshold: float = 0.55) -> str:
 #   < 30 % : orange  (relecture humaine systématique)
 #   ≥ 30 % : rouge   (catastrophique, à reprendre)
 #
-# Les couleurs sont importées de :mod:`picarones.report.colors`
+# Les couleurs sont importées de :mod:`picarones.reports._helpers.colors`
 # (palette Okabe-Ito daltonien-friendly active par défaut).
 
 

@@ -3,20 +3,20 @@
 Regroupe les renderers orientés *« comprendre POURQUOI on a ces
 résultats »* :
 
-- :func:`picarones.report.levers_render.build_levers_section_html`
+- :func:`picarones.reports.html.renderers.levers.build_levers_section_html`
   — leviers d'amélioration éditoriale (factuels, pas prescriptifs).
-- :func:`picarones.report.worst_lines_render.build_worst_lines_table_html`
+- :func:`picarones.reports.html.renderers.worst_lines.build_worst_lines_table_html`
   — top-N des lignes du corpus avec le pire CER (toutes moteurs
   confondus, opt-in : nécessite ``benchmark`` non compacté).
-- :func:`picarones.report.image_predictive_render.build_image_predictive_html`
+- :func:`picarones.reports.html.renderers.image_predictive.build_image_predictive_html`
   — complexité paléographique + homogénéité du corpus (opt-in :
   nécessite la liste des image_qualities individuelles).
-- :func:`picarones.report.baseline_render.build_corpus_difficulty_baseline_html`
+- :func:`picarones.reports.html.renderers.baseline.build_corpus_difficulty_baseline_html`
   — encart « ce corpus est-il habituel ? » (opt-in : nécessite
   l'historique SQLite).
-- :func:`picarones.report.longitudinal_render.build_longitudinal_html`
+- :func:`picarones.reports.html.renderers.longitudinal.build_longitudinal_html`
   — évolution longitudinale par moteur (opt-in : idem historique).
-- :func:`picarones.report.multirun_stability_render.build_multirun_stability_html`
+- :func:`picarones.reports.html.renderers.multirun_stability.build_multirun_stability_html`
   — stabilité multi-runs (opt-in : nécessite N runs).
 
 Sources de données automatiques

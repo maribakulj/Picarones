@@ -1,11 +1,11 @@
 """Fixtures locales aux tests de l'interface web FastAPI.
 
-Le serveur Picarones expose dans :mod:`picarones.web.state` trois
+Le serveur Picarones expose dans :mod:`picarones.interfaces.web.state` trois
 états globaux partagés entre routes :
 
 - ``JOBS_SEMAPHORE`` — sémaphore borné pour les benchmarks concurrents,
 - ``RATE_LIMITER`` — rate limiter par IP,
-- ``picarones.web.routers.corpus._BROWSE_ROOTS`` — répertoires
+- ``picarones.interfaces.web.routers.corpus._BROWSE_ROOTS`` — répertoires
   autorisés à la navigation, calculés au chargement.
 
 Ces états peuvent polluer des tests indépendants. Cette fixture
@@ -16,7 +16,7 @@ selon l'environnement courant.
 Discipline : la fixture est ``autouse=True`` mais n'est définie
 que dans ``tests/web/conftest.py`` — les tests des cercles 1 et 2
 (``tests/core/``, ``tests/measurements/``, etc.) ne paient pas le
-coût de l'import de ``picarones.web.*`` à chaque test.
+coût de l'import de ``picarones.interfaces.web.*`` à chaque test.
 """
 
 from __future__ import annotations

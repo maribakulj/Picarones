@@ -8,7 +8,7 @@ patrimoniales (Sprint 5), distribution d'erreurs (Sprint 10), NER
 (Sprint 87) et indicateurs pipeline OCR+LLM.
 
 Les coûts (durée moyenne, prix par 1k pages, CO₂) sont ajoutés
-ultérieurement par :mod:`picarones.report.report_data.pareto` qui
+ultérieurement par :mod:`picarones.reports.html.data.pareto` qui
 en a besoin pour calculer les fronts.
 """
 

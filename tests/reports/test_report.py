@@ -231,7 +231,7 @@ class TestReportGenerator:
 class TestCerColor:
     """Sprint A7 (m-5) : la palette par défaut est passée à Okabe-Ito
     (daltonien-friendly).  Les hex historiques ``#16a34a`` etc.
-    restent disponibles via ``CLASSIC_*`` dans ``picarones.report.colors``
+    restent disponibles via ``CLASSIC_*`` dans ``picarones.reports._helpers.colors``
     et activables côté frontend via ``?palette=classic``."""
 
     def test_green_below_5pct(self):

@@ -167,7 +167,7 @@ def compute_taxonomy_intra_doc_section(
     qu'une fois). Puis on somme par classe et bin de position.
 
     Retourne un dict compatible avec
-    :func:`picarones.report.taxonomy_intra_doc_render.build_taxonomy_intra_doc_html`
+    :func:`picarones.reports.html.renderers.taxonomy_intra_doc.build_taxonomy_intra_doc_html`
     (clés ``n_bins``, ``per_class``, ``total_errors``, ``n_words_gt``).
     Retourne ``None`` si aucun document n'a de signal exploitable.
     """

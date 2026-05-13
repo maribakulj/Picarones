@@ -1,7 +1,7 @@
 """Tests Sprint A5 — bascule à chaud du mode public (M-13).
 
 Le mode public est piloté par la variable d'environnement
-``PICARONES_PUBLIC_MODE``. ``picarones.web.security.is_public_mode()``
+``PICARONES_PUBLIC_MODE``. ``picarones.interfaces.web.security.is_public_mode()``
 la lit à **chaque appel** plutôt qu'au démarrage, ce qui permet à un
 opérateur de basculer le mode sans redémarrer le serveur.
 

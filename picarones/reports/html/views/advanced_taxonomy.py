@@ -3,16 +3,16 @@
 Regroupe les renderers orientés *édition critique* qui examinent la
 structure des erreurs OCR au-delà du CER global :
 
-- :func:`picarones.report.taxonomy_comparison_render.build_taxonomy_comparison_html`
+- :func:`picarones.reports.html.renderers.taxonomy_comparison.build_taxonomy_comparison_html`
   — diagramme miroir A vs B des proportions d'erreurs par classe
   + tableau de récupérabilité éditoriale.
-- :func:`picarones.report.taxonomy_cooccurrence_render.build_taxonomy_cooccurrence_html`
+- :func:`picarones.reports.html.renderers.taxonomy_cooccurrence.build_taxonomy_cooccurrence_html`
   — heatmap Jaccard des co-occurrences de classes au niveau document
   (opt-in : nécessite ``per_doc_classes``).
-- :func:`picarones.report.taxonomy_intra_doc_render.build_taxonomy_intra_doc_html`
+- :func:`picarones.reports.html.renderers.taxonomy_intra_doc.build_taxonomy_intra_doc_html`
   — heatmap classe × position intra-document (opt-in : nécessite des
   paires gt+hyp non compactées).
-- :func:`picarones.report.lexical_modernization_render.build_lexical_modernization_html`
+- :func:`picarones.reports.html.renderers.lexical_modernization.build_lexical_modernization_html`
   — top-N des tokens GT modernisés par le moteur (opt-in :
   nécessite la sortie de ``compute_lexical_modernization``).
 

@@ -1,7 +1,7 @@
 """``JobStore`` — Sprint A14-S37.
 
 Persistance SQLite des jobs de benchmark.  Adapté du legacy
-``picarones.web.jobs`` mais réécrit nativement pour le nouveau monde :
+``picarones.interfaces.web.jobs`` mais réécrit nativement pour le nouveau monde :
 API plus simple, dataclass immuable, sans dépendance au ``state``
 global.
 

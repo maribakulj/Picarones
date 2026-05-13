@@ -1,6 +1,6 @@
 """Construction du dict de données consommé par le template Jinja.
 
-Avant le découpage, ``picarones.report.generator._build_report_data``
+Avant le découpage, ``picarones.reports.html.generator._build_report_data``
 faisait 463 lignes pour transformer un :class:`BenchmarkResult` en
 dict prêt pour Jinja. Cette fonction empilait par sprint des blocs
 indépendants — engines, documents, statistiques, scatter plots,

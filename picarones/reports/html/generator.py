@@ -17,11 +17,11 @@ Architecture
 Ce module est l'**orchestrateur**. Les responsabilités lourdes sont
 découpées en sous-modules :
 
-- :mod:`picarones.report.assets` — chargement vendor.js, encodage
+- :mod:`picarones.reports._helpers.assets` — chargement vendor.js, encodage
   base64 d'images, externalisation lazy.
-- :mod:`picarones.report.report_data` — construction du dict JSON
+- :mod:`picarones.reports.html.data` — construction du dict JSON
   passé au template (engines, documents, statistiques, Pareto, etc.).
-- :mod:`picarones.report.render_helpers` — couleurs / SVG mutualisés.
+- :mod:`picarones.reports._helpers.render_helpers` — couleurs / SVG mutualisés.
 
 Rétrocompat
 -----------
@@ -35,8 +35,8 @@ Les autres noms ``_pct``, ``_safe``, ``_cer_bg``, ``_encode_image_b64``,
 ``_encode_images_b64_from_result``, ``_externalize_images_to_dir``,
 ``_load_vendor_js`` sont soit utilisés en interne (les 3 derniers,
 voir :meth:`ReportGenerator.generate`), soit accessibles via leur
-nom canonique dans :mod:`picarones.report.assets` ou
-:mod:`picarones.report.render_helpers`.
+nom canonique dans :mod:`picarones.reports._helpers.assets` ou
+:mod:`picarones.reports._helpers.render_helpers`.
 """
 
 from __future__ import annotations

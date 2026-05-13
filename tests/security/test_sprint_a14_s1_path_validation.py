@@ -1,6 +1,6 @@
 """Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur.
 
-Tests sur ``picarones.web.security.validated_path``,
+Tests sur ``picarones.interfaces.web.security.validated_path``,
 ``validated_prompt_filename`` et ``safe_report_name`` : les helpers
 introduits pour bloquer les chemins arbitraires reçus des endpoints
 benchmark/run et benchmark/start.
