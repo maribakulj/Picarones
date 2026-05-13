@@ -332,13 +332,16 @@ picarones/
 └── interfaces/     Layer 8 — CLI Click, Web FastAPI
 ```
 
-Legacy paths (`core/, measurements/, engines/, llm/, pipelines/,
-report/, modules/`) still present as shims, in active retirement
-(see `docs/archives/migration/`).  Strict 8-layer architecture: imports flow
-outer → inner. Enforced by
-`tests/architecture/test_layer_dependencies.py`. See
+Strict 8-layer architecture: imports flow outer → inner. Enforced
+by `tests/architecture/test_layer_dependencies.py`. The v2.0
+release (May 2026) removed all legacy top-level packages (`core/`,
+`measurements/`, `engines/`, `llm/`, `pipelines/`, `report/`,
+`modules/`, `cli/`, `web/`, `extras/`) and the transitional
+sub-packages (`adapters/legacy_engines/`, `adapters/legacy_pipelines/`,
+`interfaces/{cli,web}/_legacy/`). See
 [`docs/explanation/architecture.md`](docs/explanation/architecture.md)
-for the full manifesto.
+for the full manifesto and migration history under
+`docs/archives/migration/`.
 
 ---
 
@@ -392,9 +395,10 @@ GitHub Actions: `.github/workflows/`
 ```bash
 pip install -e ".[dev,web]"
 pre-commit install
-pytest tests/ -q
+python -m pytest tests/ -q          # ``python -m`` requis si pytest est uv-installé
 ruff check picarones/ tests/
-python -m mypy picarones/core/
+python -m mypy picarones/domain/    # strict mode (Layer 1)
+python -m mypy picarones/           # lax mode (full tree)
 ```
 
 **Test suite**: ~4750 tests, ~3 min on a modern laptop. Coverage

@@ -162,8 +162,8 @@ Verrouillé par `tests/security/test_s1_zip_slip_attack.py`.
 | `csv/render.py` | `CsvReportRenderer` — un CSV plat (`run_id, doc, pipeline, view, metric, value, status`) |
 | `json/render.py` | `JsonReportRenderer` — manifest + documents en JSON déterministe |
 | `html/render.py` | `HtmlReportRenderer` — rapport autonome (TextView, AltoView, SearchView) — minimaliste |
-| `html/generator.py` | `ReportGenerator` — rapport interactif riche (22 renderers + 5 vues) consommé par CLI/web |
-| `narrative/` | Moteur narratif (18 détecteurs) — synthèse factuelle déterministe |
+| `html/generator.py` | `ReportGenerator` — rapport interactif riche (28 renderers + 5 vues) consommé par CLI/web |
+| `narrative/` | Moteur narratif (20 détecteurs) — synthèse factuelle déterministe |
 | `glossary/`, `i18n/` | Glossaire + i18n FR/EN |
 
 Le rendu est strict : pas de JS dynamique côté serveur, pas d'I/O

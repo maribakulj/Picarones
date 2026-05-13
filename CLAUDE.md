@@ -95,9 +95,9 @@ picarones/
 │                               benchmark_runner (entry point CLI/web), partial_store
 │
 ├── reports/                    Couche 7 — rendu HTML / JSON / CSV
-│   ├── html/                   ReportGenerator + 22 renderers + 5 vues + templates Jinja2
+│   ├── html/                   ReportGenerator + 28 renderers + 5 vues + templates Jinja2
 │   ├── json/, csv/             exports tabulaires
-│   ├── narrative/              moteur narratif (18 détecteurs)
+│   ├── narrative/              moteur narratif (20 détecteurs)
 │   ├── glossary/, i18n/        glossaire + i18n FR/EN
 │   └── _helpers/               colors, render_helpers, assets
 │
@@ -116,13 +116,19 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **4750 passed, 12 skipped, 8 deselected, 0 failed**
-(post-S59).  Les deselected sont les markers `live` (5 tests d'intégration
-contre vraie API/binaire) + `network` (3 tests qui hit le réseau réel),
-opt-in en local via `pytest -m live` ou `pytest -m network`.  Le
-compteur en prose est synchronisé automatiquement par
-`scripts/gen_readme_tables.py` — toute modification manuelle sera
-ré-écrasée au prochain `make lint`.
+`pytest tests/` → **4750 passed, 16 skipped, 8 deselected, 2 xfailed, 0 failed**
+(post-audit code-quality, mai 2026).  Les deselected sont les markers
+`live` (5 tests d'intégration contre vraie API/binaire) + `network`
+(3 tests qui hit le réseau réel), opt-in en local via `pytest -m live`
+ou `pytest -m network`.  Le compteur ``passed`` est synchronisé
+automatiquement par `scripts/gen_readme_tables.py` (CI : job
+``sync-counters`` ; local : `make sync-counters-check`).  Le détail
+``skipped``/``xfailed`` peut dériver de ±2 entre éditions et n'est
+pas verrouillé en CI.
+
+NB : utiliser ``python -m pytest tests/`` plutôt que ``pytest tests/``
+directement — l'installation via ``uv tool install pytest`` masque
+les deps Picarones et produit ~160 collection errors trompeurs.
 
 ### Bugs documentés antérieurement — tous résolus
 
@@ -271,17 +277,18 @@ picarones/reports/narrative/
 ├── arbiter.py               Tri par importance, non-redondance, anti-contradiction
 ├── renderer.py              Rendu templates YAML par str.format_map (déterministe)
 ├── registry.py              Registre par défaut des détecteurs
-├── templates/{fr,en}.yaml   18 templates × 2 langues
-└── detectors/               18 détecteurs en 6 familles
+├── templates/{fr,en}.yaml   20 templates × 2 langues
+└── detectors/               20 détecteurs en 6 familles
     ├── ranking.py           5 (global_leader, statistical_tie, significant_gap,
     │                          speed_winner, median_mean_gap_warning)
-    ├── pareto.py            2 (pareto_alternative, cost_outlier)
+    ├── pareto.py            3 (pareto_alternative, cost_outlier,
+    │                          pricing_staleness_warning)
     ├── stratum.py           3 (stratum_winner, stratum_collapse,
     │                          stratification_recommended)
     ├── quality.py           4 (error_profile_outlier, llm_hallucination_flag,
     │                          robustness_fragile, confidence_warning)
-    ├── history.py           3 (engine_off_baseline, engine_unstable,
-    │                          regression_in_history)
+    ├── history.py           4 (engine_off_baseline, engine_unstable,
+    │                          regression_in_history, importer_fallback_triggered)
     └── ensemble.py          1 (ensemble_opportunity)
 ```
 
@@ -302,8 +309,8 @@ détecte, arbitre, rend.
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces, Python 3.11+
-- **Tests** : `pytest tests/ -q` → 4750 passed, 9 skipped, 24
-  deselected, 0 failed (post-v2.0).
+- **Tests** : voir « État des tests et bugs historiques » plus haut
+  (compteur synchronisé par ``scripts/gen_readme_tables.py``).
 - **Manifeste architecture** : [`docs/explanation/architecture.md`](docs/explanation/architecture.md).
 - **API publique stable** : [`docs/reference/api-stable.md`](docs/reference/api-stable.md).
 

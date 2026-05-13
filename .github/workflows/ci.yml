@@ -275,6 +275,32 @@ jobs:
         run: ruff check picarones/ tests/
 
   # ──────────────────────────────────────────────────────────────────
+  # Job 4-bis : Sync compteurs README/CLAUDE.md — Phase 2.1 audit
+  # code-quality (2026-05).  Le script gen_readme_tables.py reflète
+  # le code réel dans la prose des docs (tableaux Engines/CLI/API +
+  # compteur de tests).  En CI : exit 1 si la doc dérive.
+  # ──────────────────────────────────────────────────────────────────
+  sync-counters:
+    name: Doc counters sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Picarones (web extras pour ouvrir l'app FastAPI)
+        run: pip install -e ".[dev,web]"
+
+      - name: Vérifier que README.md / CLAUDE.md reflètent le code
+        run: python scripts/gen_readme_tables.py --check
+
+  # ──────────────────────────────────────────────────────────────────
   # Job 5 : Type-checking — Sprint A1 (item M-4)
   #
   # mypy est configuré dans pyproject.toml [tool.mypy] :

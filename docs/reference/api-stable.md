@@ -135,55 +135,6 @@ l'API mono-call historique de
 s'appuyant en interne sur ``BenchmarkService`` (rewrite).
 Prouvé numériquement équivalent en D.1.e.
 
-### `picarones.pipeline.legacy_runner`
-
-> Phase 7.B.2 (2026-05-07) — module relocalisé depuis
-> ``picarones.evaluation.pipeline`` vers ``picarones.pipeline.legacy_runner``.
-> La délégation au ``PipelineExecutor`` canonique impose à ce module
-> d'importer la couche ``pipeline/`` — interdit à ``evaluation/``.
-
-```python
-class PipelineStep:
-class PipelineSpec:
-class StepResult:
-class PipelineResult:
-class PipelineRunner:
-```
-
-### `picarones.pipeline.legacy_pipeline_benchmark`
-
-> Phase 7.B.2 — relocalisé depuis ``picarones.evaluation.pipeline_benchmark``
-> (mêmes raisons que ``legacy_runner``).
-
-```python
-class StepAggregate:
-class PipelineBenchmarkResult:
-
-def default_initial_inputs(doc) -> dict
-def run_pipeline_benchmark(spec, corpus, factory=...) -> PipelineBenchmarkResult
-```
-
-### `picarones.pipeline.legacy_pipeline_comparison`
-
-> Phase 7.B.2 — relocalisé depuis ``picarones.evaluation.pipeline_comparison``.
-
-```python
-class PipelineComparisonResult:
-
-def compare_pipelines(specs, corpus, factories=None) -> PipelineComparisonResult
-```
-
-### `picarones.evaluation.metrics.pipeline_spec_loader`
-
-```python
-class PipelineSpecLoadError(ValueError):
-
-def load_pipeline_spec_from_yaml(path) -> PipelineSpec
-def load_pipeline_spec_from_dict(data: dict) -> PipelineSpec
-def load_comparison_specs_from_yaml(path) -> tuple[list[PipelineSpec], dict]
-def load_comparison_specs_from_dict(data: dict) -> tuple[list[PipelineSpec], dict]
-```
-
 ### `picarones.evaluation.metric_registry`
 
 ```python
