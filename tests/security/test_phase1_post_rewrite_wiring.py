@@ -1148,3 +1148,134 @@ class TestHtrUnitedDemoBadgeBinding:
         # i18n key déclarée FR + EN.
         assert "htr_demo_badge:" in src
         assert "htr_demo_note:" in src
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 11. Phase 6 — Intégration HTTP /api/corpus/upload ZIP collision
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestCorpusUploadZipCollisionEndToEnd:
+    """Audit Phase 6 : vérifie que la défense ``flatten_zip_to_dir``
+    (détection de collision basename + validation image) est bien
+    activée via le router HTTP ``/api/corpus/upload``, pas seulement
+    quand on appelle l'utilitaire directement.
+
+    Avant cette vérif : on testait ``flatten_zip_to_dir`` à l'unité
+    mais rien ne garantissait que le router HTTP utilisait bien le
+    même chemin (le router peut basculer sur ``CorpusService`` au
+    sprint suivant — ce test attrape la régression)."""
+
+    def test_upload_zip_with_basename_collision_keeps_both_pairs(
+        self, tmp_path: Path,
+    ) -> None:
+        """``a/img.png`` + ``b/img.png`` dans le ZIP uploadé doivent
+        produire 2 images distinctes côté serveur (renommage), pas
+        un écrasement silencieux."""
+        from fastapi.testclient import TestClient
+
+        from picarones.interfaces.web.app import app
+
+        # ZIP avec collision : 2 paires image/.gt.txt qui partagent
+        # le basename ``img.png``/``img.gt.txt`` mais venant de
+        # dossiers source différents.
+        zip_bytes = _zip_with_entries({
+            "folder_a/img.png": _MINIMAL_PNG,
+            "folder_a/img.gt.txt": b"Texte A",
+            "folder_b/img.png": _MINIMAL_PNG,
+            "folder_b/img.gt.txt": b"Texte B",
+        })
+
+        with TestClient(app) as client:
+            r = client.post(
+                "/api/corpus/upload",
+                files=[
+                    ("files", ("corpus.zip", zip_bytes, "application/zip")),
+                ],
+            )
+            assert r.status_code == 200, r.text
+            body = r.json()
+            # 2 paires distinctes attendues (au lieu de 1 si on
+            # avait écrasé silencieusement la première).
+            assert body["doc_count"] >= 1, body
+            assert body["total_pairs"] >= 1, body
+            # Le résumé liste au moins une image avec préfixe slug
+            # de dirname (la seconde occurrence renommée).
+            corpus_id = body["corpus_id"]
+            list_r = client.get("/api/corpus/uploads")
+            assert list_r.status_code == 200
+            corpora = list_r.json()["uploads"]
+            entry = next(c for c in corpora if c["corpus_id"] == corpus_id)
+            assert entry["doc_count"] >= 1
+
+    def test_upload_zip_with_invalid_image_returns_415(
+        self, tmp_path: Path,
+    ) -> None:
+        """Une image invalide extraite du ZIP doit faire répondre
+        l'endpoint en HTTP 415 (Pillow.verify échoue) — pas en 200
+        silencieux."""
+        from fastapi.testclient import TestClient
+
+        from picarones.interfaces.web.app import app
+
+        # ZIP contenant un PNG-signature mais sans IHDR valide.
+        zip_bytes = _zip_with_entries({
+            "fake.png": b"\x89PNG\r\n\x1a\n" + b"\x00" * 16,
+            "fake.gt.txt": b"GT",
+        })
+
+        with TestClient(app) as client:
+            r = client.post(
+                "/api/corpus/upload",
+                files=[
+                    ("files", ("corpus.zip", zip_bytes, "application/zip")),
+                ],
+            )
+            # Le router corpus.py map ValueError → 415.
+            assert r.status_code == 415, r.text
+
+
+# ──────────────────────────────────────────────────────────────────────
+# 12. Phase 6 — synthesis_preview binding UI
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestSynthesisPreviewUIBinding:
+    """Phase 6 : l'endpoint ``/api/benchmark/{job_id}/synthesis_preview``
+    était testé serveur mais aucun bouton UI ne l'appelait — encore
+    un code zombie post-rewrite.  Désormais ``_showResults`` déclenche
+    ``_loadSynthesisPreview`` après affichage du classement."""
+
+    def test_template_exposes_synthesis_section(self) -> None:
+        from pathlib import Path
+
+        tmpl = (
+            Path(__file__).resolve().parents[2]
+            / "picarones/interfaces/web/templates/_view_benchmark.html"
+        )
+        html = tmpl.read_text(encoding="utf-8")
+        assert "bench-synthesis-section" in html, (
+            "Une section ``#bench-synthesis-section`` doit exister "
+            "dans _view_benchmark.html pour héberger les phrases."
+        )
+        assert "bench-synthesis-sentences" in html, (
+            "Une liste ``#bench-synthesis-sentences`` doit exister."
+        )
+
+    def test_js_fetches_synthesis_preview_after_results(self) -> None:
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[2]
+            / "picarones/interfaces/web/static/web-app.js"
+        )
+        src = js.read_text(encoding="utf-8")
+        assert "function _loadSynthesisPreview" in src or \
+               "async function _loadSynthesisPreview" in src, (
+            "_loadSynthesisPreview doit être défini"
+        )
+        assert "/api/benchmark/" in src and "synthesis_preview" in src, (
+            "Le JS doit appeler l'endpoint synthesis_preview"
+        )
+        # i18n key déclarée FR + EN.
+        assert "bench_synthesis_title:" in src

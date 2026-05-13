@@ -108,6 +108,7 @@ const T = {
     bench_progress_title: "Progression",
     bench_log: "Journal",
     bench_result_title: "Résultats",
+    bench_synthesis_title: "Synthèse narrative",
     bench_open_report: "Ouvrir le rapport",
     reports_title: "Rapports générés",
     reports_dir_label: "Dossier de rapports",
@@ -194,6 +195,7 @@ const T = {
     bench_progress_title: "Progress",
     bench_log: "Log",
     bench_result_title: "Results",
+    bench_synthesis_title: "Narrative synthesis",
     bench_open_report: "Open report",
     reports_title: "Generated reports",
     reports_dir_label: "Reports directory",
@@ -779,6 +781,50 @@ function _showResults(data) {
     html += "</tbody></table>";
     document.getElementById("bench-ranking-table").innerHTML = html;
   }
+  // Phase 6 chantier post-rewrite : appel à
+  // /api/benchmark/{job_id}/synthesis_preview pour afficher la
+  // synthèse narrative (moteur narratif côté serveur) sans avoir à
+  // ouvrir le rapport HTML.  Avant : endpoint existait + testé serveur
+  // mais zéro appel depuis l'UI (code zombie typique post-rewrite).
+  if (_currentJobId) {
+    _loadSynthesisPreview(_currentJobId);
+  }
+}
+
+async function _loadSynthesisPreview(jobId) {
+  /** GET /api/benchmark/{jobId}/synthesis_preview et injecte les
+   * phrases dans #bench-synthesis-sentences.  En cas d'erreur (job
+   * sans synthèse, JSON manquant, narratif indisponible) on masque
+   * la section silencieusement — la synthèse est un bonus, pas un
+   * bloquant. */
+  const section = document.getElementById("bench-synthesis-section");
+  const list = document.getElementById("bench-synthesis-sentences");
+  if (!section || !list) return;
+  section.style.display = "none";
+  list.innerHTML = "";
+  try {
+    const r = await fetch(
+      `/api/benchmark/${encodeURIComponent(jobId)}/synthesis_preview?lang=${encodeURIComponent(lang)}`,
+    );
+    if (!r.ok) return;
+    const d = await r.json();
+    const sentences = Array.isArray(d.sentences) ? d.sentences : [];
+    if (sentences.length === 0) return;
+    list.innerHTML = sentences
+      .map(s => `<li>${_escapeHtml(String(s))}</li>`)
+      .join("");
+    section.style.display = "block";
+  } catch (e) {
+    // Synthèse optionnelle — on n'ennuie pas l'utilisateur.
+  }
+}
+
+function _escapeHtml(s) {
+  /** Helper local : on injecte les phrases dans innerHTML donc il
+   * faut neutraliser les balises HTML potentielles (les phrases
+   * narratives peuvent contenir des noms de moteurs avec ``<`` ou ``>``
+   * théoriquement). */
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function _finishBenchmark() {
