@@ -72,7 +72,7 @@ def _scan_broad_raises() -> list[tuple[Path, int]]:
 #:
 #: 1. Remplacer ``pytest.raises(Exception)`` par la classe précise.
 #: 2. Baisser :data:`BROAD_RAISES_BASELINE` du même montant.
-BROAD_RAISES_BASELINE = 24
+BROAD_RAISES_BASELINE = 0
 
 
 def test_broad_pytest_raises_below_baseline() -> None:

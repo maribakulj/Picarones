@@ -557,7 +557,10 @@ class TestPipelineExecutorWithPlanner:
         executor = PipelineExecutor(
             adapter_resolver=lambda n: _OCRStub(),
         )
-        with pytest.raises(Exception, match="ExecutionPlan"):
+        # ``PipelineExecutor.run_plan`` lève ``PicaronesError`` quand
+        # l'argument ``plan`` n'est pas un ``ExecutionPlan``.
+        from picarones.domain.errors import PicaronesError
+        with pytest.raises(PicaronesError, match="ExecutionPlan"):
             executor.run_plan(
                 plan="not a plan",  # type: ignore[arg-type]
                 document=DocumentRef(id="d1"),
@@ -623,7 +626,8 @@ class TestPipelineExecutorWithPlanner:
         assert plan.metric_junctions  # non vide grâce au registry injecté
 
     def test_planner_must_be_pipeline_planner(self) -> None:
-        with pytest.raises(Exception, match="PipelinePlanner"):
+        from picarones.domain.errors import PicaronesError
+        with pytest.raises(PicaronesError, match="PipelinePlanner"):
             PipelineExecutor(
                 adapter_resolver=lambda n: _OCRStub(),
                 planner="not a planner",  # type: ignore[arg-type]

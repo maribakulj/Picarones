@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from picarones.domain import ArtifactType, CorpusSpec, CorpusSpecError, DocumentRef, GroundTruthRef
 
@@ -45,14 +46,14 @@ class TestCorpusSpec:
         assert c.metadata["language"] == "fr"
 
     def test_name_validation(self) -> None:
-        with pytest.raises(Exception):  # pydantic ValidationError
+        with pytest.raises(ValidationError):
             CorpusSpec(name="")  # min_length=1
 
 
 class TestCorpusSpecImmutability:
     def test_frozen_blocks_mutation(self) -> None:
         c = CorpusSpec(name="x")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             c.name = "y"  # type: ignore[misc]
 
     def test_json_roundtrip_with_multilevel_gt(self) -> None:

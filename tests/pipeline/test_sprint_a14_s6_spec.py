@@ -112,6 +112,8 @@ class TestPipelineSpec:
         assert s.step_by_id("missing") is None
 
     def test_frozen(self) -> None:
+        from pydantic import ValidationError
+
         s = PipelineSpec(name="x")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             s.name = "y"  # type: ignore[misc]

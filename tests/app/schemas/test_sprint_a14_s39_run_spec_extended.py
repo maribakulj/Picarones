@@ -14,6 +14,7 @@ purement additive.
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from picarones.app.schemas.run_spec import (
     PipelineSpecYaml,
@@ -94,7 +95,7 @@ class TestPreferredTextOutput:
         assert pipe.preferred_text_output == "corrector.corrected_text"
 
     def test_rejects_missing_dot(self) -> None:
-        with pytest.raises(Exception, match="format"):
+        with pytest.raises(ValidationError, match="format"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
@@ -108,7 +109,7 @@ class TestPreferredTextOutput:
             )
 
     def test_rejects_unknown_step(self) -> None:
-        with pytest.raises(Exception, match="introuvable"):
+        with pytest.raises(ValidationError, match="introuvable"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
@@ -122,7 +123,7 @@ class TestPreferredTextOutput:
             )
 
     def test_rejects_step_not_producing_type(self) -> None:
-        with pytest.raises(Exception, match="ne produit pas"):
+        with pytest.raises(ValidationError, match="ne produit pas"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
@@ -137,7 +138,7 @@ class TestPreferredTextOutput:
             )
 
     def test_rejects_unknown_artifact_type(self) -> None:
-        with pytest.raises(Exception, match="output_type"):
+        with pytest.raises(ValidationError, match="output_type"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
@@ -173,7 +174,7 @@ class TestInputsFromValidation:
 
     def test_initial_step_id_rejects_unknown_initial_input(self) -> None:
         # `__initial__` mais le type n'est pas dans initial_inputs → erreur.
-        with pytest.raises(Exception, match="initial_inputs"):
+        with pytest.raises(ValidationError, match="initial_inputs"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
@@ -218,7 +219,7 @@ class TestInputsFromValidation:
 
     def test_rejects_forward_reference(self) -> None:
         # Un step ne peut pas référencer un step en aval de lui.
-        with pytest.raises(Exception, match="antérieure"):
+        with pytest.raises(ValidationError, match="antérieure"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
@@ -241,7 +242,7 @@ class TestInputsFromValidation:
             )
 
     def test_rejects_step_not_producing_referenced_type(self) -> None:
-        with pytest.raises(Exception, match="ne produit pas"):
+        with pytest.raises(ValidationError, match="ne produit pas"):
             PipelineSpecYaml(
                 name="bad",
                 initial_inputs=(ArtifactType.IMAGE,),
