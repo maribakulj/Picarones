@@ -34,14 +34,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # de couverture, pas par un seuil dur).
 FILE_BUDGETS: dict[str, int] = {
     # ``benchmark_runner`` : façade publique de ``BenchmarkService``,
-    # entry point pour CLI/web.  God-module historique — split en cours
-    # en Phase 6 de l'audit code-quality (1700 → ... LOC).  Extractions
-    # déjà effectuées :
-    # - ``_benchmark_ner`` (NER aggregation, ~100 LOC sortis)
-    # - ``_benchmark_persistence`` (JSON dump, ~15 LOC sortis)
-    # Prochaines extractions prévues : conversions, adapter_resolver,
-    # execution.  À chaque extract, dégonfler le budget.
-    "picarones/app/services/benchmark_runner.py": 1620,  # actuel 1584
+    # entry point pour CLI/web.  God-module historique en cours de
+    # split (Phase 6 audit code-quality, 1700 → 1329 LOC).
+    # Extractions effectuées :
+    # - ``_benchmark_ner`` (NER aggregation, ~100 LOC)
+    # - ``_benchmark_persistence`` (JSON dump, ~15 LOC)
+    # - ``_benchmark_adapter_resolver`` (engine→spec + resolver, ~250 LOC)
+    # Prochaines extractions prévues : conversions
+    # (document/corpus → spec, ~340 LOC) et execution
+    # (run_benchmark_unified + with_partial, ~500 LOC).
+    "picarones/app/services/benchmark_runner.py": 1370,  # actuel 1329
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # Phase 4.6 audit code-quality (2026-05) — commentaires retirés :
