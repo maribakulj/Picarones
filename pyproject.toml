@@ -105,6 +105,7 @@ docs = [
 # Moteurs OCR optionnels
 pero = ["pero-ocr>=0.1.0"]
 kraken = ["kraken>=4.0.0"]
+calamari = ["calamari-ocr>=2.0.0"]
 # Adaptateurs LLM
 llm = [
     "openai>=1.0.0",

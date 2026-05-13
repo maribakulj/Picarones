@@ -18,6 +18,7 @@ mono-call ergonomique et restitue un ``BenchmarkResult``.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -499,6 +500,58 @@ def _build_pipeline_info(engine: Any) -> dict:
     return info
 
 
+def _engine_config_for_fingerprint(engine: Any) -> dict:
+    """Extrait une config sérialisable d'un engine pour le fingerprint.
+
+    Phase 2.3 : utilisé par
+    :func:`partial_store.compute_run_fingerprint` pour distinguer deux
+    runs avec le même couple ``(corpus, engine.name)`` mais des
+    paramètres internes différents (psm/lang Tesseract, modèle LLM,
+    prompt_template, mode pipeline, …).  Un changement non capturé
+    par ce dict = potentiel faux résultat en reprise.
+
+    Stratégie : sonder les attributs canoniques connus, repli sur
+    ``repr`` pour les types non sérialisables.  ``json.dumps`` finalise
+    via ``default=str`` côté ``compute_run_fingerprint`` — la
+    granularité est conservatrice (toute différence visible → nouveau
+    fingerprint).
+    """
+    cfg: dict = {"engine_name": getattr(engine, "name", "")}
+
+    # Pipeline composé : capturer le mode + prompt + LLM model
+    # (sources de différence majeure des résultats).
+    if getattr(engine, "is_pipeline", False):
+        mode = getattr(engine, "mode", None)
+        cfg["mode"] = mode.value if hasattr(mode, "value") else mode
+        prompt = getattr(engine, "prompt_template", None)
+        if prompt is not None:
+            # Hasher le prompt pour éviter de polluer le nom du fichier
+            # partiel avec un prompt multi-lignes (et de fuiter le
+            # contenu d'un prompt institutionnel dans un nom de fichier).
+            # SHA-1 utilisé comme identifiant de cache uniquement
+            # (fingerprint partial store, pas une garantie crypto) —
+            # ``usedforsecurity=False`` neutralise le faux positif
+            # bandit B324 et exprime l'intention pour le reviewer.
+            cfg["prompt_sha1"] = hashlib.sha1(
+                str(prompt).encode("utf-8"),
+                usedforsecurity=False,
+            ).hexdigest()[:12]
+        llm = getattr(engine, "llm_adapter", None)
+        if llm is not None:
+            cfg["llm_model"] = getattr(llm, "model", "")
+            cfg["llm_provider"] = getattr(llm, "name", "")
+        ocr = getattr(engine, "ocr_adapter", None)
+        if ocr is not None:
+            cfg["ocr_name"] = getattr(ocr, "name", "")
+    else:
+        # Adapter OCR seul : sonder les attributs courants.
+        for attr in ("lang", "psm", "model", "model_id", "feature_type"):
+            value = getattr(engine, attr, None)
+            if value is not None:
+                cfg[attr] = value
+    return cfg
+
+
 def _safe_engine_version(engine: Any) -> str:
     """Retourne ``engine.version()`` ou ``"unknown"`` en cas d'erreur.
 
@@ -733,7 +786,7 @@ def build_adapter_resolver(
         """Deux executors sont *fonctionnellement* équivalents s'ils
         ont le même type et le même état (``__dict__`` complet).
 
-        Cas concret : deux ``CompetitorConfig`` qui utilisent
+        Cas concret : deux ``PipelineConfig`` qui utilisent
         ``tesseract`` avec la même langue — l'un en mode OCR seul,
         l'autre encapsulé dans un pipeline OCR+LLM.  Le factory web
         leur donne le même ``name`` (dérivé de la config) → la 2e
@@ -1333,8 +1386,8 @@ def _run_benchmark_with_partial(
     from picarones.app.services.partial_store import (
         _delete_partial,
         _load_partial,
-        _partial_path,
         _save_partial_line,
+        partial_path_for_engine,
     )
     from picarones.evaluation.benchmark_result import (
         BenchmarkResult,
@@ -1367,7 +1420,21 @@ def _run_benchmark_with_partial(
             )
             break
 
-        partial_path = _partial_path(corpus.name, engine.name, partial_dir)
+        # Phase 2.3 — fingerprint inclut config moteur + profil
+        # normalisation + char_exclude + corpus files (mtime/size) +
+        # version code.  Deux runs avec configs différentes →
+        # fichiers partiels distincts → pas de réutilisation
+        # silencieuse de résultats incompatibles.
+        partial_path = partial_path_for_engine(
+            corpus=corpus,
+            engine=engine,
+            partial_dir=partial_dir,
+            engine_config=_engine_config_for_fingerprint(engine),
+            normalization_profile=normalization_profile,
+            char_exclude=char_exclude,
+            profile=profile,
+            code_version=code_version,
+        )
         loaded_results = _load_partial(partial_path)
         loaded_doc_ids = {dr.doc_id for dr in loaded_results}
 

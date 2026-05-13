@@ -174,6 +174,10 @@
       <button class="btn btn-primary" id="start-btn" onclick="startBenchmark()" data-i18n="bench_start">▶ Lancer le benchmark</button>
       <button class="btn btn-secondary" id="cancel-btn" style="display:none;" onclick="cancelBenchmark()" data-i18n="bench_cancel">✕ Annuler</button>
       <span id="bench-status-text" style="font-size:12px; color: var(--text-muted);"></span>
+      <span style="flex:1;"></span>
+      <button class="btn btn-secondary btn-sm" id="config-save-btn" onclick="saveConfigToFile()" title="Télécharger la configuration courante en JSON" data-i18n="bench_config_save">💾 Sauvegarder config</button>
+      <button class="btn btn-secondary btn-sm" id="config-load-btn" onclick="loadConfigFromFile()" title="Charger une configuration depuis un fichier JSON" data-i18n="bench_config_load">📂 Charger config</button>
+      <input type="file" id="config-file-input" accept=".json" style="display:none;" onchange="onConfigFileSelected(event)" />
     </div>
 
     <div id="bench-progress-section" style="display:none;">
@@ -191,6 +195,14 @@
       <div class="card">
         <h2 data-i18n="bench_result_title">Résultats</h2>
         <div id="bench-ranking-table"></div>
+        <!-- Synthèse narrative (Phase 6 chantier post-rewrite) —
+             /api/benchmark/{job_id}/synthesis_preview.  Affiche les
+             phrases-clés générées par le moteur narratif sans avoir
+             à ouvrir le rapport HTML complet. -->
+        <div id="bench-synthesis-section" style="display:none; margin-top:16px;">
+          <h3 style="font-size:14px; color: var(--text-muted); margin-bottom:8px;" data-i18n="bench_synthesis_title">Synthèse narrative</h3>
+          <ul id="bench-synthesis-sentences" style="margin:0; padding-left:20px; font-size:13px;"></ul>
+        </div>
         <div style="margin-top:12px;">
           <a id="bench-report-link" href="#" class="btn btn-primary" target="_blank" data-i18n="bench_open_report">Ouvrir le rapport</a>
         </div>

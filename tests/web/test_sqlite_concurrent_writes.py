@@ -2,7 +2,7 @@
 
 Item M-13 de l'audit institutional-readiness-2026-05.
 
-``picarones.web.jobs.JobStore`` est l'unique point d'écriture sur la
+``picarones.interfaces.web.jobs.JobStore`` est l'unique point d'écriture sur la
 BD ``jobs.sqlite`` (mode WAL, thread-safe par ``_conn`` qui ouvre une
 nouvelle connection par appel). Cette suite valide qu'il survit à :
 

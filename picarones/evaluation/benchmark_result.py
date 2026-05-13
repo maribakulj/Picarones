@@ -180,6 +180,50 @@ class DocumentResult:
             d["readability_metrics"] = self.readability_metrics
         return d
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "DocumentResult":
+        """Reconstruit un :class:`DocumentResult` depuis ``as_dict()``.
+
+        Phase 2.2 du chantier post-rewrite : restauration fidèle de
+        tous les champs avancés (confusion_matrix, taxonomy, structure,
+        hallucination_metrics, ner_metrics, calibration_metrics,
+        philological_metrics, searchability_metrics,
+        numerical_sequence_metrics, readability_metrics,
+        pipeline_metadata, ocr_intermediate).
+
+        Avant ce durcissement, ``ReportGenerator.from_json`` faisait sa
+        propre reconstruction qui ne couvrait que CER/WER/MER/WIL +
+        doc_id/image_path/ground_truth/hypothesis — toutes les
+        analyses détaillées étaient perdues, donc le rapport régénéré
+        depuis JSON n'avait plus accès aux vues taxonomy, NER,
+        calibration, etc.  La reproductibilité scientifique était
+        cassée.
+        """
+        return cls(
+            doc_id=data["doc_id"],
+            image_path=data["image_path"],
+            ground_truth=data["ground_truth"],
+            hypothesis=data["hypothesis"],
+            metrics=MetricsResult.from_dict(data["metrics"]),
+            duration_seconds=data.get("duration_seconds", 0.0),
+            engine_error=data.get("engine_error"),
+            ocr_intermediate=data.get("ocr_intermediate"),
+            pipeline_metadata=data.get("pipeline_metadata", {}) or {},
+            confusion_matrix=data.get("confusion_matrix"),
+            char_scores=data.get("char_scores"),
+            taxonomy=data.get("taxonomy"),
+            structure=data.get("structure"),
+            image_quality=data.get("image_quality"),
+            line_metrics=data.get("line_metrics"),
+            hallucination_metrics=data.get("hallucination_metrics"),
+            ner_metrics=data.get("ner_metrics"),
+            calibration_metrics=data.get("calibration_metrics"),
+            philological_metrics=data.get("philological_metrics"),
+            searchability_metrics=data.get("searchability_metrics"),
+            numerical_sequence_metrics=data.get("numerical_sequence_metrics"),
+            readability_metrics=data.get("readability_metrics"),
+        )
+
     def compact(
         self,
         text_limit: Optional[int] = None,
@@ -407,6 +451,43 @@ class EngineReport:
         if self.aggregated_readability is not None:
             d["aggregated_readability"] = self.aggregated_readability
         return d
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "EngineReport":
+        """Reconstruit un :class:`EngineReport` depuis ``as_dict()``.
+
+        Phase 2.2 du chantier post-rewrite : restauration fidèle des
+        ``aggregated_*`` (confusion, char_scores, taxonomy, structure,
+        image_quality, line_metrics, hallucination, ner, calibration,
+        philological, searchability, numerical_sequences, readability)
+        et de ``pipeline_info``.
+        """
+        return cls(
+            engine_name=data["engine_name"],
+            engine_version=data.get("engine_version", "unknown"),
+            engine_config=data.get("engine_config", {}),
+            document_results=[
+                DocumentResult.from_dict(dr)
+                for dr in data.get("document_results", [])
+            ],
+            aggregated_metrics=data.get("aggregated_metrics", {}) or {},
+            pipeline_info=data.get("pipeline_info", {}) or {},
+            aggregated_confusion=data.get("aggregated_confusion"),
+            aggregated_char_scores=data.get("aggregated_char_scores"),
+            aggregated_taxonomy=data.get("aggregated_taxonomy"),
+            aggregated_structure=data.get("aggregated_structure"),
+            aggregated_image_quality=data.get("aggregated_image_quality"),
+            aggregated_line_metrics=data.get("aggregated_line_metrics"),
+            aggregated_hallucination=data.get("aggregated_hallucination"),
+            aggregated_ner=data.get("aggregated_ner"),
+            aggregated_calibration=data.get("aggregated_calibration"),
+            aggregated_philological=data.get("aggregated_philological"),
+            aggregated_searchability=data.get("aggregated_searchability"),
+            aggregated_numerical_sequences=data.get(
+                "aggregated_numerical_sequences",
+            ),
+            aggregated_readability=data.get("aggregated_readability"),
+        )
 
 
 @dataclass
@@ -687,11 +768,59 @@ class BenchmarkResult:
         return output_path.resolve()
 
     @classmethod
-    def from_json(cls, path: str | Path) -> dict:
-        """Charge un résultat JSON brut depuis le disque (pour le rapport HTML).
+    def from_dict(cls, data: dict) -> "BenchmarkResult":
+        """Reconstruit un :class:`BenchmarkResult` complet depuis
+        ``as_dict()``.
 
-        Retourne le dict Python — la reconstruction complète en objets
-        est réservée aux sprints suivants.
+        Phase 2.2 du chantier post-rewrite : fidélité du round-trip
+        ``to_json → from_dict``.  Auparavant, ``from_json`` retournait
+        le dict brut et l'appelant devait reconstruire à la main —
+        d'où la dérive entre ``ReportGenerator.__init__`` (objets) et
+        ``ReportGenerator.from_json`` (dicts appauvris).  Désormais, un
+        seul chemin canonique : ``BenchmarkResult.from_dict(dict)`` →
+        objet complet, indistinguable d'un benchmark fraîchement
+        exécuté.
+        """
+        corpus_info = data.get("corpus", {}) or {}
+        return cls(
+            corpus_name=corpus_info.get("name", "Corpus"),
+            corpus_source=corpus_info.get("source"),
+            document_count=corpus_info.get("document_count", 0),
+            engine_reports=[
+                EngineReport.from_dict(er)
+                for er in data.get("engine_reports", [])
+            ],
+            run_date=data.get("run_date", ""),
+            picarones_version=data.get("picarones_version", ""),
+            metadata=data.get("metadata", {}) or {},
+        )
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> dict:
+        """Charge le JSON brut (dict Python) — rétrocompatibilité.
+
+        Pour reconstruire un :class:`BenchmarkResult` complet (objets),
+        utiliser :meth:`from_dict` après :meth:`from_json`, ou
+        directement :meth:`from_json_object` ci-dessous.
+
+        Cette méthode est conservée parce que de nombreux consommateurs
+        (tests, ``ReportGenerator.from_json`` legacy, scripts CLI ad
+        hoc) attendent encore un dict.  Le rewrite v2.0 préfère les
+        objets reconstruits ; les nouveaux callers doivent utiliser
+        :meth:`from_json_object`.
         """
         with Path(path).open(encoding="utf-8") as fh:
             return json.load(fh)
+
+    @classmethod
+    def from_json_object(cls, path: str | Path) -> "BenchmarkResult":
+        """Charge un JSON et reconstruit un :class:`BenchmarkResult`
+        complet (objets), avec toutes les analyses avancées préservées.
+
+        Round-trip garanti : ``BenchmarkResult.from_json_object(
+        bm.to_json(p)) == bm`` au sens structurel (les champs
+        ``aggregated_metrics`` peuvent être recalculés par
+        ``__post_init__`` si absents, sinon préservés).
+        """
+        with Path(path).open(encoding="utf-8") as fh:
+            return cls.from_dict(json.load(fh))

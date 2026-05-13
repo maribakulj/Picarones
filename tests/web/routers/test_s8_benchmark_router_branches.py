@@ -6,7 +6,7 @@ Cible : lignes 100, 163, 170, 223 de
 - 100 : ``/api/benchmark/start`` retourne 429 quand le sémaphore
   des jobs concurrents est plein ;
 - 163 : ``validated_prompt_filename`` est appelé pour chaque
-  ``CompetitorConfig.prompt_file`` non-vide → un nom de prompt
+  ``PipelineConfig.prompt_file`` non-vide → un nom de prompt
   invalide doit être rejeté en 400 (vecteur d'exfiltration LLM) ;
 - 170 : ``/api/benchmark/run`` retourne 429 quand le sémaphore
   est plein ;

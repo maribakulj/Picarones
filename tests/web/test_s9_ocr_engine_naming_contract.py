@@ -31,7 +31,7 @@ from picarones.interfaces.web.benchmark_utils import (
     _OCR_KWARGS_BUILDERS,
     _engine_from_competitor,
 )
-from picarones.interfaces.web.models import CompetitorConfig
+from picarones.interfaces.web.models import PipelineConfig
 
 
 # ``cfg_a`` et ``cfg_b`` sont passés tels quels au constructeur de
@@ -48,11 +48,11 @@ def test_two_distinct_configs_coexist_in_resolver(
     """Deux competitors avec ``ocr_model`` distincts doivent recevoir
     des ``name`` distincts au resolver — le bug Tesseract initial,
     généralisé à tous les moteurs supportés."""
-    comp_a = CompetitorConfig(
-        ocr_engine=engine_id, ocr_model="cfg_a", llm_provider="",
+    comp_a = PipelineConfig(
+        engine_name=engine_id, ocr_model="cfg_a", llm_provider="",
     )
-    comp_b = CompetitorConfig(
-        ocr_engine=engine_id, ocr_model="cfg_b", llm_provider="",
+    comp_b = PipelineConfig(
+        engine_name=engine_id, ocr_model="cfg_b", llm_provider="",
     )
     try:
         eng_a = _engine_from_competitor(comp_a)
@@ -82,11 +82,11 @@ def test_standalone_plus_pipeline_same_config_coexist(
     seul + un competitor pipeline OCR+LLM partageant la même config
     OCR.  Le resolver doit accepter (les 2 instances Python sont
     fonctionnellement équivalentes, déduplication idempotente)."""
-    comp_standalone = CompetitorConfig(
-        ocr_engine=engine_id, ocr_model="same_config", llm_provider="",
+    comp_standalone = PipelineConfig(
+        engine_name=engine_id, ocr_model="same_config", llm_provider="",
     )
-    comp_pipeline = CompetitorConfig(
-        ocr_engine=engine_id, ocr_model="same_config",
+    comp_pipeline = PipelineConfig(
+        engine_name=engine_id, ocr_model="same_config",
         llm_provider="mistral", llm_model="mistral-small-latest",
         pipeline_mode="text_only",
         prompt_file="correction_medieval_french.txt",

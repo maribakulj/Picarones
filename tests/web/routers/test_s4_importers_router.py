@@ -109,9 +109,16 @@ class TestHTRUnitedImport:
             assert "non trouvée" in r.json()["detail"]
 
     def test_known_entry_calls_importer(self, tmp_path: Path) -> None:
-        """Avec un entry_id du catalogue démo, l'endpoint appelle
+        """Avec un entry_id du catalogue, l'endpoint appelle
         ``import_htr_united_corpus``.  On mocke pour éviter le
-        download réel."""
+        download réel.
+
+        Phase 4.4 du chantier post-rewrite : le router utilise
+        désormais ``from_remote()`` avec fallback démo ; en mode
+        remote certaines entrées peuvent avoir un ``id`` vide
+        (schéma YAML distant évolutif).  On filtre pour récupérer
+        un id réellement importable, sinon on skip — un id vide
+        serait rejeté par Pydantic en 422 (sécurité OK)."""
         from fastapi.testclient import TestClient
 
         app = _make_app()
@@ -120,12 +127,18 @@ class TestHTRUnitedImport:
         ) as mock_import:
             mock_import.return_value = {"imported": 3, "output_dir": str(tmp_path)}
 
-            # Récupère un entry_id du catalogue démo.
             with TestClient(app) as client:
                 catalog = client.get("/api/htr-united/catalogue").json()
-                if not catalog["entries"]:
-                    pytest.skip("Catalogue démo vide")
-                entry_id = catalog["entries"][0]["id"]
+                non_empty = [
+                    e for e in catalog.get("entries", []) if e.get("id")
+                ]
+                if not non_empty:
+                    pytest.skip(
+                        "Catalogue HTR-United sans entrée avec id non-vide "
+                        "(probable en CI réseau-restreint, ``from_remote`` "
+                        "fallback démo limite).",
+                    )
+                entry_id = non_empty[0]["id"]
 
                 r = client.post(
                     "/api/htr-united/import",
@@ -135,7 +148,7 @@ class TestHTRUnitedImport:
                         "max_samples": 3,
                     },
                 )
-                assert r.status_code == 200
+                assert r.status_code == 200, r.text
                 assert mock_import.called
 
 

@@ -201,7 +201,9 @@ For Docker, institutional deployment, or HuggingFace Spaces, see
 | Engine | Type | Installation |
 |--------|------|-------------|
 | **Azure Doc Intelligence** | Cloud API | `AZURE_DOC_INTEL_ENDPOINT` + `AZURE_DOC_INTEL_KEY` |
+| **Calamari OCR** | Local Python | `pip install -e .[calamari]` + checkpoint |
 | **Google Vision** | Cloud API | `GOOGLE_APPLICATION_CREDENTIALS` env var |
+| **Kraken HTR** | Local Python | `pip install -e .[kraken]` + modèle `.mlmodel` |
 | **Mistral OCR** | Cloud API | `MISTRAL_API_KEY` env var |
 | **Pero OCR** | Local Python | `pip install -e .[pero]` |
 | **Tesseract 5** | Local CLI | `pip install pytesseract` + system binary |
@@ -395,7 +397,7 @@ ruff check picarones/ tests/
 python -m mypy picarones/core/
 ```
 
-**Test suite**: ~4600 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~4700 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

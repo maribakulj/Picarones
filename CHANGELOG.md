@@ -7,6 +7,103 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — Chantier post-rewrite (mai 2026)
+
+Branche `claude/fix-module-rewiring-MHssX` — réconciliation des chemins
+UI / API / runner / JSON / rapport après audit révélant des options
+ignorées, moteurs annoncés sans backend, surfaces filesystem ouvertes
+et round-trip JSON appauvri.
+
+### Added
+
+- **Adapters `KrakenAdapter` et `CalamariAdapter`** (couche 5) avec
+  lazy imports.  Auparavant annoncés par `/api/engines` mais sans
+  factory branchée — benchmark web échouait silencieusement.
+- **Extras pyproject `[calamari]`** (`calamari-ocr>=2.0.0`) ;
+  l'extra `[kraken]` préexistant pointe désormais sur un adapter réel.
+- **`BenchmarkResult.from_dict` / `from_json_object`** restaurent
+  fidèlement toutes les analyses avancées (taxonomy, confusion_matrix,
+  NER, calibration, philological, searchability, hallucination,
+  numerical_sequence, readability) ; le rapport régénéré depuis JSON
+  est désormais indistinguable du in-memory.
+- **`partial_store.compute_run_fingerprint` + `partial_path_for_engine`** :
+  hash SHA-256 stable (engine_config + normalization_profile +
+  char_exclude + corpus mtime/size + code_version) suffixé au nom du
+  fichier partiel.  Deux runs avec configs différentes ne se
+  contaminent plus.
+- **Workflows CLI `diagnose`/`economics`/`edition`** génèrent
+  désormais le rapport HTML automatiquement à côté du JSON
+  (`--no-html` pour skipper).  Les docstrings vendaient déjà les vues
+  HTML correspondantes.
+- **UI** : boutons "💾 Sauvegarder config" / "📂 Charger config" dans
+  l'écran benchmark (binding sur `/api/config/save` + `/api/config/load`
+  qui existaient mais n'étaient appelés par personne).
+- **UI** : bandeau "Mode démo" sous le titre HTR-United quand le
+  catalogue distant est inaccessible (champ `is_demo` exposé par le
+  router).
+- **Tests** : `tests/security/test_phase1_post_rewrite_wiring.py`
+  (~50 tests couvrant les 5 phases) + extensions de tests existants.
+
+### Changed
+
+- **`HTRUnitedCatalogue`** : router utilise `from_remote(timeout=5)`
+  avec fallback automatique sur démo (au lieu de `from_demo()`
+  exclusif).  Variable d'env `PICARONES_HTR_UNITED_OFFLINE=1` pour
+  forcer démo (CI / déploiements offline).
+- **`upload_purge_task` (RGPD)** : démarrée par le lifespan FastAPI
+  (auparavant définie mais jamais lancée).  `JobStore.create_job`
+  reçoit désormais un payload `{"corpus": req.corpus_path}` pour que
+  la purge identifie les corpus actifs.
+- **`/api/benchmark/start`** : worker unifié — délègue à
+  `run_benchmark_thread_v2` après conversion
+  `BenchmarkRequest → BenchmarkRunRequest`.  Marqué deprecated dans
+  les logs ; un seul chemin à patcher.
+- **CLI `engines`** : source de vérité unique avec
+  `adapters/ocr/factory._SUPPORTED`.  Plus de hardcode local
+  `[tesseract, pero_ocr]` qui divergeait du web.
+- **`ReportGenerator.from_json`** : délègue à
+  `BenchmarkResult.from_json_object` (simplification + fidélité).
+
+### Breaking Changes
+
+- **`CompetitorConfig` → `PipelineConfig`** (renommage de classe).
+- **`PipelineConfig.ocr_engine` → `engine_name`** : le field accepte
+  aussi `corpus` (OCR pré-calculé) et des VLMs en zero-shot — le
+  préfixe `ocr_` était trompeur.  Les clients qui envoyaient
+  `{"ocr_engine": "…"}` doivent migrer vers `{"engine_name": "…"}`
+  (Pydantic v2 ignore silencieusement l'extra → benchmark refuse).
+- **`PipelineConfig.pipeline_mode`** typé `Literal["text_only",
+  "text_and_image", "zero_shot"]`.  Toute autre valeur (y compris
+  les anciens alias `post_correction_text` /
+  `post_correction_image`) est rejetée en 422 par Pydantic — fini
+  le fallback silencieux vers `text_only` qui masquait les configs
+  invalides.
+
+### Security
+
+- **`output_dir` validé** (`validated_path` contre
+  `compute_workspace_roots`) dans `api_htr_united_import` et
+  `api_huggingface_import` — plus de path traversal écriture.
+- **`db_path` validé** dans `/api/history/regressions` — plus de
+  lecture SQLite arbitraire.  Pour pointer une base hors workspace,
+  exporter `PICARONES_HISTORY_DB`.
+- **ZIP collision de basename** : `a/img.png` + `b/img.png` ne
+  s'écrasent plus silencieusement — second renommé avec préfixe slug
+  du dirname source.
+- **ZIP image extraite validée** : `validate_image_safe` (Pillow.verify,
+  anti-bombe, limite taille) appelé sur chaque image lors de
+  l'extraction — auparavant les images extraites passaient sans
+  vérif (zip bomb jusqu'à 500 Mo brut).
+
+### Fixed
+
+- Round-trip `BenchmarkResult.to_json` ↔ `from_json` préserve désormais
+  l'intégralité des analyses (reproductibilité scientifique).
+- Partial store fingerprint évite la réutilisation illégale de
+  résultats entre runs avec configs différentes.
+
+---
+
 ## [2.0.0] — Legacy retirement complete (mai 2026)
 
 **Breaking changes** majeurs : suppression complète des paquets

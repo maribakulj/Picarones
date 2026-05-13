@@ -12,7 +12,7 @@ Bug observé en prod (interface web, 2026-05-10) :
     avec des instances différentes — collision impossible à résoudre.
 
 Cause : ``_engine_from_competitor`` crée une instance ``TesseractAdapter``
-fraîche pour chaque ``CompetitorConfig``.  Quand deux concurrents
+fraîche pour chaque ``PipelineConfig``.  Quand deux concurrents
 partagent le même moteur OCR (l'un seul, l'autre dans un pipeline),
 ``build_adapter_resolver`` voyait deux instances Python distinctes
 sous le même ``name="tesseract"`` et levait ``PicaronesError`` à tort

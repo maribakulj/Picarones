@@ -108,6 +108,7 @@ const T = {
     bench_progress_title: "Progression",
     bench_log: "Journal",
     bench_result_title: "Résultats",
+    bench_synthesis_title: "Synthèse narrative",
     bench_open_report: "Ouvrir le rapport",
     reports_title: "Rapports générés",
     reports_dir_label: "Dossier de rapports",
@@ -116,6 +117,8 @@ const T = {
     engines_llm_title: "LLMs disponibles",
     import_htr_title: "Import HTR-United",
     import_htr_desc: "Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.",
+    htr_demo_badge: "Mode démo",
+    htr_demo_note: "le catalogue distant est inaccessible ; affichage d'un échantillon embarqué.  Pour le catalogue complet, vérifier la connectivité réseau du serveur.",
     import_hf_title: "Import HuggingFace Datasets",
     import_hf_desc: "Datasets OCR/HTR publics depuis HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).",
     import_search_label: "Recherche",
@@ -192,6 +195,7 @@ const T = {
     bench_progress_title: "Progress",
     bench_log: "Log",
     bench_result_title: "Results",
+    bench_synthesis_title: "Narrative synthesis",
     bench_open_report: "Open report",
     reports_title: "Generated reports",
     reports_dir_label: "Reports directory",
@@ -200,6 +204,8 @@ const T = {
     engines_llm_title: "Available LLMs",
     import_htr_title: "Import from HTR-United",
     import_htr_desc: "Community catalogue of HTR/OCR datasets for heritage documents.",
+    htr_demo_badge: "Demo mode",
+    htr_demo_note: "the remote catalogue is unreachable; showing an embedded sample.  For the full catalogue, check the server's network connectivity.",
     import_hf_title: "Import from HuggingFace Datasets",
     import_hf_desc: "Public OCR/HTR datasets from HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).",
     import_search_label: "Search",
@@ -477,12 +483,12 @@ function addCompetitor() {
   const mode = document.querySelector("input[name=compose-mode]:checked").value;
   const errEl = document.getElementById("compose-error");
 
-  const comp = { name: "", ocr_engine: "", ocr_model: "",
+  const comp = { name: "", engine_name: "", ocr_model: "",
                   llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "" };
 
   if (mode === "postcorrection") {
     // Post-correction : OCR vient du corpus (.ocr.txt)
-    comp.ocr_engine = "corpus";
+    comp.engine_name = "corpus";
     comp.llm_provider = document.getElementById("compose-llm-provider").value;
     comp.llm_model = document.getElementById("compose-llm-model").value;
     comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
@@ -500,7 +506,7 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
       return;
     }
-    comp.ocr_engine = ocrEngine;
+    comp.engine_name = ocrEngine;
     comp.ocr_model = ocrModel;
     comp.llm_provider = document.getElementById("compose-llm-provider").value;
     comp.llm_model = document.getElementById("compose-llm-model").value;
@@ -519,7 +525,7 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un moteur OCR." : "Select an OCR engine.";
       return;
     }
-    comp.ocr_engine = ocrEngine;
+    comp.engine_name = ocrEngine;
     comp.ocr_model = ocrModel;
     comp.name = `${ocrEngine}${ocrModel ? " ("+ocrModel+")" : ""}`;
   }
@@ -541,7 +547,7 @@ function renderCompetitors() {
     return;
   }
   container.innerHTML = _competitors.map((c, i) => {
-    const isCorpusOCR = c.ocr_engine === "corpus" || (c.ocr_engine === "" && c.llm_provider);
+    const isCorpusOCR = c.engine_name === "corpus" || (c.engine_name === "" && c.llm_provider);
     const isPipeline = !!c.llm_provider && !isCorpusOCR;
     let badge, detail;
     if (isCorpusOCR) {
@@ -549,10 +555,10 @@ function renderCompetitors() {
       detail = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else if (isPipeline) {
       badge = "⛓ Pipeline";
-      detail = `${c.ocr_engine}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+      detail = `${c.engine_name}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else {
       badge = "🔍 OCR";
-      detail = `${c.ocr_engine}:${c.ocr_model}`;
+      detail = `${c.engine_name}:${c.ocr_model}`;
     }
     return `<div class="competitor-card">
       <div class="competitor-info">
@@ -775,6 +781,50 @@ function _showResults(data) {
     html += "</tbody></table>";
     document.getElementById("bench-ranking-table").innerHTML = html;
   }
+  // Phase 6 chantier post-rewrite : appel à
+  // /api/benchmark/{job_id}/synthesis_preview pour afficher la
+  // synthèse narrative (moteur narratif côté serveur) sans avoir à
+  // ouvrir le rapport HTML.  Avant : endpoint existait + testé serveur
+  // mais zéro appel depuis l'UI (code zombie typique post-rewrite).
+  if (_currentJobId) {
+    _loadSynthesisPreview(_currentJobId);
+  }
+}
+
+async function _loadSynthesisPreview(jobId) {
+  /** GET /api/benchmark/{jobId}/synthesis_preview et injecte les
+   * phrases dans #bench-synthesis-sentences.  En cas d'erreur (job
+   * sans synthèse, JSON manquant, narratif indisponible) on masque
+   * la section silencieusement — la synthèse est un bonus, pas un
+   * bloquant. */
+  const section = document.getElementById("bench-synthesis-section");
+  const list = document.getElementById("bench-synthesis-sentences");
+  if (!section || !list) return;
+  section.style.display = "none";
+  list.innerHTML = "";
+  try {
+    const r = await fetch(
+      `/api/benchmark/${encodeURIComponent(jobId)}/synthesis_preview?lang=${encodeURIComponent(lang)}`,
+    );
+    if (!r.ok) return;
+    const d = await r.json();
+    const sentences = Array.isArray(d.sentences) ? d.sentences : [];
+    if (sentences.length === 0) return;
+    list.innerHTML = sentences
+      .map(s => `<li>${_escapeHtml(String(s))}</li>`)
+      .join("");
+    section.style.display = "block";
+  } catch (e) {
+    // Synthèse optionnelle — on n'ennuie pas l'utilisateur.
+  }
+}
+
+function _escapeHtml(s) {
+  /** Helper local : on injecte les phrases dans innerHTML donc il
+   * faut neutraliser les balises HTML potentielles (les phrases
+   * narratives peuvent contenir des noms de moteurs avec ``<`` ou ``>``
+   * théoriquement). */
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function _finishBenchmark() {
@@ -866,10 +916,25 @@ async function loadEngines() {
 }
 
 // ─── HTR-United ──────────────────────────────────────────────────────────────
+function _updateHtrDemoBanner(isDemo) {
+  /** Affiche / masque le bandeau "Mode démo" sous le titre HTR-United.
+   *
+   * Phase 4.4 du chantier post-rewrite : l'endpoint
+   * ``/api/htr-united/catalogue`` retourne désormais le champ
+   * ``is_demo`` (``true`` quand le serveur ne peut pas joindre le
+   * catalogue distant et fallback sur l'échantillon embarqué).  Avant,
+   * l'UI annonçait "Catalogue HTR-United" sans distinguer mode démo
+   * vs catalogue complet, vecteur de confusion utilisateur. */
+  const el = document.getElementById("htr-demo-banner");
+  if (!el) return;
+  el.style.display = isDemo ? "block" : "none";
+}
+
 async function initHTRFilters() {
   try {
     const r = await fetch("/api/htr-united/catalogue");
     const d = await r.json();
+    _updateHtrDemoBanner(Boolean(d.is_demo));
     const langSel = document.getElementById("htr-lang-filter");
     const scriptSel = document.getElementById("htr-script-filter");
     langSel.innerHTML = `<option value="">${t("all")}</option>`;
@@ -893,6 +958,7 @@ async function searchHTRUnited() {
     const url = `/api/htr-united/catalogue?query=${encodeURIComponent(q)}&language=${encodeURIComponent(lang2)}&script=${encodeURIComponent(script)}`;
     const r = await fetch(url);
     const d = await r.json();
+    _updateHtrDemoBanner(Boolean(d.is_demo));
     if (d.entries.length === 0) {
       container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
       return;
@@ -1164,6 +1230,135 @@ async function deleteUploadedCorpus(corpusId) {
       document.getElementById("corpus-info").textContent = "";
     }
   } catch(e) {}
+}
+
+// ─── Config save / load ──────────────────────────────────────────────────────
+// Bindings UI pour /api/config/save et /api/config/load (Phase 4.3 du
+// chantier post-rewrite).  Avant ce wiring, les endpoints existaient
+// côté serveur (avec tests dédiés) mais aucun bouton ne les appelait —
+// code zombie typique post-rewrite.
+
+function _gatherCurrentConfig() {
+  /** Sérialise l'état UI courant en dict compatible
+   * ``/api/config/save``.  Inclut les compétiteurs composés
+   * (_competitors), les options de normalisation et le profil de
+   * langue rapport. */
+  return {
+    label: document.getElementById("report-name").value || "picarones-config",
+    corpus_path: document.getElementById("corpus-path").value,
+    competitors: _competitors,
+    normalization_profile: document.getElementById("norm-profile").value,
+    char_exclude: document.getElementById("char-exclude").value,
+    output_dir: document.getElementById("output-dir").value,
+    report_name: document.getElementById("report-name").value,
+  };
+}
+
+async function saveConfigToFile() {
+  /** POST la config courante à /api/config/save et déclenche le
+   * téléchargement du JSON retourné. */
+  const cfg = _gatherCurrentConfig();
+  try {
+    const r = await fetch("/api/config/save", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg),
+    });
+    if (!r.ok) {
+      const detail = await r.text();
+      alert(lang === "fr"
+        ? "Erreur sauvegarde config : " + detail
+        : "Save config error: " + detail);
+      return;
+    }
+    const blob = await r.blob();
+    // Reconstitue le filename depuis le header Content-Disposition.
+    const cd = r.headers.get("Content-Disposition") || "";
+    const m = cd.match(/filename="([^"]+)"/);
+    const filename = m ? m[1] : "picarones-config.json";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert(lang === "fr"
+      ? "Erreur sauvegarde config : " + e.message
+      : "Save config error: " + e.message);
+  }
+}
+
+function loadConfigFromFile() {
+  /** Déclenche le sélecteur de fichier — l'utilisateur choisit un
+   * JSON, ``onConfigFileSelected`` fait le reste. */
+  document.getElementById("config-file-input").click();
+}
+
+async function onConfigFileSelected(event) {
+  /** Lit le fichier JSON, POST à /api/config/load pour validation +
+   * upgrade éventuel, puis restaure l'état UI depuis le dict retourné. */
+  const file = event.target.files[0];
+  if (!file) return;
+  // Reset l'input pour permettre un re-chargement du même fichier.
+  event.target.value = "";
+  try {
+    const text = await file.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      alert(lang === "fr"
+        ? "Fichier JSON invalide : " + e.message
+        : "Invalid JSON file: " + e.message);
+      return;
+    }
+    const r = await fetch("/api/config/load", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(parsed),
+    });
+    if (!r.ok) {
+      const detail = await r.text();
+      alert(lang === "fr"
+        ? "Erreur chargement config : " + detail
+        : "Load config error: " + detail);
+      return;
+    }
+    const result = await r.json();
+    _applyConfig(result.config || {});
+  } catch (e) {
+    alert(lang === "fr"
+      ? "Erreur chargement config : " + e.message
+      : "Load config error: " + e.message);
+  }
+}
+
+function _applyConfig(cfg) {
+  /** Restaure l'état UI depuis un dict de config validé serveur.
+   * Champs inconnus = ignorés silencieusement (responsabilité de
+   * ``filter_config`` côté serveur). */
+  if (typeof cfg.corpus_path === "string") {
+    document.getElementById("corpus-path").value = cfg.corpus_path;
+  }
+  if (typeof cfg.normalization_profile === "string") {
+    document.getElementById("norm-profile").value = cfg.normalization_profile;
+  }
+  if (typeof cfg.char_exclude === "string") {
+    document.getElementById("char-exclude").value = cfg.char_exclude;
+  }
+  if (typeof cfg.output_dir === "string") {
+    document.getElementById("output-dir").value = cfg.output_dir;
+  }
+  if (typeof cfg.report_name === "string") {
+    document.getElementById("report-name").value = cfg.report_name;
+  }
+  if (Array.isArray(cfg.competitors)) {
+    _competitors = cfg.competitors;
+    renderCompetitors();
+  }
 }
 
 // ─── Init ────────────────────────────────────────────────────────────────────

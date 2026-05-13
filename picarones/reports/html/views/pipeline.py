@@ -3,18 +3,18 @@
 Regroupe les renderers spécifiques aux benchmarks de **pipelines
 composées** (axe B du plan d'évolution 2026, Sprints 63-68, 94-97) :
 
-- :func:`picarones.report.pipeline_render.build_pipeline_summary_html`
+- :func:`picarones.reports.html.renderers.pipeline.build_pipeline_summary_html`
   — résumé corpus-wide (taux de succès, durée, métriques aux jonctions).
-- :func:`picarones.report.pipeline_render.build_pipeline_steps_table_html`
+- :func:`picarones.reports.html.renderers.pipeline.build_pipeline_steps_table_html`
   — tableau par étape (Sprint 67).
-- :func:`picarones.report.pipeline_dag_render.build_pipeline_dag_html`
+- :func:`picarones.reports.html.renderers.pipeline_dag.build_pipeline_dag_html`
   — visualisation SVG du DAG avec couleur des arêtes selon la métrique.
-- :func:`picarones.report.error_absorption_render.build_error_absorption_html`
+- :func:`picarones.reports.html.renderers.error_absorption.build_error_absorption_html`
   — corrections vs introductions à chaque jonction (Sprint 94).
-- :func:`picarones.report.incremental_comparison_render.build_incremental_comparison_html`
+- :func:`picarones.reports.html.renderers.incremental_comparison.build_incremental_comparison_html`
   — effet isolé d'un slot (LLM, reconstructeur, etc.) en contrôlant
   les autres (Sprint 96).
-- :func:`picarones.report.module_audit_render.build_module_audit_html`
+- :func:`picarones.reports.html.renderers.module_audit.build_module_audit_html`
   — audit de conformité des modules contribués (Sprint 97).
 
 Cette vue ne s'applique pas au rapport standard (mono-moteur OCR

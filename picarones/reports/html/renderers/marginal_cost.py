@@ -25,7 +25,7 @@ def build_marginal_cost_html(
     ----------
     matrix:
         Sortie de
-        :func:`picarones.report.report_data.extra_metrics.compute_marginal_cost_section`.
+        :func:`picarones.reports.html.data.extra_metrics.compute_marginal_cost_section`.
         Liste de dicts triée par coût marginal croissant. Si ``None``
         ou vide, retourne ``""``.
     labels:

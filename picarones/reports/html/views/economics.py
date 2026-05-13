@@ -2,7 +2,7 @@
 
 Regroupe les renderers orientés *décision budget* :
 
-- :func:`picarones.report.throughput_render.build_throughput_html`
+- :func:`picarones.reports.html.renderers.throughput.build_throughput_html`
   — pages/h **utilisable** (raw - correction humaine), formule
   HTR-United (5 s/erreur).
 

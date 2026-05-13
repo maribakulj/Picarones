@@ -91,7 +91,7 @@ def _classify_metric(
 
 
 # Sprint A7 (m-5) — palette Okabe-Ito daltonien-friendly importée
-# depuis le module canonique ``picarones.report.colors``. Avant
+# depuis le module canonique ``picarones.reports._helpers.colors``. Avant
 # A7, les hex étaient hardcodés (rouge/vert classiques, problème
 # pour la deutéranopie) ; maintenant cohérent avec _cer_color et
 # difficulty_color.

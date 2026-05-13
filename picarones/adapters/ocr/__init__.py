@@ -8,6 +8,10 @@ Implémentations livrées
 -----------------------
 - ``TesseractAdapter`` — Tesseract 5 (OSS, CPU-bound).
 - ``PeroOCRAdapter`` — Pero OCR (manuscrits, GPU recommandé).
+- ``KrakenAdapter`` — Kraken HTR (manuscrits + imprimés anciens,
+  écosystème HTR-United). Phase 3 chantier post-rewrite.
+- ``CalamariAdapter`` — Calamari OCR (imprimés historiques,
+  TensorFlow). Phase 3 chantier post-rewrite.
 - ``MistralOCRAdapter`` — Mistral OCR API (cloud).
 - ``GoogleVisionAdapter`` — Google Vision API (cloud).
 - ``AzureDocIntelAdapter`` — Azure Document Intelligence (cloud).
@@ -20,8 +24,10 @@ from __future__ import annotations
 
 from picarones.adapters.ocr.azure_doc_intel import AzureDocIntelAdapter
 from picarones.adapters.ocr.base import BaseOCRAdapter, OCRAdapterError
+from picarones.adapters.ocr.calamari import CalamariAdapter
 from picarones.adapters.ocr.factory import ocr_adapter_from_name
 from picarones.adapters.ocr.google_vision import GoogleVisionAdapter
+from picarones.adapters.ocr.kraken import KrakenAdapter
 from picarones.adapters.ocr.mistral_ocr import MistralOCRAdapter
 from picarones.adapters.ocr.pero_ocr import PeroOCRAdapter
 from picarones.adapters.ocr.precomputed import PrecomputedTextAdapter
@@ -31,7 +37,9 @@ __all__ = [
     "BaseOCRAdapter",
     "OCRAdapterError",
     "AzureDocIntelAdapter",
+    "CalamariAdapter",
     "GoogleVisionAdapter",
+    "KrakenAdapter",
     "MistralOCRAdapter",
     "PeroOCRAdapter",
     "PrecomputedTextAdapter",

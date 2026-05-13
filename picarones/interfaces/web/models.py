@@ -67,6 +67,24 @@ Liste alignée sur ``measurements.normalization.NORMALIZATION_PROFILES``
 répercutée ici sous peine de rejet Pydantic au niveau API web.
 Sprint A14-S1 — alignement README ↔ web models ↔ runtime."""
 
+PipelineMode = Literal["text_only", "text_and_image", "zero_shot"]
+"""Modes de pipeline OCR+LLM acceptés par ``PipelineConfig``.
+
+Aligné sur :class:`picarones.pipeline.llm_pipeline_config.OCRLLMMode` —
+toute valeur hors de ces 3 littéraux est rejetée 422 par Pydantic.
+
+Sémantique :
+
+- ``text_only`` — l'OCR amont produit un texte brut, le LLM le corrige
+  sans voir l'image (post-correction texte).
+- ``text_and_image`` — l'OCR amont produit un texte ; le VLM le corrige
+  en s'appuyant sur l'image (post-correction multimodale).
+- ``zero_shot`` — pas d'OCR amont ; un VLM transcrit l'image directement.
+
+Phase 2 du chantier post-rewrite : suppression du fallback silencieux
+``mode_map.get(comp.pipeline_mode, 'text_only')`` qui acceptait toute
+chaîne arbitraire et la mappait sur ``text_only``."""
+
 
 class BenchmarkRequest(BaseModel):
     corpus_path: str = Field(min_length=1, max_length=_MAX_PATH)
@@ -94,21 +112,37 @@ class HuggingFaceImportRequest(BaseModel):
     max_samples: int = Field(default=100, ge=1, le=10_000)
 
 
-class CompetitorConfig(BaseModel):
+class PipelineConfig(BaseModel):
     name: str = Field(default="", max_length=_MAX_NAME)
-    ocr_engine: str = Field(default="", max_length=_MAX_NAME)
-    """Moteur OCR : ``tesseract``, ``mistral_ocr``, … ou ``corpus``
-    pour utiliser l'OCR pré-calculé."""
+    engine_name: str = Field(default="", max_length=_MAX_NAME)
+    """Identifiant du moteur de transcription : ``tesseract``,
+    ``mistral_ocr``, ``kraken``, ``calamari``, … ou ``corpus`` pour
+    utiliser l'OCR pré-calculé.  Vide (``""``) pour un pipeline LLM
+    seul (zero-shot VLM).
+
+    Phase 5b du chantier post-rewrite : renommé depuis ``ocr_engine``
+    car le field accepte aussi des VLMs (zero_shot) et des sources
+    pré-calculées (``corpus``) — le préfixe ``ocr_`` était trompeur.
+    Rupture API : les clients qui envoyaient ``ocr_engine`` reçoivent
+    désormais 422.
+    """
     ocr_model: str = Field(default="", max_length=_MAX_NAME)
     llm_provider: str = Field(default="", max_length=_MAX_NAME)
     llm_model: str = Field(default="", max_length=_MAX_NAME)
-    pipeline_mode: str = Field(default="", max_length=_MAX_NAME)
+    pipeline_mode: PipelineMode | Literal[""] = ""
+    """Mode du pipeline OCR+LLM — vide si pas de pipeline LLM (OCR seul).
+
+    Typage strict (Phase 2 chantier post-rewrite) : Pydantic rejette
+    en 422 toute valeur hors de la matrice canonique au lieu d'aliaser
+    silencieusement sur ``text_only``.  La chaîne vide (``""``) reste
+    autorisée pour indiquer qu'aucun LLM n'est attaché au moteur OCR.
+    """
     prompt_file: str = Field(default="", max_length=_MAX_PROMPT_FILENAME)
 
 
 class BenchmarkRunRequest(BaseModel):
     corpus_path: str = Field(min_length=1, max_length=_MAX_PATH)
-    competitors: list[CompetitorConfig] = Field(
+    competitors: list[PipelineConfig] = Field(
         min_length=1, max_length=_MAX_COMPETITORS,
     )
     normalization_profile: NormalizationProfileId = "nfc"
@@ -122,9 +156,10 @@ __all__ = [
     "TesseractLang",
     "ReportLang",
     "NormalizationProfileId",
+    "PipelineMode",
     "BenchmarkRequest",
     "HTRUnitedImportRequest",
     "HuggingFaceImportRequest",
-    "CompetitorConfig",
+    "PipelineConfig",
     "BenchmarkRunRequest",
 ]

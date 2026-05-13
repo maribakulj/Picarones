@@ -151,27 +151,59 @@ def metrics_cmd(reference: str, hypothesis: str, json_output: bool) -> None:
 # picarones engines
 # ---------------------------------------------------------------------------
 
+#: Catalogue source-de-vérité des moteurs OCR exposés.
+#:
+#: Phase 3 chantier post-rewrite : remplace l'ancienne liste hardcodée
+#: ``[tesseract, pero_ocr]`` qui divergeait du web (``/api/engines``
+#: annonçait 8 engines, dont kraken/calamari sans backend, dont
+#: mistral_ocr/google_vision/azure_doc_intel jamais exposés à la CLI).
+#: Désormais la liste est dérivée de la factory canonique
+#: ``picarones.adapters.ocr.factory._SUPPORTED`` ; ajouter un engine
+#: nécessite (1) un adapter dans ``adapters/ocr/`` et (2) une entrée
+#: factory — pas de divergence possible avec l'API web.
+_CLI_ENGINE_CATALOG: tuple[tuple[str, str, str, str], ...] = (
+    ("tesseract", "Tesseract 5", "pytesseract", "[dev]"),
+    ("pero_ocr", "Pero OCR", "pero_ocr", "[pero]"),
+    ("kraken", "Kraken HTR", "kraken", "[kraken]"),
+    ("calamari", "Calamari OCR", "calamari_ocr", "[calamari]"),
+    ("mistral_ocr", "Mistral OCR (cloud)", "mistralai", "[llm]"),
+    ("google_vision", "Google Vision (cloud)", "google.cloud.vision", "[ocr-cloud]"),
+    ("azure_doc_intel", "Azure Doc Intel (cloud)",
+     "azure.ai.documentintelligence", "[ocr-cloud]"),
+    ("precomputed", "Précalculé (OCR pré-existant)", "", ""),
+)
+
+
 @cli.command("engines")
 def engines_cmd() -> None:
-    """Liste les moteurs OCR disponibles et vérifie leur installation."""
-    engines = [
-        ("tesseract", "Tesseract 5 (pytesseract)", "pytesseract"),
-        ("pero_ocr", "Pero OCR", "pero_ocr"),
-    ]
+    """Liste les moteurs OCR disponibles et vérifie leur installation.
+
+    Source de vérité unique avec ``/api/engines`` (Phase 3 du chantier
+    post-rewrite) : tous les moteurs listés ici sont effectivement
+    instanciables via ``picarones.adapters.ocr.factory``.
+    """
+    from picarones.adapters.ocr.factory import _SUPPORTED
 
     click.echo("Moteurs OCR disponibles :\n")
-    for engine_id, label, module in engines:
-        try:
-            __import__(module)
-            status = click.style("✓ disponible", fg="green")
-        except ImportError:
-            status = click.style("✗ non installé", fg="red")
-        click.echo(f"  {engine_id:<15} {label:<35} {status}")
+    for engine_id, label, module, extra in _CLI_ENGINE_CATALOG:
+        # Garde-fou de cohérence : l'entrée CLI ne doit jamais
+        # référencer un engine inconnu de la factory canonique.
+        if engine_id not in _SUPPORTED:
+            continue
+        if not module:
+            status = click.style("✓ intégré", fg="green")
+        else:
+            try:
+                __import__(module)
+                status = click.style("✓ disponible", fg="green")
+            except ImportError:
+                hint = f" (pip install picarones{extra})" if extra else ""
+                status = click.style(f"✗ non installé{hint}", fg="red")
+        click.echo(f"  {engine_id:<18} {label:<32} {status}")
 
     click.echo(
-        "\nPour installer un moteur manquant :\n"
-        "  pip install pytesseract\n"
-        "  pip install pero-ocr"
+        "\nNote : kraken/calamari exigent un modèle utilisateur "
+        "(``.mlmodel``/``.ckpt``) — pas de modèle par défaut.",
     )
 
 

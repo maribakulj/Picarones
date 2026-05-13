@@ -171,17 +171,17 @@ class TestEndToEndPromptReachesLLM:
         )
 
     def test_web_factory_to_pipeline_to_llm_flow(self) -> None:
-        """End-to-end depuis ``CompetitorConfig`` (UI) jusqu'au LLM :
+        """End-to-end depuis ``PipelineConfig`` (UI) jusqu'au LLM :
         le prompt arrivé au LLM doit être le CONTENU du fichier,
         pas le filename.  C'est le chemin exact du bug en prod."""
         from picarones.interfaces.web.benchmark_utils import (
             _engine_from_competitor,
         )
-        from picarones.interfaces.web.models import CompetitorConfig
+        from picarones.interfaces.web.models import PipelineConfig
         from picarones.adapters.llm.base import _substitute_prompt_variables
 
-        comp = CompetitorConfig(
-            ocr_engine="tesseract", ocr_model="fra",
+        comp = PipelineConfig(
+            engine_name="tesseract", ocr_model="fra",
             llm_provider="mistral", llm_model="mistral-small-latest",
             pipeline_mode="text_only",
             prompt_file="correction_early_modern_english.txt",

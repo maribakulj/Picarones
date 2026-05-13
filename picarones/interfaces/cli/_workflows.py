@@ -205,6 +205,20 @@ def run_cmd(
 # L'option ``--profile`` reste disponible mais le défaut change pour
 # chaque commande.
 
+def _html_path_from_json(json_path: str) -> str:
+    """Convertit un chemin ``results.json`` en chemin ``results.html``.
+
+    Utilisé par les workflows pour générer automatiquement le rapport
+    HTML à côté du JSON (Phase 4.5 du chantier post-rewrite — auparavant
+    chaque workflow imprimait juste le chemin JSON et l'utilisateur
+    devait relancer ``picarones report --results …`` manuellement,
+    contre-intuitif vu que le workflow vendait un livrable HTML).
+    """
+    from pathlib import Path
+    p = Path(json_path)
+    return str(p.with_suffix(".html"))
+
+
 def _run_workflow(
     *,
     corpus: str,
@@ -216,14 +230,25 @@ def _run_workflow(
     verbose: bool,
     profile: str,
     workflow_label: str,
+    generate_html: bool = True,
+    html_lang: str = "fr",
 ) -> None:
     """Implémentation commune des commandes ``run``, ``diagnose``,
     ``economics`` et ``edition``.
 
     Les 4 commandes partagent le squelette : chargement corpus →
     instanciation moteurs → ``run_benchmark_via_service(profile=...)`` → affichage
-    classement.  Seul le profil par défaut et le message d'en-tête
-    diffèrent.
+    classement → génération automatique du rapport HTML.  Seul le profil
+    par défaut et le message d'en-tête diffèrent.
+
+    Phase 4.5 du chantier post-rewrite : ``generate_html=True`` par
+    défaut.  Auparavant les workflows ne produisaient que du JSON, ce
+    qui forçait l'utilisateur à ré-exécuter ``picarones report``
+    manuellement — contre-intuitif (les docstrings vendaient une vue
+    HTML "Diagnostic", "Coût et performance", "Taxonomie avancée"
+    qui n'était jamais générée).  Passer ``generate_html=False``
+    permet de désactiver pour les usages CI/scripts qui ne veulent
+    que le JSON.
     """
     _setup_logging(verbose)
 
@@ -281,7 +306,25 @@ def _run_workflow(
             f"CER={cer_pct:<8} WER={wer_pct}{failed_str}"
         )
 
-    click.echo(f"\nRésultats écrits dans : {output}")
+    click.echo(f"\nRésultats JSON écrits dans : {output}")
+
+    if generate_html:
+        html_output = _html_path_from_json(output)
+        try:
+            from picarones.reports.html.generator import ReportGenerator
+            gen = ReportGenerator(result, lang=html_lang)
+            gen.generate(html_output)
+            click.echo(f"Rapport HTML généré    : {html_output}")
+        except Exception as exc:  # noqa: BLE001
+            # Le JSON est déjà écrit ; on logue l'échec HTML sans
+            # quitter avec un code d'erreur (l'utilisateur peut
+            # relancer ``picarones report`` manuellement).
+            click.echo(
+                f"Avertissement : génération HTML échouée ({exc}).  "
+                f"Relancer ``picarones report --results {output}`` "
+                "pour réessayer.",
+                err=True,
+            )
 
 
 @cli.command("diagnose")
@@ -307,9 +350,14 @@ def _run_workflow(
               help="Désactive la barre de progression")
 @click.option("--verbose", "-v", is_flag=True, default=False,
               help="Mode verbeux")
+@click.option("--no-html", is_flag=True, default=False,
+              help="N'écrit que le JSON, pas le rapport HTML")
+@click.option("--html-lang", default="fr", show_default=True,
+              type=click.Choice(["fr", "en"]),
+              help="Langue du rapport HTML")
 def diagnose_cmd(
     corpus: str, engines: str, output: str, lang: str, psm: int,
-    no_progress: bool, verbose: bool,
+    no_progress: bool, verbose: bool, no_html: bool, html_lang: str,
 ) -> None:
     """Workflow diagnostic : bench + leviers d'amélioration + image_predictive.
 
@@ -318,6 +366,9 @@ def diagnose_cmd(
     (chantier 3) : leviers, profil d'image, baseline, longitudinal.
     Idéal pour comprendre *pourquoi* un moteur produit ces résultats
     sur ce corpus, pas seulement *quel CER*.
+
+    Phase 4.5 du chantier post-rewrite : génère désormais le HTML
+    automatiquement à côté du JSON (``--no-html`` pour skipper).
     """
     _run_workflow(
         corpus=corpus, engines=engines, output=output,
@@ -325,6 +376,8 @@ def diagnose_cmd(
         no_progress=no_progress, verbose=verbose,
         profile="diagnostics",
         workflow_label="diagnose",
+        generate_html=not no_html,
+        html_lang=html_lang,
     )
 
 
@@ -351,9 +404,14 @@ def diagnose_cmd(
               help="Désactive la barre de progression")
 @click.option("--verbose", "-v", is_flag=True, default=False,
               help="Mode verbeux")
+@click.option("--no-html", is_flag=True, default=False,
+              help="N'écrit que le JSON, pas le rapport HTML")
+@click.option("--html-lang", default="fr", show_default=True,
+              type=click.Choice(["fr", "en"]),
+              help="Langue du rapport HTML")
 def economics_cmd(
     corpus: str, engines: str, output: str, lang: str, psm: int,
-    no_progress: bool, verbose: bool,
+    no_progress: bool, verbose: bool, no_html: bool, html_lang: str,
 ) -> None:
     """Workflow économique : bench + throughput effectif + (cost projection).
 
@@ -361,7 +419,8 @@ def economics_cmd(
     les métriques de décision budget : pages/h utilisable (intégrant
     la correction humaine HTR-United à 5 s/erreur), coût marginal par
     erreur évitée. La vue HTML « Coût et performance » (chantier 3)
-    est ensuite branchée.
+    est désormais générée automatiquement (Phase 4.5 chantier
+    post-rewrite — ``--no-html`` pour skipper).
     """
     _run_workflow(
         corpus=corpus, engines=engines, output=output,
@@ -369,6 +428,8 @@ def economics_cmd(
         no_progress=no_progress, verbose=verbose,
         profile="economics",
         workflow_label="economics",
+        generate_html=not no_html,
+        html_lang=html_lang,
     )
 
 
@@ -395,9 +456,14 @@ def economics_cmd(
               help="Désactive la barre de progression")
 @click.option("--verbose", "-v", is_flag=True, default=False,
               help="Mode verbeux")
+@click.option("--no-html", is_flag=True, default=False,
+              help="N'écrit que le JSON, pas le rapport HTML")
+@click.option("--html-lang", default="fr", show_default=True,
+              type=click.Choice(["fr", "en"]),
+              help="Langue du rapport HTML")
 def edition_cmd(
     corpus: str, engines: str, output: str, lang: str, psm: int,
-    no_progress: bool, verbose: bool,
+    no_progress: bool, verbose: bool, no_html: bool, html_lang: str,
 ) -> None:
     """Workflow édition critique : bench + métriques philologiques.
 
@@ -407,6 +473,9 @@ def edition_cmd(
     vue HTML « Taxonomie avancée » (chantier 3) avec comparaison
     miroir leader vs runner-up. Cible : éditeurs de chartes,
     paléographes, archivistes.
+
+    Phase 4.5 du chantier post-rewrite : génère le HTML
+    automatiquement (``--no-html`` pour skipper).
     """
     _run_workflow(
         corpus=corpus, engines=engines, output=output,
@@ -414,6 +483,8 @@ def edition_cmd(
         no_progress=no_progress, verbose=verbose,
         profile="philological",
         workflow_label="edition",
+        generate_html=not no_html,
+        html_lang=html_lang,
     )
 
 

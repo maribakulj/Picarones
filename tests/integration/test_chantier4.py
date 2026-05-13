@@ -280,3 +280,60 @@ class TestCliWorkflows:
         assert result.exit_code == 0, result.output
         assert "--corpus" in result.output
         assert "--engines" in result.output
+
+    @pytest.mark.parametrize("cmd_name", ["diagnose", "economics", "edition"])
+    def test_command_exposes_html_options(self, cmd_name):
+        """Phase 4.5 du chantier post-rewrite : les 3 workflows
+        génèrent le HTML automatiquement à côté du JSON ; les options
+        ``--no-html`` (skip HTML pour CI/scripts) et ``--html-lang``
+        (fr/en) doivent être visibles dans ``--help``."""
+        try:
+            from click.testing import CliRunner
+
+            from picarones.interfaces.cli import cli as cli_group
+        except ImportError:
+            pytest.skip("click non installé")
+
+        runner = CliRunner()
+        result = runner.invoke(cli_group, [cmd_name, "--help"])
+        assert result.exit_code == 0, result.output
+        assert "--no-html" in result.output, (
+            f"{cmd_name} doit exposer --no-html (Phase 4.5)"
+        )
+        assert "--html-lang" in result.output, (
+            f"{cmd_name} doit exposer --html-lang (Phase 4.5)"
+        )
+
+    def test_run_workflow_generates_html_by_default(self):
+        """``_run_workflow(..., generate_html=True)`` doit appeler
+        ``ReportGenerator`` avec un path dérivé du JSON output."""
+        from pathlib import Path
+        import ast
+
+        cli_src = (
+            Path(__file__).parent.parent.parent
+            / "picarones" / "interfaces" / "cli" / "_workflows.py"
+        ).read_text(encoding="utf-8")
+        # Vérifications statiques.
+        assert "_html_path_from_json" in cli_src, (
+            "Le helper _html_path_from_json doit dériver "
+            "results.json → results.html"
+        )
+        assert "ReportGenerator" in cli_src, (
+            "Le workflow doit instancier ReportGenerator pour le HTML"
+        )
+        # Le default est ``generate_html=True``.
+        tree = ast.parse(cli_src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "_run_workflow":
+                kwarg_defaults = node.args.kw_defaults
+                kwarg_names = [a.arg for a in node.args.kwonlyargs]
+                idx = kwarg_names.index("generate_html")
+                default = kwarg_defaults[idx]
+                assert isinstance(default, ast.Constant)
+                assert default.value is True, (
+                    "generate_html doit être True par défaut "
+                    "(Phase 4.5)"
+                )
+                return
+        raise AssertionError("_run_workflow introuvable")

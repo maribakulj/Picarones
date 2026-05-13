@@ -27,10 +27,37 @@ from picarones.app.services.partial_store import (
     _partial_path,
     _sanitize_filename,
     _save_partial_line,
+    partial_path_for_engine,
 )
 from picarones.app.services.benchmark_runner import (
+    _engine_config_for_fingerprint,
     run_benchmark_via_service,
 )
+
+
+def _partial_path_for_run(corpus, engine, partial_dir):
+    """Helper test — calcule le chemin partial avec le fingerprint
+    que le runner utilisera par défaut (pas de normalisation, pas
+    de char_exclude, profil ``standard``).  Phase 2.3 du chantier
+    post-rewrite : la clé partial inclut désormais un fingerprint
+    pour empêcher la réutilisation accidentelle entre runs avec
+    configs différentes."""
+    import importlib
+
+    try:
+        code_version = importlib.import_module("picarones").__version__
+    except (ImportError, AttributeError):
+        code_version = "unknown"
+    return partial_path_for_engine(
+        corpus=corpus,
+        engine=engine,
+        partial_dir=partial_dir,
+        engine_config=_engine_config_for_fingerprint(engine),
+        normalization_profile=None,
+        char_exclude=None,
+        profile="standard",
+        code_version=code_version,
+    )
 from picarones.evaluation.benchmark_result import DocumentResult
 from picarones.evaluation.corpus import Corpus, Document
 from picarones.evaluation.metric_result import MetricsResult
@@ -272,7 +299,7 @@ class TestResumeViaPartialDir:
 
         assert bm.document_count == 2
         # Plus aucun fichier partial pour cet engine après succès.
-        partial_path = _partial_path(corpus.name, ocr.name, partial_dir)
+        partial_path = _partial_path_for_run(corpus, ocr, partial_dir)
         assert not partial_path.exists()
 
     def test_resume_skips_already_done_docs(self, tmp_path: Path) -> None:
@@ -296,7 +323,7 @@ class TestResumeViaPartialDir:
         # Pré-écrire un partial pour doc0 avec une CER fictive de 0.99
         # pour vérifier qu'on prend la valeur du partial, pas une
         # nouvelle exécution.
-        partial_path = _partial_path(corpus.name, ocr.name, partial_dir)
+        partial_path = _partial_path_for_run(corpus, ocr, partial_dir)
         pre_existing = _make_doc_result("doc0", hyp="from_partial", cer=0.99)
         _save_partial_line(partial_path, pre_existing)
 
@@ -327,7 +354,7 @@ class TestResumeViaPartialDir:
             "Engine ne devrait pas être appelé — tout est dans le partial.",
         )
 
-        partial_path = _partial_path(corpus.name, ocr.name, partial_dir)
+        partial_path = _partial_path_for_run(corpus, ocr, partial_dir)
         for i in range(2):
             _save_partial_line(
                 partial_path, _make_doc_result(f"doc{i}", hyp=f"prefilled{i}"),
@@ -358,7 +385,7 @@ class TestResumeViaPartialDir:
         ocr_b._run_ocr = lambda p: "from_b"
 
         # Pré-remplir uniquement le partial de engine_a pour doc0.
-        partial_a = _partial_path(corpus.name, ocr_a.name, partial_dir)
+        partial_a = _partial_path_for_run(corpus, ocr_a, partial_dir)
         _save_partial_line(
             partial_a, _make_doc_result("doc0", hyp="A_pre"),
         )
@@ -423,7 +450,7 @@ class TestResumeViaPartialDir:
         # avec doc0 mais pas doc1.  cancel_event signalé avant
         # l'engine suivant.
         ocr_b = _MockOCR(name="incomplete_b")
-        partial_b = _partial_path(corpus.name, ocr_b.name, partial_dir)
+        partial_b = _partial_path_for_run(corpus, ocr_b, partial_dir)
         _save_partial_line(
             partial_b, _make_doc_result("doc0", hyp="B0_pre"),
         )

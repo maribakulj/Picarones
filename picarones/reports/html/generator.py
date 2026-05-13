@@ -17,11 +17,11 @@ Architecture
 Ce module est l'**orchestrateur**. Les responsabilités lourdes sont
 découpées en sous-modules :
 
-- :mod:`picarones.report.assets` — chargement vendor.js, encodage
+- :mod:`picarones.reports._helpers.assets` — chargement vendor.js, encodage
   base64 d'images, externalisation lazy.
-- :mod:`picarones.report.report_data` — construction du dict JSON
+- :mod:`picarones.reports.html.data` — construction du dict JSON
   passé au template (engines, documents, statistiques, Pareto, etc.).
-- :mod:`picarones.report.render_helpers` — couleurs / SVG mutualisés.
+- :mod:`picarones.reports._helpers.render_helpers` — couleurs / SVG mutualisés.
 
 Rétrocompat
 -----------
@@ -35,8 +35,8 @@ Les autres noms ``_pct``, ``_safe``, ``_cer_bg``, ``_encode_image_b64``,
 ``_encode_images_b64_from_result``, ``_externalize_images_to_dir``,
 ``_load_vendor_js`` sont soit utilisés en interne (les 3 derniers,
 voir :meth:`ReportGenerator.generate`), soit accessibles via leur
-nom canonique dans :mod:`picarones.report.assets` ou
-:mod:`picarones.report.render_helpers`.
+nom canonique dans :mod:`picarones.reports._helpers.assets` ou
+:mod:`picarones.reports._helpers.render_helpers`.
 """
 
 from __future__ import annotations
@@ -436,54 +436,17 @@ class ReportGenerator:
         Compatible avec les fichiers produits par ``BenchmarkResult.to_json()``.
         Les images base64 doivent être passées via ``kwargs["images_b64"]``
         si elles ne sont pas dans le JSON.
+
+        Phase 2.2 du chantier post-rewrite : délégué à
+        :meth:`BenchmarkResult.from_json_object` qui reconstruit tous
+        les champs avancés (confusion_matrix, taxonomy, structure,
+        hallucination_metrics, ner_metrics, calibration_metrics,
+        philological_metrics, searchability_metrics,
+        numerical_sequence_metrics, readability_metrics,
+        pipeline_metadata, ocr_intermediate + leurs équivalents
+        ``aggregated_*`` au niveau EngineReport).  Le rapport régénéré
+        depuis JSON est désormais indistinguable du rapport in-memory.
         """
-        import json as _json
-
-        data = _json.loads(Path(json_path).read_text(encoding="utf-8"))
-
-        # Reconstruction minimale d'un BenchmarkResult depuis le dict
-        from picarones.evaluation.metric_result import MetricsResult
-        from picarones.evaluation.benchmark_result import DocumentResult, EngineReport
-
-        engine_reports = []
-        for er_data in data.get("engine_reports", []):
-            doc_results = []
-            for dr_data in er_data.get("document_results", []):
-                m = dr_data["metrics"]
-                metrics = MetricsResult(
-                    cer=m["cer"], cer_nfc=m["cer_nfc"], cer_caseless=m["cer_caseless"],
-                    wer=m["wer"], wer_normalized=m["wer_normalized"],
-                    mer=m["mer"], wil=m["wil"],
-                    reference_length=m["reference_length"],
-                    hypothesis_length=m["hypothesis_length"],
-                    error=m.get("error"),
-                )
-                doc_results.append(DocumentResult(
-                    doc_id=dr_data["doc_id"],
-                    image_path=dr_data["image_path"],
-                    ground_truth=dr_data["ground_truth"],
-                    hypothesis=dr_data["hypothesis"],
-                    metrics=metrics,
-                    duration_seconds=dr_data.get("duration_seconds", 0.0),
-                    engine_error=dr_data.get("engine_error"),
-                ))
-            engine_reports.append(EngineReport(
-                engine_name=er_data["engine_name"],
-                engine_version=er_data.get("engine_version", "unknown"),
-                engine_config=er_data.get("engine_config", {}),
-                document_results=doc_results,
-            ))
-
-        corpus_info = data.get("corpus", {})
-        bm = BenchmarkResult(
-            corpus_name=corpus_info.get("name", "Corpus"),
-            corpus_source=corpus_info.get("source"),
-            document_count=corpus_info.get("document_count", 0),
-            engine_reports=engine_reports,
-            run_date=data.get("run_date", ""),
-            picarones_version=data.get("picarones_version", ""),
-            metadata=data.get("metadata", {}),
-        )
-
+        bm = BenchmarkResult.from_json_object(json_path)
         images_b64 = kwargs.pop("images_b64", {})
         return cls(bm, images_b64=images_b64, **kwargs)

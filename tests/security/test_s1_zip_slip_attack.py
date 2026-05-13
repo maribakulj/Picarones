@@ -24,10 +24,19 @@ from pathlib import Path
 
 import pytest
 
-
-# ──────────────────────────────────────────────────────────────────────
-# Helpers — construire des ZIP malicieux en mémoire
-# ──────────────────────────────────────────────────────────────────────
+#: PNG minimal valide — utilisé là où le contenu doit passer
+#: ``validate_image_safe`` (Pillow.verify).  Avant ce durcissement,
+#: les tests utilisaient ``b"\\x89PNG"`` (signature seule), mais le
+#: durcissement Phase 1 valide chaque image extraite d'un ZIP — d'où
+#: l'utilisation d'un PNG 1×1 réellement décodable ici.
+_MINIMAL_PNG = (
+    b"\x89PNG\r\n\x1a\n"
+    b"\x00\x00\x00\rIHDR"
+    b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+    b"\x1f\x15\xc4\x89"
+    b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+    b"\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
 
 
 def _zip_with_entry(name: str, data: bytes = b"PWNED") -> bytes:
@@ -151,7 +160,7 @@ class TestFlattenZipToDir:
         sous ``dest``, pas dans ``/tmp/``."""
         from picarones.interfaces.web.corpus_utils import flatten_zip_to_dir
 
-        zip_bytes = _zip_with_entry("../../../tmp/x.png", b"\x89PNG")
+        zip_bytes = _zip_with_entry("../../../tmp/x.png", _MINIMAL_PNG)
         dest = tmp_path / "extract"
 
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
@@ -168,7 +177,7 @@ class TestFlattenZipToDir:
     ) -> None:
         from picarones.interfaces.web.corpus_utils import flatten_zip_to_dir
 
-        zip_bytes = _zip_with_entry("/etc/passwd_clone.png", b"\x89PNG")
+        zip_bytes = _zip_with_entry("/etc/passwd_clone.png", _MINIMAL_PNG)
         dest = tmp_path / "extract"
 
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:

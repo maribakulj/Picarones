@@ -101,6 +101,13 @@ def _normalize_engine_name(name: str) -> str:
     aliases = {
         "azure document intelligence": "azure_doc_intel",
         "azure doc intelligence": "azure_doc_intel",
+        # Phase 3 du chantier post-rewrite : kraken/calamari sont
+        # listés dans le README avec leur nom commercial complet,
+        # mais leur module Python s'appelle juste ``kraken.py`` /
+        # ``calamari.py`` (cohérent avec ``pero_ocr.py`` qui ne
+        # s'appelle pas ``pero_ocr_htr.py``).
+        "kraken htr": "kraken",
+        "calamari ocr": "calamari",
     }
     if n in aliases:
         return aliases[n]

@@ -182,16 +182,19 @@ class TestHistoryWithRegression:
 
 
 class TestDBErrorHandling:
-    def test_db_path_unwritable_returns_500_or_empty(
-        self, tmp_path: Path,
-    ) -> None:
-        """db_path qui pointe sur un répertoire inexistant + non
-        créable doit produire une erreur compréhensible (500 ou
-        body avec count=0 mais sans crash silencieux)."""
+    def test_db_path_outside_workspace_rejected(self, tmp_path: Path) -> None:
+        """db_path hors workspace est désormais rejeté en 400 par le
+        durcissement Phase 1 (validation contre compute_workspace_roots).
+
+        Avant Phase 1 : 500 silencieux après tentative d'ouverture
+        SQLite — vecteur de lecture filesystem arbitraire.
+        Après Phase 1 : 400 avec ``PathValidationError`` AVANT
+        toute interaction filesystem.
+        """
         from fastapi.testclient import TestClient
 
         app = _make_app()
-        # Chemin qui devrait être impossible à créer (sous /proc).
+        # Chemin hors zone workspace.
         impossible_path = "/proc/cannot_write/history.sqlite"
 
         with TestClient(app, raise_server_exceptions=False) as client:
@@ -199,8 +202,27 @@ class TestDBErrorHandling:
                 "/api/history/regressions",
                 params={"db_path": impossible_path},
             )
-            # Soit 500 (le bon comportement), soit 200 mais avec
-            # count=0.  Pas de crash, pas de stack trace au client.
+            assert r.status_code == 400, r.text
+            assert "hors zone autorisée" in r.json()["detail"]
+
+    def test_db_path_inside_workspace_but_unwritable(
+        self, tmp_path: Path,
+    ) -> None:
+        """db_path valide (sous tmp_path) mais pointant sur un fichier
+        inexistant en sous-dossier inaccessible : 500 propre, pas de
+        crash silencieux."""
+        from fastapi.testclient import TestClient
+
+        app = _make_app()
+        # Sous-dossier inexistant sous tmp_path — SQLite va échouer
+        # à créer le fichier, mais la validation de chemin passe.
+        bad_under_workspace = tmp_path / "no_such_subdir" / "history.sqlite"
+
+        with TestClient(app, raise_server_exceptions=False) as client:
+            r = client.get(
+                "/api/history/regressions",
+                params={"db_path": str(bad_under_workspace)},
+            )
             assert r.status_code in (200, 500)
             if r.status_code == 500:
                 body = r.json()

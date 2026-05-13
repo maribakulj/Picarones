@@ -116,7 +116,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **4600 passed, 12 skipped, 8 deselected, 0 failed**
+`pytest tests/` → **4700 passed, 12 skipped, 8 deselected, 0 failed**
 (post-S59).  Les deselected sont les markers `live` (5 tests d'intégration
 contre vraie API/binaire) + `network` (3 tests qui hit le réseau réel),
 opt-in en local via `pytest -m live` ou `pytest -m network`.  Le
@@ -178,13 +178,20 @@ AZURE_DOC_INTEL_KEY=...
 
 ## Pipelines OCR+LLM — modes
 
-| Mode | Description |
-|------|-------------|
-| **zero_shot** | Le LLM reçoit l'image directement et transcrit sans OCR préalable (VLM) |
-| **post_correction_texte** | OCR → texte brut → LLM corrige le texte (modèles texte seul) |
-| **post_correction_image_texte** | OCR → LLM reçoit image + texte brut pour correction (VLM) |
+Trois modes canoniques (typés `Literal[…]` dans `PipelineConfig.pipeline_mode`
+depuis Phase 2 du chantier post-rewrite — toute autre valeur est rejetée
+en 422 par Pydantic, plus de fallback silencieux) :
 
-`ministral-3b-latest` = modèle texte pur → utiliser mode `post_correction_texte` uniquement.
+| Mode (clé API) | Description |
+|---|---|
+| **`zero_shot`** | Le VLM reçoit l'image directement et transcrit sans OCR préalable (pas d'OCR amont). |
+| **`text_only`** | OCR → texte brut → LLM corrige le texte sans voir l'image (modèles texte seul). |
+| **`text_and_image`** | OCR → VLM reçoit image + texte brut pour correction multimodale. |
+
+`ministral-3b-latest` = modèle texte pur → utiliser mode `text_only`
+uniquement.  L'UI envoie ces clés en anglais ; les libellés français
+"Post-correction texte" / "Post-correction image+texte" sont des
+labels d'affichage (i18n), pas des identifiants API.
 
 ---
 
@@ -206,6 +213,33 @@ CHANGELOG.md à la racine.
 
 **v2.0 (mai 2026)** : la migration vers l'architecture 8 couches
 canoniques est terminée.  Plus aucun paquet legacy.  Plus aucun shim.
+
+**Chantier post-rewrite (mai 2026, branche `claude/fix-module-rewiring-MHssX`)** :
+réconciliation des chemins UI/API/runner après audit révélant des
+options ignorées, moteurs annoncés sans backend, surfaces filesystem
+ouvertes et round-trip JSON appauvri (cf. CHANGELOG.md).  Cinq phases
+exécutées :
+- **Phase 1 (sécurité P0)** : `output_dir` validé (importers HTR-United/HF),
+  `db_path` validé (`/api/history/regressions`), ZIP collision de
+  basename + validation image extraite.
+- **Phase 2 (méthodologie P0)** : `pipeline_mode` strict Literal,
+  `BenchmarkResult.from_json_object` (round-trip JSON complet —
+  taxonomy/NER/calibration/philological/searchability/hallucination
+  préservés), `partial_store` fingerprint SHA-256 (engine_config +
+  normalization + char_exclude + corpus mtime/size + code version).
+- **Phase 3 (moteurs fantômes)** : adapters `KrakenAdapter` et
+  `CalamariAdapter` implémentés (lazy imports, extras `[kraken]` /
+  `[calamari]`) + matrice CLI/Web/factory unifiée.
+- **Phase 4 (code zombie)** : `upload_purge_task` (RGPD) branchée au
+  lifespan + payload corpus dans `JobStore.create_job`,
+  `/api/benchmark/start` unifié vers le worker v2,
+  `HTRUnitedCatalogue.from_remote` (avec fallback demo + champ
+  `is_demo` exposé), endpoints config save/load branchés à l'UI,
+  workflows CLI `diagnose`/`economics`/`edition` génèrent le HTML
+  automatiquement.
+- **Phase 5 (naming)** : `CompetitorConfig` → `PipelineConfig`,
+  `ocr_engine` → `engine_name` (rupture API, le field accepte aussi
+  des VLMs et `corpus`).
 
 **Règles d'architecture** :
 
@@ -268,7 +302,7 @@ détecte, arbitre, rend.
 ## Contexte développement
 
 - **Environnement** : GitHub Codespaces, Python 3.11+
-- **Tests** : `pytest tests/ -q` → 4600 passed, 9 skipped, 24
+- **Tests** : `pytest tests/ -q` → 4700 passed, 9 skipped, 24
   deselected, 0 failed (post-v2.0).
 - **Manifeste architecture** : [`docs/explanation/architecture.md`](docs/explanation/architecture.md).
 - **API publique stable** : [`docs/reference/api-stable.md`](docs/reference/api-stable.md).

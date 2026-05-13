@@ -325,13 +325,18 @@ class HTRUnitedCatalogue:
         return None
 
     def available_languages(self) -> list[str]:
+        # Le catalogue remote peut contenir des entrées au format dict
+        # imbriqué (schéma HTR-United évolutif).  On force la coercion
+        # en str avant insertion dans le set pour éviter ``TypeError:
+        # unhashable type: 'dict'`` sur les caches non normalisés.
         seen: set[str] = set()
         result: list[str] = []
         for e in self.entries:
             for lang in e.language:
-                if lang not in seen:
-                    seen.add(lang)
-                    result.append(lang)
+                key = lang if isinstance(lang, str) else str(lang)
+                if key and key not in seen:
+                    seen.add(key)
+                    result.append(key)
         return sorted(result)
 
     def available_scripts(self) -> list[str]:
@@ -339,9 +344,10 @@ class HTRUnitedCatalogue:
         result: list[str] = []
         for e in self.entries:
             for sc in e.script:
-                if sc not in seen:
-                    seen.add(sc)
-                    result.append(sc)
+                key = sc if isinstance(sc, str) else str(sc)
+                if key and key not in seen:
+                    seen.add(key)
+                    result.append(key)
         return sorted(result)
 
 

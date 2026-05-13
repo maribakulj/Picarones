@@ -17,7 +17,7 @@ dupliqué**.
 Test ratchet : ce nombre ne peut que descendre. Si un nouveau helper
 ``_color_for_*`` ou ``_build_heatmap_svg`` apparaît dans un renderer,
 le test échoue. La résolution est de paramétrer un des helpers de
-:mod:`picarones.report.render_helpers` plutôt que de réintroduire
+:mod:`picarones.reports._helpers.render_helpers` plutôt que de réintroduire
 une fonction locale.
 """
 

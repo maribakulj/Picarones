@@ -11,7 +11,7 @@ Deux responsabilités, dans cet ordre :
    versions 3.11/3.12/3.13).
 
 2. **Positionner les variables d'environnement test-friendly avant
-   tout import de ``picarones.web.*``** — sinon les singletons web
+   tout import de ``picarones.interfaces.web.*``** — sinon les singletons web
    (``JOBS_SEMAPHORE``, ``RATE_LIMITER``) seraient instanciés avec
    les valeurs de production au premier import, et chaque test web
    verrait le bocal saturé.

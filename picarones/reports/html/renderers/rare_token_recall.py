@@ -26,7 +26,7 @@ def build_rare_token_recall_html(
     ----------
     per_engine:
         Sortie de
-        :func:`picarones.report.report_data.extra_metrics.compute_rare_token_recall_per_engine`.
+        :func:`picarones.reports.html.data.extra_metrics.compute_rare_token_recall_per_engine`.
         Dict ``{engine_name: {n_rare_tokens, n_recalled, recall, n_docs, max_freq}}``.
         Si ``None`` ou vide, retourne ``""``.
     labels:

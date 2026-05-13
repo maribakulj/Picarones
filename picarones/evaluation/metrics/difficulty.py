@@ -191,5 +191,5 @@ def difficulty_label(score: float) -> str:
 
 
 # Sprint A3 (B-2) : ``difficulty_color`` a été déplacée dans
-# :mod:`picarones.report.difficulty_render` pour respecter la règle
+# :mod:`picarones.reports.html.renderers.difficulty` pour respecter la règle
 # Cercle 2 → Cercle 1 uniquement. Ce module reste purement numérique.

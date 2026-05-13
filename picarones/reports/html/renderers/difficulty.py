@@ -4,7 +4,7 @@ Sprint A3 (item B-2 de l'audit institutional-readiness-2026-05) :
 ``difficulty_color`` vivait précédemment dans
 ``picarones/measurements/difficulty.py`` et y violait la règle
 Cercle 2 → Cercle 3 par un import paresseux de
-``picarones.report.colors``. La fonction est désormais placée à sa
+``picarones.reports._helpers.colors``. La fonction est désormais placée à sa
 juste place — Cercle 3, à côté de la palette qu'elle consomme — et
 ``measurements/difficulty.py`` ne contient plus que de la logique
 purement numérique.
