@@ -62,7 +62,10 @@ class TestProjectionReport:
             target_type=ArtifactType.RAW_TEXT,
             projector_name="identity",
         )
-        with pytest.raises(Exception):
+        # Pydantic ``ConfigDict(frozen=True)`` lève ``ValidationError``
+        # à l'assignation post-construction.
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
             r.lossy = False  # type: ignore[misc]
 
     def test_json_roundtrip(self) -> None:
@@ -187,7 +190,8 @@ class TestViewResult:
             candidate_artifact_id="a",
             ground_truth_artifact_id="b",
         )
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
             r.view_name = "y"  # type: ignore[misc]
 
     def test_json_roundtrip(self) -> None:
@@ -211,7 +215,8 @@ class TestViewResult:
         ``EvaluationViewExecutor`` au lieu d'être inféré par les
         renderers via parsing de string.
         """
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
             ViewResult(
                 view_name="text_final",
                 # pipeline_name=...  manquant
