@@ -190,6 +190,52 @@ def client():
     return TestClient(app)
 
 
+class TestConfigSaveLoadUIBindings:
+    """Phase 4.3 du chantier post-rewrite : ``saveConfigToFile`` et
+    ``loadConfigFromFile`` sont désormais branchés au HTML +
+    ``/api/config/save`` et ``/api/config/load`` (avant : endpoints
+    fonctionnels mais aucun bouton UI ne les appelait — code zombie)."""
+
+    def test_template_exposes_save_load_buttons(self) -> None:
+        from pathlib import Path
+
+        tmpl = (
+            Path(__file__).resolve().parents[2]
+            / "picarones/interfaces/web/templates/_view_benchmark.html"
+        )
+        html = tmpl.read_text(encoding="utf-8")
+        assert "saveConfigToFile()" in html, (
+            "Le bouton 'Sauvegarder config' doit appeler "
+            "saveConfigToFile() dans _view_benchmark.html"
+        )
+        assert "loadConfigFromFile()" in html, (
+            "Le bouton 'Charger config' doit appeler "
+            "loadConfigFromFile() dans _view_benchmark.html"
+        )
+        assert "config-file-input" in html, (
+            "Un input file caché ``config-file-input`` doit servir de "
+            "déclencheur pour ``onConfigFileSelected``"
+        )
+
+    def test_js_defines_save_and_load_functions(self) -> None:
+        from pathlib import Path
+
+        js = (
+            Path(__file__).resolve().parents[2]
+            / "picarones/interfaces/web/static/web-app.js"
+        )
+        src = js.read_text(encoding="utf-8")
+        assert "function saveConfigToFile" in src or "async function saveConfigToFile" in src
+        assert "function loadConfigFromFile" in src
+        assert "function onConfigFileSelected" in src or "async function onConfigFileSelected" in src
+        assert '"/api/config/save"' in src, (
+            "saveConfigToFile doit appeler /api/config/save"
+        )
+        assert '"/api/config/load"' in src, (
+            "onConfigFileSelected doit appeler /api/config/load"
+        )
+
+
 class TestConfigSaveLoad:
     def test_save_returns_attachment(self, client):
         r = client.post("/api/config/save", json={

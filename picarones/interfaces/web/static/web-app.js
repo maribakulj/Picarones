@@ -1166,6 +1166,135 @@ async function deleteUploadedCorpus(corpusId) {
   } catch(e) {}
 }
 
+// ─── Config save / load ──────────────────────────────────────────────────────
+// Bindings UI pour /api/config/save et /api/config/load (Phase 4.3 du
+// chantier post-rewrite).  Avant ce wiring, les endpoints existaient
+// côté serveur (avec tests dédiés) mais aucun bouton ne les appelait —
+// code zombie typique post-rewrite.
+
+function _gatherCurrentConfig() {
+  /** Sérialise l'état UI courant en dict compatible
+   * ``/api/config/save``.  Inclut les compétiteurs composés
+   * (_competitors), les options de normalisation et le profil de
+   * langue rapport. */
+  return {
+    label: document.getElementById("report-name").value || "picarones-config",
+    corpus_path: document.getElementById("corpus-path").value,
+    competitors: _competitors,
+    normalization_profile: document.getElementById("norm-profile").value,
+    char_exclude: document.getElementById("char-exclude").value,
+    output_dir: document.getElementById("output-dir").value,
+    report_name: document.getElementById("report-name").value,
+  };
+}
+
+async function saveConfigToFile() {
+  /** POST la config courante à /api/config/save et déclenche le
+   * téléchargement du JSON retourné. */
+  const cfg = _gatherCurrentConfig();
+  try {
+    const r = await fetch("/api/config/save", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(cfg),
+    });
+    if (!r.ok) {
+      const detail = await r.text();
+      alert(lang === "fr"
+        ? "Erreur sauvegarde config : " + detail
+        : "Save config error: " + detail);
+      return;
+    }
+    const blob = await r.blob();
+    // Reconstitue le filename depuis le header Content-Disposition.
+    const cd = r.headers.get("Content-Disposition") || "";
+    const m = cd.match(/filename="([^"]+)"/);
+    const filename = m ? m[1] : "picarones-config.json";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert(lang === "fr"
+      ? "Erreur sauvegarde config : " + e.message
+      : "Save config error: " + e.message);
+  }
+}
+
+function loadConfigFromFile() {
+  /** Déclenche le sélecteur de fichier — l'utilisateur choisit un
+   * JSON, ``onConfigFileSelected`` fait le reste. */
+  document.getElementById("config-file-input").click();
+}
+
+async function onConfigFileSelected(event) {
+  /** Lit le fichier JSON, POST à /api/config/load pour validation +
+   * upgrade éventuel, puis restaure l'état UI depuis le dict retourné. */
+  const file = event.target.files[0];
+  if (!file) return;
+  // Reset l'input pour permettre un re-chargement du même fichier.
+  event.target.value = "";
+  try {
+    const text = await file.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      alert(lang === "fr"
+        ? "Fichier JSON invalide : " + e.message
+        : "Invalid JSON file: " + e.message);
+      return;
+    }
+    const r = await fetch("/api/config/load", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(parsed),
+    });
+    if (!r.ok) {
+      const detail = await r.text();
+      alert(lang === "fr"
+        ? "Erreur chargement config : " + detail
+        : "Load config error: " + detail);
+      return;
+    }
+    const result = await r.json();
+    _applyConfig(result.config || {});
+  } catch (e) {
+    alert(lang === "fr"
+      ? "Erreur chargement config : " + e.message
+      : "Load config error: " + e.message);
+  }
+}
+
+function _applyConfig(cfg) {
+  /** Restaure l'état UI depuis un dict de config validé serveur.
+   * Champs inconnus = ignorés silencieusement (responsabilité de
+   * ``filter_config`` côté serveur). */
+  if (typeof cfg.corpus_path === "string") {
+    document.getElementById("corpus-path").value = cfg.corpus_path;
+  }
+  if (typeof cfg.normalization_profile === "string") {
+    document.getElementById("norm-profile").value = cfg.normalization_profile;
+  }
+  if (typeof cfg.char_exclude === "string") {
+    document.getElementById("char-exclude").value = cfg.char_exclude;
+  }
+  if (typeof cfg.output_dir === "string") {
+    document.getElementById("output-dir").value = cfg.output_dir;
+  }
+  if (typeof cfg.report_name === "string") {
+    document.getElementById("report-name").value = cfg.report_name;
+  }
+  if (Array.isArray(cfg.competitors)) {
+    _competitors = cfg.competitors;
+    renderCompetitors();
+  }
+}
+
 // ─── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
   loadStatus();
