@@ -2,18 +2,22 @@
 
 Détection ALTO/PAGE, extraction de texte GT, analyse de la structure
 d'un dossier corpus, extraction de ZIP avec garde-fous (taille
-décompressée, nombre de fichiers). Le parsing XML sécurisé délègue
+décompressée, nombre de fichiers, validation image extraite,
+détection de collision de basename). Le parsing XML sécurisé délègue
 à :func:`picarones.formats._xml_utils.safe_parse_xml`.
 """
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
 from picarones.formats._xml_utils import safe_parse_xml
 from picarones.interfaces.web.state import IMAGE_EXTS
+
+logger = logging.getLogger(__name__)
 
 # Garde-fous ZIP-bomb pour l'upload
 MAX_ZIP_TOTAL_SIZE = 500 * 1024 * 1024
@@ -165,17 +169,83 @@ def analyze_corpus_dir(path: Path) -> dict:
 # Extraction ZIP sécurisée
 # ──────────────────────────────────────────────────────────────────────────
 
-def flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
+def _slug_dirname(source_path: Path) -> str:
+    """Slugifie le ``dirname`` d'une entrée ZIP pour préfixer en cas de collision.
+
+    ``a/b/img.png`` → ``a_b``.  Caractères non sûrs (``..``, séparateurs)
+    sont normalisés en ``_``.  Vide si l'entrée est à la racine du ZIP.
+    """
+    parent = source_path.parent
+    if parent == Path() or str(parent) == ".":
+        return ""
+    parts = [
+        part.replace("..", "_").replace("/", "_").replace("\\", "_")
+        for part in parent.parts
+        if part not in ("", "/", "\\")
+    ]
+    return "_".join(p for p in parts if p)
+
+
+def _resolve_collision(
+    name: str, source_path: Path, taken: set[str],
+) -> str:
+    """Renomme ``name`` pour éviter une collision avec ``taken``.
+
+    Stratégie :
+    1. Préfixe avec le slug du dirname source (traçabilité).  Si pas de
+       dirname ou si déjà pris, ajoute un suffixe numérique.
+    2. Lève ``ValueError`` après 1000 tentatives (corpus pathologique).
+    """
+    slug = _slug_dirname(source_path)
+    if slug:
+        candidate = f"{slug}__{name}"
+        if candidate not in taken:
+            return candidate
+    stem = Path(name).stem
+    suffix = "".join(Path(name).suffixes)
+    for n in range(2, 1001):
+        candidate = f"{stem}_{n}{suffix}"
+        if candidate not in taken:
+            return candidate
+    raise ValueError(
+        f"Impossible de résoudre la collision de basename pour {name!r} "
+        f"après 1000 tentatives — corpus pathologique ?",
+    )
+
+
+def flatten_zip_to_dir(
+    zf: zipfile.ZipFile,
+    dest: Path,
+    *,
+    validate_images: bool = True,
+) -> None:
     """Extrait un ZIP en aplatissant les paires image/.gt.txt/.xml dans ``dest``.
 
     Garde-fous :
+
     - Ignore les fichiers cachés macOS (préfixe ``.`` ou ``__MACOSX``).
     - Refuse si la taille décompressée totale dépasse ``MAX_ZIP_TOTAL_SIZE``.
     - Refuse si le nombre de fichiers extraits dépasse ``MAX_ZIP_FILES``.
+    - **Détection de collision de basename** : ``a/img.png`` et
+      ``b/img.png`` ne s'écrasent plus silencieusement — le second est
+      renommé avec un préfixe dérivé de son dossier source (ex.
+      ``b__img.png``) et un warning est loggué.  Sans ce garde-fou,
+      l'utilisateur pouvait associer silencieusement une image à une
+      GT incorrecte.
+    - **Validation image** : chaque image extraite passe par
+      :func:`validate_image_safe` (Pillow.verify, anti-bombe), de la
+      même manière que les uploads directs.  Désactivable via
+      ``validate_images=False`` (utile aux tests qui ne fournissent
+      pas de PNG complets).
     """
+    # Import retardé : ``security`` dépend de ``state`` qui dépend de
+    # ``corpus_utils`` → circulaire si import toplevel.
+    from picarones.interfaces.web.security import validate_image_safe
+
     dest.mkdir(parents=True, exist_ok=True)
     total_size = 0
     file_count = 0
+    written_names: set[str] = set()
     for member in zf.infolist():
         if member.is_dir():
             continue
@@ -183,23 +253,49 @@ def flatten_zip_to_dir(zf: zipfile.ZipFile, dest: Path) -> None:
         name = p.name
         if name.startswith("."):
             continue
-        if (
-            p.suffix.lower() in IMAGE_EXTS
+        suffix_lower = p.suffix.lower()
+        is_image = suffix_lower in IMAGE_EXTS
+        if not (
+            is_image
             or name.endswith(".gt.txt")
             or name.endswith(".ocr.txt")
-            or p.suffix.lower() == ".xml"
+            or suffix_lower == ".xml"
         ):
-            total_size += member.file_size
-            if total_size > MAX_ZIP_TOTAL_SIZE:
-                raise ValueError(
-                    f"ZIP trop volumineux : taille décompressée > "
-                    f"{MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
-                )
-            file_count += 1
-            if file_count > MAX_ZIP_FILES:
-                raise ValueError(f"ZIP contient trop de fichiers (> {MAX_ZIP_FILES})")
-            data = zf.read(member.filename)
-            (dest / name).write_bytes(data)
+            continue
+
+        total_size += member.file_size
+        if total_size > MAX_ZIP_TOTAL_SIZE:
+            raise ValueError(
+                f"ZIP trop volumineux : taille décompressée > "
+                f"{MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
+            )
+        file_count += 1
+        if file_count > MAX_ZIP_FILES:
+            raise ValueError(f"ZIP contient trop de fichiers (> {MAX_ZIP_FILES})")
+
+        data = zf.read(member.filename)
+
+        # Validation image après extraction (les images directes sont
+        # déjà validées par ``api_corpus_upload``, mais celles extraites
+        # d'un ZIP ne passaient pas par cette vérification — vecteur de
+        # zip bomb passant les 500 Mo brut).
+        if is_image and validate_images:
+            validate_image_safe(data, filename=name)
+
+        # Détection de collision : ``a/img.png`` et ``b/img.png`` ne
+        # doivent pas s'écraser silencieusement (vecteur de
+        # mauvaise association image/GT après aplatissement).
+        if name in written_names:
+            new_name = _resolve_collision(name, p, written_names)
+            logger.warning(
+                "[flatten_zip] collision de basename %r — renommé en %r "
+                "(source ZIP : %r)",
+                name, new_name, member.filename,
+            )
+            name = new_name
+        written_names.add(name)
+
+        (dest / name).write_bytes(data)
 
 
 __all__ = [

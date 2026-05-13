@@ -4,14 +4,31 @@ Surface de l'infrastructure ``BenchmarkHistory`` qui était
 limitée au CLI ``picarones history --regression``. Le rapport HTML
 peut désormais consommer cet endpoint pour afficher un encart
 *« ⚠ Tesseract a régressé de 0,8 pp depuis le 12 janvier »* en tête.
+
+Sécurité — paramètre ``db_path``
+---------------------------------
+Le paramètre ``db_path`` est validé contre les racines workspace
+autorisées via :func:`validated_path`. Sans ce garde-fou, l'endpoint
+acceptait un chemin SQLite libre — vecteur de lecture filesystem
+arbitraire (path traversal).  Pour pointer une base alternative à
+l'extérieur des workspaces, exporter ``PICARONES_HISTORY_DB`` plutôt
+que de passer ``db_path`` par query string.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+
+from picarones.interfaces.web.security import (
+    PathValidationError,
+    compute_workspace_roots,
+    validated_path,
+)
+from picarones.interfaces.web.state import UPLOADS_DIR
 
 router = APIRouter()
 _logger = logging.getLogger(__name__)
@@ -21,13 +38,37 @@ _logger = logging.getLogger(__name__)
 async def api_history_regressions(
     engine: Optional[str] = Query(default=None, description="Filtre par moteur"),
     threshold: float = Query(default=0.01, description="Seuil régression CER absolu"),
-    db_path: Optional[str] = Query(default=None, description="Chemin SQLite history"),
+    db_path: Optional[str] = Query(
+        default=None,
+        description=(
+            "Chemin SQLite history (validé contre les workspace roots ; "
+            "préférer la variable d'env PICARONES_HISTORY_DB)."
+        ),
+    ),
 ) -> dict:
     """Liste les régressions détectées dans l'historique longitudinal."""
     from picarones.evaluation.metrics.history import BenchmarkHistory
 
+    if db_path:
+        try:
+            resolved = validated_path(
+                db_path,
+                allowed_roots=compute_workspace_roots(UPLOADS_DIR),
+                must_exist=False,
+            )
+        except PathValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        effective_db_path: Optional[str] = str(resolved)
+    else:
+        env_db = os.environ.get("PICARONES_HISTORY_DB", "").strip()
+        effective_db_path = env_db or None
+
     try:
-        history = BenchmarkHistory(db_path) if db_path else BenchmarkHistory()
+        history = (
+            BenchmarkHistory(effective_db_path)
+            if effective_db_path
+            else BenchmarkHistory()
+        )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=500, detail=f"Ouverture historique échouée : {exc}",

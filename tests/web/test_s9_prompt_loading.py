@@ -41,7 +41,7 @@ from picarones.interfaces.web.benchmark_utils import (
     _engine_from_competitor,
     _load_prompt_content,
 )
-from picarones.interfaces.web.models import CompetitorConfig
+from picarones.interfaces.web.models import PipelineConfig
 
 
 class TestLoadPromptContent:
@@ -113,7 +113,7 @@ class TestEngineFromCompetitorPassesPromptContent:
     pas le filename brut."""
 
     def test_pipeline_template_contains_file_content(self) -> None:
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t",
             ocr_engine="tesseract",
             ocr_model="fra",
@@ -133,7 +133,7 @@ class TestEngineFromCompetitorPassesPromptContent:
     def test_default_prompt_loaded_when_none_specified(self) -> None:
         """``prompt_file`` vide → default
         ``correction_medieval_french.txt`` chargé."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             ocr_engine="tesseract", ocr_model="fra",
             llm_provider="mistral", llm_model="m",
             pipeline_mode="text_only", prompt_file="",
@@ -146,7 +146,7 @@ class TestEngineFromCompetitorPassesPromptContent:
         """Si le frontend envoie un filename qui n'existe pas, le
         factory doit lever proprement (pas continuer avec le filename
         comme prompt — c'est le bug d'origine)."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             ocr_engine="tesseract", ocr_model="fra",
             llm_provider="mistral", llm_model="m",
             pipeline_mode="text_only",

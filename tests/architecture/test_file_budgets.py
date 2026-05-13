@@ -45,7 +45,11 @@ FILE_BUDGETS: dict[str, int] = {
     # Sprint H.4 — module renommé ``_legacy_runner_adapter`` →
     # ``benchmark_runner`` (drop le préfixe legacy : c'est l'entry
     # point canonique des interfaces vers ``BenchmarkService``).
-    "picarones/app/services/benchmark_runner.py": 1700,  # actuel ~1450
+    # Phase 2.3 du chantier post-rewrite — ajout de
+    # ``_engine_config_for_fingerprint`` (~50 LOC) pour distinguer les
+    # runs avec configs différentes (psm/lang/model/prompt) au niveau
+    # du fichier partial.
+    "picarones/app/services/benchmark_runner.py": 1750,  # actuel ~1700
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # statistics.py (1128 lignes) a été éclaté en sous-package
@@ -71,7 +75,12 @@ FILE_BUDGETS: dict[str, int] = {
     # (≤ 25 l).  Le contenu canonique vit dans ``evaluation/`` ;
     # même budget pour la même raison historique (modèles
     # BenchmarkResult/EngineReport/DocumentResult).
-    "picarones/evaluation/benchmark_result.py": 750,      # actuel 702
+    # Phase 2.2 du chantier post-rewrite — ajout de
+    # ``DocumentResult.from_dict``, ``EngineReport.from_dict``,
+    # ``BenchmarkResult.from_dict`` et ``BenchmarkResult.from_json_object``
+    # pour restaurer la fidélité du round-trip JSON (taxonomy,
+    # hallucination, philological, etc.).
+    "picarones/evaluation/benchmark_result.py": 880,      # actuel ~826
     # Phase 5.C : ``report/philological_render.py`` est désormais
     # un shim (≤ 25 l).  Le contenu canonique vit dans
     # ``reports/html/renderers/philological.py``.

@@ -79,6 +79,31 @@ class MetricsResult:
     def wer_percent(self) -> Optional[float]:
         return None if self.wer is None else round(self.wer * 100, 2)
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "MetricsResult":
+        """Reconstruit depuis le dict produit par :meth:`as_dict`.
+
+        Phase 2.2 du chantier post-rewrite : fidélité du round-trip
+        ``as_dict → from_dict``.  Auparavant, ``ReportGenerator.from_json``
+        contenait sa propre reconstruction partielle qui perdait
+        ``cer_diplomatic`` et ``diplomatic_profile_name``.  Centraliser
+        la désérialisation ici évite la dérive.
+        """
+        return cls(
+            cer=data.get("cer"),
+            cer_nfc=data.get("cer_nfc"),
+            cer_caseless=data.get("cer_caseless"),
+            wer=data.get("wer"),
+            wer_normalized=data.get("wer_normalized"),
+            mer=data.get("mer"),
+            wil=data.get("wil"),
+            reference_length=data.get("reference_length", 0),
+            hypothesis_length=data.get("hypothesis_length", 0),
+            error=data.get("error"),
+            cer_diplomatic=data.get("cer_diplomatic"),
+            diplomatic_profile_name=data.get("diplomatic_profile_name"),
+        )
+
 
 def aggregate_metrics(results: list[MetricsResult]) -> dict:
     """Calcule les statistiques agrégées sur un ensemble de résultats.

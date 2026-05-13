@@ -46,12 +46,15 @@ _ALIASES: dict[str, str] = {
     "gv": "google_vision",
     "azure": "azure_doc_intel",
     "adi": "azure_doc_intel",
+    "calamari_ocr": "calamari",
 }
 
 #: Liste des noms canoniques supportés pour les messages d'erreur.
 _SUPPORTED: tuple[str, ...] = (
     "tesseract",
     "pero_ocr",
+    "kraken",
+    "calamari",
     "mistral_ocr",
     "google_vision",
     "azure_doc_intel",
@@ -125,6 +128,20 @@ def ocr_adapter_from_name(
                 "Installer la dépendance optionnelle ``pero-ocr``."
             ) from exc
         return PeroOCRAdapter(**kwargs)
+
+    if canonical == "kraken":
+        # Phase 3 chantier post-rewrite : implémentation réelle de
+        # l'adapter ``kraken``, qui était annoncé par ``/api/engines``
+        # mais sans backend.  Lazy-import : la classe elle-même est
+        # importable sans ``kraken``, c'est ``execute()`` qui exigera
+        # la dépendance.
+        from picarones.adapters.ocr.kraken import KrakenAdapter
+        return KrakenAdapter(**kwargs)
+
+    if canonical == "calamari":
+        # Phase 3 chantier post-rewrite : implémentation réelle.
+        from picarones.adapters.ocr.calamari import CalamariAdapter
+        return CalamariAdapter(**kwargs)
 
     if canonical == "mistral_ocr":
         try:

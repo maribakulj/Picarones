@@ -25,6 +25,7 @@ TestRunnerProgressCallback   (5 tests)  — progress_callback injecté dans run_
 
 from __future__ import annotations
 
+import io
 import json
 import os
 from pathlib import Path
@@ -33,6 +34,26 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 from fastapi.testclient import TestClient
+from PIL import Image as _PILImage
+
+
+def _minimal_image_bytes(fmt: str) -> bytes:
+    """Génère une image 1×1 valide qui passe ``validate_image_safe``.
+
+    Le durcissement Phase 1 du chantier post-rewrite appelle
+    ``Pillow.verify()`` sur chaque image extraite d'un ZIP — les
+    anciens placeholders ``b"\\xff\\xd8\\xff"`` (signature seule) sont
+    désormais rejetés.  Cette fonction produit l'image minimale au
+    setup des fixtures.
+    """
+    buf = io.BytesIO()
+    _PILImage.new("RGB", (1, 1), color=(200, 200, 200)).save(buf, fmt)
+    return buf.getvalue()
+
+
+_MINIMAL_PNG_BYTES = _minimal_image_bytes("PNG")
+_MINIMAL_JPEG_BYTES = _minimal_image_bytes("JPEG")
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1277,9 +1298,9 @@ class TestFastAPICorpusUpload:
 
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("page001.jpg", b"\xff\xd8\xff")        # fake JPEG
+            zf.writestr("page001.jpg", _MINIMAL_JPEG_BYTES)
             zf.writestr("page001.gt.txt", "Texte de la page 1")
-            zf.writestr("page002.png", b"\x89PNG")             # fake PNG
+            zf.writestr("page002.png", _MINIMAL_PNG_BYTES)
             zf.writestr("page002.gt.txt", "Texte de la page 2")
         buf.seek(0)
         return buf.getvalue()
@@ -1292,9 +1313,9 @@ class TestFastAPICorpusUpload:
 
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("page001.jpg", b"\xff\xd8\xff")
+            zf.writestr("page001.jpg", _MINIMAL_JPEG_BYTES)
             zf.writestr("page001.gt.txt", "GT ok")
-            zf.writestr("page002.png", b"\x89PNG")             # pas de GT
+            zf.writestr("page002.png", _MINIMAL_PNG_BYTES)
         buf.seek(0)
         return buf.getvalue()
 
@@ -1427,7 +1448,7 @@ class TestFastAPICorpusUpload:
 
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("page001.png", b"\x89PNG")
+            zf.writestr("page001.png", _MINIMAL_PNG_BYTES)
             zf.writestr("page001.xml", alto_xml_bytes)
         buf.seek(0)
         return buf.getvalue()
@@ -1502,7 +1523,7 @@ class TestFastAPICorpusUpload:
 
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("page002.png", b"\x89PNG")
+            zf.writestr("page002.png", _MINIMAL_PNG_BYTES)
             zf.writestr("page002.xml", page_xml_bytes)
         buf.seek(0)
         return buf.getvalue()
@@ -1553,7 +1574,7 @@ class TestFastAPICorpusUpload:
         unknown_xml = b'<?xml version="1.0"?><root><item>foo</item></root>'
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:
-            zf.writestr("pageX.png", b"\x89PNG")
+            zf.writestr("pageX.png", _MINIMAL_PNG_BYTES)
             zf.writestr("pageX.xml", unknown_xml)
         buf.seek(0)
         r = client.post(

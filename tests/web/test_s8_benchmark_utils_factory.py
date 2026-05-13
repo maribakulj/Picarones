@@ -4,7 +4,7 @@
 Pourquoi ce fichier
 -------------------
 ``_build_llm_adapter`` et ``_engine_from_competitor`` sont les
-points de **routage** entre la config web (``CompetitorConfig``)
+points de **routage** entre la config web (``PipelineConfig``)
 et les adapters concrets : si une régression silencieusement
 fait passer ``mistral`` au lieu de ``openai``, ou ``tesseract``
 au lieu de ``mistral_ocr``, le benchmark tourne mais avec le
@@ -36,7 +36,7 @@ from picarones.interfaces.web.benchmark_utils import (
     _engine_from_competitor,
     sse_format,
 )
-from picarones.interfaces.web.models import CompetitorConfig
+from picarones.interfaces.web.models import PipelineConfig
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ class TestBuildLLMAdapterRouting:
     def test_provider_routes_to_expected_adapter(
         self, provider: str, expected_class_name: str,
     ) -> None:
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="", llm_provider=provider, llm_model="m",
         )
         adapter = _build_llm_adapter(comp)
@@ -71,7 +71,7 @@ class TestBuildLLMAdapterRouting:
         )
 
     def test_unknown_provider_raises_value_error(self) -> None:
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="",
             llm_provider="some_made_up_provider", llm_model="x",
         )
@@ -82,7 +82,7 @@ class TestBuildLLMAdapterRouting:
         """Quand ``llm_model`` est vide, on passe ``None`` à
         l'adapter (qui utilise son default interne) — pas une
         chaîne vide qui serait rejetée par l'API."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="", llm_provider="openai", llm_model="",
         )
         adapter = _build_llm_adapter(comp)
@@ -103,7 +103,7 @@ class TestEngineFromCompetitorOCROnly:
         """Le ``name`` est dérivé de ``(engine_id, ocr_model)`` pour
         que deux configs distinctes obtiennent automatiquement des
         identifiants différents au resolver (cf. S9 fix)."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="tesseract", llm_provider="",
             ocr_model="fra",
         )
@@ -113,10 +113,10 @@ class TestEngineFromCompetitorOCROnly:
     def test_tesseract_only_different_lang_distinct_name(self) -> None:
         """Garantie anti-collision : ``lang=eng`` et ``lang=fra``
         produisent des ``name`` distincts au resolver."""
-        comp_fra = CompetitorConfig(
+        comp_fra = PipelineConfig(
             ocr_engine="tesseract", llm_provider="", ocr_model="fra",
         )
-        comp_eng = CompetitorConfig(
+        comp_eng = PipelineConfig(
             ocr_engine="tesseract", llm_provider="", ocr_model="eng",
         )
         assert _engine_from_competitor(comp_fra).name == "tesseract_fra"
@@ -126,7 +126,7 @@ class TestEngineFromCompetitorOCROnly:
         """``RuntimeError`` (et pas ``ValueError`` brut) — c'est le
         contrat documenté pour que le worker thread puisse
         loguer ``warning`` et passer au concurrent suivant."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="not_an_engine", llm_provider="",
         )
         with pytest.raises(RuntimeError, match="inconnu"):
@@ -141,30 +141,61 @@ class TestEngineFromCompetitorPipeline:
         ("pipeline_mode", "expected_mode"),
         [
             ("text_only", "text_only"),
-            ("post_correction_text", "text_only"),
             ("text_and_image", "text_and_image"),
-            ("post_correction_image", "text_and_image"),
-            ("", "text_only"),  # fallback
         ],
     )
-    def test_pipeline_mode_mapping_with_ocr(
+    def test_pipeline_mode_passes_through_with_ocr(
         self, pipeline_mode: str, expected_mode: str,
     ) -> None:
-        """Modes qui exigent un OCR amont (``text_only``,
-        ``text_and_image``) — testés avec ``tesseract`` réel."""
-        comp = CompetitorConfig(
+        """Modes canoniques qui exigent un OCR amont — Phase 2 du
+        chantier post-rewrite : plus de mapping/alias.  Les 3 valeurs
+        de :class:`PipelineMode` traversent telles quelles vers le
+        ``OCRLLMPipelineConfig`` (``zero_shot`` testé séparément car
+        il refuse l'OCR amont)."""
+        comp = PipelineConfig(
             name="t", ocr_engine="tesseract", llm_provider="mistral",
             llm_model="m", ocr_model="fra", pipeline_mode=pipeline_mode,
         )
         pipeline = _engine_from_competitor(comp)
         assert pipeline.mode == expected_mode
 
+    @pytest.mark.parametrize(
+        "deprecated_mode",
+        ["post_correction_text", "post_correction_image", "POST_CORRECTION_TEXT"],
+    )
+    def test_legacy_aliases_rejected_at_pydantic_level(
+        self, deprecated_mode: str,
+    ) -> None:
+        """Phase 2 rupture API : les anciens alias
+        (``post_correction_text``/``post_correction_image``) sont
+        rejetés par Pydantic au niveau ``PipelineConfig`` — plus de
+        mapping silencieux vers ``text_only`` / ``text_and_image``."""
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            PipelineConfig(
+                name="t", ocr_engine="tesseract", llm_provider="mistral",
+                llm_model="m", ocr_model="fra",
+                pipeline_mode=deprecated_mode,
+            )
+
+    def test_empty_pipeline_mode_with_llm_raises(self) -> None:
+        """Phase 2 rupture API : un client qui combine ``llm_provider``
+        non vide avec ``pipeline_mode=""`` reçoit désormais une
+        ``ValueError`` claire — l'ancien fallback silencieux vers
+        ``text_only`` masquait la config incomplète."""
+        comp = PipelineConfig(
+            name="t", ocr_engine="tesseract", llm_provider="mistral",
+            llm_model="m", ocr_model="fra", pipeline_mode="",
+        )
+        with pytest.raises(ValueError, match="pipeline_mode invalide"):
+            _engine_from_competitor(comp)
+
     def test_zero_shot_mode_requires_corpus_ocr(self) -> None:
         """Le mode ``zero_shot`` exige ``ocr_adapter=None`` au niveau
         du pipeline (le VLM lit l'image directement) — donc côté
         factory web, il doit être combiné avec ``ocr_engine=corpus``
         ou ``""``, pas avec un moteur live."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="corpus", llm_provider="mistral",
             llm_model="m", pipeline_mode="zero_shot",
         )
@@ -173,18 +204,20 @@ class TestEngineFromCompetitorPipeline:
         assert pipeline.ocr_adapter is None
 
     def test_pipeline_name_from_explicit_name(self) -> None:
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="my-pipeline", ocr_engine="tesseract",
             llm_provider="mistral", llm_model="m", ocr_model="fra",
+            pipeline_mode="text_only",
         )
         pipeline = _engine_from_competitor(comp)
         assert pipeline.pipeline_name == "my-pipeline"
 
     def test_pipeline_name_default_format(self) -> None:
         """Sans ``name`` explicite, format ``{engine} → {model}``."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="", ocr_engine="tesseract", llm_provider="mistral",
             llm_model="ministral-3b-latest", ocr_model="fra",
+            pipeline_mode="text_only",
         )
         pipeline = _engine_from_competitor(comp)
         assert "tesseract" in pipeline.pipeline_name
@@ -195,9 +228,10 @@ class TestEngineFromCompetitorPipeline:
         par défaut (``correction_medieval_french.txt``).  Cf. S9 :
         ``prompt_template`` contient désormais le CONTENU lu sur
         disque, pas le filename brut."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine="tesseract", llm_provider="mistral",
             llm_model="m", ocr_model="fra", prompt_file="",
+            pipeline_mode="text_only",
         )
         pipeline = _engine_from_competitor(comp)
         # Le template ne doit PAS être le filename littéral.
@@ -220,7 +254,7 @@ class TestEngineFromCompetitorCorpusOCR:
     def test_corpus_or_empty_without_llm_raises(
         self, ocr_engine: str,
     ) -> None:
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine=ocr_engine, llm_provider="",
         )
         with pytest.raises(ValueError, match="llm_provider"):
@@ -233,7 +267,7 @@ class TestEngineFromCompetitorCorpusOCR:
         """Mode corpus + LLM → pipeline ``zero_shot`` (le LLM/VLM
         traite l'image ou l'OCR pré-calculé, l'``ocr_adapter`` est
         ``None``)."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="post-corr", ocr_engine=ocr_engine,
             llm_provider="mistral", llm_model="m",
             pipeline_mode="zero_shot",
@@ -247,7 +281,7 @@ class TestEngineFromCompetitorCorpusOCR:
 
     def test_corpus_pipeline_name_format(self) -> None:
         """Sans ``name``, format ``corpus_ocr → {model}``."""
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="", ocr_engine="corpus", llm_provider="mistral",
             llm_model="ministral-3b-latest",
             pipeline_mode="zero_shot",
@@ -273,7 +307,7 @@ class TestEngineFromCompetitorCloudWithoutSDK:
     def test_cloud_engine_without_sdk_runtime_error(
         self, engine: str, module_path: str,
     ) -> None:
-        comp = CompetitorConfig(
+        comp = PipelineConfig(
             name="t", ocr_engine=engine, llm_provider="",
         )
         with patch.dict(sys.modules, {module_path: None}):

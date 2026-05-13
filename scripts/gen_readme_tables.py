@@ -65,6 +65,8 @@ _ENGINE_DESCRIPTIONS: dict[str, tuple[str, str, str]] = {
     # name → (display_name, type, install_hint)
     "tesseract": ("Tesseract 5", "Local CLI", "`pip install pytesseract` + system binary"),
     "pero_ocr": ("Pero OCR", "Local Python", "`pip install -e .[pero]`"),
+    "kraken": ("Kraken HTR", "Local Python", "`pip install -e .[kraken]` + modèle `.mlmodel`"),
+    "calamari": ("Calamari OCR", "Local Python", "`pip install -e .[calamari]` + checkpoint"),
     "mistral_ocr": ("Mistral OCR", "Cloud API", "`MISTRAL_API_KEY` env var"),
     "google_vision": ("Google Vision", "Cloud API", "`GOOGLE_APPLICATION_CREDENTIALS` env var"),
     "azure_doc_intel": ("Azure Doc Intelligence", "Cloud API", "`AZURE_DOC_INTEL_ENDPOINT` + `AZURE_DOC_INTEL_KEY`"),

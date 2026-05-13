@@ -2,7 +2,7 @@
 
 Le ``stream`` SSE supporte la reprise via ``Last-Event-ID`` (Sprint 26).
 ``start`` lance un benchmark à liste de moteurs ; ``run`` accepte des
-``CompetitorConfig`` composés (OCR + LLM, pipelines mutualisés) —
+``PipelineConfig`` composés (OCR + LLM, pipelines mutualisés) —
 deux endpoints distincts pour deux UX historiquement séparées.
 """
 
@@ -107,7 +107,13 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
 
     job_id = str(uuid.uuid4())
     job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
-    state.JOB_STORE.create_job(job_id)
+    # Phase 4 du chantier post-rewrite : le payload du job contient
+    # désormais le ``corpus_path`` actif, pour que la tâche de purge
+    # ``upload_purge_task`` puisse identifier les corpus référencés
+    # par des jobs en cours et ne pas les supprimer.  Avant ce
+    # branchement, la purge supprimait potentiellement des corpus
+    # actifs dont les uploads étaient plus anciens que la rétention.
+    state.JOB_STORE.create_job(job_id, payload={"corpus": req.corpus_path})
     state.register_job(job)
     state.cleanup_old_jobs()
 
@@ -116,14 +122,14 @@ async def api_benchmark_start(req: BenchmarkRequest, request: Request) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Lancement composé : liste de CompetitorConfig (BenchmarkRunRequest)
+# Lancement composé : liste de PipelineConfig (BenchmarkRunRequest)
 # ──────────────────────────────────────────────────────────────────────────
 
 @router.post("/api/benchmark/run")
 async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     """Lance un benchmark à concurrents composés (OCR + LLM, pipelines).
 
-    Chaque ``CompetitorConfig`` peut combiner un moteur OCR et un
+    Chaque ``PipelineConfig`` peut combiner un moteur OCR et un
     provider LLM (mode post-correction, zero-shot, ou OCR seul).
     """
     # ``competitors`` non vide est garanti par Pydantic ``min_length=1``.
@@ -177,7 +183,8 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
 
     job_id = str(uuid.uuid4())
     job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
-    state.JOB_STORE.create_job(job_id)
+    # Phase 4 — payload incluant le corpus actif pour la purge auto.
+    state.JOB_STORE.create_job(job_id, payload={"corpus": req.corpus_path})
     state.register_job(job)
 
     _start_job_thread(job, run_benchmark_thread_v2, req)

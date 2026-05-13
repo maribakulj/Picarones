@@ -60,7 +60,8 @@ _logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    """Hook de démarrage : valide la config + nettoie les jobs orphelins.
+    """Hook de démarrage : valide la config + nettoie les jobs orphelins
+    + démarre la tâche RGPD de purge des uploads.
 
     1. Sprint S6.9 — ``validate_csrf_config()`` : refuse de démarrer
        si ``PICARONES_CSRF_REQUIRED=1`` sans ``PICARONES_CSRF_SECRET``
@@ -71,7 +72,14 @@ async def _lifespan(app: FastAPI):
        précédent est mort sans les finir).  On les bascule en
        ``interrupted`` pour ne pas laisser d'état mensonger sur le
        tableau de bord.
+    3. Phase 4 du chantier post-rewrite — démarrage explicite de
+       :func:`upload_purge_task` (RGPD).  Auparavant définie dans
+       ``maintenance.py`` mais jamais lancée par ce lifespan, elle
+       était du code zombie.  Désormais lancée comme tâche asyncio
+       de fond ; annulation propre au shutdown.
     """
+    import asyncio
+
     # Étape 1 — validation config (échec rapide si dangereux).
     from picarones.interfaces.web.security import validate_csrf_config
     validate_csrf_config()
@@ -91,7 +99,27 @@ async def _lifespan(app: FastAPI):
             "base SQLite inaccessible (%s) : le tableau de bord "
             "affichera des jobs zombies.", exc,
         )
-    yield
+
+    # Étape 3 — démarrage tâche de purge RGPD.
+    from picarones.interfaces.web.maintenance import upload_purge_task
+    purge_task = asyncio.create_task(upload_purge_task(state.UPLOADS_DIR))
+    try:
+        yield
+    finally:
+        # Annulation propre au shutdown ; on attend l'acquittement de
+        # la CancelledError pour éviter le warning "Task was destroyed
+        # but it is pending".  ``asyncio.shield`` n'est pas nécessaire :
+        # on accepte la perte d'une éventuelle passe de purge en cours
+        # (idempotente, sera reprise au prochain démarrage).
+        purge_task.cancel()
+        try:
+            await purge_task
+        except (asyncio.CancelledError, Exception) as exc:  # noqa: BLE001
+            if not isinstance(exc, asyncio.CancelledError):
+                _logger.warning(
+                    "[maintenance] tâche de purge arrêtée sur erreur : %s",
+                    exc,
+                )
 
 
 # ──────────────────────────────────────────────────────────────────────────

@@ -11,9 +11,9 @@ API publique
 Helpers internes (préfixe ``_``)
 --------------------------------
 - ``_build_llm_adapter`` : factory adapter LLM depuis une config
-  ``CompetitorConfig``.
+  ``PipelineConfig``.
 - ``_engine_from_competitor`` : factory moteur OCR ou pipeline
-  OCR+LLM depuis une ``CompetitorConfig``.
+  OCR+LLM depuis une ``PipelineConfig``.
 
 Ces utilitaires sont consommés par le router ``/api/benchmark/*``.
 """
@@ -28,7 +28,7 @@ from typing import Any, Optional
 from picarones.interfaces.web.models import (
     BenchmarkRequest,
     BenchmarkRunRequest,
-    CompetitorConfig,
+    PipelineConfig,
 )
 from picarones.interfaces.web.state import BenchmarkJob, iso_now
 
@@ -91,7 +91,7 @@ def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
     return f"{head}event: {event_type}\ndata: {payload}\n\n"
 
 
-def _build_llm_adapter(comp: CompetitorConfig) -> Any:
+def _build_llm_adapter(comp: PipelineConfig) -> Any:
     """Instancie un adaptateur LLM depuis la config d'un concurrent."""
     if comp.llm_provider == "openai":
         from picarones.adapters.llm.openai_adapter import OpenAIAdapter
@@ -126,7 +126,7 @@ def _sanitize_name_suffix(value: str) -> str:
 def _ocr_adapter_name(engine_id: str, ocr_model: str) -> str:
     """Nom canonique de l'adapter OCR pour un couple ``(engine, model)``.
 
-    Deux ``CompetitorConfig`` qui partagent exactement le même couple
+    Deux ``PipelineConfig`` qui partagent exactement le même couple
     obtiennent le même ``name`` (donc le resolver les déduplique
     proprement).  Deux configs différentes obtiennent des noms
     distincts — pas de collision silencieuse, pas de bricolage côté
@@ -170,6 +170,21 @@ _OCR_KWARGS_BUILDERS: dict[str, Any] = {
         "lang": model or "fra",
         "psm": 6,
     },
+    "pero_ocr": lambda model: {
+        "config_path": model or "",
+    },
+    # Phase 3 chantier post-rewrite : kraken/calamari étaient annoncés
+    # par ``/api/engines`` mais sans factory branchée → benchmark web
+    # échouait silencieusement.  Le ``ocr_model`` côté UI véhicule
+    # désormais le chemin du modèle (Kraken ``.mlmodel`` ou Calamari
+    # checkpoint).  Si vide, l'adapter lève une OCRAdapterError
+    # explicite à ``execute`` — pas de fallback silencieux.
+    "kraken": lambda model: {
+        "model_path": model or "",
+    },
+    "calamari": lambda model: {
+        "checkpoint": model or "",
+    },
     "mistral_ocr": lambda model: {
         "model": model or "mistral-ocr-latest",
     },
@@ -200,8 +215,8 @@ def _build_ocr_kwargs(engine_id: str, ocr_model: str) -> dict[str, Any]:
     return kwargs
 
 
-def _engine_from_competitor(comp: CompetitorConfig) -> Any:
-    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une CompetitorConfig.
+def _engine_from_competitor(comp: PipelineConfig) -> Any:
+    """Instancie un moteur OCR (ou pipeline OCR+LLM) depuis une PipelineConfig.
 
     Modes supportés :
 
@@ -226,7 +241,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
     # des constructeurs ``BaseOCREngine`` legacy.  Les adapters
     # canoniques ont des kwargs nommés (pas de dict ``config``) — la
     # conversion se fait ici en respectant les noms historiques des
-    # champs ``CompetitorConfig.ocr_model``.
+    # champs ``PipelineConfig.ocr_model``.
     ocr = None
     if not is_corpus_ocr:
         from picarones.adapters.ocr.factory import ocr_adapter_from_name
@@ -248,14 +263,20 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
     # Pipeline OCR+LLM (live ou post-correction) — ``OCRLLMPipelineConfig``
     # canonique remplace l'ex-``OCRLLMPipeline`` legacy.
-    mode_map = {
-        "text_only": "text_only",
-        "post_correction_text": "text_only",
-        "text_and_image": "text_and_image",
-        "post_correction_image": "text_and_image",
-        "zero_shot": "zero_shot",
-    }
-    mode = mode_map.get(comp.pipeline_mode, "text_only")
+    #
+    # Phase 2 chantier post-rewrite : suppression de l'ancien ``mode_map``
+    # qui aliasait silencieusement (``post_correction_text`` →
+    # ``text_only``, valeur inconnue → ``text_only``).  Désormais le
+    # typage Pydantic ``PipelineMode`` rejette en 422 toute chaîne hors
+    # de la matrice {``text_only``, ``text_and_image``, ``zero_shot``},
+    # et un éventuel client API qui passerait outre la validation
+    # (test legacy, payload forgé) reçoit ici une ``ValueError``.
+    mode = comp.pipeline_mode
+    if mode not in ("text_only", "text_and_image", "zero_shot"):
+        raise ValueError(
+            f"pipeline_mode invalide : {comp.pipeline_mode!r}.  "
+            "Valeurs acceptées : 'text_only', 'text_and_image', 'zero_shot'.",
+        )
 
     llm = _build_llm_adapter(comp)
 
@@ -283,7 +304,7 @@ def _engine_from_competitor(comp: CompetitorConfig) -> Any:
 
 
 def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None:
-    """Exécute un benchmark à partir d'une liste de ``CompetitorConfig``."""
+    """Exécute un benchmark à partir d'une liste de ``PipelineConfig``."""
     job.set_status("running")
     job.started_at = iso_now()
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
@@ -394,123 +415,72 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         job.add_event("error", {"message": f"Erreur : {exc}"})
 
 
+def _legacy_request_to_run_request(req: BenchmarkRequest) -> BenchmarkRunRequest:
+    """Convertit un ``BenchmarkRequest`` legacy en ``BenchmarkRunRequest``.
+
+    Phase 4 du chantier post-rewrite : ``/api/benchmark/start`` est
+    rétrocompatible mais délègue désormais au worker v2 unifié.  La
+    conversion mappe chaque ``engine_name`` en ``PipelineConfig``
+    (OCR seul, sans LLM) en préservant ``lang`` pour Tesseract.
+
+    Garantit qu'un patch sécurité/méthodologique appliqué au chemin
+    canonique (v2) s'applique aussi au chemin legacy — l'éviction
+    progressive de ``/start`` peut se faire sans double maintenance.
+    """
+    competitors: list[PipelineConfig] = []
+    for engine_name in req.engines:
+        # ``ocr_model`` véhicule le ``lang`` Tesseract via la registry
+        # ``_OCR_KWARGS_BUILDERS`` ; pour les autres engines on laisse
+        # vide (l'adapter utilise son défaut).
+        model = req.lang if engine_name.lower() in ("tesseract", "tess") else ""
+        competitors.append(
+            PipelineConfig(
+                name="",
+                ocr_engine=engine_name,
+                ocr_model=model,
+                llm_provider="",
+                llm_model="",
+                pipeline_mode="",
+                prompt_file="",
+            ),
+        )
+    return BenchmarkRunRequest(
+        corpus_path=req.corpus_path,
+        competitors=competitors,
+        normalization_profile=req.normalization_profile,
+        char_exclude=req.char_exclude,
+        output_dir=req.output_dir,
+        report_name=req.report_name,
+        report_lang=req.report_lang,
+    )
+
+
 def run_benchmark_thread(job: BenchmarkJob, req: BenchmarkRequest) -> None:
-    """Exécute le benchmark legacy (route ``/api/benchmark/start``)."""
-    job.set_status("running")
-    job.started_at = iso_now()
-    job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
+    """Worker historique de ``/api/benchmark/start``.
 
-    try:
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
-        )
-        from picarones.evaluation.corpus import load_corpus_from_directory
+    Phase 4 du chantier post-rewrite : unifié avec ``run_benchmark_thread_v2``
+    via conversion ``BenchmarkRequest → BenchmarkRunRequest``.  Avant
+    cette unification, deux workers indépendants implémentaient
+    presque la même logique → tout patch (sécurité, méthodologie)
+    devait être dupliqué, et il était facile d'en oublier un.
 
-        # Charger le corpus
-        job.add_event("log", {"message": f"Chargement du corpus : {req.corpus_path}"})
-        corpus = load_corpus_from_directory(req.corpus_path)
-        job.total_docs = len(corpus)
-        job.add_event("log", {"message": f"{job.total_docs} documents chargés."})
-
-        if job.status == "cancelled":
-            return
-
-        # Sprint H.2.b.4 — instanciation via la factory canonique
-        # ``ocr_adapter_from_name`` (retourne ``BaseOCRAdapter``).
-        from picarones.adapters.ocr.factory import ocr_adapter_from_name
-
-        ocr_engines = []
-        for engine_name in req.engines:
-            try:
-                if engine_name.lower() in {"tesseract", "tess"}:
-                    eng = ocr_adapter_from_name(
-                        engine_name, lang=req.lang, psm=6,
-                    )
-                else:
-                    eng = ocr_adapter_from_name(engine_name)
-                ocr_engines.append(eng)
-                job.add_event("log", {"message": f"Moteur chargé : {engine_name}"})
-            except Exception as exc:
-                job.add_event("warning", {"message": f"Moteur ignoré '{engine_name}' : {exc}"})
-
-        if not ocr_engines:
-            raise ValueError("Aucun moteur valide disponible.")
-
-        # Répertoire de sortie
-        # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
-        # par le router (validated_path).  ``report_name`` est sanitizé
-        # ici pour défense en profondeur (refuse ``../``, séparateurs,
-        # caractères de contrôle) avant concaténation à output_dir.
-        from picarones.interfaces.web.security import safe_report_name
-        output_dir = Path(req.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        report_name = safe_report_name(raw_name)
-        output_json = str(output_dir / f"{report_name}.json")
-        output_html = str(output_dir / f"{report_name}.html")
-
-        # Callback de progression
-        n_engines = len(ocr_engines)
-        total_steps = job.total_docs * n_engines
-        step_counter = [0]
-
-        def _progress_callback(engine_name: str, doc_idx: int, doc_id: str) -> None:
-            if job.status == "cancelled":
-                return
-            step_counter[0] += 1
-            job.current_engine = engine_name
-            job.processed_docs = doc_idx
-            job.progress = step_counter[0] / max(total_steps, 1)
-            job.add_event("progress", {
-                "engine": engine_name,
-                "doc_idx": doc_idx,
-                "doc_id": doc_id,
-                "progress": job.progress,
-                "processed": step_counter[0],
-                "total": total_steps,
-            })
-
-        from picarones.evaluation.metrics.normalization import _parse_exclude_chars
-        char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
-
-        # Sprint D.4 du plan v2.0 — migration ``run_benchmark_thread``
-        # (legacy v1) vers ``run_benchmark_via_service`` (rewrite),
-        # cohérent avec la migration v2 (Sprint D.3).
-        result = run_benchmark_via_service(
-            corpus=corpus,
-            engines=ocr_engines,
-            output_json=output_json,
-            show_progress=False,
-            progress_callback=_progress_callback,
-            char_exclude=char_excl,
-            cancel_event=job._cancel_event,
-            normalization_profile=req.normalization_profile,
-        )
-
-        if job.status == "cancelled":
-            return
-
-        job.add_event("log", {"message": "Génération du rapport HTML…"})
-        from picarones.reports.html.generator import ReportGenerator
-        report_lang = getattr(req, "report_lang", "fr")
-        gen = ReportGenerator(result, lang=report_lang)
-        gen.generate(output_html)
-
-        job.output_path = output_html
-        job.progress = 1.0
-        job.set_status("complete")
-
-        ranking = result.ranking()
-        job.add_event("complete", {
-            "message": "Benchmark terminé.",
-            "output_html": output_html,
-            "output_json": output_json,
-            "ranking": ranking,
-        })
-
-    except Exception as exc:  # noqa: BLE001
-        job.set_status("error", error=str(exc))
-        job.add_event("error", {"message": f"Erreur : {exc}"})
+    Marqué deprecated dans les logs ; à supprimer dans une release
+    future après que tous les consommateurs aient migré vers
+    ``/api/benchmark/run``.
+    """
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "[benchmark] /api/benchmark/start est déprécié — utiliser "
+        "/api/benchmark/run (PipelineConfig).  Phase 4 du chantier "
+        "post-rewrite : le worker legacy délègue désormais au v2 unifié.",
+    )
+    job.add_event("log", {
+        "message": (
+            "Note : /api/benchmark/start est déprécié — utiliser "
+            "/api/benchmark/run pour les nouveaux clients."
+        ),
+    })
+    return run_benchmark_thread_v2(job, _legacy_request_to_run_request(req))
 
 
 __all__ = [
