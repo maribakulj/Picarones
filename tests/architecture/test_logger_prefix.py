@@ -34,9 +34,19 @@ _LOG_METHODS = frozenset({
     "debug", "info", "warning", "error", "critical", "exception",
 })
 
-#: Pattern attendu : le 1er argument est une f-string ou un str
-#: littéral qui commence par ``[<module>]`` (lowercase, _-., max 40 chars).
-_PREFIX_RE = re.compile(r"^\[[\w./\-]+\]")
+#: Pattern attendu : le 1er argument commence par ``[<identifier>]``
+#: où ``<identifier>`` est un identifiant de module/sous-module.
+#: Tolère :
+#:
+#: - statique : ``[ner.attach]``, ``[job_store]``, ``[friedman_nemenyi]``
+#: - placeholder simple : ``[%s]`` (cas des adapters paramétrés type
+#:   ``adapters.llm.base`` qui logguent ``[%s] ...`` où ``%s`` =
+#:   ``self.name``).
+#: - composé : ``[importers/%s]``, ``[narrative.detector.%s]``,
+#:   ``[pipeline:%s]``, ``[aggregate_%s]``.
+#:
+#: Refuse l'absence totale de préfixe (``logger.warning("Erreur ...")``).
+_PREFIX_RE = re.compile(r"^\[[\w./\-:%()_]+\]")
 
 
 def _scan_unprefixed_logs() -> list[tuple[Path, int, str]]:
@@ -94,7 +104,7 @@ def _scan_unprefixed_logs() -> list[tuple[Path, int, str]]:
 #: Baseline du nombre de logs sans préfixe.  Phase 10 audit
 #: code-quality (2026-05) : ~30 sites résiduels acceptés.  Test
 #: ratchet — ne peut que baisser.
-UNPREFIXED_LOGS_BASELINE = 46
+UNPREFIXED_LOGS_BASELINE = 0
 
 
 def test_unprefixed_logs_below_baseline() -> None:

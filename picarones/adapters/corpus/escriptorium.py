@@ -513,7 +513,7 @@ class EScriptoriumClient:
                 try:
                     part_pk = int(doc_result.doc_id.replace("part_", "").lstrip("0") or "0")
                 except ValueError:
-                    logger.warning("Impossible de déterminer part_pk pour %s", doc_result.doc_id)
+                    logger.warning("[escriptorium] Impossible de déterminer part_pk pour %s", doc_result.doc_id)
                     continue
 
             try:
@@ -526,9 +526,9 @@ class EScriptoriumClient:
                     },
                 )
                 exported += 1
-                logger.debug("Exporté part %d → couche '%s'", part_pk, layer_name)
+                logger.debug("[escriptorium] Exporté part %d → couche '%s'", part_pk, layer_name)
             except RuntimeError as exc:
-                logger.warning("Erreur export part %d: %s", part_pk, exc)
+                logger.warning("[escriptorium] Erreur export part %d: %s", part_pk, exc)
 
         return exported
 

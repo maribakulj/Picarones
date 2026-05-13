@@ -363,7 +363,7 @@ class RobustnessAnalyzer:
                             doc_cers.append(metrics.cer)
                         except Exception as exc:
                             logger.debug(
-                                "Erreur OCR %s niveau %s=%s: %s",
+                                "[robustness] Erreur OCR %s niveau %s=%s: %s",
                                 engine.name, deg_type, level, exc
                             )
                         finally:
@@ -437,7 +437,7 @@ class RobustnessAnalyzer:
                 _, b64 = img_path.split(",", 1)
                 return base64.b64decode(b64)
             except Exception as exc:
-                logger.debug("Impossible de décoder data URI: %s", exc)
+                logger.debug("[robustness] Impossible de décoder data URI: %s", exc)
                 return None
 
         # Fichier local
@@ -445,7 +445,7 @@ class RobustnessAnalyzer:
         if path.exists():
             return path.read_bytes()
 
-        logger.debug("Image introuvable : %s", img_path)
+        logger.debug("[robustness] Image introuvable : %s", img_path)
         return None
 
     @staticmethod

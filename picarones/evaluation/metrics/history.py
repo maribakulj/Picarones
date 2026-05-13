@@ -242,7 +242,7 @@ class BenchmarkHistory:
             )
 
         conn.commit()
-        logger.info("Benchmark enregistré dans l'historique : run_id=%s", run_id)
+        logger.info("[history] Benchmark enregistré dans l'historique : run_id=%s", run_id)
         return run_id
 
     def record_single(
@@ -453,7 +453,7 @@ class BenchmarkHistory:
         """
         entries = self.query(engine=engine, corpus=corpus, limit=1000)
         if len(entries) < 2:
-            logger.info("Pas assez de runs pour détecter une régression (moteur=%s)", engine)
+            logger.info("[history] Pas assez de runs pour détecter une régression (moteur=%s)", engine)
             return None
 
         current = entries[-1]
