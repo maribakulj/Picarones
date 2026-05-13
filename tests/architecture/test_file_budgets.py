@@ -40,10 +40,11 @@ FILE_BUDGETS: dict[str, int] = {
     # - ``_benchmark_ner`` (NER aggregation, ~100 LOC)
     # - ``_benchmark_persistence`` (JSON dump, ~15 LOC)
     # - ``_benchmark_adapter_resolver`` (engine→spec + resolver, ~250 LOC)
-    # Prochaines extractions prévues : conversions
-    # (document/corpus → spec, ~340 LOC) et execution
-    # (run_benchmark_unified + with_partial, ~500 LOC).
-    "picarones/app/services/benchmark_runner.py": 1370,  # actuel 1329
+    # - ``_benchmark_conversions`` (document/corpus + helpers GT, ~230 LOC)
+    # Prochaine extraction prévue : execution
+    # (``_run_benchmark_unified`` + ``_run_benchmark_with_partial``,
+    # ~500 LOC).
+    "picarones/app/services/benchmark_runner.py": 1140,  # actuel 1100
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # Phase 4.6 audit code-quality (2026-05) — commentaires retirés :
