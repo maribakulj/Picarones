@@ -77,6 +77,11 @@ def _run_orchestrator_for_cli(
             adapter_resolver=args.adapter_resolver,
             adapter_kwargs=args.adapter_kwargs,
             progress_callback=progress_callback,
+            # Phase B3-final hotfix (mai 2026) — passer le corpus
+            # mémoire évite que ``_persist_legacy_benchmark_json``
+            # essaie de reloader depuis ``workspace_dir`` (qui ne
+            # contient que les .gt.txt, pas les images).
+            corpus_legacy=corpus,
         )
         return run_result_to_benchmark_result(
             orch_result.run_result,

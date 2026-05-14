@@ -195,6 +195,54 @@ class TestHelperPropagation:
         assert "searchability" in bm.view_results
         assert "alto_documentary" not in bm.view_results
 
+    def test_helper_output_json_does_not_crash(self, tmp_path: Path) -> None:
+        """Régression : passer ``output_json`` au helper CLI ne doit
+        PAS lever ``ValueError: Aucun document valide trouvé``.
+
+        Avant le fix (mai 2026, branche test-alto-pipelines), le path
+        ``execute_preset(..., spec.output_json=set)`` faisait appel à
+        ``_persist_legacy_benchmark_json`` qui tentait un
+        ``load_corpus_from_directory(extracted_dir)`` — or en mode
+        preset, ``extracted_dir`` est le ``workspace_dir`` qui ne
+        contient que les ``.gt.txt`` synthétisés par
+        ``document_to_document_ref``, pas les images.
+
+        Symptôme observé en prod : "Erreur : Aucun document valide
+        trouvé dans /tmp/picarones_web_*/gt. Vérifiez que les
+        fichiers GT portent le suffixe '.gt.txt'." — affiché après
+        que les 6 documents aient pourtant été correctement OCRés
+        (les logs montraient les appels Mistral réussis juste avant).
+
+        Le fix passe le ``Corpus`` mémoire à ``execute_preset`` via
+        ``corpus_legacy=corpus`` ; ``_persist_legacy_benchmark_json``
+        l'utilise alors directement sans reload.
+        """
+        from picarones.interfaces.cli._workflows import (
+            _run_orchestrator_for_cli,
+        )
+        corpus, engine = self._make_corpus_and_adapter(tmp_path)
+        output_json = tmp_path / "results.json"
+        # NB : on passe explicitement ``output_json`` — c'est ce qui
+        # active le path ``_persist_legacy_benchmark_json`` qui était
+        # bugué.  Sans ``output_json``, le test passait à tort.
+        bm = _run_orchestrator_for_cli(
+            corpus, [engine],
+            output_json=str(output_json),
+        )
+        assert bm.document_count == 1
+        # Le JSON legacy doit avoir été persisté correctement (preuve
+        # que ``_persist_legacy_benchmark_json`` a réussi avec le
+        # corpus mémoire au lieu de crasher sur le reload).
+        assert output_json.exists(), (
+            f"output_json {output_json} n'a pas été écrit — le path "
+            "`_persist_legacy_benchmark_json` a probablement crashé "
+            "(regression : reload depuis workspace_dir gt-only)"
+        )
+        # Sanity : le JSON est parsable.
+        import json
+        loaded = json.loads(output_json.read_text(encoding="utf-8"))
+        assert "engines" in loaded or "engine_reports" in loaded
+
     def test_helper_partial_dir_propagated(self, tmp_path: Path) -> None:
         """``partial_dir`` propagé jusqu'à RunSpec → directory créé +
         nettoyé en fin de run (lifecycle complet).

@@ -432,6 +432,14 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 adapter_kwargs=_preset.adapter_kwargs,
                 progress_callback=_progress_callback,
                 cancel_event=job._cancel_event,
+                # Phase B3-final hotfix (mai 2026) — le corpus est
+                # déjà en mémoire (chargé depuis ``uploads/`` via
+                # ``load_corpus_from_directory(req.corpus_path)``).
+                # Le passer évite que le persist JSON tente un
+                # reload depuis ``workspace_dir`` qui ne contient
+                # que les .gt.txt synthétisés (pas d'images), ce
+                # qui levait "Aucun document valide trouvé".
+                corpus_legacy=corpus,
             )
             result = run_result_to_benchmark_result(
                 _orch_result.run_result,

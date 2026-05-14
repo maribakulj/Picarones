@@ -318,6 +318,7 @@ class RunOrchestrator:
         report_renderer: ReportRenderer | None = None,
         progress_callback: Callable[[str, int, str], None] | None = None,
         cancel_event: threading.Event | None = None,
+        corpus_legacy: Any | None = None,
     ) -> OrchestrationResult:
         """Phase B4 — variante d'``execute()`` pour objets domain pré-construits.
 
@@ -434,6 +435,7 @@ class RunOrchestrator:
                 normalization_profile=spec.normalization_profile,
                 profile=spec.profile,
                 entity_extractor=spec.entity_extractor,
+                corpus_legacy=corpus_legacy,
             )
 
         report_path: Path | None = None
@@ -833,6 +835,7 @@ class RunOrchestrator:
         normalization_profile: str | None,
         profile: str,
         entity_extractor: str | None = None,
+        corpus_legacy: Any | None = None,
     ) -> None:
         """Phase B2.7 — converti ``RunResult`` → ``BenchmarkResult`` legacy
         et persiste en JSON.
@@ -847,8 +850,10 @@ class RunOrchestrator:
         - ``run_result`` : le ``RunResult`` produit par le ``BenchmarkService``.
         - ``extracted_dir`` : où le corpus a été extrait — sert à
           recharger un ``Corpus`` legacy via
-          ``load_corpus_from_directory``.  Le converter attend des
-          ``Document`` legacy avec ``image_path`` et ``ground_truth``.
+          ``load_corpus_from_directory`` **quand** ``corpus_legacy``
+          n'est pas fourni (mode ``execute()`` avec extraction réelle
+          d'un zip/dir).  Le converter attend des ``Document`` legacy
+          avec ``image_path`` et ``ground_truth``.
         - ``pipeline_specs`` : la liste des pipelines exécutées, dans
           l'ordre soumis à ``BenchmarkService.run``.  Chaque spec est
           wrappée en ``_PipelineEngineProxy`` qui expose le contrat
@@ -858,6 +863,17 @@ class RunOrchestrator:
         - ``char_exclude``, ``normalization_profile``, ``profile`` :
           paramètres legacy propagés au converter (qui les passe à
           ``compute_metrics`` et aux hooks document-level).
+        - ``corpus_legacy`` *(Phase B3-final hotfix mai 2026)* : Corpus
+          legacy déjà en mémoire.  Quand fourni, court-circuite le
+          ``load_corpus_from_directory(extracted_dir)`` qui échoue dans
+          le path ``execute_preset`` : en mode preset, ``extracted_dir``
+          pointe vers le ``workspace_dir`` qui ne contient que les
+          ``.gt.txt`` synthétisés par ``document_to_document_ref``, pas
+          les images sources — ``load_corpus_from_directory`` itère
+          alors sur zéro image et lève ``ValueError: Aucun document
+          valide trouvé``.  Symptôme observé en prod : le benchmark
+          web/CLI échouait silencieusement après la 1re exécution OCR
+          avec ce message trompeur.
 
         Notes
         -----
@@ -871,14 +887,24 @@ class RunOrchestrator:
         from picarones.app.services._benchmark_persistence import (
             persist_benchmark_result_json,
         )
-        from picarones.evaluation.corpus import load_corpus_from_directory
 
-        # Recharge le corpus legacy depuis le dossier extrait — même
-        # convention que ``benchmark_utils.py:317`` (web worker v2).
-        # ``name`` passé explicitement pour matcher
-        # ``corpus_spec.name`` (sinon le loader retourne ``"Corpus"``
-        # par défaut, ce qui casserait le snapshot d'invariance).
-        corpus = load_corpus_from_directory(extracted_dir, name=corpus_name)
+        if corpus_legacy is not None:
+            # Mode preset : le caller a déjà le ``Corpus`` en mémoire
+            # (typiquement chargé depuis ``uploads/`` côté web ou via
+            # ``load_corpus_from_directory(corpus_arg)`` côté CLI).
+            # Pas de reload — évite la divergence ``extracted_dir`` ≠
+            # vrai source dir documentée plus haut.
+            corpus = corpus_legacy
+        else:
+            from picarones.evaluation.corpus import load_corpus_from_directory
+
+            # Mode ``execute()`` classique : le corpus est physiquement
+            # disponible dans ``extracted_dir`` (zip extrait ou dossier
+            # source).  ``name`` passé explicitement pour matcher
+            # ``corpus_spec.name`` (sinon le loader retourne
+            # ``"Corpus"`` par défaut, ce qui casserait le snapshot
+            # d'invariance).
+            corpus = load_corpus_from_directory(extracted_dir, name=corpus_name)
 
         # Wrappe chaque PipelineSpec en proxy minimal pour le converter.
         # Le converter ne consomme que ``.name``, ``.config`` et tolère
