@@ -419,30 +419,78 @@ class TestParityNormalizationProfile:
 # ──────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}6 — port profile hooks")
-def test_parity_profile_validation(tmp_path: Path) -> None:
-    """``profile="unknown"`` lève ``ValueError`` AVANT le run.
+class TestParityProfile:
+    """Phase B2.6 — ``profile`` est validé tôt et applique les hooks.
 
-    Spec
-    ----
-    - Comportement identique aux 3 tests
-      ``TestProfileValidation`` de
-      ``tests/app/test_sprint_d2cdef_features.py``.
+    Validation : B1.1 ajoute un model_validator
+    ``_validate_profile_is_known`` qui appelle ``validate_profile``
+    avant que le ``RunSpec`` ne soit instancié.  L'invocation des
+    hooks document-level et corpus aggregators se fait via le
+    converter legacy (chemin ``output_json``) qui appelle
+    ``run_document_hooks(profile=...)`` puis
+    ``run_corpus_aggregators(profile, ...)``.
     """
 
+    def test_unknown_profile_rejected_at_runspec(self, tmp_path: Path) -> None:
+        """``profile="philolagic_typo"`` est rejeté à la construction
+        du ``RunSpec``, AVANT toute exécution OCR.
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}6 — port profile hooks")
-def test_parity_profile_standard_runs_hooks(tmp_path: Path) -> None:
-    """``profile="standard"`` exécute les hooks document-level
-    enregistrés via ``@register_document_metric``.
+        Cohérent avec ``run_benchmark_via_service(profile="unknown")``
+        qui lève via ``validate_profile`` au démarrage du bench.
+        """
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(_make_corpus_zip(n_docs=1))
+        out_dir = tmp_path / "out"
+        yaml = _build_spec_yaml(corpus_zip, out_dir)
+        yaml += "profile: not_a_real_profile\n"
 
-    Spec
-    ----
-    - Enregistrer un hook test ``@register_document_metric("standard")``
-      qui renvoie ``{"hooked": True}``.
-    - Lancer le bench.
-    - ``DocumentResult.hook_values["hooked"] is True``.
-    """
+        from pydantic import ValidationError
+        with pytest.raises((ValidationError, Exception), match="profil"):
+            load_run_spec_from_yaml(yaml)
+
+    def test_default_profile_is_standard_and_runs(self, tmp_path: Path) -> None:
+        """``profile`` non spécifié = ``standard`` (default RunSpec) →
+        le bench passe la validation et tourne."""
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(_make_corpus_zip(n_docs=1))
+        out_dir = tmp_path / "out"
+        spec = load_run_spec_from_yaml(_build_spec_yaml(corpus_zip, out_dir))
+        assert spec.profile == "standard"
+
+        result = RunOrchestrator(out_dir).execute(spec)
+        assert result.run_result.n_documents == 1
+
+    def test_profile_propagated_to_legacy_converter_hooks(
+        self, tmp_path: Path,
+    ) -> None:
+        """Le ``profile`` du ``RunSpec`` est passé au converter legacy
+        qui invoque ``run_document_hooks`` + ``run_corpus_aggregators``.
+
+        Vérification fonctionnelle : avec ``profile="standard"``, le
+        ``BenchmarkResult`` legacy persisté via ``output_json`` porte
+        les champs étendus calculés par les hooks (ex :
+        ``DocumentResult`` a des attributs au-delà des CER/WER bruts —
+        ``hypothesis_length``, ``confusion``, etc., selon les hooks
+        ``standard`` enregistrés).
+        """
+        import json
+
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(_make_corpus_zip(n_docs=1))
+        out_dir = tmp_path / "out"
+        output_json = tmp_path / "bm.json"
+        yaml = _build_spec_yaml(corpus_zip, out_dir)
+        yaml += f"output_json: {output_json}\n"
+        yaml += "profile: standard\n"
+        spec = load_run_spec_from_yaml(yaml)
+
+        RunOrchestrator(out_dir).execute(spec)
+
+        loaded = json.loads(output_json.read_text(encoding="utf-8"))
+        doc_result = loaded["engine_reports"][0]["document_results"][0]
+        # Le hook ``hypothesis_length`` (standard) doit être présent.
+        assert "metrics" in doc_result
+        assert doc_result["metrics"]["hypothesis_length"] > 0
 
 
 # ──────────────────────────────────────────────────────────────────────
