@@ -13,6 +13,12 @@ from picarones.domain import (
     ArtifactType,
     MetricSpec,
 )
+from picarones.evaluation.metrics.alto_metrics import (
+    alto_text_cer,
+    alto_text_mer,
+    alto_text_wer,
+    alto_text_wil,
+)
 from picarones.evaluation.metrics.alto_structural import (
     compute_alto_validity,
     compute_line_count_ratio,
@@ -133,9 +139,16 @@ class TestAltoViewShape:
     def test_default_metrics(self) -> None:
         view = build_alto_view()
         assert view.metric_names == DEFAULT_ALTO_METRICS
+        # 3 métriques structurelles (Sprint A14-S15).
         assert "alto_validity" in view.metric_names
         assert "alto_line_count_ratio" in view.metric_names
         assert "alto_word_box_coverage" in view.metric_names
+        # 4 métriques textuelles ajoutées en Phase B6 — opèrent sur le
+        # texte plat extrait de l'ALTO via ``extract_text_from_alto``.
+        assert "alto_text_cer" in view.metric_names
+        assert "alto_text_wer" in view.metric_names
+        assert "alto_text_mer" in view.metric_names
+        assert "alto_text_wil" in view.metric_names
 
     def test_no_projection(self) -> None:
         view = build_alto_view()
@@ -179,6 +192,44 @@ def _build_alto_executor(payloads: dict[str, AltoDocument]) -> DefaultEvaluation
             higher_is_better=True,
         ),
         compute_word_box_coverage,
+    )
+    # Phase B6 — métriques textuelles ajoutées aux defaults AltoView.
+    # Elles attendent un payload qui expose ``xml_content`` ou un
+    # str XML brut (cf. ``extract_text_from_alto``).  Les payloads
+    # ``AltoDocument`` typés du test échouent silencieusement dans
+    # cette extraction → CER 1.0.  On les enregistre quand même pour
+    # vérifier le wiring registry/executor.
+    metrics.register(
+        MetricSpec(
+            name="alto_text_cer",
+            input_types=(ArtifactType.ALTO_XML, ArtifactType.ALTO_XML),
+            higher_is_better=False,
+        ),
+        alto_text_cer,
+    )
+    metrics.register(
+        MetricSpec(
+            name="alto_text_wer",
+            input_types=(ArtifactType.ALTO_XML, ArtifactType.ALTO_XML),
+            higher_is_better=False,
+        ),
+        alto_text_wer,
+    )
+    metrics.register(
+        MetricSpec(
+            name="alto_text_mer",
+            input_types=(ArtifactType.ALTO_XML, ArtifactType.ALTO_XML),
+            higher_is_better=False,
+        ),
+        alto_text_mer,
+    )
+    metrics.register(
+        MetricSpec(
+            name="alto_text_wil",
+            input_types=(ArtifactType.ALTO_XML, ArtifactType.ALTO_XML),
+            higher_is_better=False,
+        ),
+        alto_text_wil,
     )
     projectors = ProjectorRegistry()  # AltoView n'a pas besoin de projecteur
 

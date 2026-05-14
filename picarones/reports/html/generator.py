@@ -345,6 +345,13 @@ class ReportGenerator:
         from picarones.reports.html.renderers.taxonomy_intra_doc import (
             build_taxonomy_intra_doc_html,
         )
+        # Phase B6 (mai 2026) — sections par vue d'évaluation
+        # (text_final, alto_documentary, searchability) issues du
+        # RunOrchestrator.  Adaptive : "" si benchmark.view_results
+        # est vide (chemin legacy sans vues).
+        from picarones.reports.html.renderers.view_results import (
+            build_view_results_html,
+        )
 
         # Spécialisation : construit une map {engine: counts} depuis les
         # ``aggregated_taxonomy`` ; un moteur sans taxonomie est exclu.
@@ -426,6 +433,14 @@ class ReportGenerator:
             ),
             "marginal_cost_html": build_marginal_cost_html(
                 report_data.get("marginal_cost"), labels=labels,
+            ),
+            # Phase B6 (mai 2026) — sections par vue d'évaluation.
+            "view_results_html": build_view_results_html(
+                self.benchmark.view_results,
+                all_engine_names=[
+                    r.engine_name for r in self.benchmark.engine_reports
+                ],
+                lang=self.lang,
             ),
         }
 

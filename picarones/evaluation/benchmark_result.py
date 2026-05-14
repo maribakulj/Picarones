@@ -527,6 +527,17 @@ class BenchmarkResult:
     # ``None`` si aucun document n'expose de ``script_type`` dans son
     # ``image_quality.script_type`` ou ``metadata.script_type``.
     doc_strata: Optional[dict[str, str]] = None
+    # Phase B6 (mai 2026) — résultats des EvaluationView du
+    # RunOrchestrator (text_final, alto_documentary, searchability).
+    # Structure : ``{view_name: {engine_name: {doc_id: {metric: value}}}}``.
+    # Vide si le run a été lancé sans vues (cas legacy
+    # ``run_benchmark_via_service`` sans RunOrchestrator).
+    # Consommé par le rapport HTML (sections multi-vues) et par le
+    # narrative engine pour mettre en avant les pipelines qui
+    # produisent un ALTO valide vs ceux qui restent en RAW_TEXT seul.
+    view_results: dict[str, dict[str, dict[str, dict[str, float]]]] = field(
+        default_factory=dict,
+    )
 
     def ranking(self) -> list[dict]:
         """Retourne le classement des moteurs trié par **médiane CER** croissante.

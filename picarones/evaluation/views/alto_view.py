@@ -31,6 +31,8 @@ filtre les pipelines dont l'artefact n'est pas dans
 
 Métriques par défaut
 --------------------
+**Structurelles** (typées ``(ALTO_XML, ALTO_XML)``) :
+
 - ``alto_validity`` — l'hypothèse est-elle structurellement
   cohérente ? (≥ 1 page, ≥ 1 bloc, ≥ 1 ligne).
 - ``alto_line_count_ratio`` — ratio min/max du nombre de lignes.
@@ -38,12 +40,24 @@ Métriques par défaut
 
 Toutes ∈ [0, 1] avec ``higher_is_better=True``.
 
+**Textuelles** (Phase B6 — opérent sur le texte extrait de l'ALTO via
+``extract_text_from_alto``) :
+
+- ``alto_text_cer`` — CER calculé sur le texte plat extrait des deux
+  ALTO (référence + hypothèse).  Permet de détecter une régression
+  textuelle même quand la structure est préservée.
+- ``alto_text_wer`` / ``alto_text_mer`` / ``alto_text_wil`` — variantes
+  WER/MER/WIL sur le même texte extrait.
+
 Reportées à un sprint suivant
 -----------------------------
 - ``textline_alignment`` (IoU des bbox de lignes).
 - ``reading_order_consistency`` (Kendall tau sur les IDs).
 - ``layout_f1`` (ICDAR 2015) via wrapper de
   ``evaluation/metrics/layout.py``.
+- ``reading_order_f1`` — nécessite une GT ``READING_ORDER`` qui n'est
+  pas systématiquement disponible dans les corpus.  Opt-in via
+  ``build_alto_view(metric_names=(..., "reading_order_f1"))``.
 """
 
 from __future__ import annotations
@@ -52,12 +66,26 @@ from picarones.domain.artifacts import ArtifactType
 from picarones.domain.evaluation_spec import EvaluationView
 
 
-#: Métriques calculées par défaut.  Toutes typées
-#: ``(ALTO_XML, ALTO_XML)``.
+#: Métriques calculées par défaut.  7 métriques :
+#:
+#: - 3 structurelles ``(ALTO_XML, ALTO_XML)`` (Sprint A14-S15).
+#: - 4 textuelles ``(ALTO_XML, ALTO_XML)`` qui extraient le texte
+#:   plat de l'ALTO via ``extract_text_from_alto`` puis appliquent
+#:   les opérateurs jiwer (Phase B6 mai 2026).
+#:
+#: Les métriques sont enregistrées dans le ``MetricRegistry`` via
+#: ``register_metric`` (cf. ``evaluation/metrics/alto_metrics.py`` et
+#: ``evaluation/metrics/alto_structural.py``).
 DEFAULT_ALTO_METRICS: tuple[str, ...] = (
+    # Structurelles (Sprint A14-S15)
     "alto_validity",
     "alto_line_count_ratio",
     "alto_word_box_coverage",
+    # Textuelles (Phase B6 — extraction texte de l'ALTO)
+    "alto_text_cer",
+    "alto_text_wer",
+    "alto_text_mer",
+    "alto_text_wil",
 )
 
 
