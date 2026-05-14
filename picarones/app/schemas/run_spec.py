@@ -85,12 +85,29 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import importlib
+import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from picarones.domain.artifacts import ArtifactType
 from picarones.domain.errors import PicaronesError
+
+
+#: Format autorisé pour ``entity_extractor`` (Phase B1 migration Option B).
+#: Accepte les deux conventions de dotted path Python :
+#:
+#:  - ``module.submodule:Symbol`` (PEP 621 entry points / setuptools)
+#:  - ``module.submodule.Symbol`` (import classique)
+#:
+#: La validation est purement structurelle ici — l'importabilité est
+#: vérifiée plus tard, au moment de :meth:`RunOrchestrator.execute`
+#: (lazy resolve).  Cohérent avec ``adapter_class`` (cf. ``StepSpec``).
+_DOTTED_PATH_RE = re.compile(
+    r"^[a-zA-Z_][a-zA-Z0-9_]*"           # premier composant
+    r"(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*"     # composants intermédiaires
+    r"(?:[:.][a-zA-Z_][a-zA-Z0-9_]*)$"   # séparateur final (``:`` ou ``.``) + symbole
+)
 
 
 #: Vues canoniques supportées par la CLI.
@@ -257,6 +274,97 @@ class RunSpec(BaseModel):
     report_lang: str = Field(default="fr")
     code_version: str = Field(default="0.0.0-unset", max_length=128)
 
+    # ──────────────────────────────────────────────────────────────────
+    # Phase B1 — migration Option B (run_benchmark_via_service →
+    # RunOrchestrator).  Les 7 champs ci-dessous portent les
+    # paramètres legacy de ``run_benchmark_via_service`` dans la
+    # spec déclarative.  À ce stade (B1) ils sont validés mais pas
+    # encore consommés par l'orchestrateur — les phases B2.1-B2.7
+    # branchent chaque champ à son comportement.
+    #
+    # Les paramètres d'exécution **non-sérialisables**
+    # (``progress_callback``, ``cancel_event``) restent kwargs de
+    # ``RunOrchestrator.execute()`` — un YAML ne peut pas porter un
+    # callable Python.
+    # ──────────────────────────────────────────────────────────────────
+
+    char_exclude: str | None = Field(
+        default=None,
+        max_length=512,
+        description=(
+            "Caractères à exclure du calcul CER/WER (Phase B2.5). "
+            "Chaîne de caractères Unicode, traitée comme un set par "
+            "``compute_metrics``.  Cas typique : ``'!?.,;:'`` pour "
+            "ignorer la ponctuation."
+        ),
+    )
+
+    normalization_profile: str | None = Field(
+        default=None,
+        max_length=128,
+        description=(
+            "Profil de normalisation texte appliqué avant CER/WER "
+            "(Phase B2.5).  Valeurs canoniques : ``caseless``, "
+            "``medieval_french``, ``sans_apostrophes``, etc.  Voir "
+            "``picarones.formats.text.normalization``."
+        ),
+    )
+
+    partial_dir: str | None = Field(
+        default=None,
+        max_length=2048,
+        description=(
+            "Répertoire où persister les ``DocumentResult`` intermédiaires "
+            "pour la reprise sur interruption (Phase B2.3).  Format : "
+            "JSONL par pipeline (``picarones_{corpus}_{pipeline}.partial.jsonl``)."
+        ),
+    )
+
+    entity_extractor: str | None = Field(
+        default=None,
+        max_length=512,
+        description=(
+            "Dotted path Python vers une factory d'extracteur d'entités "
+            "nommées (Phase B2.4).  Format accepté : ``module.submodule:"
+            "Symbol`` ou ``module.submodule.Symbol``.  La factory doit "
+            "retourner un callable ``(text: str) -> list[dict]`` compatible "
+            "avec ``_attach_ner_metrics_to_benchmark``.  L'importabilité "
+            "est vérifiée lazy à ``execute()``."
+        ),
+    )
+
+    profile: str = Field(
+        default="standard",
+        max_length=64,
+        description=(
+            "Profil de hooks document-level / corpus aggregators "
+            "(Phase B2.6).  Sélectionne quels hooks "
+            "``@register_document_metric`` / ``@register_corpus_aggregator`` "
+            "s'exécutent.  Profils canoniques : ``standard``, ``diagnostics``, "
+            "``economics``, ``pipeline``, ``full``."
+        ),
+    )
+
+    output_json: str | None = Field(
+        default=None,
+        max_length=2048,
+        description=(
+            "Chemin facultatif où sérialiser le ``BenchmarkResult`` "
+            "legacy en JSON (Phase B2.7).  Cohabite avec les 4 fichiers "
+            "JSONL natifs persistés sous ``output_dir/results/``."
+        ),
+    )
+
+    timeout_seconds_per_doc: float = Field(
+        default=60.0,
+        gt=0.0,
+        le=86400.0,
+        description=(
+            "Timeout par document propagé au ``CorpusRunner``.  "
+            "Cohérent avec ``run_benchmark_via_service.timeout_seconds``."
+        ),
+    )
+
     @model_validator(mode="after")
     def _validate_corpus_source(self) -> "RunSpec":
         if (self.corpus_zip is None) == (self.corpus_dir is None):
@@ -284,6 +392,39 @@ class RunSpec(BaseModel):
         if len(set(names)) != len(names):
             raise ValueError(
                 f"RunSpec : noms de pipeline dupliqués dans {names!r}.",
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_profile_is_known(self) -> "RunSpec":
+        """Phase B1.1 — rejet précoce des profils inconnus.
+
+        Délégué à ``evaluation.metric_hooks.validate_profile``, le
+        même validator que ``run_benchmark_via_service`` utilise au
+        démarrage du bench legacy.
+        """
+        from picarones.evaluation.metric_hooks import validate_profile
+
+        validate_profile(self.profile)
+        return self
+
+    @model_validator(mode="after")
+    def _validate_entity_extractor_format(self) -> "RunSpec":
+        """Phase B1.1 — valide le format dotted path.
+
+        L'**importabilité** est vérifiée lazy à
+        ``RunOrchestrator.execute()`` (cf. Phase B2.4), parce qu'un
+        YAML peut être validé sur une machine où le package
+        contenant l'extracteur n'est pas installé.
+        """
+        if self.entity_extractor is None:
+            return self
+        if not _DOTTED_PATH_RE.match(self.entity_extractor):
+            raise ValueError(
+                f"entity_extractor invalide : {self.entity_extractor!r}. "
+                "Format attendu : ``module.submodule:Symbol`` ou "
+                "``module.submodule.Symbol`` (composants alphanumériques "
+                "+ ``_``).",
             )
         return self
 

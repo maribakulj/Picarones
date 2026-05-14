@@ -401,7 +401,7 @@ python -m mypy picarones/domain/    # strict mode (Layer 1)
 python -m mypy picarones/           # lax mode (full tree)
 ```
 
-**Test suite**: ~4800 tests, ~3 min on a modern laptop. Coverage
+**Test suite**: ~4850 tests, ~3 min on a modern laptop. Coverage
 floor at 85% (currently ~87%). The `network` marker excludes tests
 requiring live HTTP. A handful of tests depend on optional engines
 (`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when

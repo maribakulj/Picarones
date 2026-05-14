@@ -37,6 +37,7 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import io
+import threading
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -137,6 +138,8 @@ class RunOrchestrator:
         spec: RunSpec,
         *,
         report_renderer: ReportRenderer | None = None,
+        progress_callback: Callable[[str, int, str], None] | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> OrchestrationResult:
         """Exécute le run complet et retourne tout ce qu'on en sait.
 
@@ -151,6 +154,20 @@ class RunOrchestrator:
             émis.  L'inversion de dépendance évite à
             ``app/services/`` d'importer ``reports/`` (couche plus
             externe — interdit par l'architecture).
+        progress_callback:
+            Phase B1.2 — kwarg d'exécution non-sérialisable. Callable
+            invoqué ``(engine_name, doc_idx, doc_id)`` à chaque
+            document traité.  Le branchement concret au runner est
+            fait en Phase B2.1.  Pour l'instant, le kwarg est accepté
+            et stocké sur l'instance mais ignoré au runtime — il sera
+            consommé quand B2.1 portera le pattern verrou+compteur
+            depuis ``_benchmark_execution.py:109-139``.
+        cancel_event:
+            Phase B1.2 — kwarg d'exécution non-sérialisable.
+            ``threading.Event`` qui, quand ``set()``, demande l'arrêt
+            propre du run en cours.  Phase B2.2 le branchera au
+            ``CorpusRunner`` (pattern existant dans
+            ``_benchmark_execution.py:142-149``).
 
         Raises
         ------
@@ -160,6 +177,13 @@ class RunOrchestrator:
             Si la résolution dotted-path d'un ``adapter_class``
             échoue.
         """
+        # Phase B1.2 — kwargs d'exécution stockés temporairement sur
+        # l'instance.  Phase B2.1/B2.2 les consommera depuis ici.
+        # Volontairement public-protected (un underscore) : ce sont
+        # des paramètres d'exécution, pas une configuration durable.
+        self._progress_callback = progress_callback
+        self._cancel_event = cancel_event
+
         self._output_dir.mkdir(parents=True, exist_ok=True)
         workspace = WorkspaceManager(self._output_dir)
 

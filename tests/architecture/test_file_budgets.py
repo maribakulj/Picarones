@@ -124,7 +124,8 @@ FILE_BUDGETS: dict[str, int] = {
     # --- Services applicatifs (couche 6).  Budgets ``current + 15 %``.
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
-    "picarones/app/services/run_orchestrator.py": 500,    # actuel 432
+    "picarones/app/services/run_orchestrator.py": 570,    # actuel 496 — Phase B1 migration Option B (+64 LOC)
+    "picarones/app/schemas/run_spec.py": 620,             # actuel 530 — Phase B1 migration Option B (+90 LOC : 7 nouveaux champs + 2 validators)
     "picarones/reports/html/render.py": 700,           # actuel 615
 }
 
