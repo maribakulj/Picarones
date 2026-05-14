@@ -105,12 +105,20 @@ class TesseractAdapter(BaseOCRAdapter):
     #: ``PipelineSpec`` choisit ceux qui sont effectivement consommés
     #: par les étapes en aval ; l'executor filtre la sortie de
     #: ``execute()`` sur ``step.output_types``.  Si l'utilisateur
-    #: désactive ``expose_confidences``, le YAML doit déclarer
-    #: ``output_types: [raw_text]`` (sinon la jonction sera vue par
-    #: l'aval comme manquant son input ``confidences``).
-    output_types = frozenset(
-        {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
-    )
+    #: désactive ``expose_confidences`` ou ``expose_alto``, le YAML
+    #: doit déclarer ``output_types: [raw_text]`` (sinon la jonction
+    #: sera vue par l'aval comme manquant son input ``confidences`` /
+    #: ``alto_xml``).
+    #:
+    #: Phase B5 (mai 2026) — ``ALTO_XML`` ajouté au set maximal pour
+    #: permettre la production d'un ALTO natif via
+    #: ``pytesseract.image_to_alto_xml``.  Activé via le flag
+    #: ``expose_alto`` (off par défaut, compat ascendante).
+    output_types = frozenset({
+        ArtifactType.RAW_TEXT,
+        ArtifactType.CONFIDENCES,
+        ArtifactType.ALTO_XML,
+    })
     execution_mode = "cpu"
 
     def __init__(
@@ -122,6 +130,7 @@ class TesseractAdapter(BaseOCRAdapter):
         oem: int = 3,
         tesseract_cmd: str | None = None,
         expose_confidences: bool = True,
+        expose_alto: bool = False,
     ) -> None:
         if not name or not name.strip():
             raise OCRAdapterError(
@@ -155,6 +164,7 @@ class TesseractAdapter(BaseOCRAdapter):
         self._oem = oem
         self._tesseract_cmd = tesseract_cmd
         self._expose_confidences = expose_confidences
+        self._expose_alto = expose_alto
 
     @property
     def name(self) -> str:
@@ -163,6 +173,10 @@ class TesseractAdapter(BaseOCRAdapter):
     @property
     def expose_confidences(self) -> bool:
         return self._expose_confidences
+
+    @property
+    def expose_alto(self) -> bool:
+        return self._expose_alto
 
     @property
     def lang(self) -> str:
@@ -278,6 +292,30 @@ class TesseractAdapter(BaseOCRAdapter):
             if confidences_artifact is not None:
                 outputs[ArtifactType.CONFIDENCES] = confidences_artifact
 
+        # Phase B5 — production ALTO XML natif (best-effort).
+        # Tesseract sait nativement produire un ALTO 4 via
+        # ``pytesseract.image_to_alto_xml``.  Désactivé par défaut
+        # (compat ascendante : les pipelines existants ne s'attendent
+        # pas à un artefact ALTO_XML).  Activer via le constructeur :
+        #
+        #     TesseractAdapter(expose_alto=True)
+        #
+        # ou en YAML (PipelineSpec) :
+        #
+        #     adapter_kwargs: {expose_alto: true}
+        #     output_types: [raw_text, alto_xml]
+        if self._expose_alto:
+            alto_artifact = self._extract_and_persist_alto(
+                image_path=image_path,
+                text_path=text_path,
+                pytesseract_module=pytesseract,
+                pil_image_class=Image,
+                custom_config=custom_config,
+                document_id=context.document_id,
+            )
+            if alto_artifact is not None:
+                outputs[ArtifactType.ALTO_XML] = alto_artifact
+
         return outputs
 
     def _extract_and_persist_confidences(
@@ -332,6 +370,109 @@ class TesseractAdapter(BaseOCRAdapter):
             tokens=tokens,
             document_id=document_id,
             extractor="tesseract",
+        )
+
+    def _extract_and_persist_alto(
+        self,
+        *,
+        image_path: Path,
+        text_path: Path,
+        pytesseract_module,
+        pil_image_class,
+        custom_config: str,
+        document_id: str,
+    ) -> Artifact | None:
+        """Phase B5 — appelle ``image_to_alto_xml`` puis écrit
+        ``<stem>.<name>.alto.xml`` à côté du fichier texte.
+
+        Retourne l'``Artifact ALTO_XML`` ou ``None`` si l'extraction
+        échoue ou si la sortie n'est pas un ALTO valide (warning
+        loggé, OCR reste valide via ``RAW_TEXT``).
+
+        Validation
+        ----------
+        L'ALTO produit est passé par ``safe_parse_xml`` (résistance
+        XXE/billion-laughs) puis par ``parse_alto`` (vérifie qu'on a
+        bien au moins une page + un bloc de texte).  Si la
+        validation échoue, on log et on retourne ``None`` plutôt
+        que de produire un artefact corrompu en aval.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Sortie attendue : str (ALTO XML 4).
+        try:
+            with pil_image_class.open(image_path) as image:
+                alto_xml = pytesseract_module.image_to_alto_xml(
+                    image,
+                    lang=self._lang,
+                    config=custom_config,
+                )
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            logger.warning(
+                "[%s] image_to_alto_xml indisponible (%s) — ALTO "
+                "sauté pour ce document.", self._name, exc,
+            )
+            return None
+
+        # ``image_to_alto_xml`` retourne ``bytes`` selon la version de
+        # pytesseract.  On normalise vers une string UTF-8.
+        if isinstance(alto_xml, bytes):
+            try:
+                alto_xml = alto_xml.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                logger.warning(
+                    "[%s] ALTO Tesseract non-UTF-8 (%s) — ALTO sauté.",
+                    self._name, exc,
+                )
+                return None
+
+        if not alto_xml or not alto_xml.strip():
+            logger.warning(
+                "[%s] ALTO Tesseract vide — ALTO sauté.", self._name,
+            )
+            return None
+
+        # Validation structurelle minimale (résistance XXE +
+        # confirmation que c'est bien un ALTO parsable).
+        # ``safe_parse_xml`` est volontairement tolérante : elle
+        # retourne ``None`` au lieu de lever sur les XML invalides.
+        # Pour rejeter proprement un ALTO mal formé, on traite ``None``
+        # comme un échec de validation.
+        try:
+            from picarones.formats._xml_utils import safe_parse_xml
+            parsed = safe_parse_xml(alto_xml.encode("utf-8"))
+        except Exception as exc:  # noqa: BLE001 — XML mal formé
+            logger.warning(
+                "[%s] ALTO Tesseract mal formé (%s) — ALTO sauté.",
+                self._name, exc,
+            )
+            return None
+        if parsed is None:
+            logger.warning(
+                "[%s] ALTO Tesseract non-parsable (safe_parse_xml a "
+                "retourné None) — ALTO sauté.", self._name,
+            )
+            return None
+
+        # Persistance à côté du fichier texte (cohérent avec
+        # ``write_confidences_sidecar`` : ``<stem>.<name>.alto.xml``).
+        alto_path = text_path.with_suffix(".alto.xml")
+        try:
+            alto_path.write_text(alto_xml, encoding="utf-8")
+        except OSError as exc:
+            logger.warning(
+                "[%s] ALTO non persisté (%s) — ALTO sauté.",
+                self._name, exc,
+            )
+            return None
+
+        return Artifact(
+            id=f"{document_id}:{self._name}:alto_xml",
+            document_id=document_id,
+            type=ArtifactType.ALTO_XML,
+            produced_by_step="ocr",
+            uri=str(alto_path),
         )
 
 
