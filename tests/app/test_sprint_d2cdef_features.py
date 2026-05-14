@@ -24,7 +24,6 @@ from picarones.adapters.llm.base import BaseLLMAdapter
 from picarones.adapters.ocr.base import BaseOCRAdapter
 from picarones.app.services.benchmark_runner import (
     _aggregate_ner_metrics,
-    run_benchmark_via_service,
 )
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.evaluation.corpus import (
@@ -32,6 +31,7 @@ from picarones.evaluation.corpus import (
     Document,
     EntitiesGT,
 )
+from tests._migration_helpers import run_via_orchestrator
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -109,21 +109,21 @@ class TestProfileValidation:
         ocr = _MockOCR()
 
         with pytest.raises(ValueError, match="profil"):
-            run_benchmark_via_service(
+            run_via_orchestrator(
                 corpus, [ocr], profile="not_a_real_profile",
             )
 
     def test_standard_profile_accepted(self, tmp_path: Path) -> None:
         corpus = _make_simple_corpus(tmp_path)
         ocr = _MockOCR()
-        bm = run_benchmark_via_service(corpus, [ocr], profile="standard")
+        bm = run_via_orchestrator(corpus, [ocr], profile="standard")
         assert bm.engine_reports
 
     def test_default_profile_is_standard(self, tmp_path: Path) -> None:
         """Pas de kwarg = utilise ``standard``, qui passe la validation."""
         corpus = _make_simple_corpus(tmp_path)
         ocr = _MockOCR()
-        bm = run_benchmark_via_service(corpus, [ocr])
+        bm = run_via_orchestrator(corpus, [ocr])
         assert bm.engine_reports
 
     def test_validation_happens_before_bench(self, tmp_path: Path) -> None:
@@ -140,7 +140,7 @@ class TestProfileValidation:
 
         ocr = _CountingOCR()
         with pytest.raises(ValueError):
-            run_benchmark_via_service(
+            run_via_orchestrator(
                 corpus, [ocr], profile="oops",
             )
         # OCR jamais appelé.
@@ -161,7 +161,7 @@ class TestOverNormalization:
         d'``over_normalization`` puisqu'il n'y a pas de LLM."""
         corpus = _make_simple_corpus(tmp_path)
         ocr = _MockOCR(text="texte 0")
-        bm = run_benchmark_via_service(corpus, [ocr])
+        bm = run_via_orchestrator(corpus, [ocr])
 
         dr = bm.engine_reports[0].document_results[0]
         assert "over_normalization" not in dr.pipeline_metadata
@@ -185,7 +185,7 @@ class TestOverNormalization:
             mode="text_only",
         )
 
-        bm = run_benchmark_via_service(corpus, [pipeline])
+        bm = run_via_orchestrator(corpus, [pipeline])
 
         dr = bm.engine_reports[0].document_results[0]
         assert dr.pipeline_metadata.get("is_pipeline") is True
@@ -211,7 +211,7 @@ class TestOverNormalization:
             mode="zero_shot",
         )
 
-        bm = run_benchmark_via_service(corpus, [pipeline])
+        bm = run_via_orchestrator(corpus, [pipeline])
         dr = bm.engine_reports[0].document_results[0]
         # Pipeline mais pas d'OCR amont → pas d'over_normalization.
         assert "over_normalization" not in dr.pipeline_metadata
@@ -256,7 +256,7 @@ class TestNERAttach:
         corpus = self._make_corpus_with_entities(tmp_path)
         ocr = _MockOCR(text="Jean 0 habite Paris")
 
-        bm = run_benchmark_via_service(corpus, [ocr])
+        bm = run_via_orchestrator(corpus, [ocr])
         report = bm.engine_reports[0]
         for dr in report.document_results:
             assert dr.ner_metrics is None
@@ -280,7 +280,7 @@ class TestNERAttach:
                              "end": idx + 5, "text": "Paris"})
             return ents
 
-        bm = run_benchmark_via_service(
+        bm = run_via_orchestrator(
             corpus, [ocr], entity_extractor=extractor,
         )
 
@@ -299,7 +299,7 @@ class TestNERAttach:
         def extractor(text: str) -> list[dict]:
             return [{"label": "PER", "start": 0, "end": 6, "text": "Jean 0"}]
 
-        bm = run_benchmark_via_service(
+        bm = run_via_orchestrator(
             corpus, [ocr], entity_extractor=extractor,
         )
 
@@ -338,7 +338,7 @@ class TestNERAttach:
         def extractor(text: str) -> list[dict]:
             return [{"label": "PER", "start": 0, "end": 4, "text": "Jean"}]
 
-        bm = run_benchmark_via_service(
+        bm = run_via_orchestrator(
             corpus, [ocr], entity_extractor=extractor,
         )
 
@@ -363,7 +363,7 @@ class TestNERAttach:
             raise RuntimeError("NER backend down")
 
         with caplog.at_level("WARNING"):
-            bm = run_benchmark_via_service(
+            bm = run_via_orchestrator(
                 corpus, [ocr], entity_extractor=buggy_extractor,
             )
 

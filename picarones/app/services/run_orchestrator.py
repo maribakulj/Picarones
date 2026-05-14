@@ -227,6 +227,12 @@ class RunOrchestrator:
         # Phase B2.3 — si ``spec.partial_dir`` est fourni, on pivote
         # par pipeline avec reprise sur interruption.  Sinon, chemin
         # rapide en un seul ``bench.run`` multi-pipeline.
+        # Phase B4 — workspace_uri dédié au runtime des adapters
+        # (artefacts intermédiaires).  Distinct du extracted_dir
+        # qui porte les images source du corpus.
+        runtime_dir = self._output_dir / "runtime"
+        runtime_dir.mkdir(parents=True, exist_ok=True)
+
         if spec.partial_dir:
             result = self._execute_with_partial(
                 spec=spec,
@@ -237,6 +243,7 @@ class RunOrchestrator:
                 adapter_kwargs=adapter_kwargs,
                 deps_lock=deps_lock,
                 bin_lock=bin_lock,
+                runtime_dir=runtime_dir,
             )
         else:
             result = bench.run(
@@ -248,6 +255,7 @@ class RunOrchestrator:
                 context_factory=_make_context_factory(
                     spec.code_version,
                     progress_callback=self._progress_callback,
+                    workspace_uri=str(runtime_dir),
                 ),
                 adapter_kwargs=adapter_kwargs,
                 dependencies_lock=deps_lock,
@@ -285,6 +293,149 @@ class RunOrchestrator:
         # Inversion de dépendance : ``app/`` ne peut pas importer
         # ``reports/`` (plus externe).  Le caller fournit un
         # callable.
+        report_path: Path | None = None
+        if report_renderer is not None and spec.report_html:
+            target = Path(spec.report_html)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            report_path = report_renderer(result, target, spec.report_lang)
+
+        return OrchestrationResult(
+            run_result=result,
+            extracted_corpus_dir=extracted_dir,
+            persisted_files=persisted,
+            report_path=report_path,
+        )
+
+    def execute_preset(
+        self,
+        spec: RunSpec,
+        *,
+        corpus_spec: Any,
+        extracted_dir: Path,
+        pipeline_specs: list[Any],
+        adapter_resolver: Callable[[str], Any],
+        adapter_kwargs: dict[str, Any] | None = None,
+        report_renderer: ReportRenderer | None = None,
+        progress_callback: Callable[[str, int, str], None] | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> OrchestrationResult:
+        """Phase B4 — variante d'``execute()`` pour objets domain pré-construits.
+
+        Utilisée par les call sites (tests, CLI/Web post-B3) qui ont
+        déjà instancié leurs engines et chargé leur corpus avant de
+        connaître le ``RunOrchestrator``.  Plus simple à câbler qu'un
+        ``RunSpec`` YAML complet car on n'a pas à reconstruire les
+        dotted paths d'``adapter_class`` ni à re-extraire un
+        ``corpus_zip``.
+
+        Le ``spec`` fourni est utilisé pour les **paramètres**
+        (``views``, ``output_json``, ``partial_dir``, ``char_exclude``,
+        ``normalization_profile``, ``profile``, ``entity_extractor``,
+        ``code_version``, etc.) mais ``spec.corpus_dir`` /
+        ``spec.corpus_zip`` et ``spec.pipelines`` sont **ignorés** au
+        profit des objets fournis en kwargs.
+
+        Parameters
+        ----------
+        spec:
+            ``RunSpec`` qui porte les paramètres d'exécution.  Sa partie
+            corpus/pipelines est ignorée — le caller a déjà résolu ces
+            objets.
+        corpus_spec:
+            ``CorpusSpec`` (couche 1) déjà construit.  Typiquement obtenu
+            via ``corpus_to_corpus_spec(corpus_legacy, workspace_dir=...)``.
+        extracted_dir:
+            Dossier où le corpus est physiquement disponible (pour le
+            ``_persist_legacy_benchmark_json`` Phase B2.7 et pour le
+            ``corpus_name`` propagé au converter).
+        pipeline_specs:
+            Liste de ``PipelineSpec`` (couche 1) déjà construits depuis
+            les engines en mémoire (typiquement via
+            ``engine_to_pipeline_spec``).
+        adapter_resolver:
+            Resolver ``name → StepExecutor`` déjà construit (typiquement
+            via ``build_adapter_resolver``).
+        adapter_kwargs:
+            Map ``adapter_name → kwargs dict`` pour le manifest.  Peut
+            être ``{}``.
+        report_renderer, progress_callback, cancel_event:
+            Identiques à ``execute()``.
+        """
+        self._progress_callback = progress_callback
+        self._cancel_event = cancel_event
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        registries = RegistryService.bootstrap_defaults()
+        views = self._build_views(
+            spec.views,
+            normalization_profile=spec.normalization_profile,
+            char_exclude=spec.char_exclude,
+        )
+        bench = self._build_benchmark_service(
+            registries=registries,
+            adapter_resolver=adapter_resolver,
+            code_version=spec.code_version,
+            cancel_event=self._cancel_event,
+            timeout_seconds_per_doc=spec.timeout_seconds_per_doc,
+        )
+        deps_lock = capture_dependencies_lock()
+        bin_lock = capture_system_binaries_lock()
+        adapter_kwargs_clean = adapter_kwargs or {}
+
+        # Phase B4 — workspace_uri pour les adapters.
+        runtime_dir = self._output_dir / "runtime"
+        runtime_dir.mkdir(parents=True, exist_ok=True)
+
+        if spec.partial_dir:
+            result = self._execute_with_partial(
+                spec=spec,
+                bench=bench,
+                corpus_spec=corpus_spec,
+                pipeline_specs=pipeline_specs,
+                views=views,
+                adapter_kwargs=adapter_kwargs_clean,
+                deps_lock=deps_lock,
+                bin_lock=bin_lock,
+                runtime_dir=runtime_dir,
+            )
+        else:
+            result = bench.run(
+                corpus=corpus_spec,
+                pipelines=pipeline_specs,
+                views=views,
+                ground_truth_factory=_default_gt_factory,
+                pipeline_inputs_factory=_default_inputs_factory,
+                context_factory=_make_context_factory(
+                    spec.code_version,
+                    progress_callback=self._progress_callback,
+                    workspace_uri=str(runtime_dir),
+                ),
+                adapter_kwargs=adapter_kwargs_clean,
+                dependencies_lock=deps_lock,
+                system_binaries_lock=bin_lock,
+                metadata={
+                    "orchestrator":
+                    "picarones.app.services.run_orchestrator",
+                    "mode": "preset",
+                },
+            )
+
+        persist_dir = self._output_dir / "results"
+        persisted = bench.persist(result, persist_dir)
+
+        if spec.output_json:
+            self._persist_legacy_benchmark_json(
+                run_result=result,
+                extracted_dir=extracted_dir,
+                pipeline_specs=pipeline_specs,
+                corpus_name=corpus_spec.name,
+                output_json=Path(spec.output_json),
+                char_exclude=spec.char_exclude,
+                normalization_profile=spec.normalization_profile,
+                profile=spec.profile,
+                entity_extractor=spec.entity_extractor,
+            )
+
         report_path: Path | None = None
         if report_renderer is not None and spec.report_html:
             target = Path(spec.report_html)
@@ -425,6 +576,7 @@ class RunOrchestrator:
         adapter_kwargs: dict[str, Any],
         deps_lock: dict[str, Any],
         bin_lock: dict[str, Any],
+        runtime_dir: Path | None = None,
     ) -> Any:
         """Phase B2.3 — exécution pivotée par pipeline avec reprise.
 
@@ -534,6 +686,7 @@ class RunOrchestrator:
                 context_factory=_make_context_factory(
                     spec.code_version,
                     progress_callback=self._progress_callback,
+                    workspace_uri=str(runtime_dir) if runtime_dir else None,
                 ),
                 adapter_kwargs=adapter_kwargs,
                 dependencies_lock=deps_lock,
@@ -1035,6 +1188,7 @@ def _make_context_factory(
     code_version: str,
     *,
     progress_callback: Callable[[str, int, str], None] | None = None,
+    workspace_uri: str | None = None,
 ) -> Callable[[DocumentRef, str], RunContext]:
     """Phase B2.1 — factory de ``RunContext`` avec callback de progression.
 
@@ -1048,6 +1202,11 @@ def _make_context_factory(
     (``max_in_flight > 1``).  Le compteur est **global au run**, pas
     par pipeline — un benchmark à 2 pipelines × 5 docs émet 10
     notifications ``doc_idx ∈ {0..9}``.
+
+    Phase B4 — ``workspace_uri`` propagé au ``RunContext`` pour que les
+    adapters qui en ont besoin (PrecomputedTextAdapter,
+    TesseractAdapter, etc.) puissent écrire leurs artefacts
+    intermédiaires.  Cohérent avec ``_benchmark_execution.py:134-139``.
     """
     counter_lock = threading.Lock()
     counter_state = {"doc_idx": 0}
@@ -1074,6 +1233,7 @@ def _make_context_factory(
             document_id=doc.id,
             code_version=code_version,
             pipeline_name=pipeline_name,
+            workspace_uri=workspace_uri,
         )
     return _factory
 

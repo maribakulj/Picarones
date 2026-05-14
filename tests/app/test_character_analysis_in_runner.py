@@ -16,10 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from picarones.adapters.ocr import BaseOCRAdapter
-from picarones.app.services.benchmark_runner import (
-    run_benchmark_via_service,
-)
 from picarones.evaluation.corpus import Corpus, Document
+from tests._migration_helpers import run_via_orchestrator
 
 
 class _MangleOCR(BaseOCRAdapter):
@@ -73,7 +71,7 @@ class TestPerDocumentCharacterAnalysis:
         """Un caractère substitué produit une entrée dans la matrice."""
         corpus = _make_corpus(tmp_path, gt="abc")
         adapter = _MangleOCR(hypothesis="abd")  # c → d
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         dr = bm.engine_reports[0].document_results[0]
         assert dr.confusion_matrix is not None
@@ -90,7 +88,7 @@ class TestPerDocumentCharacterAnalysis:
         """Une ligature ﬁ reconnue ﬁ ou ``fi`` compte comme correcte."""
         corpus = _make_corpus(tmp_path, gt="ﬁn")
         adapter = _MangleOCR(hypothesis="fin")  # ﬁ → fi accepté
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         dr = bm.engine_reports[0].document_results[0]
         assert dr.char_scores is not None
@@ -103,7 +101,7 @@ class TestPerDocumentCharacterAnalysis:
         """Un ``é`` remplacé par ``e`` chute le score diacritique."""
         corpus = _make_corpus(tmp_path, gt="été")
         adapter = _MangleOCR(hypothesis="ete")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         dr = bm.engine_reports[0].document_results[0]
         assert dr.char_scores is not None
@@ -118,7 +116,7 @@ class TestPerDocumentCharacterAnalysis:
         """La taxonomie classe ``café → cafe`` comme diacritic_error."""
         corpus = _make_corpus(tmp_path, gt="café noir")
         adapter = _MangleOCR(hypothesis="cafe noir")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         dr = bm.engine_reports[0].document_results[0]
         assert dr.taxonomy is not None
@@ -136,7 +134,7 @@ class TestPerDocumentCharacterAnalysis:
         """
         corpus = _make_corpus(tmp_path, gt="café noir")
         adapter = _MangleOCR(hypothesis="cafe noir")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         dr = bm.engine_reports[0].document_results[0]
         # Les trois cibles de la vue "Analyse des caractères".
@@ -153,7 +151,7 @@ class TestEngineLevelAggregates:
     def test_aggregated_confusion_present(self, tmp_path: Path) -> None:
         corpus = _make_corpus(tmp_path, gt="abc")
         adapter = _MangleOCR(hypothesis="abd")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         report = bm.engine_reports[0]
         assert report.aggregated_confusion is not None
@@ -167,7 +165,7 @@ class TestEngineLevelAggregates:
         renseigné après un bench standard."""
         corpus = _make_corpus(tmp_path, gt="ﬁn")
         adapter = _MangleOCR(hypothesis="ﬁn")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         report = bm.engine_reports[0]
         assert report.aggregated_char_scores is not None
@@ -177,7 +175,7 @@ class TestEngineLevelAggregates:
     def test_aggregated_taxonomy_present(self, tmp_path: Path) -> None:
         corpus = _make_corpus(tmp_path, gt="été")
         adapter = _MangleOCR(hypothesis="ete")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         report = bm.engine_reports[0]
         assert report.aggregated_taxonomy is not None
@@ -193,7 +191,7 @@ class TestEngineLevelAggregates:
         """
         corpus = _make_corpus(tmp_path, gt="café")
         adapter = _MangleOCR(hypothesis="cafe")
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         report_dict = bm.engine_reports[0].as_dict()
         assert "aggregated_confusion" in report_dict
@@ -211,7 +209,7 @@ class TestProfilePropagation:
         """
         corpus = _make_corpus(tmp_path, gt="café")
         adapter = _MangleOCR(hypothesis="cafe")
-        bm = run_benchmark_via_service(
+        bm = run_via_orchestrator(
             corpus, [adapter], profile="minimal",
         )
 
@@ -236,7 +234,7 @@ class TestPartialDirPath:
         """
         corpus = _make_corpus(tmp_path, gt="été")
         adapter = _MangleOCR(hypothesis="ete", name="resume")
-        bm = run_benchmark_via_service(
+        bm = run_via_orchestrator(
             corpus, [adapter], partial_dir=tmp_path / "partials",
         )
 
