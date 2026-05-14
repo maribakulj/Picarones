@@ -309,8 +309,13 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.app.services.legacy_runner_compat import (
-            run_via_orchestrator,
+        import tempfile
+        from pathlib import Path
+
+        from picarones.app.services import (
+            RunOrchestrator,
+            prepare_preset_args,
+            run_result_to_benchmark_result,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
 
@@ -370,23 +375,41 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
-        # Phase B3 résiduel migration Option B (2026-05) — passé de
-        # ``run_benchmark_via_service`` (deprecated en B3) à
-        # ``run_via_orchestrator`` (shim qui s'appuie sur
-        # ``RunOrchestrator.execute_preset``).  Comportement
-        # numériquement équivalent (couvert par
-        # ``test_migration_invariance.py``).  Phase B8 supprimera
-        # ``run_benchmark_via_service``.
-        result = run_via_orchestrator(
-            corpus=corpus,
-            engines=engines,
-            output_json=output_json,
-            show_progress=False,
-            progress_callback=_progress_callback,
-            char_exclude=char_excl,
-            cancel_event=job._cancel_event,
-            normalization_profile=req.normalization_profile,
-        )
+        # Phase B3-final migration Option B (2026-05) — pattern 3
+        # étapes explicite (Option 10) :
+        #     1. prepare_preset_args     (conversion vers domain)
+        #     2. execute_preset          (run du benchmark)
+        #     3. run_result_to_benchmark_result (BenchmarkResult legacy)
+        # Plus de shim ``run_via_orchestrator`` — la mécanique est
+        # visible et chaque étape est unitairement testable.
+        with tempfile.TemporaryDirectory(prefix="picarones_web_") as _ws:
+            _ws_path = Path(_ws)
+            _run_dir = _ws_path / "run"
+            _preset = prepare_preset_args(
+                corpus, engines,
+                workspace_dir=_ws_path / "gt",
+                output_dir=_run_dir,
+                char_exclude=char_excl,
+                normalization_profile=req.normalization_profile,
+                output_json=output_json,
+            )
+            _orch_result = RunOrchestrator(_run_dir).execute_preset(
+                spec=_preset.spec,
+                corpus_spec=_preset.corpus_spec,
+                extracted_dir=_preset.extracted_dir,
+                pipeline_specs=_preset.pipeline_specs,
+                adapter_resolver=_preset.adapter_resolver,
+                adapter_kwargs=_preset.adapter_kwargs,
+                progress_callback=_progress_callback,
+                cancel_event=job._cancel_event,
+            )
+            result = run_result_to_benchmark_result(
+                _orch_result.run_result,
+                corpus=corpus, engines=engines,
+                char_exclude=char_excl,
+                normalization_profile=req.normalization_profile,
+                profile="standard",
+            )
 
         if job.status == "cancelled":
             return
