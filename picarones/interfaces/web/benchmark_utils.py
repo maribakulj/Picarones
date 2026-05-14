@@ -251,6 +251,11 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
         # n'est plus possible de l'oublier pour un nouveau moteur.
         try:
             kwargs = _build_ocr_kwargs(engine_id, comp.ocr_model)
+            # Phase B3-final corr-B (mai 2026) — propage expose_alto
+            # à Tesseract (les autres adapters ignorent ce kwarg via
+            # validation du factory).
+            if comp.expose_alto and engine_id.lower() in {"tesseract", "tess"}:
+                kwargs["expose_alto"] = True
             ocr = ocr_adapter_from_name(engine_id, **kwargs)
         except ValueError as exc:
             # Adapter indisponible (dépendance optionnelle absente)
@@ -384,13 +389,21 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         with tempfile.TemporaryDirectory(prefix="picarones_web_") as _ws:
             _ws_path = Path(_ws)
             _run_dir = _ws_path / "run"
+            # Phase B3-final corr-A/B/C (mai 2026) — propage les
+            # nouveaux champs ``BenchmarkRunRequest`` (views, profile,
+            # partial_dir, entity_extractor, output_json).
+            _views_tuple = tuple(req.views) if req.views else ("text_final",)
             _preset = prepare_preset_args(
                 corpus, engines,
                 workspace_dir=_ws_path / "gt",
                 output_dir=_run_dir,
+                views=_views_tuple,
                 char_exclude=char_excl,
                 normalization_profile=req.normalization_profile,
-                output_json=output_json,
+                profile=req.profile,
+                partial_dir=req.partial_dir or None,
+                entity_extractor=req.entity_extractor or None,
+                output_json=req.output_json or output_json,
             )
             _orch_result = RunOrchestrator(_run_dir).execute_preset(
                 spec=_preset.spec,
@@ -407,7 +420,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 corpus=corpus, engines=engines,
                 char_exclude=char_excl,
                 normalization_profile=req.normalization_profile,
-                profile="standard",
+                profile=req.profile,
             )
 
         if job.status == "cancelled":

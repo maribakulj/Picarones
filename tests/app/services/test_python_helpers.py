@@ -105,6 +105,43 @@ class TestNominal:
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Phase B3-final corr-A/D — vérifier que le helper test propage `views`
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestMigrationHelperViewsPropagation:
+    """Garantie que ``tests/_migration_helpers.run_via_orchestrator``
+    propage le param ``views`` à ``prepare_preset_args``.
+
+    Audit Phase B3-final a identifié une divergence test↔prod : le
+    helper de test ne transmettait pas ``views``, donc aucun test B4
+    ne couvrait le multi-vues via le helper.  Corr-D : helper test
+    aligné, test de propagation explicite.
+    """
+
+    def test_helper_propagates_views_to_run_result(
+        self, tmp_path: Path,
+    ) -> None:
+        from tests._migration_helpers import run_via_orchestrator
+
+        corpus = _make_corpus(tmp_path, n=1)
+        engine = _MockOCR()
+
+        # Sans param ``views`` → défaut text_final seulement.
+        bm_default = run_via_orchestrator(corpus, [engine])
+        assert "text_final" in bm_default.view_results
+        assert "alto_documentary" not in bm_default.view_results
+
+        # Avec ``views=...`` → propagation effective.
+        bm_multi = run_via_orchestrator(
+            corpus, [engine],
+            views=("text_final", "searchability"),
+        )
+        assert "text_final" in bm_multi.view_results
+        assert "searchability" in bm_multi.view_results
+
+
+# ──────────────────────────────────────────────────────────────────────
 # Multi-engines
 # ──────────────────────────────────────────────────────────────────────
 

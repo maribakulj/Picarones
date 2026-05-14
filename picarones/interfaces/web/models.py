@@ -121,6 +121,17 @@ class PipelineConfig(BaseModel):
     autorisée pour indiquer qu'aucun LLM n'est attaché au moteur OCR.
     """
     prompt_file: str = Field(default="", max_length=_MAX_PROMPT_FILENAME)
+    expose_alto: bool = False
+    """Phase B3-final corr-B (mai 2026) — active la production native
+    d'ALTO XML par Tesseract via ``pytesseract.image_to_alto_xml``.
+
+    Combiné avec ``BenchmarkRunRequest.views`` contenant
+    ``alto_documentary``, débloque les sections multi-vues du rapport
+    HTML.  Ignoré pour les engines non-Tesseract."""
+
+
+# Phase B3-final corr-A — vues canoniques d'évaluation acceptées.
+ViewName = Literal["text_final", "alto_documentary", "searchability"]
 
 
 class BenchmarkRunRequest(BaseModel):
@@ -133,6 +144,33 @@ class BenchmarkRunRequest(BaseModel):
     output_dir: str = Field(default="./rapports/", max_length=_MAX_PATH)
     report_name: str = Field(default="", max_length=_MAX_NAME)
     report_lang: ReportLang = "fr"
+    # Phase B3-final corr-A/B/C (mai 2026) — exposition des features
+    # B2/B5/B6 aux clients de l'API REST.
+    views: list[ViewName] = Field(default_factory=lambda: ["text_final"])
+    """Liste des vues d'évaluation à appliquer.  Défaut :
+    ``["text_final"]`` (compat ascendante).  Pour activer le rapport
+    HTML multi-vues (AltoView, SearchView), passer ``["text_final",
+    "alto_documentary", "searchability"]``.  Nécessite que les
+    pipelines produisent les artefacts éligibles (ex :
+    ``alto_documentary`` requiert ``PipelineConfig.expose_alto=true``
+    côté Tesseract)."""
+    profile: Literal[
+        "minimal", "standard", "philological", "diagnostics",
+        "economics", "pipeline", "full",
+    ] = "standard"
+    """Phase B2.6 — profil de hooks document-level / corpus aggregators.
+    Sélectionne quels ``@register_document_metric`` /
+    ``@register_corpus_aggregator`` s'exécutent."""
+    partial_dir: str = Field(default="", max_length=_MAX_PATH)
+    """Phase B2.3 — répertoire pour la reprise sur interruption.
+    Vide = pas de resume."""
+    entity_extractor: str = Field(default="", max_length=_MAX_NAME * 4)
+    """Phase B2.4 — dotted path vers une factory d'extracteur d'entités
+    (ex : ``mypkg.ner:SpacyExtractor``).  Vide = pas de NER attach."""
+    output_json: str = Field(default="", max_length=_MAX_PATH)
+    """Phase B2.7 — chemin facultatif où sérialiser le BenchmarkResult
+    legacy en JSON.  Vide = pas de sortie JSON additionnelle (le
+    rapport HTML reste produit normalement)."""
 
 
 __all__ = [
