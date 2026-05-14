@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Bornes éditoriales — ajustées au plus large raisonnable, pas plus.
 _MAX_PATH = 1024
@@ -171,6 +171,71 @@ class BenchmarkRunRequest(BaseModel):
     """Phase B2.7 — chemin facultatif où sérialiser le BenchmarkResult
     legacy en JSON.  Vide = pas de sortie JSON additionnelle (le
     rapport HTML reste produit normalement)."""
+
+    # Phase D2 audit B3-final (mai 2026) — durcissement sécurité.
+    # Les champs path-like et le dotted path sont validés pour bloquer
+    # les patterns dangereux (path traversal, chemins absolus, segments
+    # ``..``).  Refus en 422 plutôt que dégradation silencieuse en aval.
+
+    @field_validator("partial_dir", "output_json")
+    @classmethod
+    def _validate_no_path_traversal(cls, v: str, info) -> str:
+        """Refuse ``..`` segments et chemins absolus.
+
+        Le runner web confine ses opérations à ``WorkspaceManager``.
+        Un payload qui contient ``../../etc/passwd`` ou
+        ``/etc/passwd`` doit être rejeté immédiatement (422 Pydantic)
+        plutôt qu'arriver jusqu'à ``Path()`` côté serveur.
+        """
+        if not v:
+            return v
+        import os.path
+        if ".." in v.replace("\\", "/").split("/"):
+            raise ValueError(
+                f"{info.field_name} : segment '..' interdit "
+                f"(path traversal).  Reçu : {v!r}",
+            )
+        if os.path.isabs(v):
+            raise ValueError(
+                f"{info.field_name} : chemin absolu interdit, "
+                f"utiliser un chemin relatif au workspace.  Reçu : {v!r}",
+            )
+        return v
+
+    @field_validator("entity_extractor")
+    @classmethod
+    def _validate_entity_extractor_format(cls, v: str) -> str:
+        """Refuse les dotted paths mal formés.
+
+        Format accepté : ``module.submodule:Symbol`` ou
+        ``module.submodule.Symbol`` — composants alphanumériques +
+        ``_``.  Refus de ``..``, ``/``, espaces, caractères spéciaux
+        (vecteur d'injection).
+        """
+        if not v:
+            return v
+        import re
+        # Strict : alphanum + underscore + un seul ``:`` ou ``.``
+        # comme séparateur final.  Refuse explicitement ``..``,
+        # slashes, espaces.
+        if ".." in v or "/" in v or "\\" in v or " " in v:
+            raise ValueError(
+                "entity_extractor : segments '..' / slashes / "
+                f"espaces interdits.  Reçu : {v!r}",
+            )
+        # Doit matcher le même regex que ``RunSpec._DOTTED_PATH_RE``.
+        pattern = re.compile(
+            r"^[a-zA-Z_][a-zA-Z0-9_]*"
+            r"(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*"
+            r"(?:[:.][a-zA-Z_][a-zA-Z0-9_]*)$"
+        )
+        if not pattern.match(v):
+            raise ValueError(
+                f"entity_extractor : format invalide {v!r}.  "
+                "Attendu : ``module.submodule:Symbol`` ou "
+                "``module.submodule.Symbol``.",
+            )
+        return v
 
 
 __all__ = [
