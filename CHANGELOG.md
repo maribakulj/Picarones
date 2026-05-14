@@ -69,7 +69,9 @@ result = run_result_to_benchmark_result(orch_result.run_result, ...)
 - **`run_benchmark_via_service` supprimée** — utilisez
   `RunOrchestrator` + `prepare_preset_args` (Python) ou
   `RunOrchestrator.execute(RunSpec)` (YAML).
-- **Modules supprimés** (~1700 LOC nettes) :
+- **Modules supprimés en Phase B3-final** (~1700 LOC nettes pour
+  cette phase isolée ; la branche complète cumule aussi l'audit
+  code-quality qui ajoute massivement — voir entrée suivante) :
     * `benchmark_runner` (entry point legacy)
     * `_benchmark_execution` (helper interne orchestration)
     * `_benchmark_orchestration` (run_benchmark_unified /
@@ -80,6 +82,40 @@ result = run_result_to_benchmark_result(orch_result.run_result, ...)
   la migration) est rempli, la migration est terminée :
     * `tests/integration/test_migration_invariance.py`
     * `tests/integration/snapshots/migration_invariance.json`
+
+### Modifié — Audit B3-final correctif (mai 2026)
+
+L'audit implacable de la branche post-migration a identifié 4
+demi-chantiers critiques : les features livrées en B5/B6/B2
+étaient implémentées en interne mais **inaccessibles aux
+utilisateurs CLI/Web**.  Corrections appliquées :
+
+- **CLI** : 5 nouvelles options ajoutées à `picarones run` :
+    * `--views VIEW1,VIEW2,…` (B6 multi-vues)
+    * `--expose-alto` (B5 Tesseract ALTO XML)
+    * `--char-exclude CHARS` (B2.5)
+    * `--partial-dir PATH` (B2.3 resume)
+    * `--entity-extractor DOTTED_PATH` (B2.4 NER)
+  `_engine_from_name` propage `expose_alto` à Tesseract.
+- **Web** : `BenchmarkRunRequest` étendu avec `views: list[ViewName]`,
+  `profile`, `partial_dir`, `entity_extractor`, `output_json`.
+  `PipelineConfig.expose_alto` activable par concurrent.  Le worker
+  `run_benchmark_thread_v2` propage les nouveaux champs au pattern
+  3 étapes.
+- **Helper test** : `tests/_migration_helpers.run_via_orchestrator`
+  reçoit un kwarg `views` (corrige la divergence test↔prod identifiée
+  par l'audit — aucun test B4 ne couvrait précédemment le multi-vues
+  via le helper).
+
+Impact utilisateur :
+```bash
+picarones run -c ./corpus -e tesseract --expose-alto \
+    --views text_final,alto_documentary,searchability \
+    --profile standard
+```
+Génère désormais un rapport HTML avec 3 sections (TextView, AltoView,
+SearchView) + ALTO XML natif de Tesseract.  La valeur métier C3
+est enfin accessible aux utilisateurs.
 
 ### Modifié
 
