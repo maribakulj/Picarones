@@ -248,6 +248,77 @@ class TestRunnerApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# 6.bis. picarones.app.services — RunOrchestrator (Phase B3 migration Option B)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+class TestRunOrchestratorApi:
+    """Phase B3 — l'entry-point canonique pour lancer un benchmark est
+    désormais ``picarones.RunOrchestrator`` (consomme un ``RunSpec``).
+    ``run_benchmark_via_service`` reste exporté mais émet une
+    ``DeprecationWarning`` à l'appel.  Retrait prévu Phase B8.
+    """
+
+    def test_run_orchestrator_class_exposed_at_root(self):
+        """``RunOrchestrator`` est accessible depuis le namespace racine."""
+        import picarones
+        assert hasattr(picarones, "RunOrchestrator"), (
+            "RunOrchestrator devrait être exporté depuis picarones (Phase B3)"
+        )
+        from picarones import RunOrchestrator
+        assert inspect.isclass(RunOrchestrator)
+
+    def test_run_spec_class_exposed_at_root(self):
+        """``RunSpec`` Pydantic est accessible depuis le namespace racine."""
+        import picarones
+        assert hasattr(picarones, "RunSpec")
+        from picarones import RunSpec
+        assert inspect.isclass(RunSpec)
+
+    @pytest.mark.parametrize("name", [
+        "OrchestrationResult",
+        "RunOrchestrator",
+        "RunSpec",
+        "RunSpecLoadError",
+        "load_run_spec_from_yaml",
+    ])
+    def test_all_new_exports_present(self, name):
+        """Les 5 symboles ajoutés en B3 sont tous dans __all__."""
+        import picarones
+        assert name in picarones.__all__, (
+            f"Phase B3 — '{name}' devrait être dans picarones.__all__"
+        )
+
+    def test_run_benchmark_via_service_still_callable_with_warning(self):
+        """Compat ascendante : ``run_benchmark_via_service`` est toujours
+        appelable mais émet une ``DeprecationWarning``."""
+        import warnings
+        from picarones.evaluation.corpus import Corpus
+        from picarones.app.services.benchmark_runner import (
+            run_benchmark_via_service,
+        )
+
+        corp = Corpus(name="warn_test", documents=[])
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                run_benchmark_via_service(corp, [])
+            except Exception:
+                # Le bench échoue sur un corpus vide mais peu importe —
+                # on teste juste l'émission du warning.
+                pass
+
+        deprecation_warnings = [
+            w for w in caught if issubclass(w.category, DeprecationWarning)
+        ]
+        assert len(deprecation_warnings) >= 1, (
+            "run_benchmark_via_service devrait émettre une "
+            "DeprecationWarning (Phase B3)"
+        )
+        assert "RunOrchestrator" in str(deprecation_warnings[0].message)
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # 7. picarones.evaluation.metric_registry — registre typé (canonique)
 # ──────────────────────────────────────────────────────────────────────────
 

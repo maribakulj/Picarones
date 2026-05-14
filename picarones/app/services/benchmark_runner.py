@@ -209,6 +209,25 @@ def run_benchmark_via_service(
         Si les engines ne déclarent pas tous un ``name`` unique
         (cf. ``build_adapter_resolver``).
     """
+    # Phase B3 migration Option B (mai 2026) — ``run_benchmark_via_service``
+    # est désormais déprécié.  Utiliser ``picarones.RunOrchestrator``
+    # qui consomme un ``RunSpec`` Pydantic et expose nativement les 4
+    # fichiers JSONL.  La fonction sera retirée en Phase B8 (post-
+    # deprecation release) ; cette warning aide à identifier les call
+    # sites à migrer.
+    #
+    # ``stacklevel=2`` pour que la warning pointe sur le caller (et non
+    # cette ligne).  ``stacklevel=3`` ferait pointer sur le caller du
+    # caller (utile si on emballe encore dans un helper privé).
+    import warnings as _warnings
+    _warnings.warn(
+        "run_benchmark_via_service est déprécié depuis Phase B3 de la "
+        "migration Option B.  Utiliser picarones.RunOrchestrator qui "
+        "consomme un RunSpec Pydantic.  Retrait prévu en Phase B8.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     # D.2.f : valide ``profile`` tôt — un nom inconnu lève
     # ``PicaronesError`` avant que le bench ne démarre, plutôt
     # que de dégrader silencieusement plus loin.
