@@ -37,11 +37,14 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import io
+import logging
 import threading
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 from picarones.app.results import ReportRenderer, RunResult
 from picarones.app.schemas import RunSpec, resolve_adapter_class
@@ -198,8 +201,13 @@ class RunOrchestrator:
             self._build_pipelines(spec)
         )
 
-        # 4. Vues canoniques.
-        views = self._build_views(spec.views)
+        # 4. Vues canoniques.  Phase B2.5 — propage normalization +
+        # char_exclude aux vues text_final/searchability.
+        views = self._build_views(
+            spec.views,
+            normalization_profile=spec.normalization_profile,
+            char_exclude=spec.char_exclude,
+        )
 
         # 5. BenchmarkService.
         bench = self._build_benchmark_service(
@@ -450,23 +458,60 @@ class RunOrchestrator:
         # l'absence de ``.version`` (cf. ``_safe_engine_version``).
         engines = [_PipelineEngineProxy(spec) for spec in pipeline_specs]
 
+        # Phase B2.5 — le converter legacy passe ``normalization_profile``
+        # à ``compute_metrics`` qui attend un objet ``NormalizationProfile``,
+        # pas une string.  Résolution explicite ici pour aligner avec ce que
+        # font les call sites legacy (CLI ``_workflows.py`` via
+        # ``resolve_normalization_profile``).  ``char_exclude`` reste string —
+        # ``compute_metrics`` le traite comme un set/frozenset implicite.
+        resolved_profile: Any = None
+        if normalization_profile:
+            from picarones.formats.text.normalization import get_builtin_profile
+            try:
+                resolved_profile = get_builtin_profile(normalization_profile)
+            except KeyError:
+                # Profil inconnu — on laisse ``None`` (le converter
+                # tombera dans son default ``DEFAULT_DIPLOMATIC_PROFILE``).
+                # Cohérent avec le legacy qui logge un warning sans
+                # casser le run.
+                logger.warning(
+                    "[run_orchestrator] profil normalisation %r inconnu "
+                    "pour output_json — fallback default diplomatique.",
+                    normalization_profile,
+                )
+
         benchmark_result = run_result_to_benchmark_result(
             run_result,
             corpus=corpus,
             engines=engines,
-            char_exclude=char_exclude,
-            normalization_profile=normalization_profile,
+            char_exclude=frozenset(char_exclude) if char_exclude else None,
+            normalization_profile=resolved_profile,
             profile=profile,
         )
         persist_benchmark_result_json(benchmark_result, output_json)
 
     @staticmethod
-    def _build_views(view_names: tuple[str, ...]) -> list[Any]:
-        """Map noms canoniques → vues construites."""
-        builders = {
-            "text_final": build_text_view,
+    def _build_views(
+        view_names: tuple[str, ...],
+        *,
+        normalization_profile: str | None = None,
+        char_exclude: str | None = None,
+    ) -> list[Any]:
+        """Map noms canoniques → vues construites.
+
+        Phase B2.5 — ``normalization_profile`` et ``char_exclude``
+        sont propagés aux vues qui les supportent (``text_final`` et
+        ``searchability``).  ``alto_documentary`` les ignore : ses
+        métriques structurelles n'opèrent pas sur du texte.
+        """
+        text_view_kwargs = {
+            "normalization_profile": normalization_profile,
+            "char_exclude": char_exclude,
+        }
+        builders: dict[str, Callable[[], Any]] = {
+            "text_final": lambda: build_text_view(**text_view_kwargs),
             "alto_documentary": build_alto_view,
-            "searchability": build_search_view,
+            "searchability": lambda: build_search_view(**text_view_kwargs),
         }
         return [builders[name]() for name in view_names]
 

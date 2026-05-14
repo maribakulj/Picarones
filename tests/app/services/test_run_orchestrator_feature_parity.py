@@ -294,29 +294,124 @@ def test_parity_entity_extractor_ner(tmp_path: Path) -> None:
 # ──────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}5 — port normalization propagation")
-def test_parity_char_exclude(tmp_path: Path) -> None:
-    """``char_exclude`` filtre les caractères avant calcul CER/WER.
+def _make_corpus_zip_with_texts(
+    gt_text: str, ocr_text: str,
+) -> bytes:
+    """Corpus zip 1 doc avec une GT et un texte OCR précalculé spécifiques."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w") as zf:
+        zf.writestr("doc01.png", _png_bytes())
+        zf.writestr("doc01.gt.txt", gt_text)
+        zf.writestr("doc01.tess.txt", ocr_text)
+    return buf.getvalue()
 
-    Spec
-    ----
-    - GT = ``"Bonjour!"``, OCR = ``"Bonjour."``.
-    - Sans ``char_exclude`` : CER = 1/8 = 0.125.
-    - Avec ``char_exclude="!."`` : CER = 0.0 (les 2 caractères
-      filtrés sont les seuls différents).
+
+class TestParityCharExclude:
+    """Phase B2.5 — ``char_exclude`` filtre les caractères avant CER/WER.
+
+    Référence : ``compute_metrics(char_exclude=...)`` dans
+    ``picarones.evaluation.metrics.text_metrics:151-153``.  Le filtre
+    s'applique aux deux payloads (GT + hypothèse) avant tout calcul.
     """
 
+    def _build_spec(
+        self, tmp_path: Path, *, char_exclude: str | None,
+    ) -> "RunSpec":
+        # GT = "Bonjour!"  OCR = "Bonjour."  → diff exact = 1 char
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(_make_corpus_zip_with_texts(
+            gt_text="Bonjour!", ocr_text="Bonjour.",
+        ))
+        out_dir = tmp_path / "out"
+        yaml = _build_spec_yaml(corpus_zip, out_dir)
+        if char_exclude is not None:
+            yaml += f'char_exclude: "{char_exclude}"\n'
+        # On force un output_json pour récupérer le CER calculé sans
+        # avoir à parser les fichiers JSONL natifs.
+        yaml += f"output_json: {tmp_path / 'bm.json'}\n"
+        return load_run_spec_from_yaml(yaml)
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}5 — port normalization propagation")
-def test_parity_normalization_profile(tmp_path: Path) -> None:
-    """``normalization_profile="caseless"`` égalise les casses.
+    def _run_and_read_cer(self, tmp_path: Path, spec: "RunSpec") -> float:
+        import json
+        RunOrchestrator(tmp_path / "out").execute(spec)
+        loaded = json.loads((tmp_path / "bm.json").read_text(encoding="utf-8"))
+        return loaded["engine_reports"][0]["document_results"][0]["metrics"]["cer"]
 
-    Spec
-    ----
-    - GT = ``"Bonjour"``, OCR = ``"BONJOUR"``.
-    - Sans profil : CER ≈ 1.0 (toutes les lettres diffèrent).
-    - Avec ``caseless`` : CER = 0.0.
+    def test_without_char_exclude_cer_is_nonzero(self, tmp_path: Path) -> None:
+        """Sans filtrage, CER = 1/8 (1 char différent sur 8)."""
+        spec = self._build_spec(tmp_path, char_exclude=None)
+        cer = self._run_and_read_cer(tmp_path, spec)
+        assert cer == pytest.approx(1 / 8)
+
+    def test_with_char_exclude_eliminates_diff(self, tmp_path: Path) -> None:
+        """Avec ``char_exclude="!."``, les 2 caractères qui diffèrent
+        sont filtrés des deux côtés → CER = 0.0."""
+        spec = self._build_spec(tmp_path, char_exclude="!.")
+        cer = self._run_and_read_cer(tmp_path, spec)
+        assert cer == 0.0
+
+
+class TestParityNormalizationProfile:
+    """Phase B2.5 — ``normalization_profile`` impacte ``cer_diplomatic``.
+
+    Sémantique legacy de ``compute_metrics`` (cf.
+    ``text_metrics.py:173-184``) : le profil est appliqué à un CER
+    parallèle (``cer_diplomatic``) tandis que ``cer`` reste le CER
+    brut.  Cette parity-test reproduit exactement le comportement de
+    ``run_benchmark_via_service(normalization_profile=...)``.
+
+    Pour les vues canoniques (text_final/searchability), la
+    normalisation est appliquée AVANT l'évaluation par
+    ``DefaultEvaluationViewExecutor._apply_normalization`` — donc
+    ``cer`` natif des vues sera lui-même 0.0.  Mais le converter
+    legacy (output_json) recalcule depuis les textes bruts.
     """
+
+    def _build_spec(
+        self, tmp_path: Path, *, normalization_profile: str | None,
+    ) -> "RunSpec":
+        # GT = "Bonjour"  OCR = "BONJOUR"  → 6 chars en désaccord de casse
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(_make_corpus_zip_with_texts(
+            gt_text="Bonjour", ocr_text="BONJOUR",
+        ))
+        out_dir = tmp_path / "out"
+        yaml = _build_spec_yaml(corpus_zip, out_dir)
+        if normalization_profile is not None:
+            yaml += f"normalization_profile: {normalization_profile}\n"
+        yaml += f"output_json: {tmp_path / 'bm.json'}\n"
+        return load_run_spec_from_yaml(yaml)
+
+    def _run_and_read_metrics(
+        self, tmp_path: Path, spec: "RunSpec",
+    ) -> dict[str, float]:
+        import json
+        RunOrchestrator(tmp_path / "out").execute(spec)
+        loaded = json.loads((tmp_path / "bm.json").read_text(encoding="utf-8"))
+        return loaded["engine_reports"][0]["document_results"][0]["metrics"]
+
+    def test_without_profile_cer_diplomatic_is_high(self, tmp_path: Path) -> None:
+        """Sans profil : tous les CER diffèrent (raw, diplomatic) > 0."""
+        spec = self._build_spec(tmp_path, normalization_profile=None)
+        metrics = self._run_and_read_metrics(tmp_path, spec)
+        # cer brut = 1.0 (toutes les lettres diffèrent en casse)
+        assert metrics["cer"] > 0.5
+        # Default diplomatique = medieval_french qui ne plie pas la
+        # casse → cer_diplomatic reste élevé.
+        assert metrics.get("cer_diplomatic", 1.0) > 0.5
+
+    def test_with_caseless_profile_zeroes_diplomatic_cer(
+        self, tmp_path: Path,
+    ) -> None:
+        """``caseless`` (pliage de casse) → ``cer_diplomatic`` = 0.0.
+
+        ``cer`` raw reste élevé car il opère sur les payloads bruts.
+        """
+        spec = self._build_spec(tmp_path, normalization_profile="caseless")
+        metrics = self._run_and_read_metrics(tmp_path, spec)
+        assert metrics["cer_diplomatic"] == 0.0
+        # cer raw n'est pas affecté — c'est la sémantique legacy.
+        assert metrics["cer"] > 0.5
 
 
 # ──────────────────────────────────────────────────────────────────────

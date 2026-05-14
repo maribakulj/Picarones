@@ -167,6 +167,11 @@ class EvaluationView(BaseModel):
     ``ProjectorRegistry`` au moment de l'exécution (validé runtime).
     """
     normalization_profile: str | None = Field(default=None, max_length=128)
+    char_exclude: str | None = Field(default=None, max_length=512)
+    """Phase B2.5 — caractères à filtrer des payloads texte avant
+    évaluation.  Appliqué APRÈS ``normalization_profile``.  Cohérent
+    sémantiquement avec le paramètre éponyme de
+    ``compute_metrics`` (legacy)."""
     metric_names: tuple[str, ...] = Field(default_factory=tuple)
     ignored_dimensions: tuple[str, ...] = Field(default_factory=tuple)
     warnings: tuple[str, ...] = Field(default_factory=tuple)
