@@ -42,6 +42,10 @@ from picarones.app.services.path_security import (
     validated_path,
     validated_prompt_filename,
 )
+from picarones.app.services.python_helpers import (
+    PresetArgs,
+    prepare_preset_args,
+)
 from picarones.app.services.registry_service import (
     RegistriesBundle,
     RegistryService,
@@ -50,6 +54,15 @@ from picarones.app.services.registry_service import (
 from picarones.app.services.run_orchestrator import (
     OrchestrationResult,
     RunOrchestrator,
+)
+
+# Phase B3-final (mai 2026) — re-export du converter pour les
+# callers Python qui veulent un ``BenchmarkResult`` legacy après
+# ``RunOrchestrator.execute_preset()``.  Le converter reste dans
+# son module privé ``_benchmark_converter`` mais est exposé
+# publiquement via le package.
+from picarones.app.services._benchmark_converter import (
+    run_result_to_benchmark_result,
 )
 
 # Le rendu HTML vit dans la couche ``reports/`` (cible documentée
@@ -68,6 +81,10 @@ __all__ = [
     "OrchestrationResult",
     "PathValidationError",
     "PipelineInputsFactory",
+    # Phase B3-final — helpers pour callers Python
+    "PresetArgs",
+    "prepare_preset_args",
+    "run_result_to_benchmark_result",
     "RegistriesBundle",
     "RegistryService",
     "RunOrchestrator",
