@@ -194,6 +194,18 @@ def prepare_preset_args(
     de tempdir, pas de fichier).  Le caller est responsable du
     cycle de vie du ``workspace_dir`` (typiquement via
     ``tempfile.TemporaryDirectory``).
+
+    Limite reproductibilité manifest (audit B3-final mai 2026,
+    trou #2) : ``PresetArgs.adapter_kwargs`` est retourné vide
+    (``{}``) car le mode preset reçoit des instances d'adapters
+    déjà construites en mémoire ; les kwargs de construction ne
+    sont pas réintrospectables génériquement.  Conséquence :
+    ``RunManifest.adapter_kwargs`` sera vide dans le manifest
+    persisté.  Pour reproduire un run preset à l'identique,
+    relancer le code Python qui a construit les instances — le
+    manifest seul n'est qu'un audit log informatif côté preset.
+    Le mode ``execute(spec_yaml)`` capture lui les vraies kwargs
+    et permet la reproductibilité complète depuis le manifest.
     """
     from picarones.app.schemas.run_spec import RunSpec
     from picarones.app.services._benchmark_adapter_resolver import (
