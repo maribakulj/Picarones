@@ -316,21 +316,44 @@ class JobStore:
     # ---- Événements ------------------------------------------------------
 
     def append_event(self, job_id: str, kind: str, data: Any) -> int:
-        """Ajoute un événement et retourne son numéro de séquence (>= 1)."""
+        """Ajoute un événement et retourne son numéro de séquence (>= 1).
+
+        Atomique : ``seq`` est calculé dans la sous-requête de l'INSERT
+        au lieu d'un SELECT MAX(seq) suivi d'un INSERT séparé.  Sans
+        cette précaution, deux threads concurrents (typique : le worker
+        ``CorpusRunner`` et le main thread qui émet des événements de
+        progression) pouvaient lire le même ``MAX(seq)``, calculer le
+        même ``next_seq``, et le second INSERT échouait avec
+        ``UNIQUE constraint failed: job_events.job_id, job_events.seq``
+        — l'événement était alors perdu de la persistance (la mémoire
+        et la diffusion SSE live restaient OK, mais une reprise via
+        ``Last-Event-ID`` skippait l'événement).
+
+        SQLite sérialise les writers en mode WAL : la sous-requête voit
+        donc toujours le ``MAX(seq)`` à jour au moment où l'INSERT
+        acquiert le verrou d'écriture.
+        """
         with self._conn() as c:
-            row = c.execute(
-                "SELECT COALESCE(MAX(seq), 0) FROM job_events WHERE job_id = ?",
-                (job_id,),
-            ).fetchone()
-            next_seq = int(row[0]) + 1 if row else 1
-            c.execute(
+            cur = c.execute(
                 """
                 INSERT INTO job_events (job_id, seq, kind, data_json, ts)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (
+                    ?,
+                    COALESCE(
+                        (SELECT MAX(seq) FROM job_events WHERE job_id = ?),
+                        0
+                    ) + 1,
+                    ?, ?, ?
+                )
+                RETURNING seq
                 """,
-                (job_id, next_seq, kind, json.dumps(data, ensure_ascii=False), time.time()),
+                (
+                    job_id, job_id, kind,
+                    json.dumps(data, ensure_ascii=False), time.time(),
+                ),
             )
-        return next_seq
+            row = cur.fetchone()
+        return int(row[0]) if row else 1
 
     def get_events_after(self, job_id: str, last_seq: int = 0) -> list[dict]:
         """Retourne les événements ``seq > last_seq``, triés croissant."""

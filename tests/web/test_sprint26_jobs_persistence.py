@@ -150,6 +150,76 @@ class TestJobStoreEvents:
             store.append_event(jid, "log", {})
         assert store.count_events(jid) == 7
 
+    def test_append_event_concurrent_no_unique_constraint_failure(
+        self, store,
+    ):
+        """Régression : ``append_event`` doit être atomique sous
+        concurrence.
+
+        Avant le fix (mai 2026, branche test-alto-pipelines), le pattern
+        ``SELECT MAX(seq)`` puis ``INSERT`` était racy : deux threads
+        pouvaient lire le même ``seq`` et le second INSERT échouait
+        avec ``UNIQUE constraint failed: job_events.job_id,
+        job_events.seq``.  L'event était alors perdu de la
+        persistance silencieusement (warning catch dans
+        ``BenchmarkJob.add_event``).
+
+        Le pattern reproductible :
+        - Un seul ``job_id`` (single hotkey, comme un benchmark réel)
+        - Plusieurs threads en concurrence
+        - ~100+ events chacun pour maximiser les chances de race
+
+        Sans le fix, ce test fail régulièrement en ~10 lignes de
+        warning dans les logs.  Avec le fix (INSERT atomique avec
+        sous-requête + RETURNING), tous les events sont persistés
+        et leurs seq sont uniques.
+        """
+        import threading
+
+        jid = store.create_job()
+        n_threads = 8
+        events_per_thread = 50
+        errors: list[Exception] = []
+
+        def worker(thread_id: int) -> None:
+            try:
+                for i in range(events_per_thread):
+                    store.append_event(
+                        jid, "log", {"thread": thread_id, "i": i},
+                    )
+            except Exception as exc:  # pragma: no cover — capture pour debug
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=worker, args=(t,))
+            for t in range(n_threads)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, (
+            f"Race condition détectée : {len(errors)} INSERT(s) ont "
+            f"échoué.  Première erreur : {errors[0]!r}"
+        )
+
+        # Tous les events doivent être persistés (n_threads × per_thread).
+        total = store.count_events(jid)
+        assert total == n_threads * events_per_thread, (
+            f"Events perdus : attendus {n_threads * events_per_thread}, "
+            f"persistés {total}"
+        )
+
+        # Et leurs seq doivent former une suite [1..total] sans trou
+        # ni doublon (preuve de l'atomicité).
+        evs = store.get_events_after(jid, last_seq=0)
+        seqs = sorted(e["seq"] for e in evs)
+        assert seqs == list(range(1, total + 1)), (
+            f"Séquence cassée : {seqs[:5]}…{seqs[-5:]} "
+            f"(attendu 1..{total})"
+        )
+
 
 # ---------------------------------------------------------------------------
 # 3. Détection des orphelins au boot
