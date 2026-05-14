@@ -113,6 +113,39 @@ class TestB3FinalFieldsAccepted:
         pc = PipelineConfig(engine_name="tesseract")
         assert pc.expose_alto is False
 
+    def test_expose_alto_with_non_tesseract_engine_warns(
+        self, caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Phase D4 audit B3-final — l'UI envoie ``expose_alto=true``
+        mais le moteur cible n'est pas Tesseract.  Le flag est ignoré
+        mais on logue un warning explicite pour que l'utilisateur
+        comprenne pourquoi son ``alto_documentary`` view ne fournit
+        aucune métrique.
+        """
+        import logging
+        from picarones.interfaces.web.benchmark_utils import (
+            _engine_from_competitor,
+        )
+        from picarones.interfaces.web.models import PipelineConfig
+
+        with caplog.at_level(logging.WARNING):
+            try:
+                _engine_from_competitor(PipelineConfig(
+                    engine_name="precomputed_text", expose_alto=True,
+                ))
+            except Exception:
+                # Le factory peut échouer car ``precomputed_text``
+                # demande des kwargs supplémentaires — on capture mais
+                # le warning doit être émis AVANT cette erreur.
+                pass
+
+        warnings_text = "\n".join(
+            r.getMessage() for r in caplog.records
+            if r.levelno >= logging.WARNING
+        )
+        assert "expose_alto" in warnings_text or "alto" in warnings_text.lower()
+        assert "precomputed_text" in warnings_text
+
 
 # ──────────────────────────────────────────────────────────────────────
 # 2. Validation négative — payloads malformés rejetés

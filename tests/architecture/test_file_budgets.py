@@ -103,7 +103,7 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     # Phase 3.3 audit code-quality (2026-05) — option
     # ``--normalization-profile`` + résolution builtin/YAML (~30 LOC).
-    "picarones/interfaces/cli/_workflows.py": 800,  # actuel 679 — Phase B3-final (+ helper local _run_orchestrator_for_cli)
+    "picarones/interfaces/cli/_workflows.py": 1000,  # actuel 877 — Phase D1 audit B3-final : decorator ``_b3_final_options`` + plumbing diagnose/economics/edition
     # ``__init__.py`` du CLI : commandes ``info``, ``engines``,
     # ``metrics``, ``report``, ``demo`` regroupées.
     "picarones/interfaces/cli/__init__.py": 500,    # actuel 396

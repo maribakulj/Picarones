@@ -21,6 +21,7 @@ Ces utilitaires sont consommés par le router ``/api/benchmark/*``.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -30,6 +31,8 @@ from picarones.interfaces.web.models import (
     PipelineConfig,
 )
 from picarones.interfaces.web.state import BenchmarkJob, iso_now
+
+logger = logging.getLogger(__name__)
 
 #: Répertoire de la bibliothèque de prompts embarquée — la même
 #: que celle validée par ``validated_prompt_filename`` côté router.
@@ -229,6 +232,20 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
     engine_id = comp.engine_name
     is_corpus_ocr = engine_id in ("corpus", "")
 
+    # Phase D4 audit B3-final — l'avertissement expose_alto/non-Tesseract
+    # est positionné EN TÊTE, avant toute factory call : il doit
+    # toujours fire pour signaler à l'utilisateur que son flag est
+    # inopérant, indépendamment du fait que l'engine_id soit ensuite
+    # validé ou non par ``_build_ocr_kwargs``.
+    if comp.expose_alto and engine_id.lower() not in {"tesseract", "tess"}:
+        logger.warning(
+            "[web] expose_alto=True demandé mais le moteur %r ne "
+            "supporte pas la production ALTO XML native ; le flag est "
+            "ignoré pour ce moteur (seul Tesseract le supporte via "
+            "pytesseract.image_to_alto_xml).",
+            engine_id,
+        )
+
     if is_corpus_ocr and not comp.llm_provider:
         raise ValueError(
             "engine_name='corpus' nécessite un llm_provider "
@@ -252,8 +269,9 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
         try:
             kwargs = _build_ocr_kwargs(engine_id, comp.ocr_model)
             # Phase B3-final corr-B (mai 2026) — propage expose_alto
-            # à Tesseract (les autres adapters ignorent ce kwarg via
-            # validation du factory).
+            # à Tesseract uniquement.  Le warning pour les engines
+            # non-Tesseract est émis en tête de fonction (cf.
+            # Phase D4) ; ici on injecte simplement le kwarg.
             if comp.expose_alto and engine_id.lower() in {"tesseract", "tess"}:
                 kwargs["expose_alto"] = True
             ocr = ocr_adapter_from_name(engine_id, **kwargs)

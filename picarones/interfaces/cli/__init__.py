@@ -96,6 +96,20 @@ def _engine_from_name(
             return ocr_adapter_from_name(
                 engine_name, lang=lang, psm=psm, expose_alto=expose_alto,
             )
+        # Phase D4 audit B3-final — l'utilisateur a explicitement
+        # demandé ``--expose-alto`` mais le moteur cible ne sait pas
+        # produire d'ALTO XML natif.  On le signale plutôt que de
+        # silently dropper le flag (sinon ``--views alto_documentary``
+        # ne déclenche aucun artefact ALTO_XML et l'utilisateur croit
+        # que sa config est bonne).
+        if expose_alto:
+            logging.getLogger(__name__).warning(
+                "[cli] --expose-alto demandé mais le moteur %r ne "
+                "supporte pas la production ALTO XML native ; le flag "
+                "est ignoré pour ce moteur (seul Tesseract le supporte "
+                "via pytesseract.image_to_alto_xml).",
+                engine_name,
+            )
         return ocr_adapter_from_name(engine_name)
     except ValueError as exc:
         raise click.BadParameter(str(exc)) from exc
