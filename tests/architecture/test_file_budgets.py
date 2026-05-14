@@ -33,21 +33,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # n'ont pas besoin de budget — leur croissance est gérée par les tests
 # de couverture, pas par un seuil dur).
 FILE_BUDGETS: dict[str, int] = {
-    # ``benchmark_runner`` : façade publique de ``BenchmarkService``,
-    # entry point pour CLI/web.  God-module historique en cours de
-    # split (Phase 6 audit code-quality, 1700 → 1329 LOC).
-    # Extractions effectuées (rounds 1-6) :
-    # - ``_benchmark_ner`` (NER aggregation, ~100 LOC)
-    # - ``_benchmark_persistence`` (JSON dump, ~15 LOC)
-    # - ``_benchmark_adapter_resolver`` (engine→spec + resolver, ~250 LOC)
-    # - ``_benchmark_conversions`` (document/corpus + helpers GT, ~230 LOC)
-    # - ``_benchmark_execution`` (BenchmarkService orchestration, ~140 LOC)
-    # - ``_benchmark_helpers`` (extract_*, build_*, fingerprint, ~260 LOC)
-    # - ``_benchmark_converter`` (RunResult→BenchmarkResult, ~200 LOC)
-    # - ``_benchmark_orchestration`` (unified + with_partial, ~250 LOC)
-    # Bilan cumulé : **1700 → 299 LOC (-82 %)** — façade pure
-    # ``run_benchmark_via_service`` + bloc de re-exports.
-    "picarones/app/services/benchmark_runner.py": 380,  # actuel 333 — Phase B7 (bannière deprecated +34 LOC)
+    # Phase B3-final (mai 2026) — ``benchmark_runner.py`` (entry
+    # point legacy) supprimé après la migration complète vers
+    # ``RunOrchestrator``.  Les 8 modules ``_benchmark_*.py``
+    # extraits du god-module historique (Phase 6 audit code-quality)
+    # qui restent utiles (helpers de production consommés par le
+    # converter ou par les call sites Python) ne dépassent pas le
+    # seuil de 400 LOC et n'ont donc pas besoin d'entrée budget ici.
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # Phase 4.6 audit code-quality (2026-05) — commentaires retirés :
@@ -111,7 +103,7 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/corpus/huggingface.py": 550,      # actuel 464
     # Phase 3.3 audit code-quality (2026-05) — option
     # ``--normalization-profile`` + résolution builtin/YAML (~30 LOC).
-    "picarones/interfaces/cli/_workflows.py": 660,  # actuel ~621
+    "picarones/interfaces/cli/_workflows.py": 800,  # actuel 679 — Phase B3-final (+ helper local _run_orchestrator_for_cli)
     # ``__init__.py`` du CLI : commandes ``info``, ``engines``,
     # ``metrics``, ``report``, ``demo`` regroupées.
     "picarones/interfaces/cli/__init__.py": 500,    # actuel 396

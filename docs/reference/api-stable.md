@@ -110,30 +110,60 @@ def compute_metrics(reference, hypothesis, char_exclude=None) -> MetricsResult
 def aggregate_metrics(results: list) -> dict
 ```
 
-### `picarones.app.services.benchmark_runner`
+### `picarones.app.services` — RunOrchestrator & helpers
 
 ```python
-def run_benchmark_via_service(
-    corpus, engines,
-    output_json=None,
-    show_progress=True,
-    progress_callback=None,
-    char_exclude=None,
-    max_workers=4,
-    timeout_seconds=60.0,
-    partial_dir=None,
-    cancel_event=None,
-    entity_extractor=None,
-    profile="standard",
-    normalization_profile=None,
+from picarones import RunOrchestrator, RunSpec, load_run_spec_from_yaml
+from picarones.app.services import (
+    prepare_preset_args,
+    run_result_to_benchmark_result,
+    PresetArgs,
+    OrchestrationResult,
+)
+
+class RunOrchestrator:
+    def __init__(self, output_dir: str | Path) -> None: ...
+    def execute(
+        self, spec: RunSpec, *,
+        report_renderer=None, progress_callback=None, cancel_event=None,
+    ) -> OrchestrationResult: ...
+    def execute_preset(
+        self, spec: RunSpec, *,
+        corpus_spec, extracted_dir, pipeline_specs, adapter_resolver,
+        adapter_kwargs=None, report_renderer=None,
+        progress_callback=None, cancel_event=None,
+    ) -> OrchestrationResult: ...
+
+def prepare_preset_args(
+    corpus, engines, *,
+    workspace_dir: Path,
+    views: tuple[str, ...] = ("text_final",),
+    char_exclude=None, normalization_profile=None,
+    partial_dir=None, entity_extractor=None,
+    profile="standard", output_json=None,
+    timeout_seconds_per_doc=60.0, code_version=None,
+    output_dir=None,
+) -> PresetArgs
+
+def run_result_to_benchmark_result(
+    run_result, *, corpus, engines,
+    char_exclude=None, normalization_profile=None, profile="standard",
 ) -> BenchmarkResult
 ```
 
-Sprint D du plan v2.0 — adapter de compatibilité qui présente
-l'API mono-call historique de
-``measurements.runner.run_benchmark`` (supprimé en D.6.b) en
-s'appuyant en interne sur ``BenchmarkService`` (rewrite).
-Prouvé numériquement équivalent en D.1.e.
+Phase B3-final (migration Option B, mai 2026) — entry point
+canonique pour lancer un benchmark.  Deux modes :
+
+- **YAML/déclaratif** : ``RunOrchestrator.execute(spec)`` avec un
+  ``RunSpec`` chargé depuis YAML.  Cible long-terme pour la
+  reproductibilité.
+- **Python/instances** : ``prepare_preset_args(corpus, engines, ...)``
+  → ``execute_preset(**args)`` → ``run_result_to_benchmark_result()``.
+  Pour les callers qui instancient leurs adapters en Python.
+
+Le module legacy ``benchmark_runner.py`` (entry point
+``run_benchmark_via_service``) a été supprimé.  Voir
+``docs/migration/option_b_user_guide.md`` pour le mapping.
 
 ### `picarones.evaluation.metric_registry`
 
@@ -301,8 +331,11 @@ from picarones.adapters.corpus.huggingface import HuggingFaceImporter
 ### Couche 6 — `picarones.app.services`
 
 ```python
-# Orchestration benchmark
-from picarones.app.services.benchmark_runner import run_benchmark_via_service
+# Orchestration benchmark (Phase B3-final, migration Option B)
+from picarones import RunOrchestrator, RunSpec, load_run_spec_from_yaml
+from picarones.app.services import (
+    prepare_preset_args, run_result_to_benchmark_result,
+)
 from picarones.app.services.corpus_service import CorpusService
 from picarones.app.services.path_security import (
     WorkspaceManager,

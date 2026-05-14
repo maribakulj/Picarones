@@ -53,30 +53,47 @@ commits sur ~13 jours d'effort, 4830 → 4897 tests passants (+67).
   par le rapport HTML et accessible aux clients pour analyses
   ad-hoc.
 
-### Déprécié
+### BREAKING — Retrait du legacy (Phase B3-final, migration nette)
 
-- **`run_benchmark_via_service`** émet une `DeprecationWarning` à
-  chaque appel pointant vers `RunOrchestrator`.  Fonction toujours
-  opérationnelle mais marquée pour retrait en Phase B8.  Aucun
-  call site actif ne subsiste dans `picarones/interfaces/` ou
-  `picarones/app/` — CLI/Web passent désormais par le shim
-  `picarones.app.services.legacy_runner_compat.run_via_orchestrator`
-  qui utilise `RunOrchestrator.execute_preset()` en interne.
-- **Modules legacy marqués deprecated** (bannière en tête, retrait
-  prévu Phase B8 — 1500 LOC nets à supprimer) :
-    * `picarones/app/services/benchmark_runner.py`
-    * `picarones/app/services/_benchmark_execution.py`
-    * `picarones/app/services/_benchmark_orchestration.py`
+Suppression complète de l'entry point legacy et de ses modules
+helpers internes.  Les call sites CLI/Web/tests ont été migrés vers
+le **pattern 3 étapes explicite** (Option 10 du chantier) :
+
+```python
+# Pattern moderne — 3 étapes visibles, pas de shim caché
+args = prepare_preset_args(corpus, engines, workspace_dir=...)
+orch_result = RunOrchestrator(out).execute_preset(**dataclass_fields)
+result = run_result_to_benchmark_result(orch_result.run_result, ...)
+```
+
+- **`run_benchmark_via_service` supprimée** — utilisez
+  `RunOrchestrator` + `prepare_preset_args` (Python) ou
+  `RunOrchestrator.execute(RunSpec)` (YAML).
+- **Modules supprimés** (~1700 LOC nettes) :
+    * `benchmark_runner` (entry point legacy)
+    * `_benchmark_execution` (helper interne orchestration)
+    * `_benchmark_orchestration` (run_benchmark_unified /
+      run_benchmark_with_partial)
+    * `legacy_runner_compat` (shim intermédiaire B3 introduit puis
+      supprimé dans le même chantier — voir entrée Option 10)
+- **Tests d'invariance supprimés** — leur rôle (garde-fou pendant
+  la migration) est rempli, la migration est terminée :
+    * `tests/integration/test_migration_invariance.py`
+    * `tests/integration/snapshots/migration_invariance.json`
 
 ### Modifié
 
 - **`picarones.interfaces.cli._workflows`** : 6 commandes (`run`,
   `diagnose`, `economics`, `edition`, `compare`, `robustness`)
-  passent désormais par `run_via_orchestrator`.  Comportement
-  utilisateur identique.
+  utilisent désormais un helper local `_run_orchestrator_for_cli`
+  qui mutualise le pattern 3 étapes.  Comportement utilisateur
+  identique.
 - **`picarones.interfaces.web.benchmark_utils.run_benchmark_thread_v2`** :
-  utilise `run_via_orchestrator`.  L'API REST `POST /api/benchmark/run`
+  pattern 3 étapes inline.  L'API REST `POST /api/benchmark/run`
   est inchangée pour les clients.
+- **`picarones.app.services.__init__`** expose désormais
+  `PresetArgs`, `prepare_preset_args`, `run_result_to_benchmark_result`
+  comme API publique.
 - **`TesseractAdapter.output_types`** : étendu de
   `{RAW_TEXT, CONFIDENCES}` à `{RAW_TEXT, CONFIDENCES, ALTO_XML}`
   (set maximal).  Les pipelines existants restent inchangés tant
@@ -107,9 +124,11 @@ retrait phasé.
 - **B5** `TesseractAdapter.expose_alto` (premier adapter ALTO natif)
 - **B6** rapport HTML multi-vues + extension `DEFAULT_ALTO_METRICS`
   → **Checkpoint C3** (valeur métier livrée)
-- **B7** deprecation finale (cette entrée + bannières modules legacy)
-- **B8** *(à venir, post-release)* — suppression des modules legacy
-  marqués deprecated (~1500 LOC nets).
+- **B7** deprecation finale (bannières + CHANGELOG initial)
+- **B3-final** (Option 10) — migration nette : helper
+  `prepare_preset_args` + pattern 3 étapes inline dans CLI/Web/tests,
+  puis suppression complète du shim `legacy_runner_compat` et des
+  3 modules purement legacy.  **-1700 LOC nettes**.
 
 ---
 
