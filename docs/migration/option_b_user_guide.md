@@ -96,7 +96,7 @@ loaded_legacy = json.loads((Path("./runs/r1/bm.json")).read_text(encoding="utf-8
 | `timeout_seconds: float` | `timeout_seconds_per_doc: float` (renommé pour clarté) |
 | `profile: str` | `profile: str` (identique) |
 
-**Retour** : 
+**Retour** :
 - Legacy retourne `BenchmarkResult` (legacy dataclass).
 - Nouveau retourne `OrchestrationResult(run_result, persisted_files, ...)`.
   Le `BenchmarkResult` legacy peut être récupéré en désérialisant
