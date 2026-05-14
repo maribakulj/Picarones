@@ -125,6 +125,7 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
     "picarones/app/services/run_orchestrator.py": 1500,   # actuel 1267 — Phase B4 migration Option B (+ execute_preset + workspace_uri propagation)
+    "picarones/adapters/ocr/tesseract.py": 560,          # actuel 479 — Phase B5 migration Option B (+ ALTO_XML expose)
     "picarones/app/schemas/run_spec.py": 620,             # actuel 530 — Phase B1 migration Option B (+90 LOC : 7 nouveaux champs + 2 validators)
     "picarones/reports/html/render.py": 700,           # actuel 615
 }
