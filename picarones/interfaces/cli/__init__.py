@@ -56,13 +56,24 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
-def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCRAdapter":
+def _engine_from_name(
+    engine_name: str,
+    lang: str,
+    psm: int,
+    *,
+    expose_alto: bool = False,
+) -> "BaseOCRAdapter":
     """Instancie un adapter OCR par son nom (wrapper Click).
 
     Sprint H.2.b — délègue désormais à la factory canonique
     :func:`picarones.adapters.ocr.factory.ocr_adapter_from_name` qui
     retourne un ``BaseOCRAdapter`` (StepExecutor natif), au lieu de
     l'ancienne factory legacy qui retournait un ``BaseOCREngine``.
+
+    Phase B3-final corr-B (mai 2026) — kwarg ``expose_alto`` propagé
+    aux adapters qui le supportent (Tesseract).  Quand activé,
+    l'adapter produit un ``Artifact ALTO_XML`` en plus du
+    ``RAW_TEXT``, débloquant la chaîne AltoView du rapport HTML.
 
     Le nom de la fonction reste ``_engine_from_name`` pour la
     rétro-compatibilité des consommateurs internes
@@ -77,13 +88,13 @@ def _engine_from_name(engine_name: str, lang: str, psm: int) -> "BaseOCRAdapter"
 
     try:
         # Tesseract est le seul adapter dont la signature accepte
-        # ``lang`` + ``psm``.  Pour les autres, on les passe en
-        # kwargs et l'adapter ignore ce qu'il ne connaît pas (sauf
-        # qu'avec strict-kwargs il lève ``TypeError``).  On filtre
-        # donc en amont selon le nom.
+        # ``lang`` + ``psm`` + ``expose_alto``.  Pour les autres, on
+        # les passe en kwargs et l'adapter ignore ce qu'il ne connaît
+        # pas (sauf qu'avec strict-kwargs il lève ``TypeError``).  On
+        # filtre donc en amont selon le nom.
         if engine_name.lower() in {"tesseract", "tess"}:
             return ocr_adapter_from_name(
-                engine_name, lang=lang, psm=psm,
+                engine_name, lang=lang, psm=psm, expose_alto=expose_alto,
             )
         return ocr_adapter_from_name(engine_name)
     except ValueError as exc:
