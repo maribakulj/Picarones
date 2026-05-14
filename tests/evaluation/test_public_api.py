@@ -475,14 +475,18 @@ class TestApiStableDoc:
         )
         assert path.exists(), "docs/reference/api-stable.md manquant"
         content = path.read_text(encoding="utf-8")
-        # Présence des sections (1 par module canonique)
+        # Présence des sections (1 par module canonique).
+        # Phase B3-final (mai 2026) — ``picarones.app.services.benchmark_runner``
+        # supprimé après la migration Option B ; remplacé dans la
+        # liste par ``picarones.app.services`` (entry point moderne
+        # via RunOrchestrator + prepare_preset_args).
         for module in [
             "picarones.evaluation.corpus",
             "picarones.domain.artifacts",
             "picarones.domain.module_protocol",
             "picarones.evaluation.benchmark_result",
             "picarones.evaluation.metrics.text_metrics",
-            "picarones.app.services.benchmark_runner",
+            "picarones.app.services",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",
             "picarones.evaluation.metrics.builtin_metrics",
