@@ -11,8 +11,71 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 import click
+
+if TYPE_CHECKING:
+    from picarones.evaluation.benchmark_result import BenchmarkResult
+    from picarones.evaluation.corpus import Corpus
+
+
+def _run_orchestrator_for_cli(
+    corpus: "Corpus",
+    engines: list[Any],
+    *,
+    profile: str = "standard",
+    normalization_profile: Any | None = None,
+    char_exclude: Any | None = None,
+    output_json: str | Path | None = None,
+    progress_callback: Callable[[str, int, str], None] | None = None,
+) -> "BenchmarkResult":
+    """Helper local CLI — pattern 3 étapes vers ``RunOrchestrator``.
+
+    Factorise le pattern ``prepare_preset_args → execute_preset →
+    run_result_to_benchmark_result`` pour les 2 commandes CLI qui en
+    ont besoin (``run`` et ``_run_workflow``).  Helper interne à la
+    couche CLI, pas un service global.
+
+    Le ``BenchmarkResult`` retourné est consommé par les renderers
+    historiques (ranking, sortie HTML legacy, etc.).
+    """
+    from picarones.app.services import (
+        RunOrchestrator,
+        prepare_preset_args,
+        run_result_to_benchmark_result,
+    )
+
+    with tempfile.TemporaryDirectory(prefix="picarones_cli_") as ws:
+        ws_path = Path(ws)
+        run_dir = ws_path / "run"
+        args = prepare_preset_args(
+            corpus, engines,
+            workspace_dir=ws_path / "gt",
+            output_dir=run_dir,
+            profile=profile,
+            normalization_profile=normalization_profile,
+            char_exclude=char_exclude,
+            output_json=output_json,
+        )
+        orch_result = RunOrchestrator(run_dir).execute_preset(
+            spec=args.spec,
+            corpus_spec=args.corpus_spec,
+            extracted_dir=args.extracted_dir,
+            pipeline_specs=args.pipeline_specs,
+            adapter_resolver=args.adapter_resolver,
+            adapter_kwargs=args.adapter_kwargs,
+            progress_callback=progress_callback,
+        )
+        return run_result_to_benchmark_result(
+            orch_result.run_result,
+            corpus=corpus, engines=engines,
+            char_exclude=char_exclude,
+            normalization_profile=normalization_profile,
+            profile=profile,
+        )
 
 from picarones.interfaces.cli import cli, _engine_from_name, _setup_logging
 
@@ -145,7 +208,6 @@ def run_cmd(
     _setup_logging(verbose)
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.app.services.legacy_runner_compat import run_via_orchestrator
     from picarones.interfaces.cli._normalization_arg import (
         resolve_normalization_profile,
     )
@@ -194,14 +256,13 @@ def run_cmd(
     click.echo(f"Moteurs : {', '.join(e.name for e in ocr_engines)}")
     click.echo(f"Profil de métriques : {profile}")
 
-    # Lancement du benchmark
-    result = run_via_orchestrator(
-        corpus=corp,
-        engines=ocr_engines,
-        output_json=output,
-        show_progress=not no_progress,
+    # Lancement du benchmark — pattern 3 étapes via helper local
+    # (Phase B3-final, Option 10 : prepare → execute_preset → converter).
+    result = _run_orchestrator_for_cli(
+        corp, ocr_engines,
         profile=profile,
         normalization_profile=resolved_norm_profile,
+        output_json=output,
     )
 
     # Affichage du classement
@@ -273,7 +334,7 @@ def _run_workflow(
     ``economics`` et ``edition``.
 
     Les 4 commandes partagent le squelette : chargement corpus →
-    instanciation moteurs → ``run_via_orchestrator(profile=...)`` → affichage
+    instanciation moteurs → ``_run_orchestrator_for_cli(profile=...)`` → affichage
     classement → génération automatique du rapport HTML.  Seul le profil
     par défaut et le message d'en-tête diffèrent.
 
@@ -289,7 +350,6 @@ def _run_workflow(
     _setup_logging(verbose)
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.app.services.legacy_runner_compat import run_via_orchestrator
 
     try:
         corp = load_corpus_from_directory(corpus)
@@ -317,12 +377,10 @@ def _run_workflow(
     click.echo(f"Moteurs : {', '.join(e.name for e in ocr_engines)}")
     click.echo(f"Profil de métriques : {profile}")
 
-    result = run_via_orchestrator(
-        corpus=corp,
-        engines=ocr_engines,
-        output_json=output,
-        show_progress=not no_progress,
+    result = _run_orchestrator_for_cli(
+        corp, ocr_engines,
         profile=profile,
+        output_json=output,
     )
 
     click.echo("\n── Classement ──────────────────────────────────")
