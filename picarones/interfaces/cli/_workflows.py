@@ -145,7 +145,7 @@ def run_cmd(
     _setup_logging(verbose)
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.app.services.benchmark_runner import run_benchmark_via_service
+    from picarones.app.services.legacy_runner_compat import run_via_orchestrator
     from picarones.interfaces.cli._normalization_arg import (
         resolve_normalization_profile,
     )
@@ -195,7 +195,7 @@ def run_cmd(
     click.echo(f"Profil de métriques : {profile}")
 
     # Lancement du benchmark
-    result = run_benchmark_via_service(
+    result = run_via_orchestrator(
         corpus=corp,
         engines=ocr_engines,
         output_json=output,
@@ -273,7 +273,7 @@ def _run_workflow(
     ``economics`` et ``edition``.
 
     Les 4 commandes partagent le squelette : chargement corpus →
-    instanciation moteurs → ``run_benchmark_via_service(profile=...)`` → affichage
+    instanciation moteurs → ``run_via_orchestrator(profile=...)`` → affichage
     classement → génération automatique du rapport HTML.  Seul le profil
     par défaut et le message d'en-tête diffèrent.
 
@@ -289,7 +289,7 @@ def _run_workflow(
     _setup_logging(verbose)
 
     from picarones.evaluation.corpus import load_corpus_from_directory
-    from picarones.app.services.benchmark_runner import run_benchmark_via_service
+    from picarones.app.services.legacy_runner_compat import run_via_orchestrator
 
     try:
         corp = load_corpus_from_directory(corpus)
@@ -317,7 +317,7 @@ def _run_workflow(
     click.echo(f"Moteurs : {', '.join(e.name for e in ocr_engines)}")
     click.echo(f"Profil de métriques : {profile}")
 
-    result = run_benchmark_via_service(
+    result = run_via_orchestrator(
         corpus=corp,
         engines=ocr_engines,
         output_json=output,

@@ -309,8 +309,8 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
     job.add_event("start", {"message": "Démarrage du benchmark…", "corpus": req.corpus_path})
 
     try:
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
+        from picarones.app.services.legacy_runner_compat import (
+            run_via_orchestrator,
         )
         from picarones.evaluation.corpus import load_corpus_from_directory
 
@@ -370,17 +370,14 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         from picarones.evaluation.metrics.normalization import _parse_exclude_chars
         char_excl = _parse_exclude_chars(req.char_exclude) if req.char_exclude else None
 
-        # Sprint D.3 du plan v2.0 — délègue à
-        # ``run_benchmark_via_service`` (rewrite) qui présente la même
-        # signature et a été prouvé numériquement équivalent au runner
-        # legacy via ``TestEquivalenceLegacyVsRewrite`` (Sprint D.1.e).
-        # Les paramètres ``profile``, ``partial_dir``,
-        # ``entity_extractor`` ne sont pas portés vers
-        # ``BenchmarkService`` — leur absence n'affecte pas le runner
-        # web qui ne les utilise pas.  Phase 4.1 audit code-quality
-        # (2026-05) : ``max_workers`` retiré (était inactif, passe
-        # par ``CorpusRunner.max_in_flight``).
-        result = run_benchmark_via_service(
+        # Phase B3 résiduel migration Option B (2026-05) — passé de
+        # ``run_benchmark_via_service`` (deprecated en B3) à
+        # ``run_via_orchestrator`` (shim qui s'appuie sur
+        # ``RunOrchestrator.execute_preset``).  Comportement
+        # numériquement équivalent (couvert par
+        # ``test_migration_invariance.py``).  Phase B8 supprimera
+        # ``run_benchmark_via_service``.
+        result = run_via_orchestrator(
             corpus=corpus,
             engines=engines,
             output_json=output_json,
