@@ -188,12 +188,31 @@ def run_result_to_benchmark_result(
     if fallbacks:
         metadata["importer_fallbacks"] = fallbacks
 
+    # Phase B6 — transpose les ViewResult du RunResult en
+    # ``view_results`` indexé : ``{view: {engine: {doc: {metric: value}}}}``.
+    # Permet au rapport HTML de rendre des sections par vue
+    # (TextView/AltoView/SearchView) avec le détail par pipeline.
+    view_results_by_view: dict[str, dict[str, dict[str, dict[str, float]]]] = {}
+    for doc_idx, run_doc in enumerate(run_result.document_results):
+        if doc_idx >= len(documents):
+            break
+        doc_id = documents[doc_idx].doc_id
+        for vr in run_doc.view_results:
+            view_bucket = view_results_by_view.setdefault(vr.view_name, {})
+            engine_bucket = view_bucket.setdefault(vr.pipeline_name, {})
+            engine_bucket[doc_id] = {
+                metric: float(value)
+                for metric, value in vr.metric_values.items()
+                if isinstance(value, (int, float))
+            }
+
     return BenchmarkResult(
         corpus_name=corpus.name,
         corpus_source=str(corpus.source_path) if corpus.source_path else None,
         document_count=len(documents),
         engine_reports=engine_reports,
         metadata=metadata,
+        view_results=view_results_by_view,
     )
 
 

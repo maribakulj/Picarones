@@ -129,12 +129,18 @@ class TestTesseractAdapterContract:
 
     def test_output_types(self) -> None:
         """``output_types`` est l'ensemble maximal produit (constante de
-        classe).  Si ``expose_confidences=False``, l'execute() omet
-        CONFIDENCES du dict — le YAML ``PipelineSpec`` doit alors
-        déclarer seulement ``[raw_text]`` pour cohérence.
+        classe).  Si ``expose_confidences=False`` ou ``expose_alto=False``,
+        l'execute() omet le type correspondant — le YAML
+        ``PipelineSpec`` doit alors déclarer seulement les types
+        effectivement consommés pour cohérence.
+
+        Phase B5 (mai 2026) — ``ALTO_XML`` ajouté au set maximal pour
+        permettre la production d'un ALTO natif via
+        ``image_to_alto_xml`` (opt-in via ``expose_alto=True``).
         """
         assert TesseractAdapter.output_types == frozenset(
-            {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES},
+            {ArtifactType.RAW_TEXT, ArtifactType.CONFIDENCES,
+             ArtifactType.ALTO_XML},
         )
 
     def test_execution_mode_is_cpu(self) -> None:

@@ -197,44 +197,16 @@ class TestMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 5. picarones.app.services.benchmark_runner — run_benchmark_via_service
+# 5. (anciennement) ``picarones.app.services.benchmark_runner`` —
+#    supprimé en Phase B3-final (mai 2026, migration Option B).
 # ──────────────────────────────────────────────────────────────────────────
-
-
-class TestRunnerApi:
-    def test_run_benchmark_via_service_exists(self):
-        """Sprint D du plan v2.0 — l'adapter rewrite remplace
-        ``measurements.runner.run_benchmark`` (legacy supprimé en D.6)."""
-        _assert_function(
-            "picarones.app.services.benchmark_runner",
-            "run_benchmark_via_service",
-        )
-
-    def test_run_benchmark_via_service_keyword_args(self):
-        """Les paramètres clés (corpus, engines, profile…) doivent rester
-        accessibles dans l'adapter rewrite. Ajout d'un argument requis =
-        breaking change."""
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
-        )
-        sig = inspect.signature(run_benchmark_via_service)
-        params = sig.parameters
-        # Arguments contractuels — leur présence est garantie pour
-        # rester compatible avec les callers historiques.
-        # Phase 4.1 audit code-quality (2026-05) : retrait de
-        # ``max_workers`` (paramètre absorbé sans effet via
-        # ``noqa: ARG001`` ; le rewrite passe par
-        # ``CorpusRunner.max_in_flight``).  Rupture mineure
-        # documentée dans CHANGELOG v2.0.
-        for name in [
-            "corpus", "engines", "output_json", "show_progress",
-            "char_exclude", "timeout_seconds",
-            "profile",
-        ]:
-            assert name in params, (
-                f"run_benchmark_via_service : argument '{name}' a disparu "
-                f"(signature : {sig})"
-            )
+# Le module ``benchmark_runner.py`` portait l'entry point legacy
+# ``run_benchmark_via_service`` qui a été remplacé par
+# ``picarones.RunOrchestrator`` (consommant un ``RunSpec`` Pydantic
+# ou des objets domain pré-construits via ``execute_preset()``).
+# Le contract test du legacy a été supprimé avec le module.  Voir
+# ``TestRunOrchestratorApi`` ci-dessous pour le contrat de
+# l'entry point canonique actuel.
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -245,6 +217,63 @@ class TestRunnerApi:
 # ont été supprimés en Phase 7.D (mai 2026). L'API canonique vit dans
 # ``picarones.pipeline.executor`` (``PipelineExecutor``) et
 # ``picarones.domain.pipeline_spec`` (``PipelineSpec``, ``PipelineStep``).
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 6.bis. picarones.app.services — RunOrchestrator (Phase B3 migration Option B)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+class TestRunOrchestratorApi:
+    """Phase B3 — l'entry-point canonique pour lancer un benchmark est
+    désormais ``picarones.RunOrchestrator`` (consomme un ``RunSpec``).
+    ``run_benchmark_via_service`` reste exporté mais émet une
+    ``DeprecationWarning`` à l'appel.  Retrait prévu Phase B8.
+    """
+
+    def test_run_orchestrator_class_exposed_at_root(self):
+        """``RunOrchestrator`` est accessible depuis le namespace racine."""
+        import picarones
+        assert hasattr(picarones, "RunOrchestrator"), (
+            "RunOrchestrator devrait être exporté depuis picarones (Phase B3)"
+        )
+        from picarones import RunOrchestrator
+        assert inspect.isclass(RunOrchestrator)
+
+    def test_run_spec_class_exposed_at_root(self):
+        """``RunSpec`` Pydantic est accessible depuis le namespace racine."""
+        import picarones
+        assert hasattr(picarones, "RunSpec")
+        from picarones import RunSpec
+        assert inspect.isclass(RunSpec)
+
+    @pytest.mark.parametrize("name", [
+        "OrchestrationResult",
+        "RunOrchestrator",
+        "RunSpec",
+        "RunSpecLoadError",
+        "load_run_spec_from_yaml",
+    ])
+    def test_all_new_exports_present(self, name):
+        """Les 5 symboles ajoutés en B3 sont tous dans __all__."""
+        import picarones
+        assert name in picarones.__all__, (
+            f"Phase B3 — '{name}' devrait être dans picarones.__all__"
+        )
+
+    def test_prepare_preset_args_exposed_at_root(self):
+        """Phase B3-final — ``prepare_preset_args`` est l'API
+        publique pour les callers Python qui instancient leurs adapters
+        en mémoire (par opposition au chargement YAML via ``RunSpec``).
+        """
+        from picarones.app.services import (
+            PresetArgs,
+            prepare_preset_args,
+            run_result_to_benchmark_result,
+        )
+        assert callable(prepare_preset_args)
+        assert callable(run_result_to_benchmark_result)
+        assert inspect.isclass(PresetArgs)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -446,14 +475,18 @@ class TestApiStableDoc:
         )
         assert path.exists(), "docs/reference/api-stable.md manquant"
         content = path.read_text(encoding="utf-8")
-        # Présence des sections (1 par module canonique)
+        # Présence des sections (1 par module canonique).
+        # Phase B3-final (mai 2026) — ``picarones.app.services.benchmark_runner``
+        # supprimé après la migration Option B ; remplacé dans la
+        # liste par ``picarones.app.services`` (entry point moderne
+        # via RunOrchestrator + prepare_preset_args).
         for module in [
             "picarones.evaluation.corpus",
             "picarones.domain.artifacts",
             "picarones.domain.module_protocol",
             "picarones.evaluation.benchmark_result",
             "picarones.evaluation.metrics.text_metrics",
-            "picarones.app.services.benchmark_runner",
+            "picarones.app.services",
             "picarones.evaluation.metric_registry",
             "picarones.evaluation.metric_hooks",
             "picarones.evaluation.metrics.builtin_metrics",

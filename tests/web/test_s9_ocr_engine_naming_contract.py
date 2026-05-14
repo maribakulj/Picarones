@@ -26,7 +26,9 @@ from __future__ import annotations
 
 import pytest
 
-from picarones.app.services.benchmark_runner import build_adapter_resolver
+from picarones.app.services._benchmark_adapter_resolver import (
+    build_adapter_resolver,
+)
 from picarones.interfaces.web.benchmark_utils import (
     _OCR_KWARGS_BUILDERS,
     _engine_from_competitor,

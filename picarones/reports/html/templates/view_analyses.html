@@ -209,6 +209,14 @@
     </div>
     {% endif %}
 
+    <!-- Phase B6 (mai 2026) — sections par EvaluationView du
+         RunOrchestrator (text_final, alto_documentary, searchability).
+         Adaptive : n'apparaît que si benchmark.view_results est non
+         vide (chemin via RunOrchestrator). -->
+    {% if view_results_html %}
+    {{ view_results_html | safe }}
+    {% endif %}
+
     <!-- Sprint 86 — A.II.5 : recherchabilité fuzzy + précision sur
          séquences numériques. Adaptive : n'apparaît que si au moins
          un moteur a du signal. -->

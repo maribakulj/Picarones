@@ -7,6 +7,167 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — Migration Option B vers RunOrchestrator (mai 2026)
+
+Branche `claude/test-alto-pipelines-qyFsL` — chantier de migration
+complète vers `RunOrchestrator` comme entry-point canonique pour
+lancer un benchmark, avec livrable métier ALTO documentaire.  20+
+commits sur ~13 jours d'effort, 4830 → 4897 tests passants (+67).
+
+### Nouveautés — valeur métier
+
+- **`picarones.RunOrchestrator`** exposé au niveau racine.  Consomme
+  un `RunSpec` Pydantic validé et expose 4 fichiers JSONL natifs
+  (`run_manifest.json`, `pipeline_results.jsonl`,
+  `artifacts_index.jsonl`, `view_results.jsonl`) en plus du
+  `BenchmarkResult` legacy (via `spec.output_json`).
+- **`RunSpec` étendu** avec 7 nouveaux champs : `char_exclude`,
+  `normalization_profile`, `partial_dir`, `entity_extractor`,
+  `profile`, `output_json`, `timeout_seconds_per_doc`.  Tous validés
+  par Pydantic (`_validate_profile_is_known`,
+  `_validate_entity_extractor_format`).
+- **3 vues canoniques natives** dans le `RunResult` : `text_final`,
+  `alto_documentary`, `searchability`.  Chacune produit ses propres
+  `ViewResult` typés avec `metric_values`, `failed_metrics`,
+  `projection_report`, `warnings`.
+- **TesseractAdapter expose ALTO natif** via le flag `expose_alto`
+  (off par défaut, compat ascendante).  Premier adapter du repo à
+  produire un `Artifact ALTO_XML`.  Valide structurellement la
+  sortie avant promotion (résistance XML mal formé).
+- **AltoView étendu** : 7 métriques par défaut au lieu de 3.  Les
+  4 nouvelles (`alto_text_cer/wer/mer/wil`) opèrent sur le texte
+  plat extrait de l'ALTO via `extract_text_from_alto` — permettent
+  de détecter une régression textuelle même quand la structure est
+  préservée.
+- **Rapport HTML multi-vues** : nouvelle section
+  `view-results-section` rendue par
+  `picarones/reports/html/renderers/view_results.py`.  Affiche un
+  tableau `Métrique × engine` par vue avec moyennes, et liste
+  explicitement les **pipelines OMIS** de chaque vue (critique pour
+  AltoView : un OCR sans ALTO ne doit pas être omis silencieusement).
+  Adaptive : section absente si `benchmark.view_results` vide
+  (chemin legacy intact).
+- **`BenchmarkResult.view_results`** : nouveau champ optionnel
+  `{view: {engine: {doc: {metric: value}}}}` peuplé par le converter
+  depuis le `RunResult.document_results[*].view_results`.  Consommé
+  par le rapport HTML et accessible aux clients pour analyses
+  ad-hoc.
+
+### BREAKING — Retrait du legacy (Phase B3-final, migration nette)
+
+Suppression complète de l'entry point legacy et de ses modules
+helpers internes.  Les call sites CLI/Web/tests ont été migrés vers
+le **pattern 3 étapes explicite** (Option 10 du chantier) :
+
+```python
+# Pattern moderne — 3 étapes visibles, pas de shim caché
+args = prepare_preset_args(corpus, engines, workspace_dir=...)
+orch_result = RunOrchestrator(out).execute_preset(**dataclass_fields)
+result = run_result_to_benchmark_result(orch_result.run_result, ...)
+```
+
+- **`run_benchmark_via_service` supprimée** — utilisez
+  `RunOrchestrator` + `prepare_preset_args` (Python) ou
+  `RunOrchestrator.execute(RunSpec)` (YAML).
+- **Modules supprimés en Phase B3-final** (~1700 LOC nettes pour
+  cette phase isolée ; la branche complète cumule aussi l'audit
+  code-quality qui ajoute massivement — voir entrée suivante) :
+    * `benchmark_runner` (entry point legacy)
+    * `_benchmark_execution` (helper interne orchestration)
+    * `_benchmark_orchestration` (run_benchmark_unified /
+      run_benchmark_with_partial)
+    * `legacy_runner_compat` (shim intermédiaire B3 introduit puis
+      supprimé dans le même chantier — voir entrée Option 10)
+- **Tests d'invariance supprimés** — leur rôle (garde-fou pendant
+  la migration) est rempli, la migration est terminée :
+    * `tests/integration/test_migration_invariance.py`
+    * `tests/integration/snapshots/migration_invariance.json`
+
+### Modifié — Audit B3-final correctif (mai 2026)
+
+L'audit implacable de la branche post-migration a identifié 4
+demi-chantiers critiques : les features livrées en B5/B6/B2
+étaient implémentées en interne mais **inaccessibles aux
+utilisateurs CLI/Web**.  Corrections appliquées :
+
+- **CLI** : 5 nouvelles options ajoutées à `picarones run` :
+    * `--views VIEW1,VIEW2,…` (B6 multi-vues)
+    * `--expose-alto` (B5 Tesseract ALTO XML)
+    * `--char-exclude CHARS` (B2.5)
+    * `--partial-dir PATH` (B2.3 resume)
+    * `--entity-extractor DOTTED_PATH` (B2.4 NER)
+  `_engine_from_name` propage `expose_alto` à Tesseract.
+- **Web** : `BenchmarkRunRequest` étendu avec `views: list[ViewName]`,
+  `profile`, `partial_dir`, `entity_extractor`, `output_json`.
+  `PipelineConfig.expose_alto` activable par concurrent.  Le worker
+  `run_benchmark_thread_v2` propage les nouveaux champs au pattern
+  3 étapes.
+- **Helper test** : `tests/_migration_helpers.run_via_orchestrator`
+  reçoit un kwarg `views` (corrige la divergence test↔prod identifiée
+  par l'audit — aucun test B4 ne couvrait précédemment le multi-vues
+  via le helper).
+
+Impact utilisateur :
+```bash
+picarones run -c ./corpus -e tesseract --expose-alto \
+    --views text_final,alto_documentary,searchability \
+    --profile standard
+```
+Génère désormais un rapport HTML avec 3 sections (TextView, AltoView,
+SearchView) + ALTO XML natif de Tesseract.  La valeur métier C3
+est enfin accessible aux utilisateurs.
+
+### Modifié
+
+- **`picarones.interfaces.cli._workflows`** : 6 commandes (`run`,
+  `diagnose`, `economics`, `edition`, `compare`, `robustness`)
+  utilisent désormais un helper local `_run_orchestrator_for_cli`
+  qui mutualise le pattern 3 étapes.  Comportement utilisateur
+  identique.
+- **`picarones.interfaces.web.benchmark_utils.run_benchmark_thread_v2`** :
+  pattern 3 étapes inline.  L'API REST `POST /api/benchmark/run`
+  est inchangée pour les clients.
+- **`picarones.app.services.__init__`** expose désormais
+  `PresetArgs`, `prepare_preset_args`, `run_result_to_benchmark_result`
+  comme API publique.
+- **`TesseractAdapter.output_types`** : étendu de
+  `{RAW_TEXT, CONFIDENCES}` à `{RAW_TEXT, CONFIDENCES, ALTO_XML}`
+  (set maximal).  Les pipelines existants restent inchangés tant
+  que `expose_alto` n'est pas activé.
+- **`build_text_view` / `build_search_view`** : nouveau kwarg
+  `char_exclude` propagé jusqu'au `DefaultEvaluationViewExecutor`
+  qui filtre les caractères avant calcul des métriques.
+
+### Migration utilisateur
+
+Cf. `docs/migration/option_b_user_guide.md` pour le mapping complet
+des paramètres legacy → `RunSpec`, 4 cas concrets (corpus mémoire,
+partial_dir resume, NER attach, cancellation), et calendrier de
+retrait phasé.
+
+### Phases du chantier (référence interne)
+
+- **B0** préparation (snapshot d'invariance + squelette feature
+  parity + inventaire tests)
+- **B1** `RunSpec` étendu (7 nouveaux champs + validators)
+- **B2** porting des 7 features dans `RunOrchestrator`
+  (progress_callback, cancel_event, partial_dir, entity_extractor,
+  char_exclude + normalization_profile, profile hooks, output_json)
+  → **Checkpoint C1**
+- **B3** exports publics + `DeprecationWarning` + migration concrète
+  des call sites CLI/Web via `legacy_runner_compat` → **Checkpoint C2**
+- **B4** migration des 6 fichiers de tests catégorie A (71 appels)
+- **B5** `TesseractAdapter.expose_alto` (premier adapter ALTO natif)
+- **B6** rapport HTML multi-vues + extension `DEFAULT_ALTO_METRICS`
+  → **Checkpoint C3** (valeur métier livrée)
+- **B7** deprecation finale (bannières + CHANGELOG initial)
+- **B3-final** (Option 10) — migration nette : helper
+  `prepare_preset_args` + pattern 3 étapes inline dans CLI/Web/tests,
+  puis suppression complète du shim `legacy_runner_compat` et des
+  3 modules purement legacy.  **-1700 LOC nettes**.
+
+---
+
 ## [Unreleased] — Audit code-quality (mai 2026)
 
 Branche `claude/code-quality-audit-EeY0r` — audit implacable du repo

@@ -123,6 +123,7 @@ def build_text_view(
     candidate_types: frozenset[ArtifactType] | None = None,
     metric_names: tuple[str, ...] | None = None,
     normalization_profile: str | None = None,
+    char_exclude: str | None = None,
     extra_warnings: tuple[str, ...] = (),
     extra_ignored_dimensions: tuple[str, ...] = (),
 ) -> EvaluationView:
@@ -160,6 +161,7 @@ def build_text_view(
         projection=None,
         projections_by_source_type=DEFAULT_TEXT_PROJECTIONS,
         normalization_profile=normalization_profile,
+        char_exclude=char_exclude,
         metric_names=(
             metric_names if metric_names is not None
             else DEFAULT_TEXT_METRICS

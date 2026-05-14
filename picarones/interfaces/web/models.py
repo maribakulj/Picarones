@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Bornes éditoriales — ajustées au plus large raisonnable, pas plus.
 _MAX_PATH = 1024
@@ -121,6 +121,17 @@ class PipelineConfig(BaseModel):
     autorisée pour indiquer qu'aucun LLM n'est attaché au moteur OCR.
     """
     prompt_file: str = Field(default="", max_length=_MAX_PROMPT_FILENAME)
+    expose_alto: bool = False
+    """Phase B3-final corr-B (mai 2026) — active la production native
+    d'ALTO XML par Tesseract via ``pytesseract.image_to_alto_xml``.
+
+    Combiné avec ``BenchmarkRunRequest.views`` contenant
+    ``alto_documentary``, débloque les sections multi-vues du rapport
+    HTML.  Ignoré pour les engines non-Tesseract."""
+
+
+# Phase B3-final corr-A — vues canoniques d'évaluation acceptées.
+ViewName = Literal["text_final", "alto_documentary", "searchability"]
 
 
 class BenchmarkRunRequest(BaseModel):
@@ -133,6 +144,98 @@ class BenchmarkRunRequest(BaseModel):
     output_dir: str = Field(default="./rapports/", max_length=_MAX_PATH)
     report_name: str = Field(default="", max_length=_MAX_NAME)
     report_lang: ReportLang = "fr"
+    # Phase B3-final corr-A/B/C (mai 2026) — exposition des features
+    # B2/B5/B6 aux clients de l'API REST.
+    views: list[ViewName] = Field(default_factory=lambda: ["text_final"])
+    """Liste des vues d'évaluation à appliquer.  Défaut :
+    ``["text_final"]`` (compat ascendante).  Pour activer le rapport
+    HTML multi-vues (AltoView, SearchView), passer ``["text_final",
+    "alto_documentary", "searchability"]``.  Nécessite que les
+    pipelines produisent les artefacts éligibles (ex :
+    ``alto_documentary`` requiert ``PipelineConfig.expose_alto=true``
+    côté Tesseract)."""
+    profile: Literal[
+        "minimal", "standard", "philological", "diagnostics",
+        "economics", "pipeline", "full",
+    ] = "standard"
+    """Phase B2.6 — profil de hooks document-level / corpus aggregators.
+    Sélectionne quels ``@register_document_metric`` /
+    ``@register_corpus_aggregator`` s'exécutent."""
+    partial_dir: str = Field(default="", max_length=_MAX_PATH)
+    """Phase B2.3 — répertoire pour la reprise sur interruption.
+    Vide = pas de resume."""
+    entity_extractor: str = Field(default="", max_length=_MAX_NAME * 4)
+    """Phase B2.4 — dotted path vers une factory d'extracteur d'entités
+    (ex : ``mypkg.ner:SpacyExtractor``).  Vide = pas de NER attach."""
+    output_json: str = Field(default="", max_length=_MAX_PATH)
+    """Phase B2.7 — chemin facultatif où sérialiser le BenchmarkResult
+    legacy en JSON.  Vide = pas de sortie JSON additionnelle (le
+    rapport HTML reste produit normalement)."""
+
+    # Phase D2 audit B3-final (mai 2026) — durcissement sécurité.
+    # Les champs path-like et le dotted path sont validés pour bloquer
+    # les patterns dangereux (path traversal, chemins absolus, segments
+    # ``..``).  Refus en 422 plutôt que dégradation silencieuse en aval.
+
+    @field_validator("partial_dir", "output_json")
+    @classmethod
+    def _validate_no_path_traversal(cls, v: str, info) -> str:
+        """Refuse ``..`` segments et chemins absolus.
+
+        Le runner web confine ses opérations à ``WorkspaceManager``.
+        Un payload qui contient ``../../etc/passwd`` ou
+        ``/etc/passwd`` doit être rejeté immédiatement (422 Pydantic)
+        plutôt qu'arriver jusqu'à ``Path()`` côté serveur.
+        """
+        if not v:
+            return v
+        import os.path
+        if ".." in v.replace("\\", "/").split("/"):
+            raise ValueError(
+                f"{info.field_name} : segment '..' interdit "
+                f"(path traversal).  Reçu : {v!r}",
+            )
+        if os.path.isabs(v):
+            raise ValueError(
+                f"{info.field_name} : chemin absolu interdit, "
+                f"utiliser un chemin relatif au workspace.  Reçu : {v!r}",
+            )
+        return v
+
+    @field_validator("entity_extractor")
+    @classmethod
+    def _validate_entity_extractor_format(cls, v: str) -> str:
+        """Refuse les dotted paths mal formés.
+
+        Format accepté : ``module.submodule:Symbol`` ou
+        ``module.submodule.Symbol`` — composants alphanumériques +
+        ``_``.  Refus de ``..``, ``/``, espaces, caractères spéciaux
+        (vecteur d'injection).
+        """
+        if not v:
+            return v
+        import re
+        # Strict : alphanum + underscore + un seul ``:`` ou ``.``
+        # comme séparateur final.  Refuse explicitement ``..``,
+        # slashes, espaces.
+        if ".." in v or "/" in v or "\\" in v or " " in v:
+            raise ValueError(
+                "entity_extractor : segments '..' / slashes / "
+                f"espaces interdits.  Reçu : {v!r}",
+            )
+        # Doit matcher le même regex que ``RunSpec._DOTTED_PATH_RE``.
+        pattern = re.compile(
+            r"^[a-zA-Z_][a-zA-Z0-9_]*"
+            r"(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*"
+            r"(?:[:.][a-zA-Z_][a-zA-Z0-9_]*)$"
+        )
+        if not pattern.match(v):
+            raise ValueError(
+                f"entity_extractor : format invalide {v!r}.  "
+                "Attendu : ``module.submodule:Symbol`` ou "
+                "``module.submodule.Symbol``.",
+            )
+        return v
 
 
 __all__ = [

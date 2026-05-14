@@ -222,6 +222,17 @@ class DefaultEvaluationViewExecutor:
                 view.normalization_profile, cand_payload, gt_payload,
             )
 
+        # 4.bis. Phase B2.5 — filtrage des caractères (optionnel).
+        # Appliqué APRÈS la normalisation pour que le profil de
+        # normalisation puisse encore voir les caractères filtrés
+        # (cohérent avec ``compute_metrics`` legacy qui exclut avant
+        # tout calcul mais après les transformations de normalisation
+        # implicites du flow).
+        if view.char_exclude:
+            cand_payload, gt_payload = self._apply_char_exclude(
+                view.char_exclude, cand_payload, gt_payload,
+            )
+
         # 5. Évaluation déléguée.  Une métrique cassée → failed_metrics.
         evaluation_result = self._evaluation.evaluate(
             view.metric_names, gt_payload, cand_payload,
@@ -287,6 +298,37 @@ class DefaultEvaluationViewExecutor:
             else gt_payload
         )
         return normalized_cand, normalized_gt
+
+    @staticmethod
+    def _apply_char_exclude(
+        char_exclude: str,
+        cand_payload: Any,
+        gt_payload: Any,
+    ) -> tuple[Any, Any]:
+        """Phase B2.5 — filtre les caractères de ``char_exclude`` des
+        deux payloads avant comparaison.
+
+        Sémantique strictement identique à ``compute_metrics``
+        (legacy) : ``"".join(c for c in s if c not in char_exclude)``.
+
+        Si un payload n'est pas une string (ex : ALTO non projeté),
+        il est laissé tel quel — cohérent avec le filet
+        ``_apply_normalization`` qui saute les non-strings.
+        """
+        exclude_set = frozenset(char_exclude)
+        if not exclude_set:
+            return cand_payload, gt_payload
+        filtered_cand = (
+            "".join(c for c in cand_payload if c not in exclude_set)
+            if isinstance(cand_payload, str)
+            else cand_payload
+        )
+        filtered_gt = (
+            "".join(c for c in gt_payload if c not in exclude_set)
+            if isinstance(gt_payload, str)
+            else gt_payload
+        )
+        return filtered_cand, filtered_gt
 
     @staticmethod
     def _failed_view_result(

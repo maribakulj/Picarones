@@ -143,7 +143,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Sprint S7 : +1 — suppression du shim ``picarones/pipeline/spec.py``
 # (deprecation period 1.x → 2.0 expirée).  Quelques refs historiques
 # au shim subsistent dans ``CHANGELOG.md`` / ``docs/audits/``.
-BROKEN_PATHS_BASELINE = 163
+#
+# Phase B3-final (mai 2026) : +1 ref dans entrée historique
+# Sprint H.4 du CHANGELOG qui mentionne le chemin de
+# ``benchmark_runner.py`` (module supprimé).  La mention documente
+# l'historique du module et n'est pas corrigée volontairement.
+BROKEN_PATHS_BASELINE = 164
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

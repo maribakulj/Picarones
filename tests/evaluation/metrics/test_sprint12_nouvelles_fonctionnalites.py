@@ -144,13 +144,16 @@ class TestExcludeCharsNormalization:
         Sprint H.2.b — mock migré ``BaseOCREngine`` → ``BaseOCRAdapter``
         (canonique).  La propagation de ``char_exclude`` traverse le
         runner adapter inchangée.
+
+        Phase B4 migration Option B (2026-05) — migré de
+        ``run_benchmark_via_service`` (deprecated B3) vers
+        ``RunOrchestrator.execute_preset()`` via le helper
+        ``tests._migration_helpers.run_via_orchestrator``.
         """
         from picarones.adapters.ocr.base import BaseOCRAdapter
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
-        )
         from picarones.domain.artifacts import Artifact, ArtifactType
         from picarones.evaluation.corpus import Corpus, Document
+        from tests._migration_helpers import run_via_orchestrator
 
         class MockAdapter(BaseOCRAdapter):
             @property
@@ -178,10 +181,10 @@ class TestExcludeCharsNormalization:
         (tmp_path / "page.png").write_bytes(FAKE_PNG)
         corpus = Corpus(name="test", documents=[doc])
 
-        result_raw = run_benchmark_via_service(corpus, [MockAdapter()])
+        result_raw = run_via_orchestrator(corpus, [MockAdapter()])
         cer_raw = result_raw.engine_reports[0].document_results[0].metrics.cer
 
-        result_excl = run_benchmark_via_service(
+        result_excl = run_via_orchestrator(
             corpus, [MockAdapter()], char_exclude=frozenset([",", "!"]),
         )
         cer_excl = result_excl.engine_reports[0].document_results[0].metrics.cer

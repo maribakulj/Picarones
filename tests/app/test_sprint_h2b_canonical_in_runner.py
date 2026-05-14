@@ -20,12 +20,12 @@ from picarones.adapters.ocr import (
     PrecomputedTextAdapter,
     ocr_adapter_from_name,
 )
-from picarones.app.services.benchmark_runner import (
+from picarones.app.services._benchmark_adapter_resolver import (
     build_adapter_resolver,
     engine_to_pipeline_spec,
-    run_benchmark_via_service,
 )
 from picarones.evaluation.corpus import Corpus, Document
+from tests._migration_helpers import run_via_orchestrator
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -133,7 +133,7 @@ class TestRunBenchmarkWithCanonical:
         corpus = _make_corpus(tmp_path)
         adapter = _MockCanonicalOCR(name="my_ocr")
 
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
 
         assert bm.document_count == 1
         assert len(bm.engine_reports) == 1
@@ -149,7 +149,7 @@ class TestRunBenchmarkWithCanonical:
         ``pipeline_metadata`` (cohérent avec un OCR seul legacy)."""
         corpus = _make_corpus(tmp_path)
         adapter = _MockCanonicalOCR()
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
         assert bm.engine_reports[0].document_results[0].pipeline_metadata == {}
 
     def test_canonical_adapter_version_unknown(self, tmp_path: Path) -> None:
@@ -157,7 +157,7 @@ class TestRunBenchmarkWithCanonical:
         ``_safe_engine_version`` retourne ``"unknown"``."""
         corpus = _make_corpus(tmp_path)
         adapter = _MockCanonicalOCR()
-        bm = run_benchmark_via_service(corpus, [adapter])
+        bm = run_via_orchestrator(corpus, [adapter])
         assert bm.engine_reports[0].engine_version == "unknown"
 
     def test_multiple_canonical_run(self, tmp_path: Path) -> None:
@@ -166,7 +166,7 @@ class TestRunBenchmarkWithCanonical:
         a = _MockCanonicalOCR(name="canon_a")
         b = _MockCanonicalOCR(name="canon_b")
 
-        bm = run_benchmark_via_service(corpus, [a, b])
+        bm = run_via_orchestrator(corpus, [a, b])
 
         assert len(bm.engine_reports) == 2
         engine_names = {r.engine_name for r in bm.engine_reports}
@@ -178,7 +178,7 @@ class TestRunBenchmarkWithCanonical:
         corpus = _make_corpus(tmp_path, n=2)
         adapter = _MockCanonicalOCR(name="resumable_canon")
 
-        bm = run_benchmark_via_service(
+        bm = run_via_orchestrator(
             corpus, [adapter], partial_dir=tmp_path / "partials",
         )
 

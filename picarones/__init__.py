@@ -11,7 +11,8 @@ ici pour permettre :
 Pour les implémentations (calcul de métriques, runner, adapters OCR…),
 utiliser les sous-packages explicites :
 
->>> from picarones.app.services.benchmark_runner import run_benchmark_via_service
+>>> from picarones import RunOrchestrator, RunSpec, load_run_spec_from_yaml
+>>> from picarones.app.services import prepare_preset_args, run_result_to_benchmark_result
 >>> from picarones.evaluation.metrics.text_metrics import compute_metrics
 >>> from picarones.adapters.ocr.tesseract import TesseractAdapter
 
@@ -73,6 +74,31 @@ from picarones.evaluation.metric_registry import (
     compute_at_junction,
     register_metric,
     select_metrics,
+)
+
+# ──────────────────────────────────────────────────────────────────────────
+# API publique recommandée — Phase B3 migration Option B (mai 2026).
+#
+# ``RunOrchestrator`` remplace ``run_benchmark_via_service`` comme
+# entry-point canonique pour lancer un benchmark.  Il consomme un
+# ``RunSpec`` Pydantic et expose nativement les 4 fichiers JSONL
+# (run_manifest, pipeline_results, artifacts_index, view_results) en
+# plus du ``BenchmarkResult`` legacy (via ``spec.output_json``).
+#
+# La fonction ``run_benchmark_via_service`` reste disponible pour
+# compat ascendante mais émet une ``DeprecationWarning`` à chaque
+# appel.  Elle sera supprimée à la Phase B8 (post-deprecation
+# release).
+# ──────────────────────────────────────────────────────────────────────────
+
+from picarones.app.schemas.run_spec import (
+    RunSpec,
+    RunSpecLoadError,
+    load_run_spec_from_yaml,
+)
+from picarones.app.services.run_orchestrator import (
+    OrchestrationResult,
+    RunOrchestrator,
 )
 
 def register_default_metrics() -> None:
@@ -148,4 +174,10 @@ __all__ = [
     "select_metrics",
     # Phase 5.3 audit code-quality — API d'enregistrement explicite.
     "register_default_metrics",
+    # Phase B3 migration Option B — entry-point canonique.
+    "OrchestrationResult",
+    "RunOrchestrator",
+    "RunSpec",
+    "RunSpecLoadError",
+    "load_run_spec_from_yaml",
 ]
