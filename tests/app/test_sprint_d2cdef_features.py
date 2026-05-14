@@ -22,8 +22,8 @@ import pytest
 
 from picarones.adapters.llm.base import BaseLLMAdapter
 from picarones.adapters.ocr.base import BaseOCRAdapter
-from picarones.app.services.benchmark_runner import (
-    _aggregate_ner_metrics,
+from picarones.app.services._benchmark_ner import (
+    aggregate_ner_metrics as _aggregate_ner_metrics,
 )
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.evaluation.corpus import (

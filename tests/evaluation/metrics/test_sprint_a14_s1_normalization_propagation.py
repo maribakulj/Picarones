@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import inspect
 
-from picarones.app.services.benchmark_runner import run_benchmark_via_service
+from picarones.app.schemas.run_spec import RunSpec
+from picarones.app.services import prepare_preset_args
 from picarones.evaluation.metrics.normalization import (
     NORMALIZATION_PROFILES,
     get_builtin_profile,
@@ -27,11 +28,26 @@ from picarones.evaluation.metrics.normalization import (
 
 
 class TestRunBenchmarkSignature:
-    def test_run_benchmark_accepts_normalization_profile(self) -> None:
-        """La signature publique doit exposer ``normalization_profile``."""
-        sig = inspect.signature(run_benchmark_via_service)
+    """Phase B3-final (mai 2026) — la propagation de
+    ``normalization_profile`` est désormais portée par ``RunSpec``
+    (champ Pydantic) et par ``prepare_preset_args`` (kwarg).
+    ``run_benchmark_via_service`` a été supprimé."""
+
+    def test_run_spec_exposes_normalization_profile(self) -> None:
+        """``RunSpec.normalization_profile`` est un champ Pydantic
+        documenté (cf. Phase B1)."""
+        assert "normalization_profile" in RunSpec.model_fields
+        field = RunSpec.model_fields["normalization_profile"]
+        # Champ optionnel — défaut None.
+        assert field.default is None
+
+    def test_prepare_preset_args_accepts_normalization_profile(
+        self,
+    ) -> None:
+        """``prepare_preset_args`` propage le profil au RunSpec."""
+        sig = inspect.signature(prepare_preset_args)
         assert "normalization_profile" in sig.parameters
-        # Et avec une valeur par défaut sûre.
+        # Optionnel par défaut.
         assert sig.parameters["normalization_profile"].default is None
 
 

@@ -82,19 +82,22 @@ class TestDefaults:
         assert spec.output_json is None
         assert spec.timeout_seconds_per_doc == 60.0
 
-    def test_defaults_match_run_benchmark_via_service_defaults(
+    def test_defaults_match_prepare_preset_args_defaults(
         self, tmp_path: Path,
     ) -> None:
         """Les valeurs par défaut de ``RunSpec`` matchent celles de
-        ``run_benchmark_via_service`` pour préserver l'équivalence
-        fonctionnelle pendant la migration.
+        ``prepare_preset_args`` pour cohérence avec l'API publique
+        Python (callers qui instancient des adapters).
+
+        Phase B3-final (mai 2026) — ce test remplace l'ancien
+        ``test_defaults_match_run_benchmark_via_service_defaults``
+        qui inspectait la fonction legacy supprimée.
         """
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
-        )
         import inspect
 
-        sig = inspect.signature(run_benchmark_via_service)
+        from picarones.app.services import prepare_preset_args
+
+        sig = inspect.signature(prepare_preset_args)
         defaults = {
             name: param.default
             for name, param in sig.parameters.items()
@@ -102,14 +105,11 @@ class TestDefaults:
         }
         spec = load_run_spec_from_yaml(_minimal_yaml(output_dir=tmp_path / "out"))
 
-        # Les noms diffèrent légèrement (RunSpec.timeout_seconds_per_doc
-        # vs run_benchmark_via_service.timeout_seconds — mais la
-        # sémantique est identique : timeout par document).
         assert spec.char_exclude == defaults["char_exclude"]
         assert spec.normalization_profile == defaults["normalization_profile"]
         assert spec.partial_dir == defaults["partial_dir"]
         assert spec.profile == defaults["profile"]
-        assert spec.timeout_seconds_per_doc == defaults["timeout_seconds"]
+        assert spec.timeout_seconds_per_doc == defaults["timeout_seconds_per_doc"]
 
 
 # ──────────────────────────────────────────────────────────────────────

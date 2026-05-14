@@ -197,44 +197,16 @@ class TestMetricsApi:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# 5. picarones.app.services.benchmark_runner — run_benchmark_via_service
+# 5. (anciennement) ``picarones.app.services.benchmark_runner`` —
+#    supprimé en Phase B3-final (mai 2026, migration Option B).
 # ──────────────────────────────────────────────────────────────────────────
-
-
-class TestRunnerApi:
-    def test_run_benchmark_via_service_exists(self):
-        """Sprint D du plan v2.0 — l'adapter rewrite remplace
-        ``measurements.runner.run_benchmark`` (legacy supprimé en D.6)."""
-        _assert_function(
-            "picarones.app.services.benchmark_runner",
-            "run_benchmark_via_service",
-        )
-
-    def test_run_benchmark_via_service_keyword_args(self):
-        """Les paramètres clés (corpus, engines, profile…) doivent rester
-        accessibles dans l'adapter rewrite. Ajout d'un argument requis =
-        breaking change."""
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
-        )
-        sig = inspect.signature(run_benchmark_via_service)
-        params = sig.parameters
-        # Arguments contractuels — leur présence est garantie pour
-        # rester compatible avec les callers historiques.
-        # Phase 4.1 audit code-quality (2026-05) : retrait de
-        # ``max_workers`` (paramètre absorbé sans effet via
-        # ``noqa: ARG001`` ; le rewrite passe par
-        # ``CorpusRunner.max_in_flight``).  Rupture mineure
-        # documentée dans CHANGELOG v2.0.
-        for name in [
-            "corpus", "engines", "output_json", "show_progress",
-            "char_exclude", "timeout_seconds",
-            "profile",
-        ]:
-            assert name in params, (
-                f"run_benchmark_via_service : argument '{name}' a disparu "
-                f"(signature : {sig})"
-            )
+# Le module ``benchmark_runner.py`` portait l'entry point legacy
+# ``run_benchmark_via_service`` qui a été remplacé par
+# ``picarones.RunOrchestrator`` (consommant un ``RunSpec`` Pydantic
+# ou des objets domain pré-construits via ``execute_preset()``).
+# Le contract test du legacy a été supprimé avec le module.  Voir
+# ``TestRunOrchestratorApi`` ci-dessous pour le contrat de
+# l'entry point canonique actuel.
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -289,33 +261,19 @@ class TestRunOrchestratorApi:
             f"Phase B3 — '{name}' devrait être dans picarones.__all__"
         )
 
-    def test_run_benchmark_via_service_still_callable_with_warning(self):
-        """Compat ascendante : ``run_benchmark_via_service`` est toujours
-        appelable mais émet une ``DeprecationWarning``."""
-        import warnings
-        from picarones.evaluation.corpus import Corpus
-        from picarones.app.services.benchmark_runner import (
-            run_benchmark_via_service,
+    def test_prepare_preset_args_exposed_at_root(self):
+        """Phase B3-final — ``prepare_preset_args`` est l'API
+        publique pour les callers Python qui instancient leurs adapters
+        en mémoire (par opposition au chargement YAML via ``RunSpec``).
+        """
+        from picarones.app.services import (
+            PresetArgs,
+            prepare_preset_args,
+            run_result_to_benchmark_result,
         )
-
-        corp = Corpus(name="warn_test", documents=[])
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            try:
-                run_benchmark_via_service(corp, [])
-            except Exception:
-                # Le bench échoue sur un corpus vide mais peu importe —
-                # on teste juste l'émission du warning.
-                pass
-
-        deprecation_warnings = [
-            w for w in caught if issubclass(w.category, DeprecationWarning)
-        ]
-        assert len(deprecation_warnings) >= 1, (
-            "run_benchmark_via_service devrait émettre une "
-            "DeprecationWarning (Phase B3)"
-        )
-        assert "RunOrchestrator" in str(deprecation_warnings[0].message)
+        assert callable(prepare_preset_args)
+        assert callable(run_result_to_benchmark_result)
+        assert inspect.isclass(PresetArgs)
 
 
 # ──────────────────────────────────────────────────────────────────────────

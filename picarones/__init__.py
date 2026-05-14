@@ -11,7 +11,8 @@ ici pour permettre :
 Pour les implémentations (calcul de métriques, runner, adapters OCR…),
 utiliser les sous-packages explicites :
 
->>> from picarones.app.services.benchmark_runner import run_benchmark_via_service
+>>> from picarones import RunOrchestrator, RunSpec, load_run_spec_from_yaml
+>>> from picarones.app.services import prepare_preset_args, run_result_to_benchmark_result
 >>> from picarones.evaluation.metrics.text_metrics import compute_metrics
 >>> from picarones.adapters.ocr.tesseract import TesseractAdapter
 

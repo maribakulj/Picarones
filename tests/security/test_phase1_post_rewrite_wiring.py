@@ -813,7 +813,7 @@ class TestPartialStoreFingerprint:
     def test_engine_config_for_fingerprint_distinguishes_psm(self) -> None:
         """``_engine_config_for_fingerprint`` capture les attributs
         opérationnels d'un adapter OCR (lang, psm, model, …)."""
-        from picarones.app.services.benchmark_runner import (
+        from picarones.app.services._benchmark_helpers import (
             _engine_config_for_fingerprint,
         )
 

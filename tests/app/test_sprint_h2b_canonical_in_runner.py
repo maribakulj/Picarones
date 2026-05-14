@@ -20,7 +20,7 @@ from picarones.adapters.ocr import (
     PrecomputedTextAdapter,
     ocr_adapter_from_name,
 )
-from picarones.app.services.benchmark_runner import (
+from picarones.app.services._benchmark_adapter_resolver import (
     build_adapter_resolver,
     engine_to_pipeline_spec,
 )

@@ -29,7 +29,7 @@ from picarones.app.services.partial_store import (
     _save_partial_line,
     partial_path_for_engine,
 )
-from picarones.app.services.benchmark_runner import (
+from picarones.app.services._benchmark_helpers import (
     _engine_config_for_fingerprint,
 )
 from tests._migration_helpers import run_via_orchestrator
