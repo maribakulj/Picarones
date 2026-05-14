@@ -47,7 +47,7 @@ FILE_BUDGETS: dict[str, int] = {
     # - ``_benchmark_orchestration`` (unified + with_partial, ~250 LOC)
     # Bilan cumulé : **1700 → 299 LOC (-82 %)** — façade pure
     # ``run_benchmark_via_service`` + bloc de re-exports.
-    "picarones/app/services/benchmark_runner.py": 320,  # actuel 299
+    "picarones/app/services/benchmark_runner.py": 380,  # actuel 333 — Phase B7 (bannière deprecated +34 LOC)
     # --- God-modules : budget actuel + 15 % de marge.
     # Le rétrécissement sera l'objet d'un sprint de refactor dédié.
     # Phase 4.6 audit code-quality (2026-05) — commentaires retirés :
