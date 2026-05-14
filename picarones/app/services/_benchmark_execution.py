@@ -2,6 +2,13 @@
 ``benchmark_runner.py`` lors de la Phase 6 (round 4) de l'audit
 code-quality (2026-05).
 
+.. deprecated:: 2.0.0
+    Module helper interne du chemin legacy
+    ``run_benchmark_via_service``.  Phase B7 (mai 2026) — sera
+    supprimé en Phase B8 quand ``run_benchmark_via_service`` partira.
+    Le ``RunOrchestrator`` implémente sa propre orchestration via
+    ``execute()`` / ``execute_preset()`` sans dépendre de ce module.
+
 Surface publique (rééxportée par ``benchmark_runner.py`` pour
 préserver les imports internes existants) :
 

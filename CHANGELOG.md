@@ -7,6 +7,112 @@ La numérotation de version suit [Semantic Versioning](https://semver.org/lang/f
 
 ---
 
+## [Unreleased] — Migration Option B vers RunOrchestrator (mai 2026)
+
+Branche `claude/test-alto-pipelines-qyFsL` — chantier de migration
+complète vers `RunOrchestrator` comme entry-point canonique pour
+lancer un benchmark, avec livrable métier ALTO documentaire.  20+
+commits sur ~13 jours d'effort, 4830 → 4897 tests passants (+67).
+
+### Nouveautés — valeur métier
+
+- **`picarones.RunOrchestrator`** exposé au niveau racine.  Consomme
+  un `RunSpec` Pydantic validé et expose 4 fichiers JSONL natifs
+  (`run_manifest.json`, `pipeline_results.jsonl`,
+  `artifacts_index.jsonl`, `view_results.jsonl`) en plus du
+  `BenchmarkResult` legacy (via `spec.output_json`).
+- **`RunSpec` étendu** avec 7 nouveaux champs : `char_exclude`,
+  `normalization_profile`, `partial_dir`, `entity_extractor`,
+  `profile`, `output_json`, `timeout_seconds_per_doc`.  Tous validés
+  par Pydantic (`_validate_profile_is_known`,
+  `_validate_entity_extractor_format`).
+- **3 vues canoniques natives** dans le `RunResult` : `text_final`,
+  `alto_documentary`, `searchability`.  Chacune produit ses propres
+  `ViewResult` typés avec `metric_values`, `failed_metrics`,
+  `projection_report`, `warnings`.
+- **TesseractAdapter expose ALTO natif** via le flag `expose_alto`
+  (off par défaut, compat ascendante).  Premier adapter du repo à
+  produire un `Artifact ALTO_XML`.  Valide structurellement la
+  sortie avant promotion (résistance XML mal formé).
+- **AltoView étendu** : 7 métriques par défaut au lieu de 3.  Les
+  4 nouvelles (`alto_text_cer/wer/mer/wil`) opèrent sur le texte
+  plat extrait de l'ALTO via `extract_text_from_alto` — permettent
+  de détecter une régression textuelle même quand la structure est
+  préservée.
+- **Rapport HTML multi-vues** : nouvelle section
+  `view-results-section` rendue par
+  `picarones/reports/html/renderers/view_results.py`.  Affiche un
+  tableau `Métrique × engine` par vue avec moyennes, et liste
+  explicitement les **pipelines OMIS** de chaque vue (critique pour
+  AltoView : un OCR sans ALTO ne doit pas être omis silencieusement).
+  Adaptive : section absente si `benchmark.view_results` vide
+  (chemin legacy intact).
+- **`BenchmarkResult.view_results`** : nouveau champ optionnel
+  `{view: {engine: {doc: {metric: value}}}}` peuplé par le converter
+  depuis le `RunResult.document_results[*].view_results`.  Consommé
+  par le rapport HTML et accessible aux clients pour analyses
+  ad-hoc.
+
+### Déprécié
+
+- **`run_benchmark_via_service`** émet une `DeprecationWarning` à
+  chaque appel pointant vers `RunOrchestrator`.  Fonction toujours
+  opérationnelle mais marquée pour retrait en Phase B8.  Aucun
+  call site actif ne subsiste dans `picarones/interfaces/` ou
+  `picarones/app/` — CLI/Web passent désormais par le shim
+  `picarones.app.services.legacy_runner_compat.run_via_orchestrator`
+  qui utilise `RunOrchestrator.execute_preset()` en interne.
+- **Modules legacy marqués deprecated** (bannière en tête, retrait
+  prévu Phase B8 — 1500 LOC nets à supprimer) :
+    * `picarones/app/services/benchmark_runner.py`
+    * `picarones/app/services/_benchmark_execution.py`
+    * `picarones/app/services/_benchmark_orchestration.py`
+
+### Modifié
+
+- **`picarones.interfaces.cli._workflows`** : 6 commandes (`run`,
+  `diagnose`, `economics`, `edition`, `compare`, `robustness`)
+  passent désormais par `run_via_orchestrator`.  Comportement
+  utilisateur identique.
+- **`picarones.interfaces.web.benchmark_utils.run_benchmark_thread_v2`** :
+  utilise `run_via_orchestrator`.  L'API REST `POST /api/benchmark/run`
+  est inchangée pour les clients.
+- **`TesseractAdapter.output_types`** : étendu de
+  `{RAW_TEXT, CONFIDENCES}` à `{RAW_TEXT, CONFIDENCES, ALTO_XML}`
+  (set maximal).  Les pipelines existants restent inchangés tant
+  que `expose_alto` n'est pas activé.
+- **`build_text_view` / `build_search_view`** : nouveau kwarg
+  `char_exclude` propagé jusqu'au `DefaultEvaluationViewExecutor`
+  qui filtre les caractères avant calcul des métriques.
+
+### Migration utilisateur
+
+Cf. `docs/migration/option_b_user_guide.md` pour le mapping complet
+des paramètres legacy → `RunSpec`, 4 cas concrets (corpus mémoire,
+partial_dir resume, NER attach, cancellation), et calendrier de
+retrait phasé.
+
+### Phases du chantier (référence interne)
+
+- **B0** préparation (snapshot d'invariance + squelette feature
+  parity + inventaire tests)
+- **B1** `RunSpec` étendu (7 nouveaux champs + validators)
+- **B2** porting des 7 features dans `RunOrchestrator`
+  (progress_callback, cancel_event, partial_dir, entity_extractor,
+  char_exclude + normalization_profile, profile hooks, output_json)
+  → **Checkpoint C1**
+- **B3** exports publics + `DeprecationWarning` + migration concrète
+  des call sites CLI/Web via `legacy_runner_compat` → **Checkpoint C2**
+- **B4** migration des 6 fichiers de tests catégorie A (71 appels)
+- **B5** `TesseractAdapter.expose_alto` (premier adapter ALTO natif)
+- **B6** rapport HTML multi-vues + extension `DEFAULT_ALTO_METRICS`
+  → **Checkpoint C3** (valeur métier livrée)
+- **B7** deprecation finale (cette entrée + bannières modules legacy)
+- **B8** *(à venir, post-release)* — suppression des modules legacy
+  marqués deprecated (~1500 LOC nets).
+
+---
+
 ## [Unreleased] — Audit code-quality (mai 2026)
 
 Branche `claude/code-quality-audit-EeY0r` — audit implacable du repo

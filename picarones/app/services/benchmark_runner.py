@@ -1,5 +1,20 @@
 """Entry point CLI/web — façade ``run_benchmark_via_service``.
 
+.. deprecated:: 2.0.0
+    Module deprecated en Phase B7 du chantier de migration Option B
+    (mai 2026).  Utiliser :class:`picarones.RunOrchestrator` qui
+    consomme un ``RunSpec`` Pydantic.
+
+    - La fonction ``run_benchmark_via_service`` émet une
+      ``DeprecationWarning`` à chaque appel.
+    - Aucun call site actif ne subsiste dans ``picarones/`` —
+      CLI/Web passent désormais par
+      ``picarones.app.services.legacy_runner_compat.run_via_orchestrator``.
+    - Retrait du module prévu **Phase B8** (release suivante).
+
+    Pour migrer votre code, voir le guide
+    ``docs/migration/option_b_user_guide.md``.
+
 Présente l'API mono-call ``run_benchmark_via_service(corpus,
 engines, ...)`` consommée par ``picarones.interfaces.cli`` et
 ``picarones.interfaces.web``.  S'appuie en interne sur le service

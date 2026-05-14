@@ -3,6 +3,17 @@
 Module extrait du god-module ``benchmark_runner.py`` lors de la
 Phase 6 (round 6) de l'audit code-quality (2026-05).
 
+.. deprecated:: 2.0.0
+    Module helper interne du chemin legacy
+    ``run_benchmark_via_service``.  Phase B7 (mai 2026) — sera
+    supprimé en Phase B8 quand ``run_benchmark_via_service`` partira.
+
+    Le ``RunOrchestrator`` implémente sa propre reprise sur
+    interruption pivot-par-pipeline via
+    ``picarones.app.services._orchestrator_partial`` qui sérialise
+    des ``PipelineResult`` typés (format JSONL distinct de
+    ``partial_store`` legacy qui sérialise des ``DocumentResult``).
+
 Surface publique (rééxportée par ``benchmark_runner.py`` avec
 préfixe ``_`` pour préserver l'API privée historique) :
 
