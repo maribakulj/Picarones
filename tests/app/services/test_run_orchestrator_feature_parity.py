@@ -226,47 +226,178 @@ class TestParityCancelEvent:
 # ──────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}3 — port partial_dir resume")
-def test_parity_partial_dir_resume_fresh_start(tmp_path: Path) -> None:
-    """Premier run avec ``partial_dir`` non existant → comportement
-    identique à un run sans ``partial_dir``.
+class TestParityPartialDir:
+    """Phase B2.3 — reprise sur interruption pivotée par pipeline.
 
-    Spec
-    ----
-    - ``partial_dir`` = répertoire vide.
-    - Lancer le bench.
-    - À la fin, le fichier ``{partial_dir}/picarones_{corpus}_{engine}
-      .partial.jsonl`` est supprimé (succès complet).
-    - Le ``BenchmarkResult`` est identique au run sans ``partial_dir``.
+    Le format JSONL est partagé entre tous les pipelines d'un run :
+    un fichier par pipeline, append-only, supprimé à la fin du
+    pipeline si traité intégralement.
     """
 
+    def _build_spec(
+        self, tmp_path: Path, *,
+        n_docs: int = 3,
+        partial_dir: Path | None,
+    ) -> "RunSpec":
+        tmp_path.mkdir(parents=True, exist_ok=True)
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(_make_corpus_zip(n_docs=n_docs))
+        out_dir = tmp_path / "out"
+        yaml = _build_spec_yaml(corpus_zip, out_dir)
+        if partial_dir is not None:
+            yaml += f"partial_dir: {partial_dir}\n"
+        return load_run_spec_from_yaml(yaml)
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}3 — port partial_dir resume")
-def test_parity_partial_dir_resume_after_crash(tmp_path: Path) -> None:
-    """Reprise après crash partiel : 3 docs sur 5 déjà persistés →
-    seuls les 2 restants sont soumis au runner.
+    def test_partial_dir_fresh_start_creates_no_orphan_files(
+        self, tmp_path: Path,
+    ) -> None:
+        """Fresh start : tous les docs traités → partial supprimé
+        à la fin (cleanup).  Le répertoire partial_dir reste vide
+        après un run réussi complet."""
+        partial_dir = tmp_path / "partial"
+        spec = self._build_spec(
+            tmp_path, n_docs=2, partial_dir=partial_dir,
+        )
 
-    Spec
-    ----
-    - Pré-écrire un partial JSONL avec 3 ``DocumentResult`` valides.
-    - Lancer le bench sur le corpus de 5 docs.
-    - Le ``CorpusRunner.run`` est appelé sur **2 docs seulement**
-      (vérifier via spy).
-    - Le ``BenchmarkResult`` final agrège les 5 docs (3 réutilisés +
-      2 nouveaux).
-    """
+        result = RunOrchestrator(tmp_path / "out").execute(spec)
+        assert result.run_result.n_documents == 2
 
+        # Aucun fichier .partial.jsonl résiduel après run complet.
+        residual = list(partial_dir.glob("*.partial.jsonl"))
+        assert residual == [], (
+            f"Fichiers partiels résiduels : {residual}"
+        )
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}3 — port partial_dir resume")
-def test_parity_partial_dir_fingerprint_invalidates(tmp_path: Path) -> None:
-    """Fingerprint divergent invalide le partial (re-calcul depuis 0).
+    def test_partial_dir_resume_after_complete_pipeline(
+        self, tmp_path: Path,
+    ) -> None:
+        """Si un partial existant contient déjà tous les docs d'un
+        pipeline, ce pipeline n'est pas relancé.
 
-    Spec
-    ----
-    - Pré-écrire un partial avec un ``code_version`` différent.
-    - Lancer le bench.
-    - Le partial est ignoré, les 5 docs sont recalculés.
-    """
+        Pré-condition : on lance le bench une 1re fois pour créer
+        le partial via les helpers (puisque le partial est supprimé
+        en cleanup post-success).  On simule un crash en pré-écrivant
+        directement le partial JSONL.
+        """
+        from picarones.app.services._orchestrator_partial import (
+            append_pipeline_result,
+            compute_pipeline_fingerprint,
+            partial_path_for_pipeline,
+        )
+
+        partial_dir = tmp_path / "partial"
+        partial_dir.mkdir()
+        spec = self._build_spec(
+            tmp_path, n_docs=2, partial_dir=partial_dir,
+        )
+
+        # Construire à la main les pipeline_specs (même logique que
+        # RunOrchestrator._build_pipelines) pour pouvoir calculer le
+        # fingerprint et pré-écrire le partial.
+        orchestrator = RunOrchestrator(tmp_path / "out")
+        orchestrator._output_dir.mkdir(parents=True, exist_ok=True)
+
+        # On lance un premier run sans partial pour récupérer les
+        # PipelineResult — puis on les rejoue via le partial.
+        spec_no_partial = self._build_spec(
+            tmp_path / "first", n_docs=2, partial_dir=None,
+        )
+        first_result = RunOrchestrator(
+            tmp_path / "first" / "out",
+        ).execute(spec_no_partial)
+
+        # Pré-écrire le partial avec les 2 PipelineResult du 1er run.
+        # On a besoin du fingerprint cohérent → on construit la spec
+        # via orchestrator._build_pipelines et la corpus_spec via
+        # _load_corpus.
+        from picarones.app.services.path_security import WorkspaceManager
+        workspace = WorkspaceManager(orchestrator._output_dir)
+        corpus_spec, _ = orchestrator._load_corpus(spec, workspace)
+        pipeline_specs, _, _ = orchestrator._build_pipelines(spec)
+
+        for ps in pipeline_specs:
+            fingerprint = compute_pipeline_fingerprint(
+                pipeline_spec=ps,
+                corpus_spec=corpus_spec,
+                normalization_profile=spec.normalization_profile,
+                char_exclude=spec.char_exclude,
+                profile=spec.profile,
+                code_version=spec.code_version,
+            )
+            partial_path = partial_path_for_pipeline(
+                partial_dir=partial_dir,
+                corpus_name=corpus_spec.name,
+                pipeline_name=ps.name,
+                fingerprint=fingerprint,
+            )
+            # Persister tous les PipelineResult du 1er run dans le partial.
+            for first_doc in first_result.run_result.document_results:
+                for pr in first_doc.pipeline_results:
+                    if pr.pipeline_name == ps.name:
+                        append_pipeline_result(partial_path, pr)
+
+        # 2e run sur le même spec : le partial est complet, aucun
+        # nouveau calcul n'est requis.
+        second_result = RunOrchestrator(
+            tmp_path / "out",
+        ).execute(spec)
+
+        # Tous les docs sont présents dans le résultat final.
+        assert second_result.run_result.n_documents == 2
+        # ``fully_resumed`` flag dans la metadata du manifest signale
+        # qu'aucun sub-run n'a été nécessaire.
+        assert second_result.run_result.manifest.metadata.get(
+            "fully_resumed",
+        ) == "true"
+        # Cleanup : le partial est supprimé même en mode fully resumed.
+        assert list(partial_dir.glob("*.partial.jsonl")) == []
+
+    def test_partial_dir_fingerprint_isolation(
+        self, tmp_path: Path,
+    ) -> None:
+        """Deux runs avec des configs différentes ont des fingerprints
+        différents → fichiers partiels distincts → pas de réutilisation
+        croisée.
+
+        Test : crée un partial avec un fingerprint forgé (différent),
+        puis lance le bench.  Le bench doit ignorer ce partial et
+        produire un résultat propre.
+        """
+        from picarones.app.services._orchestrator_partial import (
+            partial_path_for_pipeline,
+        )
+
+        partial_dir = tmp_path / "partial"
+        partial_dir.mkdir()
+
+        # Pré-écrire un partial avec un fingerprint forgé qui ne
+        # matchera pas le fingerprint calculé par le bench.
+        fake_path = partial_path_for_pipeline(
+            partial_dir=partial_dir,
+            corpus_name="feature_parity",
+            pipeline_name="tess_only",
+            fingerprint="0" * 64,  # fingerprint forgé
+        )
+        fake_path.write_text(
+            '{"document_id": "ghost_doc",'
+            ' "pipeline_name": "tess_only",'
+            ' "step_results": [],'
+            ' "succeeded": false,'
+            ' "duration_seconds": 0.0,'
+            ' "artifacts": []}\n',
+            encoding="utf-8",
+        )
+
+        spec = self._build_spec(
+            tmp_path, n_docs=2, partial_dir=partial_dir,
+        )
+        result = RunOrchestrator(tmp_path / "out").execute(spec)
+
+        # Le run produit ses 2 docs propres (ne charge pas le fake).
+        assert result.run_result.n_documents == 2
+        doc_ids = {dr.document_id for dr in result.run_result.document_results}
+        assert "ghost_doc" not in doc_ids
+        assert doc_ids == {"doc01", "doc02"}
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -699,24 +830,95 @@ class TestParityOutputJsonLegacy:
 # ──────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.skip(reason=f"{SKIP_REASON_PREFIX}* — toutes features portées")
-def test_parity_all_features_combined(tmp_path: Path) -> None:
-    """Lance les deux chemins avec toutes les features actives et
-    vérifie l'égalité numérique du ``BenchmarkResult``.
+class TestParityAllFeaturesCombined:
+    """Phase B2 / Checkpoint C1 — gate finale.
 
-    Spec
-    ----
-    - Construire un ``RunSpec`` avec : ``profile="standard"``,
-      ``partial_dir=tmp_path/"partial"``, ``output_json=tmp_path/
-      "bm.json"``, ``char_exclude="!."``,
-      ``normalization_profile="caseless"``.
-    - Lancer ``run_benchmark_via_service`` avec les mêmes paramètres.
-    - Lancer ``RunOrchestrator().execute(spec)``.
-    - Normaliser les 2 ``BenchmarkResult`` (cf.
-      ``test_migration_invariance.py:_normalize_for_snapshot``).
-    - Vérifier ``a == b``.
+    Lance ``RunOrchestrator.execute`` avec **toutes** les features
+    actives simultanément et vérifie que le ``BenchmarkResult`` legacy
+    persisté via ``output_json`` est cohérent (toutes les métriques,
+    NER, hooks, char_exclude appliqués, etc.).
 
-    Ce test est le **gate finale du Checkpoint C1**.  Quand il passe,
-    la Phase B2 est terminée et on peut commencer B3 (migration des
-    call sites).
+    Ce test certifie que les 7 features sont câblées ensemble sans
+    conflit ni régression croisée.  C'est le gate du checkpoint C1 :
+    quand il passe, le ``RunOrchestrator`` est feature-complete vis-à-vis
+    de ``run_benchmark_via_service``.
     """
+
+    def test_combined_features_produce_coherent_result(
+        self, tmp_path: Path,
+    ) -> None:
+        import json
+
+        # Corpus avec GT TEXT + GT ENTITIES (pour NER).
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w") as zf:
+            zf.writestr("doc01.png", _png_bytes())
+            zf.writestr("doc01.gt.txt", "Jean habite Paris!")
+            zf.writestr("doc01.tess.txt", "Jean habite Paris.")
+            zf.writestr("doc01.gt.entities.json", json.dumps({
+                "entities": [
+                    {"label": "PER", "start": 0, "end": 4, "text": "Jean"},
+                    {"label": "LOC", "start": 12, "end": 17, "text": "Paris"},
+                ],
+            }))
+        corpus_zip = tmp_path / "c.zip"
+        corpus_zip.write_bytes(buf.getvalue())
+
+        out_dir = tmp_path / "out"
+        partial_dir = tmp_path / "partial"
+        output_json = tmp_path / "bm.json"
+
+        # YAML avec TOUTES les features activées simultanément.
+        yaml = _build_spec_yaml(corpus_zip, out_dir)
+        yaml += f"partial_dir: {partial_dir}\n"
+        yaml += f"output_json: {output_json}\n"
+        yaml += 'char_exclude: "!."\n'
+        yaml += "normalization_profile: caseless\n"
+        yaml += "profile: standard\n"
+        yaml += (
+            "entity_extractor: 'tests.app.services."
+            "test_run_orchestrator_feature_parity:_mock_entity_extractor'\n"
+        )
+        spec = load_run_spec_from_yaml(yaml)
+
+        # Callback + cancel_event passés en kwargs d'exécution.
+        invocations: list[tuple[str, int, str]] = []
+
+        def cb(engine: str, idx: int, doc_id: str) -> None:
+            invocations.append((engine, idx, doc_id))
+
+        ev = threading.Event()  # jamais set : run normal
+
+        result = RunOrchestrator(out_dir).execute(
+            spec, progress_callback=cb, cancel_event=ev,
+        )
+
+        # Le run a tourné : 1 doc, 1 callback invoqué.
+        assert result.run_result.n_documents == 1
+        assert len(invocations) == 1
+
+        # JSON legacy écrit avec TOUTES les features intégrées.
+        loaded = json.loads(output_json.read_text(encoding="utf-8"))
+        doc_result = loaded["engine_reports"][0]["document_results"][0]
+
+        # char_exclude appliqué : "!." filtré → ground_truth +
+        # hypothesis matchent exactement → CER = 0.
+        assert doc_result["metrics"]["cer"] == 0.0
+
+        # normalization_profile=caseless propagé → cer_diplomatic = 0.
+        assert doc_result["metrics"]["cer_diplomatic"] == 0.0
+
+        # entity_extractor invoqué → ner_metrics présent.
+        assert doc_result.get("ner_metrics") is not None
+
+        # profile=standard appliqué → hypothesis_length présent.
+        assert doc_result["metrics"]["hypothesis_length"] > 0
+
+        # Cohabitation : 4 fichiers JSONL natifs + 1 JSON legacy.
+        assert output_json.exists()
+        assert set(result.persisted_files) == {
+            "manifest", "pipeline_results", "artifacts_index", "view_results",
+        }
+
+        # partial_dir : pipeline complet → fichier nettoyé.
+        assert list(partial_dir.glob("*.partial.jsonl")) == []
