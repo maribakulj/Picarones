@@ -380,8 +380,7 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         #     1. prepare_preset_args     (conversion vers domain)
         #     2. execute_preset          (run du benchmark)
         #     3. run_result_to_benchmark_result (BenchmarkResult legacy)
-        # Plus de shim ``run_via_orchestrator`` — la mécanique est
-        # visible et chaque étape est unitairement testable.
+        # Pattern explicite — chaque étape est unitairement testable.
         with tempfile.TemporaryDirectory(prefix="picarones_web_") as _ws:
             _ws_path = Path(_ws)
             _run_dir = _ws_path / "run"

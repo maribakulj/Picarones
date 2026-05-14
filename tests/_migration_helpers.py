@@ -1,10 +1,9 @@
 """Helpers tests — pattern ``RunOrchestrator`` pour les tests B4.
 
-Phase B3-final (mai 2026) — ce module **n'est plus un re-export**
-du shim de production ``legacy_runner_compat``.  Il implémente
-directement le pattern 3 étapes (``prepare_preset_args`` →
-``execute_preset`` → ``run_result_to_benchmark_result``) pour servir
-les 6 fichiers de tests catégorie A migrés en Phase B4.
+Phase B3-final (mai 2026) — implémente directement le pattern 3
+étapes ``prepare_preset_args`` → ``execute_preset`` →
+``run_result_to_benchmark_result`` pour servir les 6 fichiers de
+tests catégorie A migrés en Phase B4.
 
 Pourquoi un helper test dédié plutôt qu'inline dans chaque test ?
 -----------------------------------------------------------------
@@ -13,16 +12,11 @@ que l'ancien ``run_benchmark_via_service``.  Le mettre inline dans
 chaque test ajouterait ~10 lignes de boilerplate par cas, noyant
 l'intention du test.
 
-Différence vs le shim de production
------------------------------------
-Le shim ``legacy_runner_compat`` exposait ``run_via_orchestrator``
-comme API publique pour CLI/Web — il a été supprimé en Phase
-B3-final commit 5 au profit du pattern 3 étapes explicite dans
-chaque call site.
-
 Ce helper ``run_via_orchestrator`` est un **outil de test**
 (préfixe ``_`` du module + dossier ``tests/``).  Son existence ne
-constitue pas de la dette technique en production.
+constitue pas de la dette technique en production : il n'y a pas
+de shim équivalent dans ``picarones/`` (les call sites CLI/Web
+font le pattern 3 étapes explicitement).
 """
 
 from __future__ import annotations

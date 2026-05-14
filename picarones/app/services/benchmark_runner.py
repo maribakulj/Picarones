@@ -8,9 +8,11 @@
     - La fonction ``run_benchmark_via_service`` émet une
       ``DeprecationWarning`` à chaque appel.
     - Aucun call site actif ne subsiste dans ``picarones/`` —
-      CLI/Web passent désormais par
-      ``picarones.app.services.legacy_runner_compat.run_via_orchestrator``.
-    - Retrait du module prévu **Phase B8** (release suivante).
+      CLI/Web utilisent désormais directement le pattern 3 étapes
+      ``prepare_preset_args → execute_preset →
+      run_result_to_benchmark_result`` (cf.
+      :mod:`picarones.app.services.python_helpers`).
+    - Retrait du module prévu **Phase B3-final commit 6** (suivant).
 
     Pour migrer votre code, voir le guide
     ``docs/migration/option_b_user_guide.md``.
