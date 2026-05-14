@@ -260,6 +260,7 @@ class RunOrchestrator:
                 char_exclude=spec.char_exclude,
                 normalization_profile=spec.normalization_profile,
                 profile=spec.profile,
+                entity_extractor=spec.entity_extractor,
             )
 
         # 7. Rapport optionnel — délégué au renderer injecté.
@@ -406,6 +407,7 @@ class RunOrchestrator:
         char_exclude: str | None,
         normalization_profile: str | None,
         profile: str,
+        entity_extractor: str | None = None,
     ) -> None:
         """Phase B2.7 — converti ``RunResult`` → ``BenchmarkResult`` legacy
         et persiste en JSON.
@@ -488,6 +490,21 @@ class RunOrchestrator:
             normalization_profile=resolved_profile,
             profile=profile,
         )
+
+        # Phase B2.4 — NER attach post-process si un entity_extractor
+        # est fourni.  Pattern identique à
+        # ``run_benchmark_via_service:261-264`` :  on résout le dotted
+        # path, on instancie la factory, on attache au BenchmarkResult.
+        if entity_extractor:
+            extractor_callable = _resolve_entity_extractor(entity_extractor)
+            if extractor_callable is not None:
+                from picarones.app.services._benchmark_ner import (
+                    attach_ner_metrics_to_benchmark,
+                )
+                attach_ner_metrics_to_benchmark(
+                    benchmark_result, corpus, extractor_callable,
+                )
+
         persist_benchmark_result_json(benchmark_result, output_json)
 
     @staticmethod
@@ -614,6 +631,85 @@ class _PipelineEngineProxy:
                 for step in self._spec.steps
             ],
         }
+
+
+def _resolve_entity_extractor(
+    dotted_path: str,
+) -> Callable[[str], list[dict]] | None:
+    """Phase B2.4 — résout un dotted path vers un extracteur d'entités.
+
+    Format attendu (validé en B1.1 via ``_DOTTED_PATH_RE`` du
+    ``RunSpec``) :
+
+    - ``module.submodule:Symbol`` (PEP 621 entry points / setuptools)
+    - ``module.submodule.Symbol`` (import classique)
+
+    Le symbole résolu doit être soit :
+
+    - une **factory zéro-arg** qui retourne un callable ``(text: str)
+      -> list[dict]`` (pattern legacy CLI : ``SpacyEntityExtractor``
+      avec config par défaut),
+    - soit directement un callable ``(text: str) -> list[dict]``
+      (pattern test : fonction mock).
+
+    On essaie d'abord d'appeler le symbole sans argument ; si ça
+    renvoie un callable, on l'utilise.  Sinon, on suppose que le
+    symbole est déjà un callable.
+
+    Returns
+    -------
+    Callable ou ``None`` si la résolution échoue.  Un échec ne
+    casse pas le bench (warning loggé, NER skippé) — cohérent avec
+    le legacy ``_attach_ner_metrics_to_benchmark`` qui dégrade
+    proprement.
+    """
+    import importlib
+
+    # Normalise le séparateur final : ``:`` ou ``.`` indifféremment.
+    if ":" in dotted_path:
+        module_path, _, symbol_name = dotted_path.rpartition(":")
+    else:
+        module_path, _, symbol_name = dotted_path.rpartition(".")
+
+    try:
+        module = importlib.import_module(module_path)
+    except ImportError as exc:
+        logger.warning(
+            "[run_orchestrator] entity_extractor : module %r introuvable "
+            "(%s) — NER sauté pour ce run.",
+            module_path, exc,
+        )
+        return None
+
+    symbol = getattr(module, symbol_name, None)
+    if symbol is None:
+        logger.warning(
+            "[run_orchestrator] entity_extractor : symbole %r absent de %r "
+            "— NER sauté pour ce run.",
+            symbol_name, module_path,
+        )
+        return None
+
+    # Pattern legacy : si ``symbol`` est une factory (classe ou
+    # fonction zéro-arg), l'instancier.  Sinon, l'utiliser tel quel.
+    if callable(symbol):
+        try:
+            candidate = symbol()
+            if callable(candidate):
+                return candidate
+            # ``symbol()`` retourne autre chose qu'un callable —
+            # ``symbol`` est probablement déjà la fonction d'extraction.
+            return symbol
+        except TypeError:
+            # ``symbol`` n'accepte pas zéro-arg : c'est probablement
+            # la fonction d'extraction directe.
+            return symbol
+
+    logger.warning(
+        "[run_orchestrator] entity_extractor : %r n'est pas callable.",
+        dotted_path,
+    )
+    return None
 
 
 def _kwargs_signature(kwargs: dict[str, Any]) -> str:
