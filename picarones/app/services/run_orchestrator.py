@@ -206,6 +206,8 @@ class RunOrchestrator:
             registries=registries,
             adapter_resolver=adapter_resolver,
             code_version=spec.code_version,
+            cancel_event=self._cancel_event,
+            timeout_seconds_per_doc=spec.timeout_seconds_per_doc,
         )
 
         # 6. Capture du verrou de dépendances pour la reproductibilité.
@@ -220,7 +222,10 @@ class RunOrchestrator:
             views=views,
             ground_truth_factory=_default_gt_factory,
             pipeline_inputs_factory=_default_inputs_factory,
-            context_factory=_make_context_factory(spec.code_version),
+            context_factory=_make_context_factory(
+                spec.code_version,
+                progress_callback=self._progress_callback,
+            ),
             adapter_kwargs=adapter_kwargs,
             dependencies_lock=deps_lock,
             system_binaries_lock=bin_lock,
@@ -230,6 +235,24 @@ class RunOrchestrator:
         # 6. Persistance JSONL.
         persist_dir = self._output_dir / "results"
         persisted = bench.persist(result, persist_dir)
+
+        # 6.bis. Phase B2.7 — persistance optionnelle du
+        # ``BenchmarkResult`` legacy (format ``run_benchmark_via_service``).
+        # Cohabite avec les 4 fichiers JSONL natifs (run_manifest,
+        # pipeline_results, artifacts_index, view_results) — utile pour
+        # les consommateurs historiques (rapport HTML legacy, narrative
+        # engine) tant que la migration n'est pas terminée.
+        if spec.output_json:
+            self._persist_legacy_benchmark_json(
+                run_result=result,
+                extracted_dir=extracted_dir,
+                pipeline_specs=pipeline_specs,
+                corpus_name=corpus_spec.name,
+                output_json=Path(spec.output_json),
+                char_exclude=spec.char_exclude,
+                normalization_profile=spec.normalization_profile,
+                profile=spec.profile,
+            )
 
         # 7. Rapport optionnel — délégué au renderer injecté.
         # Inversion de dépendance : ``app/`` ne peut pas importer
@@ -365,6 +388,79 @@ class RunOrchestrator:
         return pipeline_specs, resolver, adapter_kwargs_dump
 
     @staticmethod
+    def _persist_legacy_benchmark_json(
+        *,
+        run_result: Any,
+        extracted_dir: Path,
+        pipeline_specs: list[Any],
+        corpus_name: str,
+        output_json: Path,
+        char_exclude: str | None,
+        normalization_profile: str | None,
+        profile: str,
+    ) -> None:
+        """Phase B2.7 — converti ``RunResult`` → ``BenchmarkResult`` legacy
+        et persiste en JSON.
+
+        Délègue à
+        :func:`picarones.app.services._benchmark_converter.run_result_to_benchmark_result`
+        (utilisé aussi par ``run_benchmark_via_service``) pour
+        garantir l'équivalence numérique du format de sortie.
+
+        Le caller fournit :
+
+        - ``run_result`` : le ``RunResult`` produit par le ``BenchmarkService``.
+        - ``extracted_dir`` : où le corpus a été extrait — sert à
+          recharger un ``Corpus`` legacy via
+          ``load_corpus_from_directory``.  Le converter attend des
+          ``Document`` legacy avec ``image_path`` et ``ground_truth``.
+        - ``pipeline_specs`` : la liste des pipelines exécutées, dans
+          l'ordre soumis à ``BenchmarkService.run``.  Chaque spec est
+          wrappée en ``_PipelineEngineProxy`` qui expose le contrat
+          minimal attendu par le converter (``name``, ``config``).
+        - ``output_json`` : chemin de sortie ; les répertoires parents
+          sont créés.
+        - ``char_exclude``, ``normalization_profile``, ``profile`` :
+          paramètres legacy propagés au converter (qui les passe à
+          ``compute_metrics`` et aux hooks document-level).
+
+        Notes
+        -----
+        Le format produit est strictement identique à celui de
+        ``run_benchmark_via_service(output_json=...)`` (testé via le
+        snapshot d'invariance ``test_migration_invariance.py``).
+        """
+        from picarones.app.services._benchmark_converter import (
+            run_result_to_benchmark_result,
+        )
+        from picarones.app.services._benchmark_persistence import (
+            persist_benchmark_result_json,
+        )
+        from picarones.evaluation.corpus import load_corpus_from_directory
+
+        # Recharge le corpus legacy depuis le dossier extrait — même
+        # convention que ``benchmark_utils.py:317`` (web worker v2).
+        # ``name`` passé explicitement pour matcher
+        # ``corpus_spec.name`` (sinon le loader retourne ``"Corpus"``
+        # par défaut, ce qui casserait le snapshot d'invariance).
+        corpus = load_corpus_from_directory(extracted_dir, name=corpus_name)
+
+        # Wrappe chaque PipelineSpec en proxy minimal pour le converter.
+        # Le converter ne consomme que ``.name``, ``.config`` et tolère
+        # l'absence de ``.version`` (cf. ``_safe_engine_version``).
+        engines = [_PipelineEngineProxy(spec) for spec in pipeline_specs]
+
+        benchmark_result = run_result_to_benchmark_result(
+            run_result,
+            corpus=corpus,
+            engines=engines,
+            char_exclude=char_exclude,
+            normalization_profile=normalization_profile,
+            profile=profile,
+        )
+        persist_benchmark_result_json(benchmark_result, output_json)
+
+    @staticmethod
     def _build_views(view_names: tuple[str, ...]) -> list[Any]:
         """Map noms canoniques → vues construites."""
         builders = {
@@ -380,17 +476,35 @@ class RunOrchestrator:
         registries: RegistryService,
         adapter_resolver: Callable[[str], Any],
         code_version: str,
+        cancel_event: threading.Event | None = None,
+        timeout_seconds_per_doc: float = 300.0,
     ) -> BenchmarkService:
-        """Assemble ``BenchmarkService`` avec un loader filesystem."""
+        """Assemble ``BenchmarkService`` avec un loader filesystem.
+
+        Phase B2.2 — quand ``cancel_event`` est fourni, le
+        ``CorpusRunner.run`` est wrappé pour injecter l'event dans
+        chaque appel.  Pattern strictement copié de
+        ``_benchmark_execution.py:142-149`` (legacy).
+        """
         pipeline_executor = PipelineExecutor(
             adapter_resolver=adapter_resolver,
         )
         corpus_runner = CorpusRunner(
             pipeline_executor,
             max_in_flight=2,
-            timeout_seconds_per_doc=300.0,
+            timeout_seconds_per_doc=timeout_seconds_per_doc,
             poll_interval_seconds=0.05,
         )
+
+        if cancel_event is not None:
+            original_run = corpus_runner.run
+
+            def _runner_run_with_cancel(*args: Any, **kwargs: Any) -> Any:
+                kwargs.setdefault("cancel_event", cancel_event)
+                return original_run(*args, **kwargs)
+
+            corpus_runner.run = _runner_run_with_cancel  # type: ignore[method-assign]
+
         view_executor = DefaultEvaluationViewExecutor.from_registries(
             registries.metrics,
             registries.projectors,
@@ -406,6 +520,55 @@ class RunOrchestrator:
 # ──────────────────────────────────────────────────────────────────────
 # Helpers privés (factories canoniques)
 # ──────────────────────────────────────────────────────────────────────
+
+
+class _PipelineEngineProxy:
+    """Proxy léger ``PipelineSpec → engine`` pour le converter legacy.
+
+    Phase B2.7 — quand on persiste un ``BenchmarkResult`` legacy via
+    le converter ``run_result_to_benchmark_result``, ce dernier attend
+    une liste d'``engines`` qui exposent ``.name`` et ``.config`` (le
+    modèle mental legacy est OCR adapter / OCRLLMPipeline).
+
+    Le ``RunOrchestrator`` raisonne en termes de ``PipelineSpec``
+    (déclaration YAML), pas d'instances d'engines.  Ce proxy fournit
+    juste le contrat minimal pour que le converter produise un
+    ``EngineReport`` cohérent — sans introduire de couplage entre
+    ``run_orchestrator`` et le code legacy.
+
+    Le ``.name`` exposé est celui de la pipeline (``"ocr_then_correct"``)
+    et non du premier step (``"tesseract"``) — pour que l'``EngineReport``
+    porte le nom canonique du pipeline.
+    """
+
+    __slots__ = ("_spec",)
+
+    def __init__(self, pipeline_spec: Any) -> None:
+        self._spec = pipeline_spec
+
+    @property
+    def name(self) -> str:
+        return str(self._spec.name)
+
+    @property
+    def config(self) -> dict[str, Any]:
+        """Config sérialisable : noms des steps + leurs types I/O.
+
+        Permet aux consommateurs du ``BenchmarkResult`` legacy de
+        savoir quel pipeline a produit chaque ``EngineReport`` sans
+        connaître les détails d'implémentation des adapters.
+        """
+        return {
+            "pipeline_name": self._spec.name,
+            "steps": [
+                {
+                    "id": step.name,
+                    "input_types": sorted(t.value for t in step.input_types),
+                    "output_types": sorted(t.value for t in step.output_types),
+                }
+                for step in self._spec.steps
+            ],
+        }
 
 
 def _kwargs_signature(kwargs: dict[str, Any]) -> str:
@@ -457,8 +620,43 @@ def _default_inputs_factory(doc: DocumentRef) -> dict[ArtifactType, Artifact]:
 
 def _make_context_factory(
     code_version: str,
+    *,
+    progress_callback: Callable[[str, int, str], None] | None = None,
 ) -> Callable[[DocumentRef, str], RunContext]:
+    """Phase B2.1 — factory de ``RunContext`` avec callback de progression.
+
+    Pattern strictement copié de
+    ``_benchmark_execution.py:109-139`` (legacy) pour garantir
+    l'équivalence numérique du compteur ``doc_idx`` à
+    ``run_benchmark_via_service``.
+
+    Le ``counter_lock`` partagé empêche les race conditions quand le
+    ``CorpusRunner`` traite plusieurs documents en parallèle
+    (``max_in_flight > 1``).  Le compteur est **global au run**, pas
+    par pipeline — un benchmark à 2 pipelines × 5 docs émet 10
+    notifications ``doc_idx ∈ {0..9}``.
+    """
+    counter_lock = threading.Lock()
+    counter_state = {"doc_idx": 0}
+
     def _factory(doc: DocumentRef, pipeline_name: str) -> RunContext:
+        if progress_callback is not None:
+            with counter_lock:
+                idx = counter_state["doc_idx"]
+                counter_state["doc_idx"] = idx + 1
+            try:
+                progress_callback(pipeline_name, idx, doc.id)
+            except Exception:
+                # On ignore silencieusement les erreurs du callback :
+                # un caller qui crashe ne doit pas faire tomber le
+                # benchmark.  Cohérent avec
+                # ``_benchmark_execution.py:126-133``.
+                import logging
+                logging.getLogger(__name__).debug(
+                    "[run_orchestrator] progress_callback levé — "
+                    "ignoré pour ne pas tomber le bench.",
+                    exc_info=True,
+                )
         return RunContext(
             document_id=doc.id,
             code_version=code_version,
