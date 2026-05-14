@@ -137,13 +137,19 @@ class BenchmarkJob:
         rendu visible au client, le snapshot du job en base est
         cohérent avec ce que vit le client (reprise possible via
         ``Last-Event-ID``).
+
+        Atomicité : l'INSERT de l'événement et l'UPDATE de la
+        progression sont enveloppés dans une transaction unique côté
+        ``JobStore.append_event_and_update_progress``.  Sans ça, un
+        ``OperationalError`` ou un kill du process entre les deux
+        statements laissait l'event persisté mais le snapshot job
+        désynchronisé.
         """
         seq: Optional[int] = None
         if self._store is not None:
             try:
-                seq = self._store.append_event(self.job_id, kind, data)
-                self._store.update_progress(
-                    self.job_id,
+                seq = self._store.append_event_and_update_progress(
+                    self.job_id, kind, data,
                     progress=self.progress,
                     current_engine=self.current_engine,
                     total_docs=self.total_docs,

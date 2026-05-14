@@ -150,6 +150,102 @@ class TestJobStoreEvents:
             store.append_event(jid, "log", {})
         assert store.count_events(jid) == 7
 
+    def test_append_event_and_update_progress_atomic(self, store):
+        """Régression : l'INSERT event + UPDATE jobs.progress doivent
+        être atomiques.
+
+        Cas concret : un caller demande un event + une nouvelle
+        progress=0.5.  Soit les deux passent (event en base + colonne
+        progress mise à jour), soit aucun.  Avant ce fix, ``state.py``
+        faisait deux appels séparés (``append_event`` puis
+        ``update_progress``) — chaque transaction commit
+        immédiatement en autocommit, donc rien ne garantissait
+        l'atomicité.
+        """
+        jid = store.create_job()
+        seq = store.append_event_and_update_progress(
+            jid, "progress", {"doc_idx": 1},
+            progress=0.5,
+            current_engine="tesseract",
+            processed_docs=1,
+            total_docs=2,
+        )
+        assert seq == 1
+        # Snapshot job lu après l'appel : progression bien mise à jour
+        # ET event présent.
+        evs = store.get_events_after(jid, last_seq=0)
+        assert len(evs) == 1
+        assert evs[0]["data"] == {"doc_idx": 1}
+        # Vérif champs de progression côté table jobs.
+        job = store.get_job(jid)
+        assert job["progress"] == 0.5
+        assert job["current_engine"] == "tesseract"
+        assert job["processed_docs"] == 1
+        assert job["total_docs"] == 2
+
+    def test_append_event_and_update_progress_returns_seq(self, store):
+        """Le seq retourné suit la même séquence monotone que
+        ``append_event`` classique (interchangeables côté seq)."""
+        jid = store.create_job()
+        s1 = store.append_event(jid, "log", {})
+        s2 = store.append_event_and_update_progress(
+            jid, "progress", {}, progress=0.1,
+        )
+        s3 = store.append_event(jid, "log", {})
+        assert (s1, s2, s3) == (1, 2, 3)
+
+    def test_append_event_and_update_progress_concurrent(self, store):
+        """Régression : la méthode atomique reste race-free sous
+        concurrence (la transaction BEGIN IMMEDIATE sérialise les
+        writers, le seq monotone reste contigu)."""
+        import threading
+
+        jid = store.create_job()
+        n_threads = 6
+        per_thread = 40
+        errors: list[Exception] = []
+
+        def worker(tid: int) -> None:
+            try:
+                for i in range(per_thread):
+                    store.append_event_and_update_progress(
+                        jid, "progress", {"t": tid, "i": i},
+                        progress=(tid * per_thread + i) / (n_threads * per_thread),
+                        processed_docs=tid * per_thread + i,
+                    )
+            except Exception as exc:  # pragma: no cover
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(t,))
+                   for t in range(n_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrence cassée : {errors[0]!r}"
+        total = store.count_events(jid)
+        assert total == n_threads * per_thread
+        seqs = sorted(e["seq"] for e in store.get_events_after(jid, 0))
+        assert seqs == list(range(1, total + 1))
+
+    def test_busy_timeout_configured(self, store):
+        """Régression : ``PRAGMA busy_timeout`` doit être configuré
+        à 5000 ms (= 5s de retry SQLite automatique sur
+        ``database is locked``).
+
+        Sans ce pragma, des écritures concurrentes lourdes (4 threads
+        CorpusRunner + thread cancel HTTP) pouvaient déclencher
+        ``OperationalError: database is locked`` qui était catch
+        silencieusement par ``state.add_event``.
+        """
+        with store._conn() as c:
+            row = c.execute("PRAGMA busy_timeout").fetchone()
+        # SQLite renvoie la valeur courante du pragma.
+        assert row[0] == 5000, (
+            f"busy_timeout attendu 5000 ms, lu {row[0]} ms"
+        )
+
     def test_append_event_concurrent_no_unique_constraint_failure(
         self, store,
     ):

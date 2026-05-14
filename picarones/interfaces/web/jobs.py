@@ -118,8 +118,12 @@ class JobStore:
     def _conn(self) -> Iterator[sqlite3.Connection]:
         # ``check_same_thread=False`` parce qu'on ouvre une connexion par
         # appel — la sécurité vient de ne pas partager la connexion entre
-        # threads. ``isolation_level=None`` pour gérer nous-mêmes les
-        # transactions via ``BEGIN``/``COMMIT``.
+        # threads.  ``isolation_level=None`` = autocommit : chaque
+        # statement valide ses changements immédiatement.  Pour les
+        # opérations multi-statement qui doivent être atomiques (ex:
+        # ``append_event_and_update_progress``, ``cleanup_old``), on
+        # utilise le context manager :meth:`_transaction` qui émet
+        # ``BEGIN IMMEDIATE`` + ``COMMIT`` explicites.
         c = sqlite3.connect(
             str(self._path),
             isolation_level=None,
@@ -130,9 +134,39 @@ class JobStore:
             c.execute("PRAGMA journal_mode = WAL")
             c.execute("PRAGMA synchronous = NORMAL")
             c.execute("PRAGMA foreign_keys = ON")
+            # ``busy_timeout`` : si un autre writer tient le verrou WAL,
+            # SQLite retry automatiquement pendant 5s avant de raise
+            # ``OperationalError: database is locked``.  Sous contention
+            # forte (CorpusRunner ThreadPoolExecutor ``max_in_flight=4``
+            # qui émettent tous des events de progression) c'est
+            # indispensable — sans ça, les events étaient catch
+            # silencieusement par ``state.add_event`` et perdus.
+            c.execute("PRAGMA busy_timeout = 5000")
             yield c
         finally:
             c.close()
+
+    @contextmanager
+    def _transaction(
+        self, c: sqlite3.Connection,
+    ) -> Iterator[sqlite3.Connection]:
+        """Wrap les opérations multi-statement en transaction atomique.
+
+        ``BEGIN IMMEDIATE`` acquiert le verrou writer dès l'ouverture
+        (contrairement à ``BEGIN DEFERRED`` qui attend le premier
+        write) — évite la sous-classe de race ``upgrade lock`` où un
+        SELECT initial puis un INSERT plus tard se voient refuser
+        l'upgrade en faveur d'un autre writer qui a pris le verrou
+        entretemps.
+        """
+        c.execute("BEGIN IMMEDIATE")
+        try:
+            yield c
+        except BaseException:
+            c.execute("ROLLBACK")
+            raise
+        else:
+            c.execute("COMMIT")
 
     def _init_schema(self) -> None:
         # Crée le parent si l'utilisateur a passé un chemin imbriqué.
@@ -293,9 +327,16 @@ class JobStore:
         return count
 
     def cleanup_old(self, retention_days: int = 7) -> int:
-        """Supprime les jobs terminés depuis plus de ``retention_days`` jours."""
+        """Supprime les jobs terminés depuis plus de ``retention_days`` jours.
+
+        Les deux DELETE (jobs + events orphelins) sont enveloppés dans
+        une transaction explicite : sans ça, un crash entre les deux
+        laissait des ``job_events`` orphelins en base (le ``WHERE
+        job_id NOT IN (SELECT job_id FROM jobs)`` ne les ramassait
+        qu'à la prochaine exécution).
+        """
         cutoff = time.time() - retention_days * 86400.0
-        with self._conn() as c:
+        with self._conn() as c, self._transaction(c):
             cur = c.execute(
                 """
                 DELETE FROM jobs
@@ -354,6 +395,90 @@ class JobStore:
             )
             row = cur.fetchone()
         return int(row[0]) if row else 1
+
+    def append_event_and_update_progress(
+        self,
+        job_id: str,
+        kind: str,
+        data: Any,
+        *,
+        progress: Optional[float] = None,
+        current_engine: Optional[str] = None,
+        total_docs: Optional[int] = None,
+        processed_docs: Optional[int] = None,
+        output_path: Optional[str] = None,
+    ) -> int:
+        """Insère un événement ET met à jour la progression atomiquement.
+
+        Sans transaction explicite, ``BenchmarkJob.add_event`` faisait
+        ``append_event`` (transaction 1) puis ``update_progress``
+        (transaction 2).  Si un ``OperationalError`` survenait sur la
+        seconde (ex: ``database is locked`` malgré le ``busy_timeout``)
+        ou si le process était tué entre les deux, l'événement était
+        persisté mais le snapshot ``jobs.progress/processed_docs/…``
+        restait en arrière — un reload de page après crash montrait
+        une UI incohérente avec les events réellement diffusés.
+
+        Cette méthode wrap les deux writes dans ``BEGIN IMMEDIATE`` /
+        ``COMMIT`` : soit les deux passent, soit aucun.
+
+        Les kwargs de progression suivent exactement la sémantique de
+        :meth:`update_progress` (``None`` = champ ignoré).
+        """
+        # Pré-calcul du fragment UPDATE (skippé si aucun champ).
+        prog_fields: list[str] = []
+        prog_values: list[Any] = []
+        if progress is not None:
+            prog_fields.append("progress = ?")
+            prog_values.append(float(progress))
+        if current_engine is not None:
+            prog_fields.append("current_engine = ?")
+            prog_values.append(current_engine)
+        if total_docs is not None:
+            prog_fields.append("total_docs = ?")
+            prog_values.append(int(total_docs))
+        if processed_docs is not None:
+            prog_fields.append("processed_docs = ?")
+            prog_values.append(int(processed_docs))
+        if output_path is not None:
+            prog_fields.append("output_path = ?")
+            prog_values.append(output_path)
+
+        with self._conn() as c, self._transaction(c):
+            cur = c.execute(
+                """
+                INSERT INTO job_events (job_id, seq, kind, data_json, ts)
+                VALUES (
+                    ?,
+                    COALESCE(
+                        (SELECT MAX(seq) FROM job_events WHERE job_id = ?),
+                        0
+                    ) + 1,
+                    ?, ?, ?
+                )
+                RETURNING seq
+                """,
+                (
+                    job_id, job_id, kind,
+                    json.dumps(data, ensure_ascii=False), time.time(),
+                ),
+            )
+            row = cur.fetchone()
+            seq = int(row[0]) if row else 1
+
+            if prog_fields:
+                prog_fields.append("updated_at = ?")
+                prog_values.append(time.time())
+                prog_values.append(job_id)
+                # nosec B608 — ``prog_fields`` ne contient que des
+                # littéraux internes (cf. ``update_progress``).
+                c.execute(
+                    f"UPDATE jobs SET {', '.join(prog_fields)} "
+                    f"WHERE job_id = ?",  # nosec B608
+                    prog_values,
+                )
+
+        return seq
 
     def get_events_after(self, job_id: str, last_seq: int = 0) -> list[dict]:
         """Retourne les événements ``seq > last_seq``, triés croissant."""
