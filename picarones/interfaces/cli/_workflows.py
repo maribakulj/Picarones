@@ -394,6 +394,74 @@ def run_cmd(
 # L'option ``--profile`` reste disponible mais le défaut change pour
 # chaque commande.
 
+def _b3_final_options(func: Callable) -> Callable:
+    """Decorator Click qui ajoute les 5 options B3-final à une commande.
+
+    Phase D1 (audit B3-final, mai 2026) — mutualise les options
+    ``--views`` / ``--expose-alto`` / ``--char-exclude`` /
+    ``--partial-dir`` / ``--entity-extractor`` ajoutées aux commandes
+    ``run`` + ``diagnose`` + ``economics`` + ``edition`` + ``compare``
+    + ``robustness``.
+
+    Avant cette correction, seule ``run`` exposait les options ; les
+    workflows secondaires ignoraient silencieusement la valeur métier
+    B5/B6 (utilisateur invoquant ``picarones diagnose`` ne pouvait
+    pas activer AltoView).
+    """
+    func = click.option(
+        "--entity-extractor",
+        "entity_extractor",
+        default=None,
+        metavar="DOTTED_PATH",
+        help=(
+            "Dotted path Python vers une factory d'extracteur "
+            "d'entités (ex : ``mypkg.ner:SpacyExtractor``).  "
+            "Phase B2.4."
+        ),
+    )(func)
+    func = click.option(
+        "--partial-dir",
+        "partial_dir",
+        default=None,
+        type=click.Path(resolve_path=True),
+        help=(
+            "Répertoire pour la reprise sur interruption.  "
+            "Phase B2.3."
+        ),
+    )(func)
+    func = click.option(
+        "--char-exclude",
+        "char_exclude",
+        default=None,
+        metavar="CHARS",
+        help=(
+            "Caractères à exclure du calcul CER/WER.  Phase B2.5."
+        ),
+    )(func)
+    func = click.option(
+        "--expose-alto",
+        "expose_alto",
+        is_flag=True,
+        default=False,
+        help=(
+            "Active la production native d'ALTO XML par Tesseract.  "
+            "Phase B5 — combiné avec ``--views alto_documentary``, "
+            "débloque les métriques structurelles ALTO."
+        ),
+    )(func)
+    func = click.option(
+        "--views",
+        default="text_final",
+        show_default=True,
+        metavar="VIEW1,VIEW2,…",
+        help=(
+            "Liste des vues d'évaluation : 'text_final', "
+            "'alto_documentary', 'searchability'.  Phase B6."
+        ),
+    )(func)
+    return func
+
+
 def _html_path_from_json(json_path: str) -> str:
     """Convertit un chemin ``results.json`` en chemin ``results.html``.
 
@@ -421,6 +489,16 @@ def _run_workflow(
     workflow_label: str,
     generate_html: bool = True,
     html_lang: str = "fr",
+    # Phase D1 (audit B3-final, mai 2026) — propagation des options
+    # B3-final aux workflows secondaires (diagnose/economics/edition/
+    # compare/robustness).  Avant cette correction, ces commandes
+    # ignoraient silencieusement les nouvelles features.
+    views: tuple[str, ...] = ("text_final",),
+    expose_alto: bool = False,
+    char_exclude: str | None = None,
+    partial_dir: str | None = None,
+    entity_extractor: str | None = None,
+    normalization_profile: Any | None = None,
 ) -> None:
     """Implémentation commune des commandes ``run``, ``diagnose``,
     ``economics`` et ``edition``.
@@ -438,6 +516,12 @@ def _run_workflow(
     qui n'était jamais générée).  Passer ``generate_html=False``
     permet de désactiver pour les usages CI/scripts qui ne veulent
     que le JSON.
+
+    Phase D1 (audit B3-final) : tous les paramètres B3-final
+    (``views``, ``expose_alto``, ``char_exclude``, ``partial_dir``,
+    ``entity_extractor``, ``normalization_profile``) sont désormais
+    propagés.  Les wrappers Click (diagnose/economics/etc.) doivent
+    exposer les options correspondantes.
     """
     _setup_logging(verbose)
 
@@ -456,7 +540,9 @@ def _run_workflow(
     ocr_engines = []
     for name in engine_names:
         try:
-            engine = _engine_from_name(name, lang=lang, psm=psm)
+            engine = _engine_from_name(
+                name, lang=lang, psm=psm, expose_alto=expose_alto,
+            )
             ocr_engines.append(engine)
         except click.BadParameter as exc:
             click.echo(f"Erreur moteur : {exc}", err=True)
@@ -468,10 +554,18 @@ def _run_workflow(
 
     click.echo(f"Moteurs : {', '.join(e.name for e in ocr_engines)}")
     click.echo(f"Profil de métriques : {profile}")
+    if expose_alto:
+        click.echo("ALTO XML activé pour Tesseract (--expose-alto).")
+    click.echo(f"Vues : {', '.join(views)}")
 
     result = _run_orchestrator_for_cli(
         corp, ocr_engines,
+        views=views,
         profile=profile,
+        normalization_profile=normalization_profile,
+        char_exclude=char_exclude,
+        partial_dir=partial_dir,
+        entity_extractor=entity_extractor,
         output_json=output,
     )
 
@@ -541,9 +635,12 @@ def _run_workflow(
 @click.option("--html-lang", default="fr", show_default=True,
               type=click.Choice(["fr", "en"]),
               help="Langue du rapport HTML")
+@_b3_final_options
 def diagnose_cmd(
     corpus: str, engines: str, output: str, lang: str, psm: int,
     no_progress: bool, verbose: bool, no_html: bool, html_lang: str,
+    views: str, expose_alto: bool, char_exclude: str | None,
+    partial_dir: str | None, entity_extractor: str | None,
 ) -> None:
     """Workflow diagnostic : bench + leviers d'amélioration + image_predictive.
 
@@ -555,7 +652,12 @@ def diagnose_cmd(
 
     Phase 4.5 du chantier post-rewrite : génère désormais le HTML
     automatiquement à côté du JSON (``--no-html`` pour skipper).
+
+    Phase D1 (audit B3-final) : accepte les options B3-final
+    (--views, --expose-alto, --char-exclude, --partial-dir,
+    --entity-extractor).
     """
+    views_tuple = tuple(v.strip() for v in views.split(",") if v.strip())
     _run_workflow(
         corpus=corpus, engines=engines, output=output,
         lang=lang, psm=psm,
@@ -564,6 +666,11 @@ def diagnose_cmd(
         workflow_label="diagnose",
         generate_html=not no_html,
         html_lang=html_lang,
+        views=views_tuple,
+        expose_alto=expose_alto,
+        char_exclude=char_exclude,
+        partial_dir=partial_dir,
+        entity_extractor=entity_extractor,
     )
 
 
@@ -595,19 +702,15 @@ def diagnose_cmd(
 @click.option("--html-lang", default="fr", show_default=True,
               type=click.Choice(["fr", "en"]),
               help="Langue du rapport HTML")
+@_b3_final_options
 def economics_cmd(
     corpus: str, engines: str, output: str, lang: str, psm: int,
     no_progress: bool, verbose: bool, no_html: bool, html_lang: str,
+    views: str, expose_alto: bool, char_exclude: str | None,
+    partial_dir: str | None, entity_extractor: str | None,
 ) -> None:
-    """Workflow économique : bench + throughput effectif + (cost projection).
-
-    Active le profil ``economics`` (chantier 2) qui se concentre sur
-    les métriques de décision budget : pages/h utilisable (intégrant
-    la correction humaine HTR-United à 5 s/erreur), coût marginal par
-    erreur évitée. La vue HTML « Coût et performance » (chantier 3)
-    est désormais générée automatiquement (Phase 4.5 chantier
-    post-rewrite — ``--no-html`` pour skipper).
-    """
+    """Workflow économique : bench + throughput effectif + (cost projection)."""
+    views_tuple = tuple(v.strip() for v in views.split(",") if v.strip())
     _run_workflow(
         corpus=corpus, engines=engines, output=output,
         lang=lang, psm=psm,
@@ -616,6 +719,11 @@ def economics_cmd(
         workflow_label="economics",
         generate_html=not no_html,
         html_lang=html_lang,
+        views=views_tuple,
+        expose_alto=expose_alto,
+        char_exclude=char_exclude,
+        partial_dir=partial_dir,
+        entity_extractor=entity_extractor,
     )
 
 
@@ -647,22 +755,15 @@ def economics_cmd(
 @click.option("--html-lang", default="fr", show_default=True,
               type=click.Choice(["fr", "en"]),
               help="Langue du rapport HTML")
+@_b3_final_options
 def edition_cmd(
     corpus: str, engines: str, output: str, lang: str, psm: int,
     no_progress: bool, verbose: bool, no_html: bool, html_lang: str,
+    views: str, expose_alto: bool, char_exclude: str | None,
+    partial_dir: str | None, entity_extractor: str | None,
 ) -> None:
-    """Workflow édition critique : bench + métriques philologiques.
-
-    Active le profil ``philological`` (chantier 2) qui inclut les
-    modules philologiques (unicode_blocks, abbreviations, MUFI,
-    early_modern_typography, modern_archives, roman_numerals) et la
-    vue HTML « Taxonomie avancée » (chantier 3) avec comparaison
-    miroir leader vs runner-up. Cible : éditeurs de chartes,
-    paléographes, archivistes.
-
-    Phase 4.5 du chantier post-rewrite : génère le HTML
-    automatiquement (``--no-html`` pour skipper).
-    """
+    """Workflow édition critique : bench + métriques philologiques."""
+    views_tuple = tuple(v.strip() for v in views.split(",") if v.strip())
     _run_workflow(
         corpus=corpus, engines=engines, output=output,
         lang=lang, psm=psm,
@@ -671,6 +772,11 @@ def edition_cmd(
         workflow_label="edition",
         generate_html=not no_html,
         html_lang=html_lang,
+        views=views_tuple,
+        expose_alto=expose_alto,
+        char_exclude=char_exclude,
+        partial_dir=partial_dir,
+        entity_extractor=entity_extractor,
     )
 
 
