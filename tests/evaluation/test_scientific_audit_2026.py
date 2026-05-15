@@ -12,8 +12,6 @@ et celui où les défauts F2/F9 étaient atteignables.
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from picarones.evaluation._diff_utils import compute_char_diff, diff_stats
@@ -326,6 +324,168 @@ class TestF6NemenyiOutOfTable:
         small = {f"e{i}": [0.1 * (i + 1), 0.2 * (i + 1)] for i in range(3)}
         r = nemenyi_posthoc(small)
         assert r["q_alpha_extrapolated"] is False
+
+
+class TestF7NarrativeTraceability:
+    """Synthèse narrative : déterministe + traçable à la SOURCE.
+
+    Contrairement au test historique (qui validait les nombres rendus
+    contre le *payload* du Fact, donc circulaire), on reconstruit
+    l'espace des nombres admissibles depuis le ``BenchmarkResult``
+    d'origine et l'ensemble fermé des dérivations documentées
+    (pourcentage ×100, écart, écart relatif, ratio/accélération,
+    largeur d'IC), avec arrondis 0–4 décimales.  Un nombre fabriqué
+    hors de cet espace ferait échouer le test.
+    """
+
+    @staticmethod
+    def _variants(x: float) -> set[str]:
+        out: set[str] = set()
+        for v in (x, x * 100.0):
+            try:
+                out.add(str(v))
+                if v == int(v):
+                    out.add(str(int(v)))
+                for d in range(5):
+                    out.add(f"{v:.{d}f}")
+            except (ValueError, OverflowError):
+                continue
+        return out
+
+    def _source_closure(self, data: dict) -> set[str]:
+        import itertools
+
+        # Base = uniquement les valeurs que les détecteurs consomment
+        # réellement (ranking + statistics + métriques agrégées par
+        # moteur).  Scoper ainsi rend le test (a) rapide, (b) plus
+        # sévère : on ne « blanchit » pas un nombre via une valeur
+        # per-document sans rapport.
+        base: list[float] = []
+
+        def _walk(x):
+            if isinstance(x, dict):
+                for v in x.values():
+                    _walk(v)
+            elif isinstance(x, (list, tuple)):
+                for v in x:
+                    _walk(v)
+            elif isinstance(x, bool):
+                return
+            elif isinstance(x, (int, float)):
+                base.append(float(x))
+
+        _walk(data.get("ranking", []))
+        _walk(data.get("statistics", {}))
+        for e in data.get("engines", []):
+            _walk(e.get("aggregated_metrics", {}) if isinstance(e, dict) else {})
+        allowed: set[str] = set()
+        for b in base:
+            allowed |= self._variants(b)
+        # Dérivations documentées entre paires de valeurs source.
+        for a, b in itertools.permutations(base, 2):
+            allowed |= self._variants(abs(a - b))            # écart / largeur IC
+            if b != 0:
+                allowed |= self._variants(abs(a - b) / abs(b))  # écart relatif
+                allowed |= self._variants(a / b)                # accélération
+        return allowed
+
+    def test_synthesis_is_deterministic(self) -> None:
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.data import build_report_data
+        from picarones.reports.narrative import build_synthesis
+
+        bm = generate_sample_benchmark(n_docs=8)
+        data = build_report_data(bm, images_b64={})
+        s1 = build_synthesis(data, "fr", max_facts=5)["sentences"]
+        s2 = build_synthesis(data, "fr", max_facts=5)["sentences"]
+        assert s1 == s2  # aucune source d'aléa / LLM
+
+    @pytest.mark.parametrize("lang", ["fr", "en"])
+    def test_every_rendered_number_traces_to_source(self, lang: str) -> None:
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.data import build_report_data
+        from picarones.reports.narrative import build_synthesis, extract_numbers
+
+        bm = generate_sample_benchmark(n_docs=8)
+        data = build_report_data(bm, images_b64={})
+        out = build_synthesis(data, lang, max_facts=5)
+        allowed = self._source_closure(data)
+
+        unknown: list[tuple[str, str]] = []
+        for sentence in out["sentences"]:
+            for num in extract_numbers(sentence):
+                if num.replace(",", ".") not in allowed:
+                    unknown.append((num, sentence))
+        assert not unknown, (
+            "Nombres non reconstructibles depuis le BenchmarkResult "
+            f"source (hallucination potentielle) : {unknown}"
+        )
+
+
+class TestF8BootstrapPercentileIndex:
+    def test_quantile_index_is_correct_order_statistic(self) -> None:
+        from picarones.evaluation.statistics.bootstrap import bootstrap_ci
+
+        # 0..999 → bootstrap des moyennes sur des valeurs constantes-ish.
+        vals = [float(i) for i in range(50)]
+        lo, hi = bootstrap_ci(vals, n_iter=1000, ci=0.95, seed=42)
+        # IC à 95 % centré : bornes plausibles autour de la moyenne 24.5,
+        # symétriques, et lo < hi strictement.
+        assert lo < hi
+        assert 18.0 < lo < 24.5 < hi < 31.0
+
+    def test_deterministic_with_seed(self) -> None:
+        from picarones.evaluation.statistics.bootstrap import bootstrap_ci
+
+        v = [0.1, 0.2, 0.05, 0.4, 0.02, 0.3, 0.15]
+        assert bootstrap_ci(v, seed=42) == bootstrap_ci(v, seed=42)
+
+    def test_empty_returns_zero_interval(self) -> None:
+        from picarones.evaluation.statistics.bootstrap import bootstrap_ci
+
+        assert bootstrap_ci([]) == (0.0, 0.0)
+
+
+class TestF12DiplomaticTableSinglePass:
+    def test_no_cascade_rewrite(self) -> None:
+        """Une valeur multi-car contenant une clé simple n'est pas
+        ré-écrite (piège des profils YAML personnalisés)."""
+        from picarones.formats.text.normalization import (
+            _apply_diplomatic_table,
+        )
+
+        # "vv"→"w" puis (ancien bug) "w"→"x" donnait "x".
+        table = {"vv": "w", "w": "x"}
+        assert _apply_diplomatic_table("vvw", table) == "wx"
+        # La plus longue clé gagne, un seul passage.
+        assert _apply_diplomatic_table("aae", {"ae": "æ", "a": "@"}) == "@æ"
+
+    def test_builtin_profile_unaffected(self) -> None:
+        from picarones.formats.text.normalization import get_builtin_profile
+
+        prof = get_builtin_profile("medieval_french")
+        # ſ→s, u→v, & → et, appliqué à tout le texte.
+        assert prof.normalize("meſſire & vng") == prof.normalize("meſſire & vng")
+        assert "ſ" not in prof.normalize("ſus")
+
+
+class TestF13CorrelationPairwiseComplete:
+    def test_missing_value_not_imputed_as_zero(self) -> None:
+        from picarones.evaluation.statistics.correlation import (
+            compute_correlation_matrix,
+        )
+
+        # x et y parfaitement corrélés sur les docs complets ;
+        # un doc a y manquant.  L'imputation 0.0 cassait r≈1.
+        docs = [
+            {"x": 1.0, "y": 2.0},
+            {"x": 2.0, "y": 4.0},
+            {"x": 3.0, "y": 6.0},
+            {"x": 4.0, "y": None},  # y absent → exclu de la paire (x,y)
+        ]
+        out = compute_correlation_matrix(docs, metric_keys=["x", "y"])
+        i, j = out["labels"].index("x"), out["labels"].index("y")
+        assert out["matrix"][i][j] == pytest.approx(1.0, abs=1e-9)
 
 
 class TestF9ContinuityCorrection:

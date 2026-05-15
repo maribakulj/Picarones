@@ -3,6 +3,15 @@
 Méthode de rééchantillonnage non-paramétrique. Pas d'hypothèse de
 distribution normale — adapté aux distributions asymétriques de CER
 typiques des corpus patrimoniaux.
+
+Méthode : **bootstrap percentile** (Efron).  C'est volontairement le
+percentile et non le BCa : déterministe (graine fixe), simple à
+auditer, suffisant pour un IC indicatif d'aide à la décision.  Pour
+une distribution fortement asymétrique le BCa serait plus précis aux
+queues — limite documentée, pas un bug.  Audit scientifique F8 :
+l'indice de quantile est désormais la statistique d'ordre correcte
+``round(q·(n_iter−1))`` (l'ancien ``int(q·n_iter)`` décalait la borne
+haute d'environ un rang).
 """
 
 from __future__ import annotations
@@ -39,9 +48,13 @@ def bootstrap_ci(
         means.append(sum(sample) / n)
     means.sort()
     alpha = (1.0 - ci) / 2.0
-    lo_idx = max(0, int(alpha * n_iter))
-    hi_idx = min(n_iter - 1, int((1.0 - alpha) * n_iter))
-    return (means[lo_idx], means[hi_idx])
+    # Statistique d'ordre : quantile q sur un tableau trié 0-indexé de
+    # taille n_iter → indice round(q·(n_iter−1)), borné (audit F8).
+    def _q_index(q: float) -> int:
+        idx = round(q * (n_iter - 1))
+        return max(0, min(n_iter - 1, idx))
+
+    return (means[_q_index(alpha)], means[_q_index(1.0 - alpha)])
 
 
 __all__ = ["bootstrap_ci"]
