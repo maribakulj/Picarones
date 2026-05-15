@@ -136,16 +136,18 @@ class TestPerAbbreviationBreakdown:
 
 
 class TestDegenerateCases:
+    # Audit Classe B : aucune abréviation dans la GT ⇒ scores NON
+    # APPLICABLES ⇒ None (omis en agrégation), pas 0.0.
     def test_gt_without_abbreviation(self) -> None:
         m = compute_abbreviation_metrics("Lorem ipsum dolor", "Lorem ipsum")
         assert m["n_abbreviations_in_reference"] == 0
-        assert m["strict_score"] == 0.0
-        assert m["expansion_score"] == 0.0
+        assert m["strict_score"] is None
+        assert m["expansion_score"] is None
 
     def test_empty_inputs(self) -> None:
         m = compute_abbreviation_metrics("", "")
         assert m["n_abbreviations_in_reference"] == 0
-        assert m["strict_score"] == 0.0
+        assert m["strict_score"] is None
 
     def test_none_inputs(self) -> None:
         m = compute_abbreviation_metrics(None, None)

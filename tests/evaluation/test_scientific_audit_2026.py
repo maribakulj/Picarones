@@ -25,6 +25,125 @@ from picarones.evaluation.statistics.wilcoxon import (
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# Audit 2 — passe systématique sur les métriques non auditées (F14–F19)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+class TestF14TaxonomyUnbiased:
+    """La taxonomie n'abandonne plus la classification des
+    substitutions dans un bloc inégal ; total_errors ≈ distance mot."""
+
+    def test_substitution_adjacent_to_deletion_not_discarded(self) -> None:
+        from rapidfuzz.distance import Levenshtein
+
+        from picarones.evaluation.metrics.taxonomy import classify_errors
+
+        gt = "le roy de France et dAngleterre"
+        hyp = "le roi de Frace dAngleterre"  # subst + délétion
+        r = classify_errors(gt, hyp)
+        # Sous l'ancien code, le bloc replace inégal ne comptait que
+        # l'écart de longueur en segmentation et jetait les
+        # substitutions → total sous-estimé.
+        assert r.total_errors == Levenshtein.distance(gt.split(), hyp.split())
+        assert r.counts["segmentation_error"] == 0  # vraie subst, pas seg
+
+    def test_real_segmentation_detected(self) -> None:
+        from picarones.evaluation.metrics.taxonomy import classify_errors
+
+        r = classify_errors("le dit acte", "ledit acte")
+        assert r.counts["segmentation_error"] == 1
+
+    def test_case_error_not_misread_as_segmentation(self) -> None:
+        from picarones.evaluation.metrics.taxonomy import classify_errors
+
+        # Même nombre de tokens, concat égale en casefold : doit rester
+        # une erreur de casse, PAS une segmentation.
+        r = classify_errors("Bonjour Monde", "bonjour monde")
+        assert r.counts["case_error"] >= 1
+        assert r.counts["segmentation_error"] == 0
+
+
+class TestF15LineAlignment:
+    def test_dropped_line_does_not_corrupt_distribution(self) -> None:
+        from picarones.evaluation.metrics.line_metrics import (
+            compute_line_metrics,
+        )
+
+        gt = "alpha bravo\ncharlie delta\necho foxtrot\ngolf hotel"
+        hyp = "alpha bravo\necho foxtrot\ngolf hotel"  # ligne 2 perdue
+        lm = compute_line_metrics(gt, hyp)
+        # Seule la ligne réellement perdue est à 1.0 ; les autres 0.0
+        # (sous l'ancien zip positionnel, lignes 2-4 ~100 % en cascade).
+        assert lm.cer_per_line == [0.0, 1.0, 0.0, 0.0]
+
+
+class TestF18OverNormalizationAlignment:
+    def test_robust_to_ocr_deletion(self) -> None:
+        from picarones.evaluation.metrics.over_normalization import (
+            detect_over_normalization,
+        )
+
+        gt = "le roy de France et de Navarre"
+        ocr = "le de France et de Navarre"          # OCR a sauté 'roy'
+        llm = "le roy de france et de Navarre"       # LLM : France→france
+        r = detect_over_normalization(gt, ocr, llm)
+        # L'index positionnel se serait désynchronisé ; l'alignement
+        # isole la seule vraie sur-normalisation.
+        assert r.over_normalized_count == 1
+        assert r.over_normalized_passages[0]["gt"] == "France"
+
+
+class TestF16NotApplicableIsNone:
+    """« Pas de signal » ⇒ None (non applicable), jamais 0.0/1.0,
+    et omis par compute_at_junction."""
+
+    def test_philological_modules_return_none_without_signal(self) -> None:
+        from picarones.evaluation.metrics.abbreviations import (
+            compute_abbreviation_metrics,
+        )
+        from picarones.evaluation.metrics.mufi import compute_mufi_coverage
+        from picarones.evaluation.metrics.roman_numerals import (
+            compute_roman_numeral_metrics,
+        )
+
+        assert compute_mufi_coverage("hello", "hello")["coverage"] is None
+        assert (
+            compute_abbreviation_metrics("abc", "abc")["strict_score"]
+            is None
+        )
+        assert (
+            compute_roman_numeral_metrics("abc", "abc")["global_strict_score"]
+            is None
+        )
+
+    def test_junction_omits_none_metrics(self) -> None:
+        from picarones.domain.artifacts import ArtifactType
+        from picarones.evaluation.metric_registry import compute_at_junction
+
+        # Texte sans aucun signal MUFI/roman/etc. : les métriques
+        # philologiques non applicables doivent être ABSENTES du
+        # résultat de jonction (ni 0.0 ni None présent).
+        res = compute_at_junction(
+            "hello world", "hello world",
+            (ArtifactType.TEXT, ArtifactType.TEXT),
+        )
+        for v in res.values():
+            assert v is not None  # aucune None ne subsiste
+
+
+class TestF19DifficultyHonestDoc:
+    def test_module_docstring_no_longer_claims_objective(self) -> None:
+        import picarones.evaluation.metrics.difficulty as d
+
+        doc = d.__doc__ or ""
+        # La formulation trompeuse « difficulté objective / indépendant
+        # des moteurs » a été retirée (composante variance = dépend des
+        # moteurs exécutés).
+        assert "heuristique" in doc.lower()
+        assert "non intrinsèque" in doc or "dépend des moteurs" in doc
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # F1 — CER/WER micro-moyenné (pondéré par la longueur)
 # ──────────────────────────────────────────────────────────────────────────
 

@@ -175,10 +175,12 @@ class TestComputeRareTokenRecall:
         assert m["missed_tokens"] == ["dupont"]
 
     def test_no_rare_in_gt(self) -> None:
+        # Audit Classe B : aucun token rare dans la GT ⇒ rappel NON
+        # APPLICABLE ⇒ None (omis en agrégation), pas 0.0.
         rare = {"alice"}
         m = compute_rare_token_recall("hello world", "hello world", rare)
         assert m["n_rare_tokens_in_reference"] == 0
-        assert m["recall"] == 0.0
+        assert m["recall"] is None
         assert m["missed_tokens"] == []
 
     def test_empty_hyp(self) -> None:
@@ -188,9 +190,11 @@ class TestComputeRareTokenRecall:
         assert sorted(m["missed_tokens"]) == ["alice", "bob"]
 
     def test_none_inputs(self) -> None:
+        # Audit Classe B : GT None ⇒ aucun token rare ⇒ rappel NON
+        # APPLICABLE ⇒ None (omis en agrégation), pas 0.0.
         rare = {"alice"}
         m = compute_rare_token_recall(None, None, rare)
-        assert m["recall"] == 0.0
+        assert m["recall"] is None
         assert m["n_rare_tokens_in_reference"] == 0
 
     def test_case_insensitive_default(self) -> None:

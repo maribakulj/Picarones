@@ -213,6 +213,29 @@ def compute_layout_metrics(
     refs = [_to_region(r) for r in (reference_regions or [])]
     hyps = [_to_region(h) for h in (hypothesis_regions or [])]
 
+    # Audit Classe B : la GT ne contient aucune région de mise en page
+    # ⇒ P/R/F1 **non applicables** ⇒ ``None`` (omis en agrégation), et
+    # non 0.0 qui comptait un document sans signal layout comme un
+    # échec.  Une GT avec régions mais hypothèse vide reste un vrai
+    # échec (F1 = 0, traité plus bas).
+    if not refs:
+        return {
+            "global": {
+                "precision": None, "recall": None,
+                "f1": None, "support": 0,
+            },
+            "per_type": {},
+            "true_positives": 0,
+            "false_positives": len(hyps),
+            "false_negatives": 0,
+            "missed_regions": [],
+            "hallucinated_regions": [
+                {"id": h.id, "type": h.type, "bbox": list(h.bbox)}
+                for h in hyps
+            ],
+            "iou_threshold": iou_threshold,
+        }
+
     matches, unmatched_refs, unmatched_hyps = _align_regions(
         refs, hyps, iou_threshold,
     )

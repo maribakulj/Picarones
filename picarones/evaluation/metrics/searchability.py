@@ -208,14 +208,20 @@ def compute_searchability(
         "la qualité pour la recherche plein-texte (Elastic, Solr)."
     ),
 )
-def searchability_recall_metric(reference: str, hypothesis: str) -> float:
-    """Variante scalaire pour le registre typé : retourne le
-    rappel en [0, 1], ou ``0.0`` si la GT est vide (convention
-    cohérente avec rare_token_recall Sprint 71).
+def searchability_recall_metric(
+    reference: str, hypothesis: str,
+) -> Optional[float]:
+    """Variante scalaire pour le registre typé : rappel ∈ [0, 1], ou
+    ``None`` si la GT n'a aucun token (métrique non applicable).
+
+    Audit scientifique Classe B : ne plus écraser ``None`` en ``0.0``.
+    ``compute_searchability`` renvoie déjà correctement ``recall=None``
+    ; le collapsing en 0.0 réinjectait un faux échec dans le registre
+    typé / les jonctions.  ``None`` est désormais propagé et omis en
+    agrégation.
     """
     result = compute_searchability(reference, hypothesis)
-    recall = result.get("recall")
-    return 0.0 if recall is None else recall
+    return result.get("recall")
 
 
 __all__ = [

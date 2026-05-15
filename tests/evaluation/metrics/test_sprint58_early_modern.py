@@ -169,16 +169,18 @@ class TestComputeMetrics:
 
 
 class TestDegenerateCases:
+    # Audit Classe B : aucun marqueur typographique dans la GT ⇒
+    # préservation NON APPLICABLE ⇒ None (omis en agrégation), pas 0.0.
     def test_gt_without_markers(self) -> None:
         m = compute_early_modern_metrics("hello", "hello")
         assert m["n_markers_reference"] == 0
-        assert m["global_preservation"] == 0.0
+        assert m["global_preservation"] is None
         assert m["per_category"] == {}
 
     def test_empty_gt(self) -> None:
         m = compute_early_modern_metrics("", "anything")
         assert m["n_markers_reference"] == 0
-        assert m["global_preservation"] == 0.0
+        assert m["global_preservation"] is None
 
     def test_none_inputs(self) -> None:
         m = compute_early_modern_metrics(None, None)

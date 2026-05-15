@@ -192,10 +192,13 @@ class TestRegistry:
         v = searchability_recall_metric("hello world", "helo world")
         assert v == 1.0
 
-    def test_metric_returns_zero_for_empty_gt(self) -> None:
-        # Convention : registre typé attend un float, pas None
+    def test_metric_returns_none_for_empty_gt(self) -> None:
+        # Audit Classe B : GT sans token ⇒ rappel NON APPLICABLE ⇒
+        # le wrapper du registre typé renvoie None (omis en jonction
+        # par compute_at_junction), au lieu d'écraser en 0.0 — ce qui
+        # réinjectait un faux échec dans les agrégats.
         v = searchability_recall_metric("", "anything")
-        assert v == 0.0
+        assert v is None
 
     def test_metric_via_compute_at_junction(self) -> None:
         from picarones.evaluation.metric_registry import compute_at_junction

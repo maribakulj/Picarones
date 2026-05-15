@@ -215,10 +215,13 @@ def compute_early_modern_metrics(
     n_total = len(markers)
 
     if n_total == 0:
+        # Audit Classe B : aucun marqueur typographique dans la GT ⇒
+        # non applicable ⇒ ``global_preservation = None`` (omis en
+        # agrégation, ni 0.0 ni 1.0).
         return {
             "n_markers_reference": 0,
             "n_markers_preserved": 0,
-            "global_preservation": 0.0,
+            "global_preservation": None,
             "per_category": {},
             "missed_markers": [],
         }

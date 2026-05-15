@@ -453,12 +453,14 @@ def compute_modern_archives_metrics(
     detected = detect_modern_markers(ref)
     n_total = len(detected)
     if n_total == 0:
+        # Audit Classe B : aucun marqueur d'archive moderne dans la GT
+        # ⇒ scores non applicables ⇒ None (omis en agrégation).
         return {
             "n_markers_reference": 0,
             "n_strict_preserved": 0,
             "n_expansion_preserved": 0,
-            "global_strict_score": 0.0,
-            "global_expansion_score": 0.0,
+            "global_strict_score": None,
+            "global_expansion_score": None,
             "per_category": {},
             "missed_markers": [],
         }

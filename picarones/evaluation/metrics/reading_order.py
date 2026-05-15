@@ -133,6 +133,27 @@ def compute_reading_order_metrics(
     ref_pairs = _ordered_pairs(ref)
     hyp_pairs = _ordered_pairs(hyp)
 
+    # Audit Classe B : la GT ne fournit aucune paire ordonnée (< 2
+    # régions distinctes) ⇒ l'ordre de lecture n'est **pas évaluable**
+    # ⇒ scores ``None`` (omis en agrégation), au lieu de 0.0 qui
+    # comptait à tort comme un échec un document sans ordre à juger.
+    if not ref_pairs:
+        ref_set0 = set(ref)
+        hyp_set0 = set(hyp)
+        return {
+            "precision": None,
+            "recall": None,
+            "f1": None,
+            "true_positives": 0,
+            "false_positives": len(hyp_pairs),
+            "false_negatives": 0,
+            "n_ref_pairs": 0,
+            "n_hyp_pairs": len(hyp_pairs),
+            "common_regions": sorted(ref_set0 & hyp_set0),
+            "ref_only_regions": sorted(ref_set0 - hyp_set0),
+            "hyp_only_regions": sorted(hyp_set0 - ref_set0),
+        }
+
     tp = len(ref_pairs & hyp_pairs)
     fn = len(ref_pairs - hyp_pairs)
     fp = len(hyp_pairs - ref_pairs)

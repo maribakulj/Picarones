@@ -248,12 +248,14 @@ def compute_abbreviation_metrics(
     abbreviations = detect_abbreviations(ref)
     n = len(abbreviations)
     if n == 0:
+        # Audit Classe B : aucune abréviation dans la GT ⇒ scores non
+        # applicables ⇒ None (omis en agrégation, ni 0.0 ni 1.0).
         return {
             "n_abbreviations_in_reference": 0,
             "n_strict_preserved": 0,
             "n_expansion_preserved": 0,
-            "strict_score": 0.0,
-            "expansion_score": 0.0,
+            "strict_score": None,
+            "expansion_score": None,
             "per_abbreviation": [],
         }
 

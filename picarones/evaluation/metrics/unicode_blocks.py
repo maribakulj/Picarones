@@ -156,9 +156,11 @@ def compute_unicode_block_accuracy(
     n_ref = len(ref)
 
     if n_ref == 0:
+        # Audit Classe B : GT vide ⇒ précision non applicable ⇒ None
+        # (omis en agrégation, ni 0.0 ni 1.0).
         return {
             "per_block": {},
-            "global_accuracy": 0.0,
+            "global_accuracy": None,
             "n_chars_reference": 0,
         }
 

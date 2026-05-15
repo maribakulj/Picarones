@@ -110,17 +110,18 @@ class TestCanonicalCases:
 
 class TestDegenerateCases:
     def test_both_empty(self) -> None:
+        # Audit Classe B : aucune paire ordonnée en GT ⇒ NON ÉVALUABLE
+        # ⇒ f1 None (omis en agrégation), pas 0.0.
         m = compute_reading_order_metrics([], [])
-        # Convention : pas de récompense gratuite
-        assert m["f1"] == 0.0
+        assert m["f1"] is None
         assert m["true_positives"] == 0
 
     def test_only_reference_empty(self) -> None:
+        # Audit Classe B : la GT ne fournit aucune paire ordonnée ⇒
+        # ordre NON ÉVALUABLE ⇒ f1 None (omis en agrégation), pas 0.0.
         m = compute_reading_order_metrics([], ["a", "b"])
-        assert m["f1"] == 0.0
-        # TP = 0 par construction
+        assert m["f1"] is None
         assert m["true_positives"] == 0
-        # 1 paire FP côté hypothèse
         assert m["false_positives"] == 1
 
     def test_only_hypothesis_empty(self) -> None:
@@ -130,15 +131,15 @@ class TestDegenerateCases:
         assert m["false_negatives"] == 1
 
     def test_single_region(self) -> None:
-        # Pas de paire possible avec une seule région
+        # < 2 régions ⇒ aucune paire ⇒ NON ÉVALUABLE ⇒ f1 None.
         m = compute_reading_order_metrics(["a"], ["a"])
         assert m["n_ref_pairs"] == 0
         assert m["n_hyp_pairs"] == 0
-        assert m["f1"] == 0.0  # convention de bord (pas de paire à matcher)
+        assert m["f1"] is None
 
     def test_none_inputs(self) -> None:
         m = compute_reading_order_metrics(None, None)
-        assert m["f1"] == 0.0
+        assert m["f1"] is None
 
     def test_duplicates_treated_first_occurrence(self) -> None:
         # GT : a, b, a, c → on garde "a, b, c" (première occurrence)

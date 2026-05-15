@@ -201,10 +201,12 @@ def compute_rare_token_recall(
     )
     n_rare_in_ref = sum(ref_rare_counts.values())
     if n_rare_in_ref == 0:
+        # Audit Classe B : aucun token rare dans la GT ⇒ rappel non
+        # applicable ⇒ None (omis en agrégation, pas 0.0).
         return {
             "n_rare_tokens_in_reference": 0,
             "n_rare_tokens_recalled": 0,
-            "recall": 0.0,
+            "recall": None,
             "missed_tokens": [],
         }
 
@@ -237,8 +239,9 @@ def rare_token_recall(
     rare_tokens: Iterable[str],
     *,
     case_sensitive: bool = False,
-) -> float:
-    """Raccourci : retourne uniquement le rappel ∈ [0, 1]."""
+) -> Optional[float]:
+    """Raccourci : rappel ∈ [0, 1], ou ``None`` si la GT n'a aucun
+    token rare (non applicable — audit Classe B, omis en agrégation)."""
     return compute_rare_token_recall(
         reference, hypothesis, rare_tokens,
         case_sensitive=case_sensitive,

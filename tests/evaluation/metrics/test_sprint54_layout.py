@@ -198,8 +198,10 @@ class TestGreedyAlignment:
 
 class TestDegenerateCases:
     def test_both_empty(self) -> None:
+        # Audit Classe B : aucune région de mise en page dans la GT ⇒
+        # P/R/F1 NON APPLICABLES ⇒ None (omis en agrégation), pas 0.0.
         m = compute_layout_metrics([], [])
-        assert m["global"]["f1"] == 0.0
+        assert m["global"]["f1"] is None
         assert m["per_type"] == {}
 
     def test_only_reference_empty(self) -> None:
@@ -214,7 +216,7 @@ class TestDegenerateCases:
 
     def test_none_inputs(self) -> None:
         m = compute_layout_metrics(None, None)
-        assert m["global"]["f1"] == 0.0
+        assert m["global"]["f1"] is None
 
     def test_dict_input_coerced(self) -> None:
         # L'utilisateur peut passer des dicts au format {id, type, bbox}
