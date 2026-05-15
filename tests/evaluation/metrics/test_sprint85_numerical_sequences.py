@@ -128,11 +128,12 @@ class TestComputeMetrics:
         assert r["global_value_score"] == 0.0
         assert r["n_total"] >= 1
 
-    def test_empty_gt_returns_zero(self) -> None:
+    def test_empty_gt_returns_none(self) -> None:
         r = compute_numerical_sequence_metrics("", "anything")
-        # Pas de séquence en GT → scores 0 (pas de division par 0)
-        assert r["global_strict_score"] == 0.0
-        assert r["global_value_score"] == 0.0
+        # Audit Classe B : aucune séquence numérique en GT ⇒ scores
+        # NON APPLICABLES ⇒ None (omis en agrégation), pas 0.0.
+        assert r["global_strict_score"] is None
+        assert r["global_value_score"] is None
         assert r["n_total"] == 0
 
     def test_value_preserved_form_lost(self) -> None:

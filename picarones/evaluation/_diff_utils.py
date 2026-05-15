@@ -20,19 +20,19 @@ au niveau du package).
 
 from __future__ import annotations
 
-import difflib
-import re
 from typing import Any
 
+from rapidfuzz.distance import Levenshtein
 
-def _tokenize(text: str) -> list[str]:
-    """Découpe le texte en tokens (mots + ponctuation + espaces).
-
-    Les espaces sont conservés comme tokens pour permettre un
-    rendu fidèle dans le rapport HTML (la coloration mot-à-mot
-    doit pouvoir réintercaler les espaces d'origine).
-    """
-    return re.split(r"(\s+)", text)
+# Audit scientifique F4 — l'alignement utilise la distance de
+# **Levenshtein** (rapidfuzz, coûts substitution = insertion =
+# suppression = 1), et non plus ``difflib.SequenceMatcher``
+# (Ratcliff–Obershelp, qui maximise les blocs communs et ne minimise
+# pas le nombre d'éditions).  Conséquence : le diff affiché, les
+# ensembles de Venn et les clusters d'erreurs sont désormais
+# **cohérents avec le CER/WER** (jiwer, lui aussi Levenshtein) montrés
+# à côté.  Auparavant deux algorithmes différents produisaient des
+# comptes contradictoires dans le même rapport.
 
 
 def compute_word_diff(reference: str, hypothesis: str) -> list[dict[str, Any]]:
@@ -53,12 +53,13 @@ def compute_word_diff(reference: str, hypothesis: str) -> list[dict[str, Any]]:
     ref_tokens = reference.split()
     hyp_tokens = hypothesis.split()
 
-    matcher = difflib.SequenceMatcher(
-        None, ref_tokens, hyp_tokens, autojunk=False,
-    )
     ops: list[dict[str, Any]] = []
 
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    for op in Levenshtein.opcodes(ref_tokens, hyp_tokens):
+        i1, i2, j1, j2 = (
+            op.src_start, op.src_end, op.dest_start, op.dest_end,
+        )
+        tag = op.tag
         ref_chunk = " ".join(ref_tokens[i1:i2])
         hyp_chunk = " ".join(hyp_tokens[j1:j2])
 
@@ -76,12 +77,13 @@ def compute_word_diff(reference: str, hypothesis: str) -> list[dict[str, Any]]:
 
 def compute_char_diff(reference: str, hypothesis: str) -> list[dict[str, Any]]:
     """Diff caractère par caractère — utile pour les tokens courts."""
-    matcher = difflib.SequenceMatcher(
-        None, list(reference), list(hypothesis), autojunk=False,
-    )
     ops: list[dict[str, Any]] = []
 
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    for op in Levenshtein.opcodes(reference, hypothesis):
+        i1, i2, j1, j2 = (
+            op.src_start, op.src_end, op.dest_start, op.dest_end,
+        )
+        tag = op.tag
         ref_chunk = reference[i1:i2]
         hyp_chunk = hypothesis[j1:j2]
         if tag == "equal":

@@ -57,9 +57,22 @@ class TestNemenyiCriticalValue:
         assert _nemenyi_critical_value(3, 0.05) == pytest.approx(2.343, abs=1e-3)
         assert _nemenyi_critical_value(5, 0.05) == pytest.approx(2.728, abs=1e-3)
 
-    def test_k_out_of_range_uses_upper_bound(self):
-        # k > 50 → borne max (conservateur)
-        assert _nemenyi_critical_value(100, 0.05) == _nemenyi_critical_value(50, 0.05)
+    def test_k_out_of_range_extrapolates_upward(self):
+        # Audit scientifique F6 — k > 50 : q_α est EXTRAPOLÉ vers le
+        # haut (croissant), pas clampé à q(50).  Clamper réutiliserait
+        # un q plus petit → CD plus petite → plus de paires déclarées
+        # différentes → test anti-conservateur (faux positifs).
+        # L'extrapolation linéaire d'une courbe concave surestime q
+        # → CD plus grande → conservateur (bon sens).
+        q50 = _nemenyi_critical_value(50, 0.05)
+        q51 = _nemenyi_critical_value(51, 0.05)
+        q100 = _nemenyi_critical_value(100, 0.05)
+        assert q50 < q51 < q100
+        prev = q50
+        for k in range(51, 120, 7):
+            cur = _nemenyi_critical_value(k, 0.05)
+            assert cur > prev
+            prev = cur
 
     def test_k_interpolation(self):
         # k=22 n'est pas dans la table, mais entre 20 et 25 → interpolation

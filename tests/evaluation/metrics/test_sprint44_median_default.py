@@ -1,13 +1,23 @@
-"""Tests Sprint 44 — médiane par défaut + détecteur d'asymétrie.
+"""Tests Sprint 44 (médiane) — révisés par l'audit scientifique F1.
+
+Historique : le Sprint 44 avait fait du **CER médian** le critère de
+tri par défaut.  L'audit scientifique (mai 2026, F1) a montré que la
+médiane de taux par document reste aveugle à la longueur ; le critère
+de tri par défaut est désormais le **CER micro-moyenné**
+(Σ distance_édition / Σ caractères_référence), standard du domaine
+OCR/HTR.  La médiane redevient un **repli** (corpus sans comptes
+bruts) et un **diagnostic de dispersion** (détecteur
+``median_mean_gap_warning``), plus un critère de classement.
 
 Couvre :
 
 1. ``EngineReport.median_cer`` lit ``aggregated_metrics["cer"]["median"]``.
 2. ``BenchmarkResult.ranking()`` :
-   - inclut ``median_cer`` dans chaque entrée
-   - trie sur la médiane par défaut (et non plus la moyenne)
-   - retombe sur la moyenne si la médiane est absente
-3. Détecteur ``MEDIAN_MEAN_GAP_WARNING`` :
+   - inclut ``micro_cer`` et ``median_cer`` dans chaque entrée
+   - trie sur le **micro-CER** par défaut quand les comptes bruts
+     sont disponibles
+   - retombe sur la médiane puis la moyenne si le micro est absent
+3. Détecteur ``MEDIAN_MEAN_GAP_WARNING`` (inchangé) :
    - se déclenche quand le ratio ``|moyenne - médiane| / médiane > 30%``
    - ne se déclenche pas quand symétrique
    - ne se déclenche pas si la médiane est nulle (corpus parfait)
@@ -35,21 +45,53 @@ from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResul
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def _make_dr(cer: float, doc_id: str = "d") -> DocumentResult:
+def _make_dr(
+    cer: float,
+    doc_id: str = "d",
+    ref_chars: int | None = None,
+) -> DocumentResult:
+    """DocumentResult synthétique.
+
+    Si ``ref_chars`` est fourni, on renseigne les comptes bruts
+    (``cer_errors``/``cer_ref_chars``) cohérents avec ``cer`` pour
+    activer le micro-CER ; sinon ils restent ``None`` et le tri
+    retombe sur la médiane (chemin de repli historique Sprint 44).
+    """
+    cer_errors = None
+    cer_ref_chars = None
+    wer_errors = None
+    wer_ref_words = None
+    if ref_chars is not None:
+        cer_ref_chars = ref_chars
+        cer_errors = round(cer * ref_chars)
+        wer_ref_words = max(1, ref_chars // 5)
+        wer_errors = round(cer * wer_ref_words)
     return DocumentResult(
         doc_id=doc_id, image_path="/tmp/x.png",
         ground_truth="x", hypothesis="x",
         metrics=MetricsResult(
             cer=cer, cer_nfc=cer, cer_caseless=cer,
             wer=cer, wer_normalized=cer, mer=cer, wil=cer,
-            reference_length=1, hypothesis_length=1,
+            reference_length=ref_chars or 1, hypothesis_length=ref_chars or 1,
+            cer_errors=cer_errors, cer_ref_chars=cer_ref_chars,
+            wer_errors=wer_errors, wer_ref_words=wer_ref_words,
         ),
         duration_seconds=0.1,
     )
 
 
-def _make_engine_report(name: str, cers: list[float]) -> EngineReport:
-    drs = [_make_dr(c, doc_id=f"d{i}") for i, c in enumerate(cers)]
+def _make_engine_report(
+    name: str,
+    cers: list[float],
+    ref_chars: list[int] | None = None,
+) -> EngineReport:
+    if ref_chars is None:
+        drs = [_make_dr(c, doc_id=f"d{i}") for i, c in enumerate(cers)]
+    else:
+        drs = [
+            _make_dr(c, doc_id=f"d{i}", ref_chars=rc)
+            for i, (c, rc) in enumerate(zip(cers, ref_chars))
+        ]
     return EngineReport(
         engine_name=name, engine_version="1", engine_config={},
         document_results=drs,
@@ -81,39 +123,72 @@ class TestMedianCerProperty:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-class TestRankingByMedian:
-    def test_includes_median_cer(self) -> None:
+class TestRankingByMicro:
+    def test_includes_micro_and_median_cer(self) -> None:
         bench = BenchmarkResult(
             corpus_name="c", corpus_source=None, document_count=3,
-            engine_reports=[_make_engine_report("a", [0.1, 0.2, 0.3])],
+            engine_reports=[_make_engine_report(
+                "a", [0.1, 0.2, 0.3], ref_chars=[100, 100, 100],
+            )],
         )
         ranking = bench.ranking()
         assert "median_cer" in ranking[0]
+        assert "micro_cer" in ranking[0]
         assert ranking[0]["median_cer"] == pytest.approx(0.2)
+        # micro = (10+20+30)/300 = 0.2 (longueurs égales → micro == mean)
+        assert ranking[0]["micro_cer"] == pytest.approx(0.2)
 
-    def test_sorts_by_median_not_mean(self) -> None:
-        # Moteur A : 80 % à 0,03 + 20 % à 0,40 → moyenne ≈ 0,11, médiane = 0,03
-        # Moteur B : 100 % à 0,05                 → moyenne = 0,05, médiane = 0,05
-        # Tri par moyenne :   B (0.05) < A (0.11) → A est 2e
-        # Tri par médiane :   A (0.03) < B (0.05) → A est 1er
+    def test_micro_is_default_sort_key_and_can_beat_median(self) -> None:
+        """Cas scientifiquement décisif (F1) : micro ≠ médiane.
+
+        Moteur A : excellent sur 9 courts documents (10 car, CER 0,02)
+        mais catastrophique sur 1 page longue (5 000 car, CER 0,50).
+          - médiane CER = 0,02  (tirée par les courts)
+          - micro CER   = (9·10·0,02 + 5000·0,50) / (9·10 + 5000)
+                        ≈ 2502 / 5090 ≈ 0,4916
+        Moteur B : régulier partout (CER 0,10).
+          - médiane = 0,10 ; micro ≈ 0,10
+        Tri médiane : A (0,02) < B (0,10) → A gagnerait à tort.
+        Tri micro   : B (0,10) < A (0,49) → B gagne, ce qui reflète
+        la réalité (A rate la moitié d'une page de 5 000 caractères).
+        """
+        a = _make_engine_report(
+            "A_short_specialist",
+            [0.02] * 9 + [0.50],
+            ref_chars=[10] * 9 + [5000],
+        )
+        b = _make_engine_report(
+            "B_steady",
+            [0.10] * 10,
+            ref_chars=[500] * 10,
+        )
+        bench = BenchmarkResult(
+            corpus_name="c", corpus_source=None, document_count=10,
+            engine_reports=[a, b],
+        )
+        ranking = bench.ranking()
+        # Le tri micro doit placer B premier, contredisant la médiane.
+        assert ranking[0]["engine"] == "B_steady"
+        assert ranking[0]["micro_cer"] < ranking[1]["micro_cer"]
+        # ... alors que la médiane aurait (à tort) favorisé A.
+        a_entry = next(r for r in ranking if r["engine"] == "A_short_specialist")
+        assert a_entry["median_cer"] < ranking[0]["median_cer"]
+        assert a_entry["micro_cer"] == pytest.approx(0.4916, abs=2e-3)
+
+    def test_falls_back_to_median_when_micro_missing(self) -> None:
+        """Sans comptes bruts (jiwer absent / fixture legacy), le tri
+        retombe sur la médiane — comportement Sprint 44 préservé."""
         ers = [
-            _make_engine_report(
-                "A_asymmetric",
-                [0.03] * 8 + [0.40] * 2,
-            ),
-            _make_engine_report(
-                "B_steady",
-                [0.05] * 10,
-            ),
+            _make_engine_report("A_asymmetric", [0.03] * 8 + [0.40] * 2),
+            _make_engine_report("B_steady", [0.05] * 10),
         ]
         bench = BenchmarkResult(
             corpus_name="c", corpus_source=None, document_count=10,
             engine_reports=ers,
         )
         ranking = bench.ranking()
-        # Le moteur A doit gagner sur la médiane même si sa moyenne est pire
+        assert ranking[0]["micro_cer"] is None  # pas de comptes bruts
         assert ranking[0]["engine"] == "A_asymmetric"
-        assert ranking[0]["mean_cer"] > ranking[1]["mean_cer"]
         assert ranking[0]["median_cer"] < ranking[1]["median_cer"]
 
     def test_falls_back_to_mean_when_median_missing(self) -> None:
@@ -126,14 +201,18 @@ class TestRankingByMedian:
         une médiane quand il y a au moins un doc).
         """
         ranked = [
-            {"engine": "x", "mean_cer": 0.10, "median_cer": None,
-             "mean_wer": 0.0, "documents": 1, "failed": 0},
-            {"engine": "y", "mean_cer": 0.05, "median_cer": None,
-             "mean_wer": 0.0, "documents": 1, "failed": 0},
+            {"engine": "x", "micro_cer": None, "mean_cer": 0.10,
+             "median_cer": None, "mean_wer": 0.0, "documents": 1, "failed": 0},
+            {"engine": "y", "micro_cer": None, "mean_cer": 0.05,
+             "median_cer": None, "mean_wer": 0.0, "documents": 1, "failed": 0},
         ]
 
         def _key(e: dict) -> tuple:
-            p = e.get("median_cer") if e.get("median_cer") is not None else e.get("mean_cer")
+            p = e.get("micro_cer")
+            if p is None:
+                p = e.get("median_cer")
+            if p is None:
+                p = e.get("mean_cer")
             return (p is None, p if p is not None else float("inf"))
 
         ranking = sorted(ranked, key=_key)

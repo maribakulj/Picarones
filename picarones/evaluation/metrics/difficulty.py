@@ -1,7 +1,14 @@
-"""Score de difficulté intrinsèque par document.
+"""Score de difficulté **heuristique** par document.
 
-Le score est indépendant des moteurs OCR : il mesure la difficulté
-*objective* d'un document, indépendamment de la qualité des transcriptions.
+Audit scientifique F19 — formulation honnête.  Ce score n'est **pas**
+une mesure « objective » ni totalement indépendante des moteurs : sa
+composante dominante ``variance_norm`` est la variance inter-moteurs
+du CER, donc fonction de l'ensemble de moteurs effectivement exécutés
+(retirer ou ajouter un moteur change le score).  C'est un **indice
+composite d'aide à la lecture**, pas une grandeur intrinsèque
+publiable.  Les constantes de rééchelonnement (``/0.25``, ``×3``, et
+le remplissage neutre ``0.5`` quand la qualité image est absente) sont
+des conventions éditoriales, pas des grandeurs dérivées.
 
 Formule
 -------
@@ -11,12 +18,15 @@ Formule
 
 où :
   - variance_norm   : variance inter-moteurs du CER, normalisée [0, 1]
+                      (dépend des moteurs exécutés — non intrinsèque)
   - image_quality   : score de qualité image [0, 1] (netteté, contraste…)
   - special_chars   : densité de caractères spéciaux dans la GT [0, 1]
+                      (seule composante réellement intrinsèque)
 
 Les poids sont configurables (défaut : 0.4 / 0.35 / 0.25).
 
 Score final : [0, 1] — 0 = document facile, 1 = très difficile.
+Interpréter comme un classement relatif, pas une métrique absolue.
 """
 
 from __future__ import annotations

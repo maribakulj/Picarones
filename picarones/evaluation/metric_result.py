@@ -44,6 +44,21 @@ class MetricsResult:
     reference_length: int = 0
     hypothesis_length: int = 0
     error: Optional[str] = None
+    # Audit scientifique (F1) — comptes bruts de l'alignement minimal
+    # (jiwer/Levenshtein) nécessaires pour le CER/WER **micro-moyenné**
+    # corpus-wide (Σ erreurs / Σ unités de référence), standard du domaine
+    # OCR/HTR (ICDAR, OCR-D, HTR-United).  ``None`` si le calcul a échoué
+    # ou pour les cas dégénérés (référence vide) où le dénominateur micro
+    # n'est pas défini — l'agrégateur micro saute alors le document.
+    cer_errors: Optional[int] = None
+    """Distance d'édition caractère = substitutions + suppressions + insertions."""
+    cer_ref_chars: Optional[int] = None
+    """Longueur de référence en caractères = substitutions + suppressions + hits
+    (dénominateur exact du CER, identique à celui utilisé par jiwer)."""
+    wer_errors: Optional[int] = None
+    """Distance d'édition mot = substitutions + suppressions + insertions."""
+    wer_ref_words: Optional[int] = None
+    """Nombre de mots de référence = substitutions + suppressions + hits."""
     cer_diplomatic: Optional[float] = None
     """CER calculé après normalisation diplomatique (ſ=s, u=v, i=j…).
     None si aucun profil diplomatique n'a été fourni à compute_metrics.
@@ -66,6 +81,14 @@ class MetricsResult:
             "hypothesis_length": self.hypothesis_length,
             "error": self.error,
         }
+        # Comptes bruts (F1) — sérialisés seulement s'ils sont présents
+        # pour ne pas alourdir le JSON des cas dégénérés / en erreur.
+        if self.cer_errors is not None and self.cer_ref_chars is not None:
+            d["cer_errors"] = self.cer_errors
+            d["cer_ref_chars"] = self.cer_ref_chars
+        if self.wer_errors is not None and self.wer_ref_words is not None:
+            d["wer_errors"] = self.wer_errors
+            d["wer_ref_words"] = self.wer_ref_words
         if self.cer_diplomatic is not None:
             d["cer_diplomatic"] = round(self.cer_diplomatic, 6)
             d["diplomatic_profile_name"] = self.diplomatic_profile_name
@@ -100,6 +123,10 @@ class MetricsResult:
             reference_length=data.get("reference_length", 0),
             hypothesis_length=data.get("hypothesis_length", 0),
             error=data.get("error"),
+            cer_errors=data.get("cer_errors"),
+            cer_ref_chars=data.get("cer_ref_chars"),
+            wer_errors=data.get("wer_errors"),
+            wer_ref_words=data.get("wer_ref_words"),
             cer_diplomatic=data.get("cer_diplomatic"),
             diplomatic_profile_name=data.get("diplomatic_profile_name"),
         )
@@ -162,6 +189,48 @@ def aggregate_metrics(results: list[MetricsResult]) -> dict:
         )
         if profile_name:
             aggregated["cer_diplomatic"]["profile"] = profile_name
+
+    # ──────────────────────────────────────────────────────────────────
+    # CER / WER **micro-moyennés** (audit scientifique F1)
+    #
+    # Standard du domaine OCR/HTR (ICDAR, OCR-D, HTR-United, Transkribus,
+    # eScriptorium) : agréger les *comptes bruts* avant de diviser —
+    #   CER_micro = Σ distance_édition / Σ caractères_référence
+    # — et non moyenner des taux par document (macro), qui donne le même
+    # poids à une légende de 10 caractères et à une page de 5 000.
+    # Le micro-CER est la métrique corpus de référence ; mean/median
+    # restent exposés ci-dessus comme diagnostics de dispersion.
+    # ``None`` si aucun document n'a de comptes exploitables (cas d'un
+    # jiwer absent ou de références toutes vides).
+    def _micro(err_attr: str, ref_attr: str) -> Optional[dict]:
+        total_err = 0
+        total_ref = 0
+        n_docs = 0
+        for r in results:
+            if r.error is not None:
+                continue
+            e = getattr(r, err_attr)
+            d = getattr(r, ref_attr)
+            if e is None or d is None:
+                continue
+            total_err += e
+            total_ref += d
+            n_docs += 1
+        if n_docs == 0 or total_ref <= 0:
+            return None
+        return {
+            "value": round(total_err / total_ref, 6),
+            "total_errors": total_err,
+            "total_reference_units": total_ref,
+            "document_count": n_docs,
+        }
+
+    cer_micro = _micro("cer_errors", "cer_ref_chars")
+    if cer_micro is not None:
+        aggregated["cer_micro"] = cer_micro
+    wer_micro = _micro("wer_errors", "wer_ref_words")
+    if wer_micro is not None:
+        aggregated["wer_micro"] = wer_micro
 
     aggregated["document_count"] = len(results)
     aggregated["failed_count"] = sum(1 for r in results if r.error is not None)

@@ -360,12 +360,14 @@ def compute_roman_numeral_metrics(
     per_status_init = {status: 0 for status in ALL_STATUSES}
 
     if n_total == 0:
+        # Audit Classe B : aucun chiffre romain dans la GT ⇒ scores
+        # non applicables ⇒ None (omis en agrégation, ni 0.0 ni 1.0).
         return {
             "n_numerals_reference": 0,
             "n_strict_preserved": 0,
             "n_value_preserved": 0,
-            "global_strict_score": 0.0,
-            "global_value_score": 0.0,
+            "global_strict_score": None,
+            "global_value_score": None,
             "per_status": per_status_init,
             "per_numeral": [],
             "lost_numerals": [],

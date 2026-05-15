@@ -44,8 +44,9 @@ par catégorie + global.
 from __future__ import annotations
 
 import logging
-from difflib import SequenceMatcher
 from typing import Optional
+
+from rapidfuzz.distance import Levenshtein
 
 from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
@@ -178,9 +179,9 @@ def compute_early_modern_metrics(
     Stratégie d'alignement
     ----------------------
     Pour chaque marqueur identifié dans la GT à la position ``i``,
-    on vérifie si l'OCR l'a préservé en utilisant l'alignement
-    caractère par caractère via ``difflib.SequenceMatcher`` (même
-    méthode que les Sprints 55/57) :
+    on vérifie si l'OCR l'a préservé via l'alignement caractère par
+    caractère de **Levenshtein** (rapidfuzz, cohérent avec le CER —
+    audit F4 ; même méthode que Sprints 55/57) :
 
     - Marqueur **mono-caractère** (ﬁ, ſ, ı, &, ã…) : la position
       ``i`` est-elle dans un opcode ``equal`` ?
@@ -214,21 +215,23 @@ def compute_early_modern_metrics(
     n_total = len(markers)
 
     if n_total == 0:
+        # Audit Classe B : aucun marqueur typographique dans la GT ⇒
+        # non applicable ⇒ ``global_preservation = None`` (omis en
+        # agrégation, ni 0.0 ni 1.0).
         return {
             "n_markers_reference": 0,
             "n_markers_preserved": 0,
-            "global_preservation": 0.0,
+            "global_preservation": None,
             "per_category": {},
             "missed_markers": [],
         }
 
-    # Aligner GT/hyp et récupérer le set des positions GT couvertes
-    # par un opcode "equal".
-    matcher = SequenceMatcher(a=ref, b=hyp, autojunk=False)
+    # Alignement minimal de Levenshtein (audit F4/F14 : cohérent avec
+    # le CER, plus difflib/Ratcliff–Obershelp).
     correct_positions: set[int] = set()
-    for op, i1, i2, _j1, _j2 in matcher.get_opcodes():
-        if op == "equal":
-            correct_positions.update(range(i1, i2))
+    for op in Levenshtein.opcodes(ref, hyp):
+        if op.tag == "equal":
+            correct_positions.update(range(op.src_start, op.src_end))
 
     per_cat_total: dict[str, int] = {}
     per_cat_preserved: dict[str, int] = {}

@@ -276,10 +276,12 @@ class TestComputeMetrics:
 
 class TestDegenerateCases:
     def test_gt_without_markers(self) -> None:
+        # Audit Classe B : pas de marqueur d'archive moderne dans la GT
+        # ⇒ scores NON APPLICABLES ⇒ None (omis en agrégation), pas 0.0.
         m = compute_modern_archives_metrics("hello world", "hello world")
         assert m["n_markers_reference"] == 0
-        assert m["global_strict_score"] == 0.0
-        assert m["global_expansion_score"] == 0.0
+        assert m["global_strict_score"] is None
+        assert m["global_expansion_score"] is None
         assert m["per_category"] == {}
 
     def test_empty_gt(self) -> None:

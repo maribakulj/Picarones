@@ -235,15 +235,23 @@ def compute_at_junction(
     results: dict[str, Any] = {}
     for spec in selected:
         try:
-            results[spec.name] = spec.func(reference, hypothesis)
+            value = spec.func(reference, hypothesis)
         except Exception as exc:  # noqa: BLE001
             if skip_on_error:
                 logger.warning(
                     "[metric_registry] '%s' a échoué : %s — métrique ignorée",
                     spec.name, exc,
                 )
-            else:
-                raise
+                continue
+            raise
+        # Audit scientifique (Classe B) : ``None`` = métrique **non
+        # applicable** (aucun signal exploitable dans la GT — p. ex.
+        # zéro caractère MUFI, zéro chiffre romain).  On l'**omet** au
+        # lieu de l'agréger : un document sans signal ne doit pas être
+        # compté comme un échec (0.0) ni comme une réussite (1.0).
+        if value is None:
+            continue
+        results[spec.name] = value
     return results
 
 

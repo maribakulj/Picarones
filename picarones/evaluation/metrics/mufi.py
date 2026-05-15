@@ -49,8 +49,9 @@ des sprints dédiés.
 from __future__ import annotations
 
 import logging
-from difflib import SequenceMatcher
 from typing import Iterable, Optional
+
+from rapidfuzz.distance import Levenshtein
 
 from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
@@ -162,12 +163,13 @@ def compute_mufi_coverage(
             "missed_chars": list[str],         # caractères MUFI ratés
         }``
 
-    Cas dégénérés
-    -------------
-    - GT vide ou sans caractère MUFI → ``coverage = 0`` (convention :
-      pas de récompense gratuite).
-    - Hyp vide + MUFI dans GT → ``coverage = 0``.
-    - GT et hyp identiques avec MUFI → ``coverage = 1``.
+    Cas dégénérés (audit scientifique Classe B)
+    -------------------------------------------
+    - GT sans aucun caractère MUFI → ``coverage = None`` : métrique
+      **non applicable**, omise en agrégation (ni 0.0 ni 1.0 — ne pas
+      compter un document sans signal comme un échec ou un succès).
+    - Hyp vide + MUFI dans GT → ``coverage = 0.0`` (vrai échec).
+    - GT et hyp identiques avec MUFI → ``coverage = 1.0``.
     """
     ref = reference or ""
     hyp = hypothesis or ""
@@ -180,20 +182,24 @@ def compute_mufi_coverage(
     n_total = len(mufi_positions)
 
     if n_total == 0:
+        # Audit scientifique (Classe B) : aucun caractère MUFI dans la
+        # GT ⇒ la couverture n'est **pas applicable**.  ``coverage =
+        # None`` (et non 0.0) pour que la jonction/agrégat omette ce
+        # document au lieu de le compter comme un échec total.
         return {
             "n_mufi_chars_reference": 0,
             "n_mufi_chars_preserved": 0,
-            "coverage": 0.0,
+            "coverage": None,
             "per_char": {},
             "missed_chars": [],
         }
 
-    # 2. Aligner via SequenceMatcher (même méthode que Sprint 55)
-    matcher = SequenceMatcher(a=ref, b=hyp, autojunk=False)
+    # 2. Aligner via la distance de Levenshtein (audit F4/F14 :
+    #    alignement minimal cohérent avec le CER, plus difflib).
     correct_positions: set[int] = set()
-    for op, i1, i2, _j1, _j2 in matcher.get_opcodes():
-        if op == "equal":
-            correct_positions.update(range(i1, i2))
+    for op in Levenshtein.opcodes(ref, hyp):
+        if op.tag == "equal":
+            correct_positions.update(range(op.src_start, op.src_end))
 
     # 3. Compter par caractère
     per_char_total: dict[str, int] = {}
@@ -232,8 +238,10 @@ def compute_mufi_coverage(
 
 def mufi_coverage(
     reference: Optional[str], hypothesis: Optional[str],
-) -> float:
-    """Raccourci : retourne la couverture MUFI globale ∈ [0, 1]."""
+) -> Optional[float]:
+    """Raccourci : couverture MUFI globale ∈ [0, 1], ou ``None`` si la
+    GT ne contient aucun caractère MUFI (métrique non applicable —
+    audit Classe B : omise en agrégation, pas comptée 0.0)."""
     return compute_mufi_coverage(reference, hypothesis)["coverage"]
 
 

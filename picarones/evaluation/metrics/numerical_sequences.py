@@ -367,13 +367,15 @@ def compute_numerical_sequence_metrics(
         total_strict += breakdown["strict"]
         total_value += breakdown["value"]
 
+    # Audit Classe B : aucune séquence numérique dans la GT ⇒ scores
+    # globaux non applicables ⇒ None (omis en agrégation, pas 0.0).
     return {
         "n_total": total,
         "global_strict_score": (
-            total_strict / total if total else 0.0
+            total_strict / total if total else None
         ),
         "global_value_score": (
-            total_value / total if total else 0.0
+            total_value / total if total else None
         ),
         "per_category": per_category,
     }

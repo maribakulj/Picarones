@@ -253,6 +253,9 @@ class ReportGenerator:
         html = template.render(
             corpus_name=self.benchmark.corpus_name,
             picarones_version=self.benchmark.picarones_version,
+            # Audit scientifique F3 — bandeau d'intégrité rendu
+            # côté serveur (visible même JavaScript désactivé).
+            is_demo=getattr(self.benchmark, "is_demo", False),
             report_data_json=report_json,
             i18n_json=i18n_json,
             html_lang=labels.get("html_lang", "fr"),

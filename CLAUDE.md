@@ -116,7 +116,7 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **4950 passed, 16 skipped, 8 deselected, 2 xfailed, 0 failed**
+`pytest tests/` → **5000 passed, 16 skipped, 8 deselected, 2 xfailed, 0 failed**
 (post-audit code-quality, mai 2026).  Les deselected sont les markers
 `live` (5 tests d'intégration contre vraie API/binaire) + `network`
 (3 tests qui hit le réseau réel), opt-in en local via `pytest -m live`
@@ -292,10 +292,19 @@ picarones/reports/narrative/
     └── ensemble.py          1 (ensemble_opportunity)
 ```
 
-**Principe anti-hallucination** : chaque valeur numérique ou nom d'entité
-dans le `payload` d'un `Fact` provient du JSON d'entrée. Le test
-`test_sprint19_narrative_engine.py` parse la synthèse rendue et vérifie
-la traçabilité.
+**Principe anti-hallucination** (formulation précise — audit F7) :
+aucun LLM, aucune valeur aléatoire/fabriquée, rendu `str.format_map`
+déterministe.  Les **noms d'entités** sont repris *verbatim* du JSON
+d'entrée ; les **nombres** sont soit verbatim, soit une **fonction
+déterministe et auditable** de valeurs d'entrée (écart relatif,
+accélération, largeur d'IC…).  L'ancienne formulation « chaque nombre
+provient du JSON » était trop forte (dérivations) et le test
+historique `test_sprint19_narrative_engine.py` était *circulaire* (il
+validait les nombres rendus contre le `payload` du `Fact`, lui-même
+rempli par le détecteur).  La traçabilité **à la source** est désormais
+vérifiée par `tests/evaluation/test_scientific_audit_2026.py`
+(`TestF7NarrativeTraceability`) : reconstruction depuis le
+`BenchmarkResult` d'origine + déterminisme bit-à-bit.
 
 **Règle anti-contradiction** (arbitre) : si `SIGNIFICANT_GAP` (Wilcoxon
 non corrigé) et `STATISTICAL_TIE` (Nemenyi corrigé) concernent les mêmes

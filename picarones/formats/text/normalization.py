@@ -40,11 +40,16 @@ from pathlib import Path
 # Tables de correspondances diplomatiques préconfigurées
 # ---------------------------------------------------------------------------
 
-#: Français médiéval (XIIe–XVe siècle)
+#: Français médiéval (XIIe–XVe siècle).
+#: Audit F11 — chaque correspondance est appliquée à **toutes** les
+#: occurrences, dans le GT **et** dans l'OCR : le CER diplomatique est
+#: donc le CER sur les classes d'équivalence graphiques (quotient).
+#: C'est correct même pour des règles non positionnelles comme u/v :
+#: la même transformation des deux côtés n'introduit aucun biais.
 DIPLOMATIC_FR_MEDIEVAL: dict[str, str] = {
     "ſ": "s",    # s long → s
-    "u": "v",    # u/v interchangeables en position initiale
-    "i": "j",    # i/j interchangeables
+    "u": "v",    # u/v non distingués (toutes positions, GT et OCR)
+    "i": "j",    # i/j non distingués (toutes positions)
     "y": "i",    # y vocalique → i
     "æ": "ae",   # ligature æ
     "œ": "oe",   # ligature œ
@@ -385,35 +390,31 @@ def _parse_exclude_chars(value: "str | list | None") -> frozenset:
 
 
 def _apply_diplomatic_table(text: str, table: dict[str, str]) -> str:
-    """Applique une table de correspondances diplomatiques en un seul pass.
+    """Applique une table de correspondances diplomatiques en **un seul
+    passage simultané**.
 
-    Les clés multi-caractères (ex : ``"ae"`` → ``"æ"``) sont gérées en priorité
-    sur les correspondances simples. Le remplacement est fait en un seul pass
-    via regex pour éviter les remplacements en cascade (ex : ``"ſ"→"s"`` puis
-    ``"s"→"z"`` donnerait ``"z"`` au lieu de ``"s"``).
+    Audit scientifique F12 — l'ancienne implémentation traitait d'abord
+    les clés multi-caractères (regex) **puis** les clés simples
+    (itération), en deux passes.  Si la *valeur* d'un remplacement
+    multi-caractères contenait un caractère lui-même clé simple (table
+    ``{"vv": "w", "w": "x"}`` → ``"vv"`` donnait ``"x"``), elle était
+    ré-écrite en cascade.  Aucun profil intégré ne déclenchait le bug,
+    mais c'était un piège silencieux pour les profils YAML
+    personnalisés.
+
+    Correction : une regex d'alternation **unique** couvre toutes les
+    clés (multi et simples), triées par longueur décroissante (la plus
+    longue gagne).  ``re.sub`` ne réexamine jamais le texte déjà
+    substitué → plus aucune cascade possible, quel que soit le profil.
     """
     if not table:
         return text
 
     import re
 
-    # Séparer les clés simples (1 char) des clés multi-chars
-    multi_keys = sorted(
-        (k for k in table if len(k) > 1), key=len, reverse=True
-    )
-    simple_table = {k: v for k, v in table.items() if len(k) == 1}
-
-    if multi_keys:
-        # Single-pass : construire un pattern regex avec toutes les clés multi-chars
-        # triées par longueur décroissante pour matcher les plus longues d'abord
-        pattern = re.compile("|".join(re.escape(k) for k in multi_keys))
-        text = pattern.sub(lambda m: table[m.group(0)], text)
-
-    # Remplacements char par char (single-pass via itération)
-    if simple_table:
-        text = "".join(simple_table.get(c, c) for c in text)
-
-    return text
+    keys = sorted(table.keys(), key=len, reverse=True)
+    pattern = re.compile("|".join(re.escape(k) for k in keys))
+    return pattern.sub(lambda m: table[m.group(0)], text)
 
 
 # Profil par défaut utilisé pour le CER diplomatique intégré

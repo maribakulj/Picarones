@@ -78,9 +78,11 @@ class TestComputeAccuracy:
         assert m["per_block"]["Basic Latin"]["total"] == 11
 
     def test_empty_reference(self) -> None:
+        # Audit Classe B : GT vide ⇒ précision NON APPLICABLE ⇒ None
+        # (omis en agrégation), pas 0.0.
         m = compute_unicode_block_accuracy("", "anything")
         assert m["per_block"] == {}
-        assert m["global_accuracy"] == 0.0
+        assert m["global_accuracy"] is None
         assert m["n_chars_reference"] == 0
 
     def test_empty_hypothesis(self) -> None:
@@ -92,7 +94,7 @@ class TestComputeAccuracy:
     def test_none_inputs(self) -> None:
         m = compute_unicode_block_accuracy(None, None)
         assert m["per_block"] == {}
-        assert m["global_accuracy"] == 0.0
+        assert m["global_accuracy"] is None
 
     def test_partial_substitution_per_block(self) -> None:
         # Les é (Latin-1 Sup) sont préservés ; les a (Basic Latin)

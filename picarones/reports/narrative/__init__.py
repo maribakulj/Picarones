@@ -1,8 +1,27 @@
 """Moteur narratif factuel — génération de synthèse déterministe.
 
 Extrait des faits saillants d'un ``BenchmarkResult`` et les rend en phrases
-courtes via des templates externes YAML. Aucun LLM : chaque nombre ou nom
-apparaissant dans la synthèse est traçable au JSON de résultats en entrée.
+courtes via des templates externes YAML.
+
+Garantie d'intégrité (audit scientifique F7) — formulation précise
+----------------------------------------------------------------
+**Aucun LLM, aucune valeur aléatoire ou fabriquée.**  Le rendu est un
+``str.format_map`` déterministe (même entrée → mêmes phrases).
+Concernant les valeurs affichées :
+
+- les **noms d'entités** (moteurs, strates, documents) sont repris
+  *verbatim* du JSON de résultats en entrée ;
+- les **nombres** sont soit repris verbatim du JSON d'entrée, soit une
+  **fonction déterministe et auditable** de valeurs d'entrée calculée
+  dans la couche rapport (p. ex. écart relatif médiane↔moyenne,
+  accélération = durée_médiane/durée, largeur d'IC).  Statistiques
+  dérivées traçables, jamais inventées.
+
+L'ancienne formulation « chaque nombre provient du JSON d'entrée »
+était trop forte (elle passait sous silence les dérivations) et le
+test associé était circulaire (il validait les nombres rendus contre
+le *payload* du Fact, lui-même rempli par le détecteur).  La
+traçabilité est désormais testée vis-à-vis de la **source**.
 
 API publique
 ------------

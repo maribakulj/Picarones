@@ -189,7 +189,16 @@ def _analyze_with_pillow(path: Path, Image) -> ImageQualityResult:
     w, h = img.size
 
     if not pixels:
-        return ImageQualityResult(quality_score=0.5, analysis_method="pillow")
+        # Audit scientifique F17 — image vide/illisible : on **doit**
+        # poser ``error`` pour que le hook (builtin_hooks, filtre
+        # ``iq.error is not None``) écarte ce document.  Renvoyer un
+        # ``quality_score=0.5`` sans erreur injectait une mesure
+        # fabriquée dans l'agrégat corpus réel.
+        return ImageQualityResult(
+            error="Image vide ou illisible (0 pixel)",
+            analysis_method="pillow",
+            quality_score=0.5,
+        )
 
     # Contraste : étendue des valeurs
     min_val = min(pixels)

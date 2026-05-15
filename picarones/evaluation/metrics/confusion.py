@@ -6,9 +6,17 @@ caractéristique de chaque moteur ou pipeline.
 
 Méthode
 -------
-L'alignement caractère par caractère utilise les opérations d'édition
-de la distance de Levenshtein (via difflib.SequenceMatcher), ce qui permet
-d'identifier les substitutions, insertions et suppressions.
+L'alignement caractère par caractère utilise la distance de
+**Levenshtein** (``rapidfuzz.distance.Levenshtein``, coûts
+substitution = insertion = suppression = 1) — le même modèle d'édition
+que le CER (jiwer).  Audit scientifique F4 : auparavant l'alignement
+passait par ``difflib.SequenceMatcher`` (Ratcliff–Obershelp), qui
+maximise les blocs communs et **ne minimise pas** le nombre
+d'éditions ; les comptes substitutions/insertions/suppressions et
+l'empreinte d'erreur affichés divergeaient alors du CER montré à côté.
+L'alignement minimal garantit aussi que tout bloc ``replace`` est de
+longueur égale côté GT et côté OCR (substitutions 1-pour-1), ce qui
+supprime l'heuristique d'alignement positionnel des segments inégaux.
 
 La matrice est stockée comme un dict de dict :
     ``{gt_char: {ocr_char: count}}``
@@ -20,9 +28,10 @@ La valeur spéciale ``"∅"`` (U+2205) représente un caractère vide :
 
 from __future__ import annotations
 
-import difflib
 from collections import defaultdict
 from dataclasses import dataclass, field
+
+from rapidfuzz.distance import Levenshtein
 
 # Symbole représentant un caractère absent (insertion / suppression)
 EMPTY_CHAR = "∅"
@@ -114,10 +123,15 @@ def build_confusion_matrix(
     if not ground_truth and not hypothesis:
         return ConfusionMatrix(dict(matrix), 0, 0, 0)
 
-    # SequenceMatcher sur listes de chars pour un alignement précis
-    matcher = difflib.SequenceMatcher(None, ground_truth, hypothesis, autojunk=False)
-
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    # Alignement minimal de Levenshtein (audit F4) — cohérent avec le
+    # CER.  Sous ce modèle, un bloc ``replace`` est une suite de
+    # substitutions 1-pour-1 : longueurs GT et OCR égales, alignement
+    # positionnel exact (plus d'heuristique sur segments inégaux).
+    for op in Levenshtein.opcodes(ground_truth, hypothesis):
+        tag = op.tag
+        i1, i2, j1, j2 = (
+            op.src_start, op.src_end, op.dest_start, op.dest_end,
+        )
         if tag == "equal":
             if not ignore_correct:
                 for ch in ground_truth[i1:i2]:
@@ -125,17 +139,11 @@ def build_confusion_matrix(
                         continue
                     matrix[ch][ch] += 1
         elif tag == "replace":
-            # Aligner char par char les séquences de longueurs différentes
-            gt_seg = ground_truth[i1:i2]
-            oc_seg = hypothesis[j1:j2]
-            _align_segments(gt_seg, oc_seg, matrix, ignore_whitespace)
-            # Substitutions = longueur commune, surplus = insertions ou suppressions
-            n_subs += min(len(gt_seg), len(oc_seg))
-            surplus = abs(len(gt_seg) - len(oc_seg))
-            if len(gt_seg) > len(oc_seg):
-                n_dels += surplus
-            else:
-                n_ins += surplus
+            for g, o in zip(ground_truth[i1:i2], hypothesis[j1:j2]):
+                if ignore_whitespace and (g in _WHITESPACE or o in _WHITESPACE):
+                    continue
+                matrix[g][o] += 1
+                n_subs += 1
         elif tag == "delete":
             for ch in ground_truth[i1:i2]:
                 if ignore_whitespace and ch in _WHITESPACE:
@@ -160,56 +168,6 @@ def build_confusion_matrix(
         total_insertions=n_ins,
         total_deletions=n_dels,
     )
-
-
-def _align_segments(
-    gt_seg: str,
-    oc_seg: str,
-    matrix: dict,
-    ignore_whitespace: bool,
-) -> None:
-    """Aligne deux segments de longueurs potentiellement différentes."""
-    if not gt_seg:
-        for ch in oc_seg:
-            if ignore_whitespace and ch in _WHITESPACE:
-                continue
-            matrix[EMPTY_CHAR][ch] += 1
-        return
-    if not oc_seg:
-        for ch in gt_seg:
-            if ignore_whitespace and ch in _WHITESPACE:
-                continue
-            matrix[ch][EMPTY_CHAR] += 1
-        return
-
-    if len(gt_seg) == len(oc_seg):
-        # Substitutions 1-pour-1
-        for g, o in zip(gt_seg, oc_seg):
-            if ignore_whitespace and (g in _WHITESPACE or o in _WHITESPACE):
-                continue
-            matrix[g][o] += 1
-    else:
-        # Longueurs différentes : utiliser SequenceMatcher récursif sur segments courts
-        sub = difflib.SequenceMatcher(None, gt_seg, oc_seg, autojunk=False)
-        for tag2, i1, i2, j1, j2 in sub.get_opcodes():
-            if tag2 == "equal":
-                pass
-            elif tag2 == "replace":
-                # Régression simple : aligner par troncature
-                for g, o in zip(gt_seg[i1:i2], oc_seg[j1:j2]):
-                    if ignore_whitespace and (g in _WHITESPACE or o in _WHITESPACE):
-                        continue
-                    matrix[g][o] += 1
-            elif tag2 == "delete":
-                for g in gt_seg[i1:i2]:
-                    if ignore_whitespace and g in _WHITESPACE:
-                        continue
-                    matrix[g][EMPTY_CHAR] += 1
-            elif tag2 == "insert":
-                for o in oc_seg[j1:j2]:
-                    if ignore_whitespace and o in _WHITESPACE:
-                        continue
-                    matrix[EMPTY_CHAR][o] += 1
 
 
 def aggregate_confusion_matrices(matrices: list[ConfusionMatrix]) -> ConfusionMatrix:

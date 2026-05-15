@@ -51,22 +51,33 @@ def compute_correlation_matrix(
         sample = metrics_per_doc[0]
         metric_keys = [k for k, v in sample.items() if isinstance(v, (int, float))]
 
-    # Construire les vecteurs
-    vectors: dict[str, list[float]] = {k: [] for k in metric_keys}
+    # Conserver les valeurs brutes (``None`` préservé) — audit
+    # scientifique F13 : imputer 0.0 pour une métrique absente
+    # déformait le coefficient de Pearson (un document sans CER était
+    # traité comme un CER de 0).  On calcule désormais en
+    # **pairwise-complete** : pour chaque paire (i, j), seuls les
+    # documents où *les deux* métriques sont présentes contribuent.
+    raw: dict[str, list[Optional[float]]] = {k: [] for k in metric_keys}
     for doc in metrics_per_doc:
         for k in metric_keys:
             v = doc.get(k)
-            vectors[k].append(float(v) if v is not None else 0.0)
+            raw[k].append(float(v) if isinstance(v, (int, float)) else None)
 
-    # Calculer la matrice
     labels = metric_keys
     n = len(labels)
     matrix = []
     for i in range(n):
         row = []
+        xi = raw[labels[i]]
         for j in range(n):
-            r = _pearson(vectors[labels[i]], vectors[labels[j]])
-            row.append(round(r, 4))
+            yj = raw[labels[j]]
+            xs: list[float] = []
+            ys: list[float] = []
+            for a, b in zip(xi, yj):
+                if a is not None and b is not None:
+                    xs.append(a)
+                    ys.append(b)
+            row.append(round(_pearson(xs, ys), 4))
         matrix.append(row)
 
     return {"labels": labels, "matrix": matrix}

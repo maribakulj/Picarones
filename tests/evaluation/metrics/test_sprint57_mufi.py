@@ -125,21 +125,24 @@ class TestComputeCoverage:
 
 
 class TestDegenerateCases:
+    # Audit scientifique Classe B : GT sans signal MUFI ⇒ couverture
+    # NON APPLICABLE ⇒ ``coverage is None`` (omis en agrégation), et
+    # non 0.0 qui comptait à tort un document sans MUFI comme un échec.
     def test_gt_without_mufi(self) -> None:
         m = compute_mufi_coverage("hello world", "hello world")
         assert m["n_mufi_chars_reference"] == 0
-        assert m["coverage"] == 0.0
+        assert m["coverage"] is None
         assert m["per_char"] == {}
 
     def test_empty_gt(self) -> None:
         m = compute_mufi_coverage("", "anything")
         assert m["n_mufi_chars_reference"] == 0
-        assert m["coverage"] == 0.0
+        assert m["coverage"] is None
 
     def test_none_inputs(self) -> None:
         m = compute_mufi_coverage(None, None)
         assert m["n_mufi_chars_reference"] == 0
-        assert m["coverage"] == 0.0
+        assert m["coverage"] is None
 
     def test_empty_hyp_with_mufi_gt(self) -> None:
         m = compute_mufi_coverage("þæt", "")

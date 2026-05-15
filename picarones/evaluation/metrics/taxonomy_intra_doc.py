@@ -37,10 +37,11 @@ Couche de calcul + rendu HTML bout-en-bout, comme Sprint 75.
 
 from __future__ import annotations
 
-import difflib
 import logging
 import unicodedata
 from typing import Optional
+
+from rapidfuzz.distance import Levenshtein
 
 from picarones.evaluation.metrics.taxonomy import (
     ERROR_CLASSES,
@@ -141,10 +142,15 @@ def compute_taxonomy_position_heatmap(
     totals_per_bin: list[int] = [0] * n_bins
     total_errors = 0
 
-    matcher = difflib.SequenceMatcher(
-        None, gt_words, hyp_words, autojunk=False,
-    )
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    # Alignement minimal de Levenshtein (audit F14 : cohérent avec le
+    # WER ; sous ce modèle ``replace`` est toujours de longueur égale,
+    # donc plus de bloc inégal dont on abandonnait la classification
+    # des substitutions au profit du seul écart de longueur).
+    for op in Levenshtein.opcodes(gt_words, hyp_words):
+        tag = op.tag
+        i1, i2, j1, j2 = (
+            op.src_start, op.src_end, op.dest_start, op.dest_end,
+        )
         if tag == "equal":
             continue
         if tag == "delete":
@@ -155,38 +161,28 @@ def compute_taxonomy_position_heatmap(
                 totals_per_bin[bin_idx] += 1
                 total_errors += 1
         elif tag == "insert":
-            # L'insert n'a pas de position GT propre : on attribue
-            # à la tranche de la position d'insertion (i1).
+            # Tout mot inséré est une erreur (OOV → classe 8, sinon
+            # hapax → classe 6) : auparavant les insertions non-OOV
+            # n'étaient pas comptées (sous-comptage systématique).
             for w in hyp_words[j1:j2]:
-                if not _is_oov_word(w):
-                    continue
-                position = min(i1, n_gt - 1)
+                position = min(i1, n_gt - 1) if n_gt else 0
                 bin_idx = _bin_for_position(position, n_gt, n_bins)
-                per_class["oov_character"][bin_idx] += 1
+                cls = "oov_character" if _is_oov_word(w) else "hapax"
+                per_class[cls][bin_idx] += 1
                 totals_per_bin[bin_idx] += 1
                 total_errors += 1
         elif tag == "replace":
-            gt_seg = gt_words[i1:i2]
-            hyp_seg = hyp_words[j1:j2]
-            if len(hyp_seg) != len(gt_seg):
-                # Segmentation : compte par diff de longueur
-                n_seg = abs(len(gt_seg) - len(hyp_seg))
-                bin_idx = _bin_for_position(i1, n_gt, n_bins)
-                per_class["segmentation_error"][bin_idx] += n_seg
-                totals_per_bin[bin_idx] += n_seg
-                total_errors += n_seg
-            else:
-                for offset, (gt_w, hyp_w) in enumerate(
-                    zip(gt_seg, hyp_seg),
-                ):
-                    if gt_w == hyp_w:
-                        continue
-                    position = i1 + offset
-                    bin_idx = _bin_for_position(position, n_gt, n_bins)
-                    cls = _classify_word_pair(gt_w, hyp_w)
-                    per_class[cls][bin_idx] += 1
-                    totals_per_bin[bin_idx] += 1
-                    total_errors += 1
+            for offset, (gt_w, hyp_w) in enumerate(
+                zip(gt_words[i1:i2], hyp_words[j1:j2]),
+            ):
+                if gt_w == hyp_w:
+                    continue
+                position = i1 + offset
+                bin_idx = _bin_for_position(position, n_gt, n_bins)
+                cls = _classify_word_pair(gt_w, hyp_w)
+                per_class[cls][bin_idx] += 1
+                totals_per_bin[bin_idx] += 1
+                total_errors += 1
 
     return {
         "n_bins": n_bins,

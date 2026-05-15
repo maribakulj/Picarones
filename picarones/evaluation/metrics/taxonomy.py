@@ -21,9 +21,10 @@ Note : la classe 10 est calculée par picarones/evaluation/metrics/over_normaliz
 
 from __future__ import annotations
 
-import difflib
 import unicodedata
 from dataclasses import dataclass, field
+
+from rapidfuzz.distance import Levenshtein
 
 
 # ---------------------------------------------------------------------------
@@ -133,8 +134,24 @@ def classify_errors(
 ) -> TaxonomyResult:
     """Classifie automatiquement les erreurs OCR dans une paire GT/OCR.
 
-    L'alignement utilise difflib.SequenceMatcher au niveau mot pour détecter
-    les erreurs de segmentation, puis au niveau caractère pour les autres classes.
+    L'alignement utilise la distance de **Levenshtein** au niveau mot
+    (rapidfuzz, cohérent avec le WER) — audit scientifique F14.
+
+    Auparavant l'alignement passait par ``difflib.SequenceMatcher``
+    (Ratcliff–Obershelp, non minimal) et, dans un bloc ``replace`` de
+    longueurs inégales, ne comptait QUE l'écart de longueur comme
+    ``segmentation_error`` en **abandonnant la classification de toutes
+    les substitutions** de ce bloc ; les mots insérés non hors-vocab
+    n'étaient pas comptés du tout.  La distribution des 9 classes était
+    donc systématiquement biaisée (segmentation sur-comptée, autres
+    classes sous-comptées, ``total_errors`` sous-estimé).
+
+    Désormais : chaque opération de l'alignement minimal est classée
+    (``total_errors`` ≈ distance d'édition mot).  Une région de
+    différences dont la concaténation sans espaces GT == hypothèse
+    (casefold) est une vraie re-segmentation (classe 7) ; sinon les
+    mots sont appariés (substitutions classées), le surplus GT →
+    lacune (9), le surplus hypothèse → hors-vocab (8) ou hapax (6).
 
     Parameters
     ----------
@@ -162,45 +179,69 @@ def classify_errors(
     gt_words = ground_truth.split()
     hyp_words = hypothesis.split()
 
-    word_matcher = difflib.SequenceMatcher(None, gt_words, hyp_words, autojunk=False)
-    for tag, i1, i2, j1, j2 in word_matcher.get_opcodes():
-        if tag == "delete":
-            # Mots GT absents de l'OCR → lacune (classe 9)
-            for w in gt_words[i1:i2]:
-                counts["lacuna"] += 1
+    # Fusionner les opérations non-``equal`` consécutives en régions de
+    # différence, pour pouvoir détecter une re-segmentation (espaces
+    # déplacés) au niveau de la région plutôt que d'un seul opcode.
+    ops = list(Levenshtein.opcodes(gt_words, hyp_words))
+    regions: list[tuple[int, int, int, int]] = []
+    for op in ops:
+        if op.tag == "equal":
+            continue
+        i1, i2, j1, j2 = op.src_start, op.src_end, op.dest_start, op.dest_end
+        if regions and regions[-1][1] == i1 and regions[-1][3] == j1:
+            p = regions[-1]
+            regions[-1] = (p[0], i2, p[2], j2)
+        else:
+            regions.append((i1, i2, j1, j2))
+
+    for i1, i2, j1, j2 in regions:
+        gt_seg = gt_words[i1:i2]
+        hyp_seg = hyp_words[j1:j2]
+
+        # Re-segmentation : le **nombre de tokens change** ET le contenu
+        # concaténé est identique (« le dit » ↔ « ledit », « par ce
+        # que » ↔ « parce que »).  La condition de changement de nombre
+        # de tokens est essentielle : sans elle, une simple erreur de
+        # casse sur n mots (« Bonjour Monde » ↔ « bonjour monde », même
+        # nombre de tokens, concaténation égale en casefold) serait à
+        # tort classée segmentation au lieu de case_error.
+        gt_join = "".join(gt_seg).casefold()
+        hyp_join = "".join(hyp_seg).casefold()
+        if (
+            gt_seg and hyp_seg
+            and len(gt_seg) != len(hyp_seg)
+            and gt_join == hyp_join
+        ):
+            n_seg = max(1, abs(len(gt_seg) - len(hyp_seg)))
+            counts["segmentation_error"] += n_seg
+            total += n_seg
+            if len(examples["segmentation_error"]) < max_examples:
+                examples["segmentation_error"].append({
+                    "gt": " ".join(gt_seg),
+                    "ocr": " ".join(hyp_seg),
+                    "position": i1,
+                })
+            continue
+
+        # Sinon : apparier mot-à-mot le préfixe commun ; classer chaque
+        # substitution ; le surplus GT = lacune, le surplus hyp = OOV/hapax.
+        paired = min(len(gt_seg), len(hyp_seg))
+        for k in range(paired):
+            gt_w, hyp_w = gt_seg[k], hyp_seg[k]
+            if gt_w != hyp_w:
+                _classify_word_error(gt_w, hyp_w, counts, examples, max_examples)
                 total += 1
-                if len(examples["lacuna"]) < max_examples:
-                    examples["lacuna"].append({"gt": w, "ocr": "", "position": i1})
-
-        elif tag == "insert":
-            # Mots ajoutés par l'OCR → généralement classe 8 (hors-vocab)
-            for w in hyp_words[j1:j2]:
-                if _is_oov_word(w):
-                    counts["oov_character"] += 1
-                    total += 1
-
-        elif tag == "replace":
-            gt_seg = gt_words[i1:i2]
-            hyp_seg = hyp_words[j1:j2]
-            # Segmentation : fusion de mots (moins de mots OCR) ou fragmentation
-            if len(hyp_seg) != len(gt_seg):
-                n_seg = abs(len(gt_seg) - len(hyp_seg))
-                counts["segmentation_error"] += n_seg
-                total += n_seg
-                if len(examples["segmentation_error"]) < max_examples:
-                    examples["segmentation_error"].append({
-                        "gt": " ".join(gt_seg),
-                        "ocr": " ".join(hyp_seg),
-                        "position": i1,
-                    })
-            else:
-                # Paires mot-à-mot
-                for gt_w, hyp_w in zip(gt_seg, hyp_seg):
-                    if gt_w != hyp_w:
-                        _classify_word_error(
-                            gt_w, hyp_w, counts, examples, max_examples
-                        )
-                        total += 1
+        for w in gt_seg[paired:]:
+            counts["lacuna"] += 1
+            total += 1
+            if len(examples["lacuna"]) < max_examples:
+                examples["lacuna"].append({"gt": w, "ocr": "", "position": i1})
+        for w in hyp_seg[paired:]:
+            cls = "oov_character" if _is_oov_word(w) else "hapax"
+            counts[cls] += 1
+            total += 1
+            if len(examples[cls]) < max_examples:
+                examples[cls].append({"gt": "", "ocr": w, "position": j1})
 
     return TaxonomyResult(
         counts=counts,

@@ -339,10 +339,12 @@ class TestRealisticModernSovereign:
 
 class TestDegenerateCases:
     def test_gt_without_numerals(self) -> None:
+        # Audit Classe B : aucun chiffre romain dans la GT ⇒ scores
+        # NON APPLICABLES ⇒ None (omis en agrégation), pas 0.0.
         m = compute_roman_numeral_metrics("hello world", "hello world")
         assert m["n_numerals_reference"] == 0
-        assert m["global_strict_score"] == 0.0
-        assert m["global_value_score"] == 0.0
+        assert m["global_strict_score"] is None
+        assert m["global_value_score"] is None
         assert m["per_numeral"] == []
 
     def test_empty_gt(self) -> None:

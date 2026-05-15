@@ -73,6 +73,78 @@ def _chi_square_sf(x: float, df: int) -> float:
     return _normal_sf(z)
 
 
+def _betacf(a: float, b: float, x: float) -> float:
+    """Fraction continue de la beta incomplète (Numerical Recipes §6.4)."""
+    MAXIT, EPS, FPMIN = 200, 3.0e-12, 1.0e-300
+    qab, qap, qam = a + b, a + 1.0, a - 1.0
+    c = 1.0
+    d = 1.0 - qab * x / qap
+    if abs(d) < FPMIN:
+        d = FPMIN
+    d = 1.0 / d
+    h = d
+    for m in range(1, MAXIT + 1):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        if abs(d) < FPMIN:
+            d = FPMIN
+        c = 1.0 + aa / c
+        if abs(c) < FPMIN:
+            c = FPMIN
+        d = 1.0 / d
+        h *= d * c
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        if abs(d) < FPMIN:
+            d = FPMIN
+        c = 1.0 + aa / c
+        if abs(c) < FPMIN:
+            c = FPMIN
+        d = 1.0 / d
+        delta = d * c
+        h *= delta
+        if abs(delta - 1.0) < EPS:
+            break
+    return h
+
+
+def _betai(a: float, b: float, x: float) -> float:
+    """Beta incomplète régularisée Iₓ(a, b) ∈ [0, 1]."""
+    if x <= 0.0:
+        return 0.0
+    if x >= 1.0:
+        return 1.0
+    ln_beta = math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+    front = math.exp(ln_beta + a * math.log(x) + b * math.log(1.0 - x))
+    if x < (a + 1.0) / (a + b + 2.0):
+        return front * _betacf(a, b, x) / a
+    return 1.0 - front * _betacf(b, a, 1.0 - x) / b
+
+
+def _f_sf(x: float, d1: int, d2: int) -> float:
+    """Survival function de la loi de Fisher F(d1, d2) : P(F > x).
+
+    scipy si disponible (exact), sinon beta incomplète régularisée
+    (précise, pas une approximation grossière) :
+        P(F > x) = I_{d2/(d2+d1·x)}(d2/2, d1/2).
+    """
+    if x <= 0.0 or d1 <= 0 or d2 <= 0:
+        return 1.0
+    if x == float("inf"):
+        return 0.0
+    try:
+        from scipy.stats import f as _f  # type: ignore[import-untyped]
+        return float(_f.sf(x, d1, d2))
+    except ImportError as exc:
+        logger.warning(
+            "[friedman_nemenyi] scipy.stats indisponible (%s) — "
+            "F-SF via beta incomplète régularisée (exacte)",
+            exc,
+        )
+    return _betai(d2 / 2.0, d1 / 2.0, d2 / (d2 + d1 * x))
+
+
 def _rank_row(values: list[float]) -> list[float]:
     """Rangs d'une ligne — petit = rang 1. Ex-aequo : rangs moyens."""
     n = len(values)
@@ -193,17 +265,46 @@ def friedman_test(engine_cer_map: dict[str, list[float]]) -> dict:
 
     df = k - 1
     p_value = _chi_square_sf(Q, df)
-    significant = p_value < 0.05
+
+    # Audit scientifique F5 — correction F d'Iman & Davenport (1980),
+    # **explicitement recommandée par Demšar (2006)** que ce module cite
+    # déjà : la statistique χ² de Friedman est connue pour être
+    # indûment conservatrice (surtout à faible n).  La statistique F
+    #     F = (n−1)·Q / (n·(k−1) − Q)
+    # suit une loi de Fisher à (k−1, (k−1)(n−1)) ddl.  Quand Q atteint
+    # son maximum n·(k−1) (concordance parfaite des rangs), F → ∞ et
+    # p → 0.  On expose les deux : χ² (rétrocompat) et F (recommandé).
+    f_df1 = k - 1
+    f_df2 = (k - 1) * (n - 1)
+    f_denom = n * (k - 1) - Q
+    if f_df2 <= 0:
+        # n = 1 bloc : F non défini (déjà écarté par n < 2 plus haut,
+        # garde-fou défensif).
+        f_stat: Optional[float] = None
+        f_p: Optional[float] = None
+    elif f_denom <= 0:
+        f_stat = float("inf")
+        f_p = 0.0
+    else:
+        f_stat = (n - 1) * Q / f_denom
+        f_p = _f_sf(f_stat, f_df1, f_df2)
+
+    # La décision de significativité s'appuie sur la statistique F
+    # recommandée quand elle est disponible (sinon repli χ²).
+    decision_p = f_p if f_p is not None else p_value
+    significant = decision_p < 0.05
 
     if significant:
         interpretation = (
-            f"Test de Friedman significatif (Q = {Q:.3f}, df = {df}, p = {p_value:.4f}). "
-            f"Au moins un moteur diffère des autres — utiliser le post-hoc Nemenyi "
-            f"pour identifier les paires distinguables."
+            f"Test de Friedman significatif (Q = {Q:.3f}, df = {df}, "
+            f"p_χ² = {p_value:.4f} ; F d'Iman-Davenport p = {decision_p:.4f}). "
+            f"Au moins un moteur diffère des autres — utiliser le post-hoc "
+            f"Nemenyi pour identifier les paires distinguables."
         )
     else:
         interpretation = (
-            f"Test de Friedman non significatif (Q = {Q:.3f}, df = {df}, p = {p_value:.4f}). "
+            f"Test de Friedman non significatif (Q = {Q:.3f}, df = {df}, "
+            f"p_χ² = {p_value:.4f} ; F d'Iman-Davenport p = {decision_p:.4f}). "
             f"Aucune différence globale détectée entre les moteurs sur ce corpus."
         )
 
@@ -216,31 +317,54 @@ def friedman_test(engine_cer_map: dict[str, list[float]]) -> dict:
         "n_engines": k,
         "mean_ranks": {k_: round(v, 4) for k_, v in mean_ranks.items()},
         "interpretation": interpretation,
+        # F5 — statistique F recommandée par Demšar (2006).
+        "f_statistic": (
+            None if f_stat is None
+            else (float("inf") if f_stat == float("inf") else round(f_stat, 4))
+        ),
+        "f_p_value": None if f_p is None else round(f_p, 6),
+        "f_df1": f_df1,
+        "f_df2": f_df2,
+        "decision_basis": "iman_davenport_F" if f_p is not None else "chi_square",
     }
 
 
 def _nemenyi_critical_value(k: int, alpha: float = 0.05) -> Optional[float]:
     """Valeur critique q_α pour k traitements, df = ∞.
 
-    Retourne ``None`` si k est hors table (< 2 ou > 50).
+    Retourne ``None`` si ``k < 2``.  Pour ``k`` au-delà de la table,
+    la valeur est **extrapolée** (cf. audit F6) et non clampée.
     """
     if k < 2:
         return None
+    col = 0 if alpha != 0.01 else 1
     if k in _NEMENYI_Q_TABLE:
-        q05, q01 = _NEMENYI_Q_TABLE[k]
-        return q05 if alpha == 0.05 else q01 if alpha == 0.01 else q05
-    # Au-delà de la table : borne supérieure (conservateur)
-    max_k = max(_NEMENYI_Q_TABLE.keys())
-    if k > max_k:
-        q05, q01 = _NEMENYI_Q_TABLE[max_k]
-        return q05 if alpha == 0.05 else q01
-    # Entre deux clés : interpolation linéaire
+        return _NEMENYI_Q_TABLE[k][col]
+
     keys = sorted(_NEMENYI_Q_TABLE.keys())
+    max_k = keys[-1]
+    if k > max_k:
+        # Audit scientifique F6 — l'ancien code réutilisait q(k=50)
+        # pour tout k > 50 en le qualifiant de « conservateur ».
+        # C'est l'inverse : q croît avec k, donc réutiliser un q plus
+        # PETIT donne une CD plus petite ⇒ PLUS de paires déclarées
+        # différentes ⇒ test **anti-conservateur** (faux positifs).
+        # On extrapole linéairement à partir des deux derniers points
+        # tabulés.  La courbe q(k) étant concave croissante,
+        # l'extrapolation linéaire **surestime** q ⇒ CD plus grande ⇒
+        # moins de rejets ⇒ réellement conservateur (bon sens).
+        lo, hi = keys[-2], keys[-1]
+        q_lo = _NEMENYI_Q_TABLE[lo][col]
+        q_hi = _NEMENYI_Q_TABLE[hi][col]
+        slope = (q_hi - q_lo) / (hi - lo)
+        return q_hi + slope * (k - hi)
+
+    # Entre deux clés : interpolation linéaire.
     for i in range(len(keys) - 1):
         if keys[i] < k < keys[i + 1]:
             lo, hi = keys[i], keys[i + 1]
-            q_lo = _NEMENYI_Q_TABLE[lo][0 if alpha == 0.05 else 1]
-            q_hi = _NEMENYI_Q_TABLE[hi][0 if alpha == 0.05 else 1]
+            q_lo = _NEMENYI_Q_TABLE[lo][col]
+            q_hi = _NEMENYI_Q_TABLE[hi][col]
             frac = (k - lo) / (hi - lo)
             return q_lo + frac * (q_hi - q_lo)
     return None
@@ -303,6 +427,9 @@ def nemenyi_posthoc(
     mean_ranks = {names[i]: round(mean_ranks_list[i], 4) for i in range(k)}
 
     q_alpha = _nemenyi_critical_value(k, alpha) or 0.0
+    # F6 — transparence : q_α est extrapolé au-delà de la table de
+    # Demšar (k > 50, cas extrême : > 50 moteurs comparés).
+    q_alpha_extrapolated = k > max(_NEMENYI_Q_TABLE.keys())
     critical_distance = q_alpha * math.sqrt(k * (k + 1) / (6.0 * n))
 
     # Matrice de significativité : paire (i,j) significative si |R_i - R_j| > CD
@@ -334,6 +461,7 @@ def nemenyi_posthoc(
         "alpha": alpha,
         "critical_distance": round(critical_distance, 4),
         "q_alpha": round(q_alpha, 4),
+        "q_alpha_extrapolated": q_alpha_extrapolated,
         "n_blocks": n,
         "n_engines": k,
         "mean_ranks": mean_ranks,
@@ -352,6 +480,7 @@ __all__ = [
     # (utilisé seulement par friedman_test et nemenyi_posthoc) ; il n'est
     # ni dans __all__ ni ré-exporté par le __init__.py du sous-package.
     "_chi_square_sf",
+    "_f_sf",
     "_nemenyi_critical_value",
     "_rank_row",
 ]
