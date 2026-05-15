@@ -88,6 +88,67 @@ class TestInferMistralCapabilities:
         assert "vision" in infer_mistral_capabilities(model_id)
 
 
+class TestCapabilitiesFromApiField:
+    """La source de vérité est le champ ``capabilities`` de l'API
+    Mistral, pas l'heuristique nom-de-modèle.  Garantit qu'un futur
+    ``mistral-small-2509`` (non listé en dur) est correctement
+    classé si l'API le déclare vision — sans maintenance.
+    """
+
+    def test_api_vision_field_true_overrides_name_heuristic(self) -> None:
+        from picarones.interfaces.web.engine_utils import (
+            mistral_capabilities_from_model,
+        )
+        # Modèle futur inconnu de tous les sets hardcodés, mais que
+        # l'API déclare vision.
+        model = {
+            "id": "mistral-small-2509",
+            "capabilities": {"completion_chat": True, "vision": True},
+        }
+        assert mistral_capabilities_from_model(model) == ["text", "vision"]
+
+    def test_api_vision_field_false_is_text_only(self) -> None:
+        from picarones.interfaces.web.engine_utils import (
+            mistral_capabilities_from_model,
+        )
+        model = {
+            "id": "some-future-text-model",
+            "capabilities": {"completion_chat": True, "vision": False},
+        }
+        assert mistral_capabilities_from_model(model) == ["text"]
+
+    def test_missing_capabilities_falls_back_to_heuristic(self) -> None:
+        """API sans champ ``capabilities`` (version ancienne / schéma
+        changé) → repli sur l'heuristique nom."""
+        from picarones.interfaces.web.engine_utils import (
+            mistral_capabilities_from_model,
+        )
+        # Pas de capabilities → heuristique : pixtral = vision.
+        assert mistral_capabilities_from_model(
+            {"id": "pixtral-12b-2409"},
+        ) == ["text", "vision"]
+        # Pas de capabilities → heuristique : small-latest = vision.
+        assert mistral_capabilities_from_model(
+            {"id": "mistral-small-latest"},
+        ) == ["text", "vision"]
+        # Pas de capabilities → heuristique : ministral = text.
+        assert mistral_capabilities_from_model(
+            {"id": "ministral-3b-latest"},
+        ) == ["text"]
+
+    def test_malformed_capabilities_falls_back(self) -> None:
+        """``capabilities`` présent mais pas un dict → repli sûr."""
+        from picarones.interfaces.web.engine_utils import (
+            mistral_capabilities_from_model,
+        )
+        assert mistral_capabilities_from_model(
+            {"id": "pixtral-large-latest", "capabilities": None},
+        ) == ["text", "vision"]
+        assert mistral_capabilities_from_model(
+            {"id": "pixtral-large-latest", "capabilities": "garbage"},
+        ) == ["text", "vision"]
+
+
 class TestRuntimeAdapterConsistency:
     """La classification UI doit être cohérente avec le runtime
     ``MistralAdapter._TEXT_ONLY_MODELS`` : un modèle annoncé

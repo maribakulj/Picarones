@@ -149,7 +149,45 @@ def model_entry(model_id: str, capabilities: list[str]) -> dict:
     return {"id": model_id, "capabilities": capabilities}
 
 
+def mistral_capabilities_from_model(model: dict) -> list[str]:
+    """Dérive ``["text"]`` / ``["text", "vision"]`` d'un objet modèle
+    Mistral renvoyé par ``GET /v1/models``.
+
+    Source de vérité : le champ ``capabilities`` que l'API Mistral
+    expose pour chaque modèle (``{"completion_chat": bool,
+    "vision": bool, ...}``).  C'est l'unique source fiable : elle
+    suit automatiquement les nouveaux modèles (``mistral-small-2509``
+    futur, etc.) sans maintenance d'une liste hardcodée.
+
+    Repli sur l'heuristique nom-de-modèle :func:`infer_mistral_capabilities`
+    UNIQUEMENT si l'API ne renvoie pas de ``capabilities`` exploitable
+    (version d'API ancienne, changement de schéma, ou liste de
+    fallback statique offline).  L'heuristique est volontairement
+    conservée comme garde-fou, pas comme source primaire.
+    """
+    caps = model.get("capabilities")
+    if isinstance(caps, dict) and "vision" in caps:
+        # ``completion_chat`` indique le support chat/texte ; on
+        # considère tout modèle listé ici comme capable de texte
+        # (ce sont des modèles chat), et ``vision`` ajoute l'image.
+        out = ["text"]
+        if caps.get("vision") is True:
+            out.append("vision")
+        return out
+    # Pas de capabilities exploitable → heuristique nom (fallback).
+    return infer_mistral_capabilities(model.get("id", ""))
+
+
 def infer_mistral_capabilities(model_id: str) -> list[str]:
+    """Heuristique de SECOURS basée sur le nom du modèle.
+
+    Utilisée uniquement quand l'API Mistral ne fournit pas le champ
+    ``capabilities`` (cf. :func:`mistral_capabilities_from_model` qui
+    est la voie primaire) et pour la liste de fallback statique
+    offline.  Les sets hardcodés ci-dessous sont des garde-fous
+    best-effort, pas la source de vérité — ils peuvent dériver et
+    c'est acceptable car l'API prime quand elle est joignable.
+    """
     mid = model_id.lower()
     # Modèles explicitement vision (Pixtral)
     if "pixtral" in mid:
@@ -193,6 +231,7 @@ __all__ = [
     "fetch_ollama_info",
     "get_tesseract_langs",
     "model_entry",
+    "mistral_capabilities_from_model",
     "infer_mistral_capabilities",
     "infer_openai_capabilities",
     "infer_ollama_capabilities",

@@ -14,9 +14,9 @@ from picarones.interfaces.web.engine_utils import (
     check_engine,
     fetch_ollama_info,
     get_tesseract_langs,
-    infer_mistral_capabilities,
     infer_ollama_capabilities,
     infer_openai_capabilities,
+    mistral_capabilities_from_model,
     model_entry,
 )
 
@@ -172,7 +172,7 @@ def _models_for_provider_sync(provider: str, capability: str) -> dict:
                 {"Authorization": f"Bearer {api_key}"},
             )
             models = [
-                model_entry(m["id"], infer_mistral_capabilities(m["id"]))
+                model_entry(m["id"], mistral_capabilities_from_model(m))
                 for m in data.get("data", [])
                 if "pixtral" in m["id"].lower() or "mistral-ocr" in m["id"].lower()
             ]
@@ -258,8 +258,11 @@ def _models_for_provider_sync(provider: str, capability: str) -> dict:
             )
             # Inclure TOUS les modèles Mistral (y compris Pixtral pour la vision)
             # sauf mistral-ocr qui est un endpoint OCR dédié, pas un LLM chat.
+            # Capacités lues depuis le champ ``capabilities`` de l'API
+            # (source de vérité auto-maintenue), heuristique nom en
+            # repli seulement.
             models = [
-                model_entry(m["id"], infer_mistral_capabilities(m["id"]))
+                model_entry(m["id"], mistral_capabilities_from_model(m))
                 for m in data.get("data", [])
                 if "mistral-ocr" not in m["id"].lower()
             ]
