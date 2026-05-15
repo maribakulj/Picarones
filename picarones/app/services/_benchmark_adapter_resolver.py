@@ -69,7 +69,9 @@ def engine_to_pipeline_spec(engine: Any) -> PipelineSpec:
     Deux cas (le path historique ``BaseOCREngine`` a été retiré) :
 
     - **BaseOCRAdapter** (canonique) : spec mono-step consommant
-      ``engine.input_types`` et produisant ``engine.output_types``.
+      ``engine.input_types`` et produisant
+      ``engine.effective_output_types`` (sous-ensemble garanti de
+      ``output_types`` — exclut les extras opt-in/best-effort).
     - **OCRLLMPipelineConfig** (``engine.is_pipeline = True``) : la
       spec composée est construite via ``make_ocr_llm_pipeline_spec``
       avec le mode (``text_only`` / ``text_and_image`` /
@@ -93,7 +95,15 @@ def _canonical_adapter_to_spec(adapter: Any) -> PipelineSpec:
     name = adapter.name
     safe_name = _safe_pipeline_name(name)
     input_types = tuple(adapter.input_types)
-    output_types = tuple(adapter.output_types)
+    # ``effective_output_types`` (et non ``output_types``) : on déclare
+    # uniquement les artefacts *garantis* par cette instance.  Sinon un
+    # adapter dont ``output_types`` annonce des extras opt-in/best-effort
+    # (Tesseract : ``CONFIDENCES`` / ``ALTO_XML``) ferait échouer tout le
+    # step (``missing_output``) quand l'extra n'est pas produit — et
+    # l'``engine_error`` qui en résulte sauterait les hooks
+    # ``requires_success`` (analyse caractères vide alors que l'OCR est
+    # valide).  Défaut = ``output_types`` pour les adapters simples.
+    output_types = tuple(adapter.effective_output_types)
     if ArtifactType.IMAGE not in input_types:
         raise PicaronesError(
             f"Adapter {name!r} ne déclare pas IMAGE en input_types "

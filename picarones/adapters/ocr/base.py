@@ -6,9 +6,11 @@ Un adapter OCR :
 
 - Déclare ses ``input_types`` (typiquement
   ``frozenset({ArtifactType.IMAGE})``).
-- Déclare ses ``output_types`` (typiquement
-  ``frozenset({ArtifactType.RAW_TEXT})``, ou plus pour les moteurs
-  structurés).
+- Déclare ses ``output_types`` (ensemble maximal *possible* —
+  typiquement ``frozenset({ArtifactType.RAW_TEXT})``, ou plus pour
+  les moteurs structurés) et, si certains de ces types sont opt-in
+  ou best-effort, restreint ``effective_output_types`` au strict
+  garanti (cf. ``TesseractAdapter``).
 - Déclare son ``execution_mode`` : ``"io"`` (défaut, ThreadPool) ou
   ``"cpu"`` (ProcessPool).
 - Implémente
@@ -98,12 +100,39 @@ class BaseOCRAdapter(ABC):
     #: enchaînés.
     input_types: frozenset[ArtifactType] = frozenset({ArtifactType.IMAGE})
 
-    #: Types d'artefacts produits.  Validés à la sortie de ``execute``.
+    #: Ensemble **maximal** de types qu'un adapter de cette classe
+    #: *peut* produire.  ``execute`` doit produire au moins les types
+    #: déclarés dans :pyattr:`effective_output_types` (cf. ce contrat
+    #: ci-dessous) — pas forcément tout ``output_types`` si certains
+    #: artefacts sont opt-in ou best-effort.
     output_types: frozenset[ArtifactType] = frozenset({ArtifactType.RAW_TEXT})
 
     #: ``"io"`` (ThreadPool) ou ``"cpu"`` (ProcessPool).  Indique au
     #: runner quel type de pool utiliser pour la concurrence.
     execution_mode: str = "io"
+
+    @property
+    def effective_output_types(self) -> frozenset[ArtifactType]:
+        """Sous-ensemble de ``output_types`` que **cette instance**
+        produit de façon *garantie*, compte tenu de sa configuration.
+
+        Défaut : ``output_types`` — le cas courant où l'adapter
+        déclare exactement ce qu'il produit (tous les adapters OCR
+        sauf Tesseract).
+
+        Pourquoi cette distinction : ``_canonical_adapter_to_spec``
+        génère la ``PipelineStep.output_types`` du benchmark mono-step
+        à partir de cette propriété, et le ``PipelineExecutor`` marque
+        le step en échec (``missing_output: [...]``) si un type déclaré
+        n'a pas été produit.  Un adapter dont ``output_types`` annonce
+        des artefacts *opt-in* ou *best-effort* (ex. ``TesseractAdapter``
+        et ses sidecars ``CONFIDENCES`` / ``ALTO_XML``) DOIT restreindre
+        cette propriété au strict garanti — sinon un extra non produit
+        ferait échouer tout l'OCR alors que ``RAW_TEXT`` est valide
+        (régression « analyse caractères vide » : ``engine_error``
+        positionné → hooks ``requires_success`` sautés).
+        """
+        return self.output_types
 
     @property
     @abstractmethod
@@ -138,7 +167,9 @@ class BaseOCRAdapter(ABC):
         -------
         dict[ArtifactType, Artifact]
             Map des artefacts produits.  Doit contenir au moins les
-            types déclarés dans ``self.output_types``.
+            types déclarés dans ``self.effective_output_types`` (les
+            artefacts opt-in/best-effort de ``self.output_types`` sont
+            facultatifs).
 
         Raises
         ------

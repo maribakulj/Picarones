@@ -111,14 +111,11 @@ class TesseractAdapter(BaseOCRAdapter):
     """
 
     input_types = frozenset({ArtifactType.IMAGE})
-    #: Set maximal de types que l'adapter peut produire.  Le YAML
-    #: ``PipelineSpec`` choisit ceux qui sont effectivement consommés
-    #: par les étapes en aval ; l'executor filtre la sortie de
-    #: ``execute()`` sur ``step.output_types``.  Si l'utilisateur
-    #: désactive ``expose_confidences`` ou ``expose_alto``, le YAML
-    #: doit déclarer ``output_types: [raw_text]`` (sinon la jonction
-    #: sera vue par l'aval comme manquant son input ``confidences`` /
-    #: ``alto_xml``).
+    #: Set **maximal** de types que l'adapter *peut* produire (capacité
+    #: de la classe).  Seul ``RAW_TEXT`` est *garanti* : ``CONFIDENCES``
+    #: et ``ALTO_XML`` sont best-effort/opt-in — cf.
+    #: :pyattr:`effective_output_types` qui pilote la
+    #: ``PipelineStep.output_types`` du benchmark mono-step.
     #:
     #: Phase B5 (mai 2026) — ``ALTO_XML`` ajouté au set maximal pour
     #: permettre la production d'un ALTO natif via
@@ -130,6 +127,41 @@ class TesseractAdapter(BaseOCRAdapter):
         ArtifactType.ALTO_XML,
     })
     execution_mode = "cpu"
+
+    @property
+    def effective_output_types(self) -> frozenset[ArtifactType]:
+        """Types *garantis* — pilote la ``PipelineStep.output_types``
+        du benchmark mono-step (``_canonical_adapter_to_spec``).
+
+        Seul ``RAW_TEXT`` est garanti.  Justification du périmètre :
+
+        - ``CONFIDENCES`` est un sidecar **best-effort** :
+          ``_extract_and_persist_confidences`` log + retourne ``None``
+          si ``image_to_data`` lève/timeoute, sans invalider l'OCR.
+          Surtout, **aucun consommateur côté pipeline** ne lit cet
+          artefact (le hook calibration lit
+          ``StepResult.token_confidences``, canal distinct que
+          Tesseract n'alimente pas).  Le déclarer en sortie requise
+          ferait échouer tout le step (``missing_output:
+          ['confidences']``) au moindre timeout ``image_to_data`` —
+          l'``engine_error`` qui en résulte fait sauter les hooks
+          ``requires_success`` (confusion, char_scores, taxonomy,
+          structure…) → bug « Analyse des caractères vide » alors que
+          ``RAW_TEXT`` est parfaitement valide.
+        - ``ALTO_XML`` n'est ajouté que si ``expose_alto`` est
+          explicitement activé : c'est un opt-in assumé par
+          l'appelant (consommé par une ``AltoView``), donc le
+          déclarer comme requis est cohérent avec son intention.
+
+        Conséquence : avec la config par défaut
+        (``expose_alto=False``), le step OCR-seul exige uniquement
+        ``RAW_TEXT`` — un échec d'extraction sidecar ne masque plus
+        l'analyse caractères.
+        """
+        types = {ArtifactType.RAW_TEXT}
+        if self._expose_alto:
+            types.add(ArtifactType.ALTO_XML)
+        return frozenset(types)
 
     def __init__(
         self,
