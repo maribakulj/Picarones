@@ -222,7 +222,9 @@
       "failed": 0,
       "mean_cer": 0.025,
       "mean_wer": 0.05,
-      "median_cer": 0.025
+      "median_cer": 0.025,
+      "micro_cer": null,
+      "micro_wer": null
     },
     {
       "documents": 2,
@@ -230,7 +232,9 @@
       "failed": 0,
       "mean_cer": 0.03125,
       "mean_wer": 0.166666,
-      "median_cer": 0.03125
+      "median_cer": 0.03125,
+      "micro_cer": null,
+      "micro_wer": null
     }
   ],
   "run_date": "2026-05-09T00:00:00+00:00"

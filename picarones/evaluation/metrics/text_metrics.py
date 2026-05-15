@@ -115,6 +115,15 @@ def compute_metrics(
             error="jiwer n'est pas installé (pip install jiwer)",
         )
 
+    # Audit scientifique (F10) — l'exclusion de caractères est appliquée
+    # **avant** le court-circuit des cas vides : si ``char_exclude`` vide
+    # entièrement un texte, le cas est traité par les conventions
+    # "texte vide" ci-dessous (résultat déterministe) plutôt que de
+    # tomber dans le ``except`` et de renvoyer une erreur / des None.
+    if char_exclude:
+        reference  = "".join(c for c in reference  if c not in char_exclude)
+        hypothesis = "".join(c for c in hypothesis if c not in char_exclude)
+
     # Cas dégénérés des inputs vides — jiwer 3.x lève sur ces cas
     # (4.x les gère mais on ne dépend plus d'une majeure spécifique).
     # Convention :
@@ -122,6 +131,9 @@ def compute_metrics(
     # - vide ref vs hyp non vide → 1.0 (toute l'hypothèse est une
     #   insertion, error rate = 1.0).
     # - ref non vide vs hyp vide → 1.0 (toute la GT manque).
+    # Dans ces trois cas, les comptes bruts (cer_errors/cer_ref_chars…)
+    # restent ``None`` : le dénominateur micro n'est pas défini sur une
+    # référence vide, l'agrégateur micro saute donc le document.
     ref_stripped = reference.strip()
     hyp_stripped = hypothesis.strip() if hypothesis else ""
     if not ref_stripped and not hyp_stripped:
@@ -147,13 +159,15 @@ def compute_metrics(
         )
 
     try:
-        # Exclusion de caractères avant tout calcul
-        if char_exclude:
-            reference  = "".join(c for c in reference  if c not in char_exclude)
-            hypothesis = "".join(c for c in hypothesis if c not in char_exclude)
+        # CER : un seul appel ``process_characters`` fournit la valeur
+        # (``co.cer`` est bit-identique à ``jiwer.cer``) ET les comptes
+        # de l'alignement minimal (= Levenshtein) nécessaires au
+        # micro-CER corpus (audit scientifique F1).
+        co = jiwer.process_characters(reference, hypothesis)
+        cer_raw = co.cer
+        cer_errors = co.substitutions + co.deletions + co.insertions
+        cer_ref_chars = co.substitutions + co.deletions + co.hits
 
-        # CER variants
-        cer_raw = _cer_from_strings(reference, hypothesis)
         cer_nfc = _cer_from_strings(
             _normalize_nfc(reference), _normalize_nfc(hypothesis)
         )
@@ -161,14 +175,18 @@ def compute_metrics(
             _normalize_caseless(reference), _normalize_caseless(hypothesis)
         )
 
-        # WER variants
+        # WER : idem via ``process_words`` (``wo.wer/mer/wil`` identiques
+        # aux fonctions jiwer, même tokenisation par espaces).
         ref_norm = _normalize_whitespace(reference)
         hyp_norm = _normalize_whitespace(hypothesis)
 
-        wer_raw = jiwer.wer(reference, hypothesis)
+        wo = jiwer.process_words(reference, hypothesis)
+        wer_raw = wo.wer
+        wer_errors = wo.substitutions + wo.deletions + wo.insertions
+        wer_ref_words = wo.substitutions + wo.deletions + wo.hits
         wer_normalized = jiwer.wer(ref_norm, hyp_norm)
-        mer = jiwer.mer(reference, hypothesis)
-        wil = jiwer.wil(reference, hypothesis)
+        mer = wo.mer
+        wil = wo.wil
 
         # CER diplomatique — utilise le profil fourni ou le profil médiéval par défaut
         cer_diplomatic: Optional[float] = None
@@ -193,6 +211,10 @@ def compute_metrics(
             wil=wil,
             reference_length=len(reference),
             hypothesis_length=len(hypothesis),
+            cer_errors=cer_errors,
+            cer_ref_chars=cer_ref_chars,
+            wer_errors=wer_errors,
+            wer_ref_words=wer_ref_words,
             cer_diplomatic=cer_diplomatic,
             diplomatic_profile_name=diplomatic_profile_name,
         )

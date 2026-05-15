@@ -63,11 +63,20 @@ def wilcoxon_test(
     if len(a) != len(b):
         raise ValueError("Les deux listes doivent avoir la même longueur")
 
-    diffs = [x - y for x, y in zip(a, b)]
+    # ``diffs_raw`` conserve les zéros : on le transmet **tel quel** à
+    # scipy (qui applique ``zero_method`` lui-même).  Audit F9 : éviter
+    # le double retrait des zéros (ici puis dans scipy) qui faussait
+    # ``n`` et la p-value.  L'implémentation native travaille sur
+    # ``diffs`` (zéros retirés pour la méthode "wilcox").
+    diffs_raw = [x - y for x, y in zip(a, b)]
 
-    # Retirer les zéros (méthode "wilcox")
     if zero_method == "wilcox":
-        diffs = [d for d in diffs if d != 0.0]
+        diffs = [d for d in diffs_raw if d != 0.0]
+    else:
+        # "pratt"/"zsplit" : non gérés par l'implémentation native ;
+        # scipy (s'il est là) les applique.  En repli natif, on retombe
+        # sur "wilcox" en le signalant dans l'interprétation.
+        diffs = [d for d in diffs_raw if d != 0.0]
 
     n = len(diffs)
     if n == 0:
@@ -77,14 +86,22 @@ def wilcoxon_test(
             "significant": False,
             "interpretation": "Aucune différence entre les deux concurrents.",
             "n_pairs": 0,
+            "W_plus": 0.0,
+            "W_minus": 0.0,
+            "method": "exact",
+            "has_ties": False,
         }
 
     # Rangs des valeurs absolues
     abs_diffs = [abs(d) for d in diffs]
     indexed = sorted(enumerate(abs_diffs), key=lambda x: x[1])
 
-    # Gestion des ex-aequo : rang moyen
+    # Gestion des ex-aequo : rang moyen.  On mémorise la taille des
+    # groupes d'ex-aequo : un groupe de taille > 1 invalide la
+    # distribution exacte (rangs non distincts) → bascule vers
+    # l'approximation normale avec correction d'ex-aequo.
     ranks = [0.0] * n
+    tie_sizes: list[int] = []
     i = 0
     while i < n:
         j = i
@@ -93,22 +110,39 @@ def wilcoxon_test(
         avg_rank = (i + j + 1) / 2.0  # rang moyen (1-based)
         for k in range(i, j):
             ranks[indexed[k][0]] = avg_rank
+        tie_sizes.append(j - i)
         i = j
+    has_ties = any(t > 1 for t in tie_sizes)
 
     W_plus  = sum(ranks[k] for k in range(n) if diffs[k] > 0)
     W_minus = sum(ranks[k] for k in range(n) if diffs[k] < 0)
     W = min(W_plus, W_minus)
 
-    # Calcul de la p-value : scipy si disponible, sinon approximation native
+    # Calcul de la p-value bilatérale.
+    #
+    # 1. scipy si disponible : méthode exacte (n ≤ 25) ou approximation
+    #    normale (n > 25), appelée sur ``diffs_raw`` (zéros inclus) avec
+    #    ``zero_method`` — scipy gère le retrait lui-même (audit F9 : plus
+    #    de double retrait).
+    # 2. Sinon, implémentation native **exacte** : distribution nulle de
+    #    W⁺ énumérée par programmation dynamique sur les 2ⁿ assignations
+    #    de signes (valable sans ex-aequo, n ≤ 25 — au-delà l'énumération
+    #    est inutile, l'approximation normale converge).  Avec ex-aequo
+    #    ou n > 25 : approximation normale avec correction d'ex-aequo et
+    #    de continuité.  Plus aucune p-value fabriquée (audit F2 : la
+    #    table {0.04, 0.20} retournait des faux positifs pour n ≤ 5, où
+    #    la significativité bilatérale à 5 % est mathématiquement
+    #    impossible).
+    method_used = "exact"
     if _SCIPY_AVAILABLE:
         try:
-            scipy_res = _scipy_wilcoxon(diffs, zero_method=zero_method)
+            scipy_res = _scipy_wilcoxon(diffs_raw, zero_method=zero_method)
             p_value = float(scipy_res.pvalue)
+            method_used = "scipy"
         except Exception:  # noqa: BLE001 — fallback gracieux
-            # Repli sur l'implémentation native en cas d'erreur scipy
-            p_value = _native_p_value(n, W)
+            p_value, method_used = _native_p_value(n, W_plus, W_minus, tie_sizes)
     else:
-        p_value = _native_p_value(n, W)
+        p_value, method_used = _native_p_value(n, W_plus, W_minus, tie_sizes)
 
     significant = p_value < 0.05
 
@@ -132,6 +166,11 @@ def wilcoxon_test(
         "n_pairs": n,
         "W_plus": round(W_plus, 4),
         "W_minus": round(W_minus, 4),
+        # Transparence méthodologique (audit F2/F9) : quelle méthode a
+        # produit la p-value, et présence d'ex-aequo (qui force
+        # l'approximation normale en l'absence de scipy).
+        "method": method_used,
+        "has_ties": has_ties,
     }
 
 
@@ -150,33 +189,69 @@ def _normal_sf(z: float) -> float:
     return p if z >= 0 else 1.0 - p
 
 
-# Table des valeurs critiques de W pour α=0.05 bilatéral (test exact, source : tables de Wilcoxon)
-_W_CRITICAL = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 2, 8: 3, 9: 5}
+def _exact_signed_rank_two_sided_p(
+    n: int, w_plus: float, w_minus: float,
+) -> float:
+    """P-value bilatérale **exacte** du test des rangs signés (sans ex-aequo).
 
+    Sous H0, chacune des 2ⁿ assignations de signes aux rangs 1..n est
+    équiprobable.  La distribution de W⁺ (somme des rangs portant un
+    signe +) est le nombre de sous-ensembles de ``{1,…,n}`` de somme
+    ``s`` divisé par 2ⁿ — fonction génératrice ``∏(1 + xʳ)``, calculée
+    par programmation dynamique (knapsack).  La p-value bilatérale vaut
+    ``2·P(W⁺ ≤ T)`` avec ``T = min(W⁺, W⁻)``, bornée à 1.0.  Identique
+    au mode exact de ``scipy.stats.wilcoxon``.
 
-def _wilcoxon_exact_p(n: int, w: float) -> float:
-    """P-value approximée pour petits n (< 10) via table critique simplifiée.
-
-    Note : résultat **conservateur** — seules deux valeurs sont retournées :
-    0.04 (significatif à 5 %) ou 0.20 (non significatif).
-    Préférer scipy pour des p-values exactes.
+    Pour n ≤ 5 la p-value minimale possible est 2/2ⁿ ≥ 0.0625 : le test
+    ne peut donc jamais être significatif à 5 % bilatéral — ce que
+    l'ancienne table ``{0.04, 0.20}`` violait (faux positifs, audit F2).
     """
-    critical = _W_CRITICAL.get(n, 0)
-    if w <= critical:
-        return 0.04  # significatif à 5 %
-    return 0.20      # non significatif (approximation conservative)
+    total = n * (n + 1) // 2
+    counts = [0] * (total + 1)
+    counts[0] = 1
+    for r in range(1, n + 1):
+        for s in range(total, r - 1, -1):
+            counts[s] += counts[s - r]
+    t = int(min(w_plus, w_minus))
+    tail = sum(counts[: t + 1])
+    return min(1.0, 2.0 * tail / float(1 << n))
 
 
-def _native_p_value(n: int, W: float) -> float:
-    """Calcule la p-value via l'approximation normale (n ≥ 10) ou la table exacte (n < 10)."""
-    if n >= 10:
-        mu = n * (n + 1) / 4.0
-        sigma2 = n * (n + 1) * (2 * n + 1) / 24.0
-        if sigma2 <= 0:
-            return 1.0
-        z = abs((W + 0.5) - mu) / math.sqrt(sigma2)  # correction de continuité
-        return 2.0 * _normal_sf(z)  # test bilatéral
-    return _wilcoxon_exact_p(n, W)
+def _native_p_value(
+    n: int,
+    w_plus: float,
+    w_minus: float,
+    tie_sizes: list[int],
+) -> tuple[float, str]:
+    """P-value bilatérale native + nom de la méthode employée.
+
+    - **Sans ex-aequo et n ≤ 25** : distribution exacte (DP ci-dessus).
+    - **Sinon** (ex-aequo, ou n > 25) : approximation normale avec
+      correction d'ex-aequo sur la variance et correction de continuité
+      standard ``(|W − μ| − ½)/σ`` bornée à 0 (audit F9 : l'ancienne
+      forme ``|(W+½) − μ|`` était légèrement anti-conservatrice quand
+      W ≈ μ).
+
+    Plus aucune p-value fabriquée (audit F2).
+    """
+    if n == 0:
+        return 1.0, "exact"
+    has_ties = any(t > 1 for t in tie_sizes)
+    if not has_ties and n <= 25:
+        return _exact_signed_rank_two_sided_p(n, w_plus, w_minus), "exact"
+
+    mu = n * (n + 1) / 4.0
+    # σ² avec correction d'ex-aequo (Wilcoxon signé-rangé) :
+    #   σ² = [n(n+1)(2n+1) − ½·Σ(tⱼ³ − tⱼ)] / 24
+    tie_term = sum(t ** 3 - t for t in tie_sizes)
+    sigma2 = (n * (n + 1) * (2 * n + 1) - 0.5 * tie_term) / 24.0
+    if sigma2 <= 0:
+        return 1.0, "normal_approx"
+    W = min(w_plus, w_minus)
+    z = (abs(W - mu) - 0.5) / math.sqrt(sigma2)
+    if z < 0.0:
+        z = 0.0
+    return min(1.0, 2.0 * _normal_sf(z)), "normal_approx"
 
 
 def compute_pairwise_stats(

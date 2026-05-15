@@ -383,6 +383,26 @@ class EngineReport:
             )
 
     @property
+    def micro_cer(self) -> Optional[float]:
+        """CER **micro-moyenné** corpus = Σ distance_édition / Σ car_référence.
+
+        Audit scientifique F1 — métrique d'agrégation standard du domaine
+        OCR/HTR (ICDAR, OCR-D, HTR-United, Transkribus, eScriptorium).
+        Contrairement à ``mean_cer`` / ``median_cer`` (macro, aveugles à
+        la longueur), elle pondère chaque document par son nombre de
+        caractères : une page de 5 000 caractères pèse 500× une légende
+        de 10.  C'est le critère de tri par défaut de ``ranking()``.
+        ``None`` si aucun document n'a de comptes bruts (jiwer absent,
+        références vides).
+        """
+        return self.aggregated_metrics.get("cer_micro", {}).get("value")
+
+    @property
+    def micro_wer(self) -> Optional[float]:
+        """WER micro-moyenné corpus = Σ erreurs_mot / Σ mots_référence."""
+        return self.aggregated_metrics.get("wer_micro", {}).get("value")
+
+    @property
     def mean_cer(self) -> Optional[float]:
         cer_stats = self.aggregated_metrics.get("cer", {})
         return cer_stats.get("mean")
@@ -540,27 +560,40 @@ class BenchmarkResult:
     )
 
     def ranking(self) -> list[dict]:
-        """Retourne le classement des moteurs trié par **médiane CER** croissante.
+        """Classement des moteurs trié par **CER micro-moyenné** croissant.
 
-        Sprint 44 — A.I.2 du plan d'évolution : le tri par défaut bascule
-        de la moyenne vers la médiane.  Sur des distributions
-        asymétriques (typique des corpus patrimoniaux : 80 % des docs
-        à 3 % de CER, 20 % à 40 %), la moyenne est tirée par quelques
-        documents catastrophiques et masque les performances réelles.
-        La médiane est plus représentative ; cohérente aussi avec le
-        test de Friedman qui travaille déjà sur les rangs (Sprint 18).
+        Audit scientifique F1 (mai 2026) — le tri par défaut bascule vers
+        le **micro-CER** (Σ distance_édition / Σ caractères_référence),
+        métrique d'agrégation standard du domaine OCR/HTR (ICDAR, OCR-D,
+        HTR-United, Transkribus, eScriptorium).  C'est la seule agrégation
+        défendable scientifiquement comme chiffre d'en-tête : elle
+        pondère chaque document par sa longueur, là où une moyenne ou une
+        médiane de taux par document donne le même poids à une légende de
+        10 caractères et à une page de 5 000 et peut inverser le
+        classement réel des moteurs.
 
-        Le champ ``mean_cer`` est conservé dans chaque entrée pour
-        rétrocompatibilité — les consommateurs (CLI, détecteurs
-        narratifs, vue HTML) continuent à pouvoir l'afficher en colonne
-        secondaire.  Le tri prend ``median_cer`` quand disponible et
-        retombe sur ``mean_cer`` sinon.
+        Historique : Sprint 44 avait basculé moyenne → médiane pour la
+        robustesse à l'asymétrie des corpus patrimoniaux.  Le diagnostic
+        de fond (la *moyenne* est tirée par quelques documents
+        catastrophiques) est exact, mais la *réponse* correcte n'est pas
+        la médiane de taux (toujours aveugle à la longueur) : c'est le
+        micro-CER.  ``mean_cer`` et ``median_cer`` restent exposés dans
+        chaque entrée comme **diagnostics de dispersion** (un grand écart
+        micro↔médiane signale une distribution très hétérogène — cf.
+        détecteur ``median_mean_gap_warning``), pas comme critère de
+        classement.
+
+        Le tri prend ``micro_cer`` quand disponible et retombe sur
+        ``median_cer`` puis ``mean_cer`` (corpus sans comptes bruts :
+        jiwer absent, références vides).
         """
         ranked = []
         for report in self.engine_reports:
             ranked.append(
                 {
                     "engine": report.engine_name,
+                    "micro_cer": report.micro_cer,
+                    "micro_wer": report.micro_wer,
                     "mean_cer": report.mean_cer,
                     "median_cer": report.median_cer,
                     "mean_wer": report.mean_wer,
@@ -570,8 +603,11 @@ class BenchmarkResult:
             )
 
         def _sort_key(entry: dict) -> tuple:
-            # Priorité : médiane si disponible, sinon moyenne, sinon +∞
-            primary = entry.get("median_cer")
+            # Priorité scientifique : micro-CER ; repli médiane puis
+            # moyenne ; +∞ si rien (moteur sans document exploitable).
+            primary = entry.get("micro_cer")
+            if primary is None:
+                primary = entry.get("median_cer")
             if primary is None:
                 primary = entry.get("mean_cer")
             return (primary is None, primary if primary is not None else float("inf"))
@@ -635,22 +671,39 @@ class BenchmarkResult:
                 # ``Optional[float]`` ; le double filtre ``error is None``
                 # garantit ``cer/wer is not None`` par convention, mais on
                 # le filtre explicitement aussi pour que mypy le voie.
-                cers: list[float] = [
-                    dr.metrics.cer
+                stratum_metrics = [
+                    dr.metrics
                     for dr in report.document_results
                     if dr.doc_id in doc_ids
                     and dr.metrics is not None
                     and dr.metrics.error is None
-                    and dr.metrics.cer is not None
+                ]
+                cers: list[float] = [
+                    m.cer for m in stratum_metrics if m.cer is not None
                 ]
                 wers: list[float] = [
-                    dr.metrics.wer
-                    for dr in report.document_results
-                    if dr.doc_id in doc_ids
-                    and dr.metrics is not None
-                    and dr.metrics.error is None
-                    and dr.metrics.wer is not None
+                    m.wer for m in stratum_metrics if m.wer is not None
                 ]
+                # Micro-CER/WER de la strate (audit F1) — recalcul depuis
+                # les comptes bruts, cohérent avec ``ranking()`` global.
+                tot_ce = sum(
+                    m.cer_errors for m in stratum_metrics
+                    if m.cer_errors is not None and m.cer_ref_chars is not None
+                )
+                tot_cr = sum(
+                    m.cer_ref_chars for m in stratum_metrics
+                    if m.cer_errors is not None and m.cer_ref_chars is not None
+                )
+                tot_we = sum(
+                    m.wer_errors for m in stratum_metrics
+                    if m.wer_errors is not None and m.wer_ref_words is not None
+                )
+                tot_wr = sum(
+                    m.wer_ref_words for m in stratum_metrics
+                    if m.wer_errors is not None and m.wer_ref_words is not None
+                )
+                micro_cer = round(tot_ce / tot_cr, 6) if tot_cr > 0 else None
+                micro_wer = round(tot_we / tot_wr, 6) if tot_wr > 0 else None
                 failed = sum(
                     1 for dr in report.document_results
                     if dr.doc_id in doc_ids
@@ -660,6 +713,8 @@ class BenchmarkResult:
                 if not cers:
                     entries.append({
                         "engine": report.engine_name,
+                        "micro_cer": None,
+                        "micro_wer": None,
                         "mean_cer": None,
                         "median_cer": None,
                         "mean_wer": None,
@@ -669,6 +724,8 @@ class BenchmarkResult:
                     continue
                 entries.append({
                     "engine": report.engine_name,
+                    "micro_cer": micro_cer,
+                    "micro_wer": micro_wer,
                     "mean_cer": _stats.mean(cers),
                     "median_cer": _stats.median(cers),
                     "mean_wer": _stats.mean(wers) if wers else None,
@@ -677,7 +734,9 @@ class BenchmarkResult:
                 })
 
             def _sort_key(entry: dict) -> tuple:
-                primary = entry.get("median_cer")
+                primary = entry.get("micro_cer")
+                if primary is None:
+                    primary = entry.get("median_cer")
                 if primary is None:
                     primary = entry.get("mean_cer")
                 return (primary is None, primary if primary is not None else float("inf"))
@@ -711,24 +770,32 @@ class BenchmarkResult:
             return None
 
         global_ranking = self.ranking()
-        valid = [
-            r for r in global_ranking
-            if r.get("median_cer") is not None
-        ]
+
+        def _repr_cer(entry: dict) -> Optional[float]:
+            # CER représentatif cohérent avec ``ranking()`` : micro
+            # (audit F1) puis repli médiane / moyenne.
+            for key in ("micro_cer", "median_cer", "mean_cer"):
+                v = entry.get(key)
+                if v is not None:
+                    return float(v)
+            return None
+
+        valid = [r for r in global_ranking if _repr_cer(r) is not None]
         if not valid:
             return None
         leader = valid[0]["engine"]
 
-        # CER médian du leader sur chaque strate (où il a au moins 1 doc)
+        # CER représentatif (micro, repli médiane) du leader sur chaque
+        # strate où il a au moins 1 document.
         per_stratum: dict[str, float] = {}
         for stratum, entries in strata_rankings.items():
             for entry in entries:
                 if entry["engine"] != leader:
                     continue
-                med = entry.get("median_cer")
-                if med is None:
+                rc = _repr_cer(entry)
+                if rc is None:
                     continue
-                per_stratum[stratum] = float(med)
+                per_stratum[stratum] = rc
                 break
 
         if len(per_stratum) < 2:

@@ -48,7 +48,7 @@ FILE_BUDGETS: dict[str, int] = {
     # référencés ailleurs.  L'historique reste accessible via git log
     # + CHANGELOG.
     "picarones/reports/html/generator.py": 550,        # actuel 471
-    "picarones/evaluation/benchmark_result.py": 880,      # actuel ~826
+    "picarones/evaluation/benchmark_result.py": 1058,     # actuel ~920 (audit F1 : micro-CER/WER + tri)
     "picarones/reports/html/renderers/philological.py": 700,  # actuel 601
     "picarones/evaluation/metrics/modern_archives.py": 700,  # actuel 599
     "picarones/evaluation/metrics/builtin_hooks.py": 700,  # actuel 590
