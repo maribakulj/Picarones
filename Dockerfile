@@ -51,9 +51,17 @@ WORKDIR /app
 # Sprint A14 (correctif suite scan Trivy CI) — applique en priorité les
 # patches Debian disponibles AVANT d'installer build-essential/git, pour
 # éviter d'embarquer les CVE de la base image (libssl3t64, libc6, etc.).
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
+#
+# ``--fix-missing`` + ``Acquire::Retries=3`` : tolère la rotation du pool
+# debian-security. Quand Debian publie un point-release, l'ancien .deb
+# est émondé du pool quasi immédiatement alors que l'index fraîchement
+# récupéré le référence encore → 404 transitoire sur un paquet hors
+# scope (ex. linux-libc-dev, en-têtes noyau inutiles au runtime). On
+# saute ce paquet au lieu de casser le build ; tous les patches CVE
+# téléchargeables (libssl3t64, libc6, openssl, zlib1g…) sont appliqués.
+RUN apt-get update -o Acquire::Retries=3 && \
+    apt-get upgrade -y --fix-missing -o Acquire::Retries=3 && \
+    apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
         build-essential \
         git && \
     apt-get clean && \
@@ -114,6 +122,8 @@ WORKDIR /app
 # Sprint A14 (correctif Trivy) : ``apt-get upgrade -y`` avant install
 # pour récupérer les patches de sécurité Debian (libssl3t64, libc6,
 # openssl, etc.) — la base image Python ne les inclut pas par défaut.
+# ``--fix-missing`` + ``Acquire::Retries=3`` : même résilience à la
+# rotation du pool debian-security que l'étape builder (cf. supra).
 #
 # Sprint S6.1 — reproductibilité institutionnelle (BnF) :
 #
@@ -135,9 +145,9 @@ WORKDIR /app
 # Si une version mineure de Tesseract introduit une régression
 # CER, le mainteneur peut pinner explicitement ICI à ce moment-là
 # (avec une note CHANGELOG).
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update -o Acquire::Retries=3 && \
+    apt-get upgrade -y --fix-missing -o Acquire::Retries=3 && \
+    apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
         # Tesseract OCR 5 + modèles de langues (Debian bookworm).
         tesseract-ocr \
         tesseract-ocr-fra \
