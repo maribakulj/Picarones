@@ -29,6 +29,43 @@ from picarones.evaluation.statistics.wilcoxon import (
 # ──────────────────────────────────────────────────────────────────────────
 
 
+class TestF20DiplomaticProfileResolution:
+    """Le runner/web sérialise le profil en NOM (str).  compute_metrics
+    doit le résoudre, pas le laisser échouer en silence."""
+
+    def test_string_profile_name_is_resolved(self) -> None:
+        # « enſuite faiſoit » vs « ensuite faisoit » : la seule
+        # différence (ſ↔s) est neutralisée par le profil médiéval ⇒
+        # CER diplomatique = 0.0 (et NON None silencieux).
+        m = compute_metrics(
+            "enſuite il faiſoit", "ensuite il faisoit",
+            normalization_profile="medieval_french",
+        )
+        assert m.cer_diplomatic is not None
+        assert m.cer_diplomatic == pytest.approx(0.0)
+        assert m.diplomatic_profile_name == "medieval_french"
+
+    def test_unknown_name_falls_back_not_silently_none(self) -> None:
+        m = compute_metrics(
+            "abc", "abd", normalization_profile="profil_inexistant",
+        )
+        # Repli sur le profil par défaut — métrique calculée, pas None.
+        assert m.cer_diplomatic is not None
+        assert m.diplomatic_profile_name == "medieval_french"
+
+    def test_profile_object_still_works(self) -> None:
+        from picarones.evaluation.metrics.normalization import (
+            get_builtin_profile,
+        )
+
+        m = compute_metrics(
+            "abc", "abd",
+            normalization_profile=get_builtin_profile("caseless"),
+        )
+        assert m.cer_diplomatic is not None
+        assert m.diplomatic_profile_name == "caseless"
+
+
 class TestF14TaxonomyUnbiased:
     """La taxonomie n'abandonne plus la classification des
     substitutions dans un bloc inégal ; total_errors ≈ distance mot."""

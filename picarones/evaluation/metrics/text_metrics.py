@@ -188,12 +188,36 @@ def compute_metrics(
         mer = wo.mer
         wil = wo.wil
 
-        # CER diplomatique — utilise le profil fourni ou le profil médiéval par défaut
+        # CER diplomatique — le profil peut arriver soit comme objet
+        # NormalizationProfile, soit comme **nom** (str).  Le runner et
+        # l'interface web sérialisent le profil en nom dans
+        # ``RunSpec.normalization_profile`` (str) puis le passent tel
+        # quel jusqu'ici : il faut donc le **résoudre** en
+        # NormalizationProfile.  Sans cette résolution, ``profile`` est
+        # un str, ``profile.normalize(...)`` lève « 'str' object has no
+        # attribute 'normalize' », l'``except`` l'avale en warning et le
+        # CER diplomatique est silencieusement None pour TOUT le corpus
+        # web (donnée scientifique manquante, non signalée à l'usager).
         cer_diplomatic: Optional[float] = None
         diplomatic_profile_name: Optional[str] = None
         try:
-            from picarones.evaluation.metrics.normalization import DEFAULT_DIPLOMATIC_PROFILE
-            profile = normalization_profile or DEFAULT_DIPLOMATIC_PROFILE
+            from picarones.evaluation.metrics.normalization import (
+                DEFAULT_DIPLOMATIC_PROFILE,
+                get_builtin_profile,
+            )
+            profile = normalization_profile
+            if profile is None or profile == "":
+                profile = DEFAULT_DIPLOMATIC_PROFILE
+            elif isinstance(profile, str):
+                try:
+                    profile = get_builtin_profile(profile)
+                except KeyError:
+                    logger.warning(
+                        "[metrics] profil de normalisation inconnu "
+                        "'%s' — repli sur le profil médiéval par défaut",
+                        profile,
+                    )
+                    profile = DEFAULT_DIPLOMATIC_PROFILE
             ref_diplo = profile.normalize(reference)
             hyp_diplo = profile.normalize(hypothesis)
             cer_diplomatic = _cer_from_strings(ref_diplo, hyp_diplo)
