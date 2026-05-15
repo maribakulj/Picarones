@@ -29,6 +29,149 @@ from picarones.evaluation.statistics.wilcoxon import (
 # ──────────────────────────────────────────────────────────────────────────
 
 
+class TestF21RetryHonorsServerAndJitters:
+    """Retry 429 : honore Retry-After (borne basse) + jitter
+    anti-thundering-herd.  Cause racine des 429 image+texte Mistral
+    qui n'arrivaient jamais à se résorber."""
+
+    def test_retry_after_is_a_lower_bound(self) -> None:
+        from picarones.adapters._retry import compute_retry_wait
+
+        class _Resp:
+            headers = {"Retry-After": "30"}
+
+        class _Exc(Exception):
+            response = _Resp()
+
+        # Exponentiel attempt0 = 2s, mais le serveur impose 30s :
+        # on ne retente JAMAIS avant 30s (avant : 2s → 429 garanti).
+        waits = [compute_retry_wait(0, 2.0, _Exc()) for _ in range(500)]
+        assert all(30.0 <= w < 45.0 for w in waits)
+
+    def test_jitter_desynchronizes_concurrent_workers(self) -> None:
+        from picarones.adapters._retry import compute_retry_wait
+
+        # Sans Retry-After : 4 « workers » concurrents, même tentative
+        # → attentes distinctes (plus de tempête synchronisée).
+        waits = {round(compute_retry_wait(1, 2.0, RuntimeError("x")), 5)
+                 for _ in range(4)}
+        assert len(waits) == 4
+        # Jitter borné : [base, 1.5·base) avec base = 2**2 = 4.
+        assert all(4.0 <= w < 6.0 for w in waits)
+
+    def test_retry_after_http_date_and_cap(self) -> None:
+        import datetime
+        import email.utils
+
+        from picarones.adapters._retry import (
+            DEFAULT_MAX_WAIT,
+            retry_after_seconds,
+        )
+
+        class _R:
+            def __init__(self, hv):
+                self.headers = {"Retry-After": hv}
+
+        class _E(Exception):
+            def __init__(self, hv):
+                self.response = _R(hv)
+
+        future = email.utils.format_datetime(
+            datetime.datetime.now(datetime.timezone.utc)
+            + datetime.timedelta(seconds=25)
+        )
+        ra = retry_after_seconds(_E(future))
+        assert ra is not None and 20.0 < ra <= 25.5
+        from picarones.adapters._retry import compute_retry_wait
+
+        capped = compute_retry_wait(0, 2.0, _E("99999"))
+        assert capped <= DEFAULT_MAX_WAIT * 1.5
+
+
+class TestF22ConfigurableImageDownscale:
+    """max_image_dimension : OFF par défaut (résultats inchangés),
+    réduit réellement le coût tokens vision si activé."""
+
+    @staticmethod
+    def _png_b64(w: int, h: int) -> str:
+        import base64
+        import io
+
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new("RGB", (w, h), (10, 20, 30)).save(buf, "PNG")
+        return base64.b64encode(buf.getvalue()).decode("ascii")
+
+    def test_disabled_by_default_is_byte_identical(self) -> None:
+        from picarones.adapters._image import downscale_b64_image
+
+        big = self._png_b64(3000, 2000)
+        # max_edge<=0 ⇒ objet d'entrée renvoyé tel quel (aucun
+        # changement méthodologique, résultats existants intacts).
+        assert downscale_b64_image(big, 0) is big
+        assert downscale_b64_image(big, -1) is big
+
+    def test_enabled_clamps_longest_edge_ratio_preserved(self) -> None:
+        import base64
+        import io
+
+        from PIL import Image
+
+        from picarones.adapters._image import downscale_b64_image
+
+        big = self._png_b64(3000, 2000)
+        out = downscale_b64_image(big, 1568)
+        assert out is not big
+        im = Image.open(io.BytesIO(base64.b64decode(out)))
+        assert max(im.size) == 1568
+        assert im.size == (1568, 1045)  # ratio 3:2 préservé
+        assert len(out) < len(big)
+
+    def test_robust_on_bad_input_never_raises(self) -> None:
+        from picarones.adapters._image import downscale_b64_image
+
+        assert downscale_b64_image("not-b64!!!", 1568) == "not-b64!!!"
+        assert downscale_b64_image("", 1568) == ""
+
+
+class TestF20DiplomaticProfileResolution:
+    """Le runner/web sérialise le profil en NOM (str).  compute_metrics
+    doit le résoudre, pas le laisser échouer en silence."""
+
+    def test_string_profile_name_is_resolved(self) -> None:
+        # « enſuite faiſoit » vs « ensuite faisoit » : la seule
+        # différence (ſ↔s) est neutralisée par le profil médiéval ⇒
+        # CER diplomatique = 0.0 (et NON None silencieux).
+        m = compute_metrics(
+            "enſuite il faiſoit", "ensuite il faisoit",
+            normalization_profile="medieval_french",
+        )
+        assert m.cer_diplomatic is not None
+        assert m.cer_diplomatic == pytest.approx(0.0)
+        assert m.diplomatic_profile_name == "medieval_french"
+
+    def test_unknown_name_falls_back_not_silently_none(self) -> None:
+        m = compute_metrics(
+            "abc", "abd", normalization_profile="profil_inexistant",
+        )
+        # Repli sur le profil par défaut — métrique calculée, pas None.
+        assert m.cer_diplomatic is not None
+        assert m.diplomatic_profile_name == "medieval_french"
+
+    def test_profile_object_still_works(self) -> None:
+        from picarones.evaluation.metrics.normalization import (
+            get_builtin_profile,
+        )
+
+        m = compute_metrics(
+            "abc", "abd",
+            normalization_profile=get_builtin_profile("caseless"),
+        )
+        assert m.cer_diplomatic is not None
+        assert m.diplomatic_profile_name == "caseless"
+
+
 class TestF14TaxonomyUnbiased:
     """La taxonomie n'abandonne plus la classification des
     substitutions dans un bloc inégal ; total_errors ≈ distance mot."""

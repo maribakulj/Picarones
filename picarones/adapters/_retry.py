@@ -22,13 +22,23 @@ API
 Politique
 ---------
 - ``max_retries=3`` (4 tentatives au total : 0 + 1 + 2 + 3 retries).
-- ``backoff_base=2.0`` → 2s, 4s, 8s entre les retries (16s cumul max).
+- ``backoff_base=2.0`` → ~2s, 4s, 8s entre les retries.
+- **``Retry-After`` honoré** : si la réponse 429/503 porte l'en-tête
+  ``Retry-After`` (secondes ou HTTP-date), on attend **au moins** ce
+  délai — retenter avant la réouverture de la fenêtre garantissait un
+  nouveau 429 et épuisait le budget en ~16s (cause racine observée en
+  production sur les appels image+texte Mistral).
+- **Jitter ±50 %** : plusieurs workers concurrents (ThreadPool du
+  CorpusRunner) tombaient en 429 et retentaient sur le **même** rythme
+  fixe → tempête synchronisée (« thundering herd ») qui re-saturait la
+  limite à chaque vague.  Le jitter multiplicatif (≥ 1, donc le
+  plancher ``Retry-After`` reste respecté) désynchronise les workers.
+- Plafond de sécurité ``DEFAULT_MAX_WAIT`` contre un ``Retry-After``
+  pathologique.
 - Logs WARNING à chaque retry avec contexte.
 
 Anti-sur-ingénierie
 -------------------
-- Pas de jitter randomisé : pas indispensable à ce volume ; ajouter
-  si un caller en a concrètement besoin.
 - Pas de circuit breaker : un caller qui voit 100 % d'échec sur 5000
   documents arrête le run lui-même.
 """
@@ -36,15 +46,88 @@ Anti-sur-ingénierie
 from __future__ import annotations
 
 import logging
+import random
 import time
-from typing import Callable, TypeVar
+from typing import Callable, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_RETRIES = 3
-DEFAULT_BACKOFF_BASE = 2.0  # secondes : 2, 4, 8
+DEFAULT_BACKOFF_BASE = 2.0  # secondes : ~2, 4, 8
+DEFAULT_MAX_WAIT = 120.0  # plafond anti Retry-After pathologique
 
 T = TypeVar("T")
+
+
+def _read_retry_after(headers: object) -> Optional[float]:
+    """Parse l'en-tête ``Retry-After`` (secondes entières ou HTTP-date)
+    depuis un objet headers façon mapping.  ``None`` si absent ou
+    illisible.  Ne lève jamais."""
+    if not headers:
+        return None
+    try:
+        getter = getattr(headers, "get", None)
+        raw = getter("Retry-After") or getter("retry-after") if getter else None
+    except Exception:  # noqa: BLE001
+        return None
+    if raw is None:
+        return None
+    raw = str(raw).strip()
+    try:
+        return max(0.0, float(raw))  # forme entière (secondes)
+    except ValueError:
+        pass
+    try:  # forme HTTP-date
+        from datetime import datetime, timezone
+        from email.utils import parsedate_to_datetime
+
+        dt = parsedate_to_datetime(raw)
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return max(0.0, (dt - datetime.now(timezone.utc)).total_seconds())
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def retry_after_seconds(exc: Exception) -> Optional[float]:
+    """Délai ``Retry-After`` annoncé par le serveur, ou ``None``.
+
+    Les SDK cloud exposent la réponse HTTP de façons variées (httpx,
+    requests, objet maison) : on sonde plusieurs chemins.  Tolérant —
+    toute absence/erreur ⇒ ``None`` (repli sur le backoff exponentiel).
+    """
+    for attr in ("response", "raw_response", "http_response"):
+        resp = getattr(exc, attr, None)
+        if resp is not None:
+            val = _read_retry_after(getattr(resp, "headers", None))
+            if val is not None:
+                return val
+    return _read_retry_after(getattr(exc, "headers", None))
+
+
+def compute_retry_wait(
+    attempt: int,
+    backoff_base: float,
+    exc: Optional[Exception] = None,
+    *,
+    max_wait: float = DEFAULT_MAX_WAIT,
+) -> float:
+    """Attente avant le prochain retry.
+
+    Honore ``Retry-After`` comme **borne inférieure** (jamais retenter
+    avant la fenêtre serveur), sinon backoff exponentiel ; jitter
+    multiplicatif ``×[1.0, 1.5)`` (anti thundering-herd, et ≥ 1 donc le
+    plancher Retry-After reste respecté) ; plafonné à ``max_wait``.
+    """
+    base = backoff_base ** (attempt + 1)
+    if exc is not None:
+        ra = retry_after_seconds(exc)
+        if ra is not None:
+            base = max(base, ra)
+    base = min(base, max_wait)
+    return base * (1.0 + random.random() * 0.5)
 
 
 def is_retryable(exc: Exception) -> bool:
@@ -122,7 +205,7 @@ def call_with_retry(
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             if attempt < max_retries and is_retryable(exc):
-                wait = backoff_base ** (attempt + 1)
+                wait = compute_retry_wait(attempt, backoff_base, exc)
                 logger.warning(
                     "[%s] erreur retryable (tentative %d/%d, "
                     "attente %.1fs) : %s",
@@ -138,6 +221,9 @@ def call_with_retry(
 __all__ = [
     "DEFAULT_BACKOFF_BASE",
     "DEFAULT_MAX_RETRIES",
+    "DEFAULT_MAX_WAIT",
     "call_with_retry",
+    "compute_retry_wait",
     "is_retryable",
+    "retry_after_seconds",
 ]
