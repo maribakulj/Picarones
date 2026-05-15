@@ -140,7 +140,24 @@ def run_result_to_benchmark_result(
                 image_path=str(document.image_path or ""),
                 corpus_lang=corpus_lang,
                 ocr_result=_OCRResultLike(
-                    success=(engine_error is None and bool(text_final)),
+                    # ``success`` = « le pipeline s'est exécuté sans
+                    # erreur », PAS « le pipeline a produit du texte
+                    # non-vide ».  Bug B3-final (mai 2026) : la
+                    # condition ``and bool(text_final)`` supprimait les
+                    # hooks confusion/ligature/taxonomy/structure
+                    # exactement quand l'OCR échouait (sortie vide sur
+                    # documents patrimoniaux difficiles), alors que
+                    # c'est précisément le cas où l'utilisateur veut
+                    # ce diagnostic.  Un pipeline OCR+LLM « réparait »
+                    # le success en produisant toujours du texte
+                    # corrigé non-vide → incohérence (analyse présente
+                    # pour LLM, absente pour Tesseract seul).  Une
+                    # hypothèse vide sans erreur reste un résultat
+                    # valide (mauvais) à analyser ; les hooks gèrent
+                    # le cas (matrice = suppressions, ligature = 0).
+                    # Cohérent avec ``image_quality`` qui n'a
+                    # volontairement pas de ``requires_success``.
+                    success=(engine_error is None),
                     token_confidences=_extract_token_confidences(
                         pipeline_result,
                     ),

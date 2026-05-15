@@ -60,11 +60,24 @@ def attach_ner_metrics_to_benchmark(
     Tolérance : un échec d'extraction ou de calcul sur un doc
     spécifique est dégradé en warning ; le bench n'est pas
     interrompu.
+
+    Notes (mai 2026, audit B3-final)
+    --------------------------------
+    Les ``doc_id`` portés par ``DocumentResult`` (issus de
+    ``DocumentRef.id`` côté ``CorpusSpec``) sont normalisés via
+    ``_safe_doc_id`` (NFD + alphanum + ``_.-/``).  Pour éviter une
+    lookup silencieusement vide entre ``benchmark_result`` (clés
+    normalisées) et ``corpus`` (clés legacy potentiellement avec
+    espaces/accents), on indexe le ``corpus`` avec la même
+    normalisation.  Sans ça, un corpus contenant un
+    ``Document(doc_id="Image 01")`` voyait sa NER skippée puisque
+    ``docs_by_id.get("Image_01")`` retournait ``None``.
     """
+    from picarones.app.services._benchmark_conversions import _safe_doc_id
     from picarones.domain.artifacts import ArtifactType
     from picarones.evaluation.metrics.ner import compute_ner_metrics
 
-    docs_by_id = {d.doc_id: d for d in corpus.documents}
+    docs_by_id = {_safe_doc_id(d.doc_id): d for d in corpus.documents}
 
     for report in benchmark_result.engine_reports:
         n_done = 0

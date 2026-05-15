@@ -904,7 +904,30 @@ class RunOrchestrator:
             # ``corpus_spec.name`` (sinon le loader retourne
             # ``"Corpus"`` par défaut, ce qui casserait le snapshot
             # d'invariance).
-            corpus = load_corpus_from_directory(extracted_dir, name=corpus_name)
+            try:
+                corpus = load_corpus_from_directory(
+                    extracted_dir, name=corpus_name,
+                )
+            except (ValueError, FileNotFoundError) as exc:
+                # Audit B3-final mai 2026, trou #9 : si ``extracted_dir``
+                # est en fait un ``workspace_dir`` synthétisé par
+                # ``prepare_preset_args`` (= gt-only, pas d'images), le
+                # reload lève ``ValueError: Aucun document valide
+                # trouvé`` — message cryptique qui masque le vrai
+                # problème (caller direct à ``execute_preset(...,
+                # output_json=set)`` sans passer ``corpus_legacy``).
+                # On enrichit le message pour pointer le caller.
+                raise ValueError(
+                    "_persist_legacy_benchmark_json : impossible de "
+                    f"reloader le corpus depuis {extracted_dir!r}.\n"
+                    "Si vous êtes en mode preset (corpus chargé en "
+                    "mémoire avant ``execute_preset()``), passer "
+                    "``corpus_legacy=corpus`` à ``execute_preset()`` "
+                    "pour éviter ce reload — le ``workspace_dir`` "
+                    "synthétisé par ``prepare_preset_args`` ne "
+                    "contient que les .gt.txt, pas les images "
+                    f"sources.\nErreur originale : {exc}",
+                ) from exc
 
         # Wrappe chaque PipelineSpec en proxy minimal pour le converter.
         # Le converter ne consomme que ``.name``, ``.config`` et tolère

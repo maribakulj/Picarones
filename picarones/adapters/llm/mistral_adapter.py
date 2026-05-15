@@ -16,6 +16,14 @@ logger = logging.getLogger(__name__)
 
 # Modèles Mistral qui NE supportent PAS l'API chat/completions multimodale.
 # Ces petits modèles sont text-only; le passer avec une image provoque une erreur.
+#
+# Note (mai 2026) : ``mistral-small-latest`` (Small 3.1+) est
+# multimodal et N'EST PAS dans cette liste — l'image lui est bien
+# envoyée.  Seules les versions datées antérieures à 3.1
+# (2402/2409/2501) sont text-only ; on les liste ici pour un
+# dégradé gracieux (log + appel texte seul) plutôt qu'une erreur
+# API si un caller sélectionne une vieille version en mode
+# ``text_and_image``.
 _TEXT_ONLY_MODELS = frozenset({
     "ministral-3b-latest",
     "ministral-8b-latest",
@@ -23,6 +31,9 @@ _TEXT_ONLY_MODELS = frozenset({
     "mistral-tiny-latest",
     "open-mistral-7b",
     "open-mixtral-8x7b",
+    "mistral-small-2402",
+    "mistral-small-2409",
+    "mistral-small-2501",
 })
 
 

@@ -18,9 +18,28 @@ import json
 MISTRAL_TEXT_ONLY = frozenset({
     "ministral-3b-latest", "ministral-8b-latest", "mistral-tiny",
     "mistral-tiny-latest", "open-mistral-7b", "open-mixtral-8x7b",
-    "mistral-small-latest", "mistral-small-2409",
+    # Mistral Small versions antérieures à 3.1 : text-only.
+    # ``mistral-small-2402`` (fév 2024), ``mistral-small-2409``
+    # (Small v2, sept 2024), ``mistral-small-2501`` (Small 3,
+    # janv 2025) n'ont pas de support vision.
+    "mistral-small-2402", "mistral-small-2409", "mistral-small-2501",
 })
-"""Modèles Mistral explicitement text-only (pas de support vision)."""
+"""Modèles Mistral explicitement text-only (pas de support vision).
+
+Note (mai 2026) : ``mistral-small-latest`` a été RETIRÉ de cette
+liste — l'alias pointe désormais vers Mistral Small 3.1+
+(``mistral-small-2503`` puis ``2506``) qui sont multimodaux.
+Seules les versions datées antérieures à 3.1 restent text-only.
+``ministral-*`` reste text-only (modèles edge sans vision,
+cf. ``data/pricing.yaml``)."""
+
+MISTRAL_SMALL_VISION = frozenset({
+    "mistral-small-latest", "mistral-small-2503", "mistral-small-2506",
+})
+"""Mistral Small 3.1+ : multimodaux (vision).  Le runtime
+``MistralAdapter`` envoie effectivement l'image pour ces modèles
+(cf. ``mistral_adapter.py:_TEXT_ONLY_MODELS`` qui ne les exclut
+pas)."""
 
 MISTRAL_TEXT_ONLY_PREFIXES = (
     "ministral", "open-mistral", "open-mixtral", "codestral",
@@ -130,10 +149,55 @@ def model_entry(model_id: str, capabilities: list[str]) -> dict:
     return {"id": model_id, "capabilities": capabilities}
 
 
+def mistral_capabilities_from_model(model: dict) -> list[str]:
+    """Dérive ``["text"]`` / ``["text", "vision"]`` d'un objet modèle
+    Mistral renvoyé par ``GET /v1/models``.
+
+    Source de vérité : le champ ``capabilities`` que l'API Mistral
+    expose pour chaque modèle (``{"completion_chat": bool,
+    "vision": bool, ...}``).  C'est l'unique source fiable : elle
+    suit automatiquement les nouveaux modèles (``mistral-small-2509``
+    futur, etc.) sans maintenance d'une liste hardcodée.
+
+    Repli sur l'heuristique nom-de-modèle :func:`infer_mistral_capabilities`
+    UNIQUEMENT si l'API ne renvoie pas de ``capabilities`` exploitable
+    (version d'API ancienne, changement de schéma, ou liste de
+    fallback statique offline).  L'heuristique est volontairement
+    conservée comme garde-fou, pas comme source primaire.
+    """
+    caps = model.get("capabilities")
+    if isinstance(caps, dict) and "vision" in caps:
+        # ``completion_chat`` indique le support chat/texte ; on
+        # considère tout modèle listé ici comme capable de texte
+        # (ce sont des modèles chat), et ``vision`` ajoute l'image.
+        out = ["text"]
+        if caps.get("vision") is True:
+            out.append("vision")
+        return out
+    # Pas de capabilities exploitable → heuristique nom (fallback).
+    return infer_mistral_capabilities(model.get("id", ""))
+
+
 def infer_mistral_capabilities(model_id: str) -> list[str]:
+    """Heuristique de SECOURS basée sur le nom du modèle.
+
+    Utilisée uniquement quand l'API Mistral ne fournit pas le champ
+    ``capabilities`` (cf. :func:`mistral_capabilities_from_model` qui
+    est la voie primaire) et pour la liste de fallback statique
+    offline.  Les sets hardcodés ci-dessous sont des garde-fous
+    best-effort, pas la source de vérité — ils peuvent dériver et
+    c'est acceptable car l'API prime quand elle est joignable.
+    """
     mid = model_id.lower()
     # Modèles explicitement vision (Pixtral)
     if "pixtral" in mid:
+        return ["text", "vision"]
+    # Mistral Small 3.1+ multimodaux — vérifié AVANT le test
+    # text-only pour ne pas se faire écraser par un éventuel
+    # préfixe.  ``mistral-small-latest`` est l'alias courant
+    # (Small 3.2) ; les versions datées 2503/2506 sont aussi
+    # multimodales.
+    if mid in MISTRAL_SMALL_VISION:
         return ["text", "vision"]
     # Modèles explicitement text-only
     if mid in MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in MISTRAL_TEXT_ONLY_PREFIXES):
@@ -167,6 +231,7 @@ __all__ = [
     "fetch_ollama_info",
     "get_tesseract_langs",
     "model_entry",
+    "mistral_capabilities_from_model",
     "infer_mistral_capabilities",
     "infer_openai_capabilities",
     "infer_ollama_capabilities",

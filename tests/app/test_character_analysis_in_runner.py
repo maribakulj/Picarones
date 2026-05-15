@@ -146,6 +146,54 @@ class TestPerDocumentCharacterAnalysis:
         assert dr.line_metrics is not None
         assert dr.hallucination_metrics is not None
 
+    def test_character_analysis_present_when_ocr_output_empty(
+        self, tmp_path: Path,
+    ) -> None:
+        """Régression bug B3-final (mai 2026) : un OCR qui produit une
+        sortie VIDE (Tesseract qui échoue sur un document patrimonial
+        difficile) doit QUAND MÊME alimenter confusion/ligature/
+        taxonomy.
+
+        Avant le fix, ``_OCRResultLike.success`` valait
+        ``engine_error is None and bool(text_final)``.  Une hypothèse
+        vide (sans erreur de pipeline) → ``success=False`` → les hooks
+        ``requires_success=True`` (confusion, char_scores, taxonomy,
+        structure, line_metrics, hallucination) étaient sautés.
+
+        Symptôme rapporté : "Analyse des caractères" vide pour
+        Tesseract seul ("Aucune donnée de confusion disponible"),
+        alors que ça marchait avec un pipeline OCR+LLM — parce que le
+        LLM produisait toujours du CORRECTED_TEXT non-vide qui
+        "réparait" artificiellement le ``success``.  Incohérence :
+        l'analyse de l'échec OCR disparaissait précisément quand
+        l'utilisateur en avait le plus besoin.
+
+        Le fix : ``success = (engine_error is None)`` — une sortie
+        vide sans erreur reste un résultat valide à diagnostiquer.
+        """
+        corpus = _make_corpus(tmp_path, gt="Texte de référence œuvre")
+        # OCR « échoué » : produit une chaîne vide (cas Tesseract qui
+        # ne reconnaît rien sur un manuscrit difficile).
+        adapter = _MangleOCR(hypothesis="")
+        bm = run_via_orchestrator(corpus, [adapter])
+
+        dr = bm.engine_reports[0].document_results[0]
+        assert dr.hypothesis == ""
+        assert dr.engine_error is None
+        assert dr.metrics.cer == 1.0  # 100 % d'erreur, attendu
+        # Le cœur du fix : l'analyse caractères DOIT être présente
+        # malgré la sortie vide (matrice = suppressions massives,
+        # ligature = 0, taxonomy = erreurs de suppression).
+        assert dr.confusion_matrix is not None, (
+            "confusion_matrix vide alors que l'OCR a échoué — "
+            "régression du gating requires_success/success"
+        )
+        assert dr.char_scores is not None
+        assert dr.taxonomy is not None
+        assert dr.structure is not None
+        assert dr.line_metrics is not None
+        assert dr.hallucination_metrics is not None
+
 
 class TestEngineLevelAggregates:
     def test_aggregated_confusion_present(self, tmp_path: Path) -> None:
