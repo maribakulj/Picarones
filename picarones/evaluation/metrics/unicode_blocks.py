@@ -25,7 +25,8 @@ Le câblage runner et la vue HTML suivent dans des sprints dédiés.
 
 Convention d'alignement
 -----------------------
-Alignement caractère par caractère via ``difflib.SequenceMatcher`` :
+Alignement caractère par caractère via la distance de **Levenshtein**
+(rapidfuzz, cohérent avec le CER — audit F4) :
 
 - chaque caractère de la GT est classé dans son bloc Unicode,
 - pour chaque position GT couverte par un opcode ``equal`` →
@@ -48,8 +49,9 @@ len(GT)``).
 from __future__ import annotations
 
 import logging
-from difflib import SequenceMatcher
 from typing import Optional
+
+from rapidfuzz.distance import Levenshtein
 
 from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
@@ -166,15 +168,15 @@ def compute_unicode_block_accuracy(
         b = get_block(ch)
         total[b] = total.get(b, 0) + 1
 
-    # 2. Aligner par opcodes de SequenceMatcher
-    #    Pour chaque opcode ``equal``, les positions ``i1..i2-1`` du GT
-    #    sont correctement restituées → +1 par caractère dans son bloc.
+    # 2. Aligner par l'alignement minimal de Levenshtein (audit
+    #    F4/F14 : cohérent avec le CER, plus difflib).  Pour chaque
+    #    opcode ``equal``, les positions GT sont correctement
+    #    restituées → +1 par caractère dans son bloc.
     correct: dict[str, int] = {b: 0 for b in total}
-    matcher = SequenceMatcher(a=ref, b=hyp, autojunk=False)
-    for op, i1, i2, _j1, _j2 in matcher.get_opcodes():
-        if op != "equal":
+    for op in Levenshtein.opcodes(ref, hyp):
+        if op.tag != "equal":
             continue
-        for i in range(i1, i2):
+        for i in range(op.src_start, op.src_end):
             b = get_block(ref[i])
             correct[b] = correct.get(b, 0) + 1
 
@@ -215,7 +217,7 @@ def unicode_block_global_accuracy(
     input_types=(ArtifactType.TEXT, ArtifactType.TEXT),
     description=(
         "Fraction de caractères GT correctement restitués par "
-        "l'OCR (alignement caractère par caractère via difflib). "
+        "l'OCR (alignement caractère par caractère de Levenshtein). "
         "Pour le détail par bloc Unicode (Latin de Base, Présentation "
         "latine, etc.), utiliser compute_unicode_block_accuracy."
     ),

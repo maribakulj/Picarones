@@ -19,8 +19,9 @@ sauts de ligne présents dans les textes GT et OCR.
 
 from __future__ import annotations
 
-import difflib
 from dataclasses import dataclass
+
+from rapidfuzz.distance import Levenshtein
 
 
 @dataclass
@@ -127,37 +128,42 @@ def analyze_structure(ground_truth: str, hypothesis: str) -> StructureResult:
 
 
 def _count_line_changes(gt_lines: list[str], ocr_lines: list[str]) -> tuple[int, int]:
-    """Compte les fusions et fragmentations de lignes via SequenceMatcher."""
+    """Compte fusions/fragmentations de lignes via l'alignement minimal.
+
+    Audit F4 — l'alignement utilise la distance de Levenshtein
+    (rapidfuzz, cohérent avec le CER) au lieu de
+    ``difflib.SequenceMatcher`` (Ratcliff–Obershelp).  On fusionne les
+    opérations non-``equal`` consécutives en régions ; dans chaque
+    région, un déficit de lignes OCR compte comme fusion, un excédent
+    comme fragmentation (les blocs ``replace`` 1-pour-1 sont des
+    substitutions de contenu, pas des changements de segmentation).
+    """
     if not gt_lines or not ocr_lines:
         return 0, 0
 
+    gt_fp = [ln.strip()[:30] for ln in gt_lines]
+    ocr_fp = [ln.strip()[:30] for ln in ocr_lines]
+
     fusion_count = 0
     frag_count = 0
+    regions: list[tuple[int, int, int, int]] = []
+    for op in Levenshtein.opcodes(gt_fp, ocr_fp):
+        if op.tag == "equal":
+            continue
+        i1, i2, j1, j2 = op.src_start, op.src_end, op.dest_start, op.dest_end
+        if regions and regions[-1][1] == i1 and regions[-1][3] == j1:
+            p = regions[-1]
+            regions[-1] = (p[0], i2, p[2], j2)
+        else:
+            regions.append((i1, i2, j1, j2))
 
-    # Aligner les lignes par contenu
-    matcher = difflib.SequenceMatcher(
-        None,
-        [ln.strip()[:30] for ln in gt_lines],  # fingerprint court pour la comparaison
-        [ln.strip()[:30] for ln in ocr_lines],
-        autojunk=False,
-    )
-
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "replace":
-            gt_len = i2 - i1
-            ocr_len = j2 - j1
-            if ocr_len < gt_len:
-                # Moins de lignes OCR → fusions
-                fusion_count += gt_len - ocr_len
-            elif ocr_len > gt_len:
-                # Plus de lignes OCR → fragmentations
-                frag_count += ocr_len - gt_len
-        elif tag == "delete":
-            # Lignes GT supprimées dans l'OCR → lacunes (pas fusion/frag)
-            pass
-        elif tag == "insert":
-            # Lignes insérées par l'OCR
-            frag_count += j2 - j1
+    for i1, i2, j1, j2 in regions:
+        gt_len = i2 - i1
+        ocr_len = j2 - j1
+        if ocr_len < gt_len:
+            fusion_count += gt_len - ocr_len
+        elif ocr_len > gt_len:
+            frag_count += ocr_len - gt_len
 
     return fusion_count, frag_count
 
@@ -165,22 +171,25 @@ def _count_line_changes(gt_lines: list[str], ocr_lines: list[str]) -> tuple[int,
 def _reading_order_score(ground_truth: str, hypothesis: str) -> float:
     """Score d'ordre de lecture [0, 1] basé sur la LCS des mots.
 
-    On calcule la longueur de la sous-séquence commune la plus longue (LCS)
-    entre les listes de mots GT et OCR. Un score de 1 signifie que tous les
-    mots communs apparaissent dans le même ordre.
+    Audit F4 — calcule la **vraie** plus longue sous-séquence commune
+    (``rapidfuzz.distance.LCSseq``, ordre-sensible), normalisée en
+    Sørensen–Dice ``2·LCS / (|GT| + |hyp|)``.  Auparavant le code
+    renvoyait ``difflib.SequenceMatcher.ratio()`` — une similarité de
+    Ratcliff–Obershelp (blocs communs), **pas** une LCS, en
+    contradiction avec la docstring.  Un score de 1 ⇔ tous les mots
+    communs apparaissent dans le même ordre.
     """
+    from rapidfuzz.distance import LCSseq
+
     gt_words = ground_truth.split()
     hyp_words = hypothesis.split()
 
     if not gt_words or not hyp_words:
         return 1.0
 
-    # Utiliser SequenceMatcher pour approximer la LCS
-    matcher = difflib.SequenceMatcher(None, gt_words, hyp_words, autojunk=False)
-    # Ratio est 2 * nb_correspondances / (len_gt + len_ocr)
-    # C'est un proxy raisonnable de l'ordre de lecture
-    ratio = matcher.ratio()
-    return round(ratio, 4)
+    lcs = LCSseq.similarity(gt_words, hyp_words)
+    denom = len(gt_words) + len(hyp_words)
+    return round(2.0 * lcs / denom, 4) if denom else 1.0
 
 
 def _paragraph_conservation_score(ground_truth: str, hypothesis: str) -> float:

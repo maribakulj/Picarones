@@ -254,20 +254,19 @@ def compute_diacritic_score(ground_truth: str, hypothesis: str) -> DiacriticScor
     total = 0
     correct = 0
 
-    # Utiliser difflib pour l'alignement
-    import difflib
-    matcher = difflib.SequenceMatcher(None, gt_norm, hyp_norm, autojunk=False)
+    # Alignement minimal de Levenshtein (audit F4 : cohérent avec le
+    # CER, plus difflib).  Sous ce modèle un bloc ``replace`` est
+    # toujours de longueur égale (substitutions 1-pour-1).
+    from rapidfuzz.distance import Levenshtein
     gt_to_hyp: dict[int, Optional[int]] = {}
 
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "equal":
-            for k in range(i2 - i1):
-                gt_to_hyp[i1 + k] = j1 + k
-        elif tag == "replace" and (i2 - i1) == (j2 - j1):
+    for op in Levenshtein.opcodes(gt_norm, hyp_norm):
+        i1, i2, j1 = op.src_start, op.src_end, op.dest_start
+        if op.tag in ("equal", "replace"):
             for k in range(i2 - i1):
                 gt_to_hyp[i1 + k] = j1 + k
         else:
-            # delete ou replace de longueurs différentes
+            # delete : positions GT sans correspondance hypothèse
             for k in range(i1, i2):
                 gt_to_hyp[k] = None
 

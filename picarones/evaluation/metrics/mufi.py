@@ -49,8 +49,9 @@ des sprints dédiés.
 from __future__ import annotations
 
 import logging
-from difflib import SequenceMatcher
 from typing import Iterable, Optional
+
+from rapidfuzz.distance import Levenshtein
 
 from picarones.evaluation.metric_registry import register_metric
 from picarones.domain.artifacts import ArtifactType
@@ -188,12 +189,12 @@ def compute_mufi_coverage(
             "missed_chars": [],
         }
 
-    # 2. Aligner via SequenceMatcher (même méthode que Sprint 55)
-    matcher = SequenceMatcher(a=ref, b=hyp, autojunk=False)
+    # 2. Aligner via la distance de Levenshtein (audit F4/F14 :
+    #    alignement minimal cohérent avec le CER, plus difflib).
     correct_positions: set[int] = set()
-    for op, i1, i2, _j1, _j2 in matcher.get_opcodes():
-        if op == "equal":
-            correct_positions.update(range(i1, i2))
+    for op in Levenshtein.opcodes(ref, hyp):
+        if op.tag == "equal":
+            correct_positions.update(range(op.src_start, op.src_end))
 
     # 3. Compter par caractère
     per_char_total: dict[str, int] = {}
