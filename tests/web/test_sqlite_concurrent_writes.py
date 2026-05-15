@@ -151,18 +151,28 @@ def test_reads_during_writes_no_locking_error(fresh_store: JobStore) -> None:
         except BaseException as exc:  # noqa: BLE001
             read_errors.append(exc)
 
+    # ``daemon=True`` : sous Windows, un ``create_job`` peut rester bloqué
+    # jusqu'à ``busy_timeout`` (5 s) sur le verrou WAL. Un thread non-daemon
+    # encore dans SQLite quand le test rend la main fait *hanger*
+    # ``threading._shutdown()`` à la sortie de l'interpréteur (la suite ne
+    # se termine jamais → SIGTERM CI / exit 124). En daemon, le thread ne
+    # bloque jamais l'arrêt même dans ce cas pathologique.
     threads = [
-        threading.Thread(target=_writer),
-        threading.Thread(target=_writer),
-        threading.Thread(target=_reader),
-        threading.Thread(target=_reader),
+        threading.Thread(target=_writer, daemon=True),
+        threading.Thread(target=_writer, daemon=True),
+        threading.Thread(target=_reader, daemon=True),
+        threading.Thread(target=_reader, daemon=True),
     ]
     for t in threads:
         t.start()
     threading.Event().wait(0.5)  # 500 ms de charge mixte
     stop.set()
+    # Timeout de join > ``busy_timeout`` (5 s) + marge : en fonctionnement
+    # normal les threads se terminent dans cette fenêtre (un seul appel
+    # SQLite en vol au plus après ``stop.set()``), donc pas de thread
+    # résiduel qui écrirait dans le ``tmp_path`` en cours de purge.
     for t in threads:
-        t.join(timeout=2)
+        t.join(timeout=15)
 
     assert not read_errors, f"Reads ont levé : {read_errors[:2]}"
     assert not write_errors, f"Writes ont levé : {write_errors[:2]}"
