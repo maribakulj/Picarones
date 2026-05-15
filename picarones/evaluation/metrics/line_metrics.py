@@ -23,19 +23,22 @@ from rapidfuzz.distance import Levenshtein
 # ---------------------------------------------------------------------------
 
 def _edit_distance(a: str, b: str) -> int:
-    """Distance de Levenshtein entre deux chaînes."""
-    if not a:
-        return len(b)
-    if not b:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        curr = [i]
-        for j, cb in enumerate(b, 1):
-            cost = 0 if ca == cb else 1
-            curr.append(min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost))
-        prev = curr
-    return prev[-1]
+    """Distance de Levenshtein (coûts ins=del=sub=1) entre deux chaînes.
+
+    Délègue à ``rapidfuzz`` (C, algorithme bit-parallèle de Myers,
+    déjà importé et déjà dépendance de ``evaluation/``).  Résultat
+    **numériquement identique** à la DP pur-Python précédente, mais
+    ~100-1000× plus rapide.
+
+    L'ancienne implémentation était une DP pur-Python en
+    ``O(len(a)·len(b))`` (≈ 9 M itérations / appels ``min`` pour une
+    seule paire de lignes de 3 ko).  Comme ``compute_line_metrics``
+    tourne sur **chaque document de chaque benchmark** (hook
+    ``line_metrics``, profils standard ET full), le coût était
+    quadratique en longueur de page : un run de 6 documents passait
+    de < 5 min à 45 min sur des transcriptions patrimoniales denses.
+    """
+    return Levenshtein.distance(a, b)
 
 
 def _line_cer(ref_line: str, hyp_line: str) -> float:

@@ -388,3 +388,69 @@ class TestTesseractAdapterExecute:
             encoding="utf-8",
         )
         assert out_text == "Hello world"
+
+
+class TestTesseractSubprocessTimeout:
+    """Garde-fou anti-freeze : un sous-processus ``tesseract`` figé
+    bloquait indéfiniment le thread worker (le CorpusRunner ne peut
+    pas tuer un sous-processus bloquant) → run gelé sans log ni
+    erreur.  ``pytesseract`` doit recevoir un ``timeout`` pour
+    convertir le blocage infini en échec borné du document."""
+
+    def _img(self, tmp_path: Path) -> Path:
+        p = tmp_path / "page.png"
+        p.write_bytes(b"\x89PNG\r\n\x1a\n")
+        return p
+
+    def test_rejects_negative_timeout(self) -> None:
+        with pytest.raises(OCRAdapterError, match="timeout_seconds"):
+            TesseractAdapter(timeout_seconds=-1)
+
+    def test_zero_timeout_allowed_explicit_optout(self) -> None:
+        TesseractAdapter(timeout_seconds=0)  # ne lève pas
+
+    @patch("PIL.Image.open")
+    @patch("pytesseract.image_to_string")
+    def test_timeout_forwarded_to_pytesseract(
+        self, mock_its: MagicMock, mock_open: MagicMock, tmp_path: Path,
+    ) -> None:
+        mock_its.return_value = "x"
+        mock_open.return_value.__enter__.return_value = MagicMock()
+        adapter = TesseractAdapter(
+            expose_confidences=False, timeout_seconds=37.5,
+        )
+        adapter.execute(
+            inputs={ArtifactType.IMAGE: _make_image_artifact(
+                str(self._img(tmp_path)))},
+            params={},
+            context=_make_context(),
+        )
+        assert mock_its.call_args.kwargs["timeout"] == 37.5
+
+    def test_default_timeout_is_bounded_not_infinite(self) -> None:
+        # Le défaut DOIT être > 0 : c'est précisément l'absence de
+        # timeout qui gelait le run en production.
+        adapter = TesseractAdapter()
+        assert adapter._timeout > 0
+
+    @patch("PIL.Image.open")
+    @patch("pytesseract.image_to_string")
+    def test_subprocess_timeout_becomes_bounded_error(
+        self, mock_its: MagicMock, mock_open: MagicMock, tmp_path: Path,
+    ) -> None:
+        # pytesseract lève ``RuntimeError('Tesseract process timeout')``
+        # quand le sous-processus dépasse ``timeout``.  L'adapter doit
+        # le mapper en OCRAdapterError (doc échoué, run continue) au
+        # lieu de bloquer indéfiniment.
+        mock_its.side_effect = RuntimeError("Tesseract process timeout")
+        mock_open.return_value.__enter__.return_value = MagicMock()
+        adapter = TesseractAdapter(
+            expose_confidences=False, timeout_seconds=5,
+        )
+        with pytest.raises(OCRAdapterError, match="Tesseract"):
+            adapter.execute(
+                inputs={ArtifactType.IMAGE: _make_image_artifact(
+                    str(self._img(tmp_path)))},
+                params={},
+                context=_make_context(),
+            )

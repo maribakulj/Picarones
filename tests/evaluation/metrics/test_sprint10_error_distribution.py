@@ -422,3 +422,43 @@ class TestReportSprint10:
     def test_report_has_vlm_badge(self, html_report):
         """Le badge VLM doit apparaître pour le moteur zero-shot."""
         assert "VLM" in html_report or "zero-shot" in html_report.lower() or "zero_shot" in html_report
+
+
+class TestLineMetricsNoQuadraticBlowup:
+    """Garde-fou anti-régression perf : ``_edit_distance`` doit
+    rester en O(n) effectif (rapidfuzz/C), jamais une DP pur-Python
+    O(n·m).  Le hook ``line_metrics`` tourne sur CHAQUE document de
+    CHAQUE benchmark — une DP quadratique faisait passer un run de
+    6 docs de < 5 min à 45 min (audit ``bc7e13c``).  Seuil large
+    (non-flaky) : la DP pur-Python prenait > 25 s sur cette entrée,
+    rapidfuzz < 50 ms."""
+
+    def test_edit_distance_matches_reference_levenshtein(self) -> None:
+        from picarones.evaluation.metrics.line_metrics import _edit_distance
+
+        # Identité numérique sur cas limites (résultat inchangé).
+        assert _edit_distance("", "") == 0
+        assert _edit_distance("", "abc") == 3
+        assert _edit_distance("abc", "") == 3
+        assert _edit_distance("kitten", "sitting") == 3
+        assert _edit_distance("café", "cafe") == 1
+
+    def test_large_page_pair_is_fast(self) -> None:
+        import time
+
+        from picarones.evaluation.metrics.line_metrics import (
+            compute_line_metrics,
+        )
+
+        # ~13 ko : transcription patrimoniale dense réaliste.
+        gt = ("Au nom de Dieu soit fait. L an mil six cent trente "
+              "et un, par devant nous notaire royal soubsigne. ") * 200
+        hyp = gt.replace("Dieu", "Dîeu").replace("nous", "nons")
+        start = time.perf_counter()
+        compute_line_metrics(gt, hyp)
+        elapsed = time.perf_counter() - start
+        assert elapsed < 5.0, (
+            f"compute_line_metrics a pris {elapsed:.1f}s sur ~13 ko — "
+            "régression O(n·m) probable dans _edit_distance "
+            "(doit déléguer à rapidfuzz)."
+        )
