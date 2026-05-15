@@ -15,6 +15,8 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Optional
 
+from rapidfuzz.distance import Levenshtein
+
 
 # ---------------------------------------------------------------------------
 # CER d'une paire de lignes (distance d'édition Levenshtein normalisée)
@@ -183,11 +185,25 @@ def compute_line_metrics(
             mean_cer=0.0,
         )
 
-    # Aligner en ignorant les lignes d'hypothèse supplémentaires
-    # Si l'hypothèse a moins de lignes, les lignes manquantes comptent comme supprimées (CER = 1.0)
+    # Audit scientifique F15 — aligner les lignes par la distance de
+    # Levenshtein (rapidfuzz) AVANT de calculer le CER par ligne.
+    # Auparavant l'appariement était purement positionnel
+    # (``hyp_lines[i]``) : une seule ligne OCR insérée ou supprimée
+    # décalait toutes les suivantes et faussait toute la distribution
+    # (percentiles, Gini, heatmap, taux catastrophiques).  Une ligne GT
+    # supprimée côté hypothèse → CER 1.0 (ligne perdue) ; les lignes
+    # hypothèse en trop n'ont pas d'index GT et n'entrent pas dans la
+    # distribution (indexée sur les lignes GT, comme documenté).
+    mapped_hyp: list[Optional[str]] = [None] * n
+    for op in Levenshtein.opcodes(ref_lines, hyp_lines):
+        i1, i2, j1 = op.src_start, op.src_end, op.dest_start
+        if op.tag in ("equal", "replace"):
+            for k in range(i2 - i1):
+                mapped_hyp[i1 + k] = hyp_lines[j1 + k]
+
     cer_per_line: list[float] = []
     for i, ref_line in enumerate(ref_lines):
-        hyp_line = hyp_lines[i] if i < len(hyp_lines) else ""
+        hyp_line = mapped_hyp[i] if mapped_hyp[i] is not None else ""
         cer_per_line.append(min(_line_cer(ref_line, hyp_line), 1.0))
 
     sorted_cer = sorted(cer_per_line)

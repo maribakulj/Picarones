@@ -26,6 +26,27 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
+from rapidfuzz.distance import Levenshtein
+
+
+def _align_to_gt(gt_words: list[str], other: list[str]) -> list[Optional[str]]:
+    """Mappe chaque position GT vers le mot aligné de ``other`` (ou
+    ``None`` si la position GT est supprimée côté ``other``).
+
+    Audit scientifique F18 — alignement minimal de Levenshtein au lieu
+    d'un appariement positionnel brut.  Sous Levenshtein un bloc
+    ``replace`` est de longueur égale (substitutions 1-pour-1).
+    """
+    mapped: list[Optional[str]] = [None] * len(gt_words)
+    for op in Levenshtein.opcodes(gt_words, other):
+        i1, i2, j1 = op.src_start, op.src_end, op.dest_start
+        if op.tag in ("equal", "replace"):
+            for k in range(i2 - i1):
+                mapped[i1 + k] = other[j1 + k]
+        # delete : positions GT sans correspondance → restent None
+        # insert : pas de position GT → ignoré
+    return mapped
+
 from picarones.evaluation.metric_hooks import (
     PROFILE_DIAGNOSTICS,
     PROFILE_FULL,
@@ -70,10 +91,14 @@ def detect_over_normalization(
 ) -> OverNormalizationResult:
     """Détecte la sur-normalisation LLM au niveau des mots.
 
-    Algorithme (alignement positionnel simple, adapté aux textes courts) :
-    Pour chaque position i dans min(len(GT), len(OCR), len(LLM)) :
-      - Si ocr[i] == gt[i]  → le mot était correct dans l'OCR
-      - Si llm[i] != gt[i]  → le LLM a dégradé ce mot correct → sur-normalisation
+    Algorithme (audit scientifique F18 — alignement de Levenshtein, et
+    non plus un index positionnel brut qui se désynchronisait dès la
+    première insertion/suppression OCR, rendant le score inexploitable
+    sur tout pipeline réel) :
+    On aligne OCR→GT et LLM→GT séparément.  Pour chaque mot GT :
+      - s'il est correctement restitué par l'OCR (mot aligné == GT),
+      - et que le mot LLM aligné sur cette position GT diffère du GT,
+      → le LLM a dégradé un mot que l'OCR avait bon = sur-normalisation.
 
     Parameters
     ----------
@@ -94,24 +119,27 @@ def detect_over_normalization(
     ocr_words = ocr_text.split()
     llm_words = llm_text.split()
 
-    n = min(len(gt_words), len(ocr_words), len(llm_words))
+    ocr_aligned = _align_to_gt(gt_words, ocr_words)
+    llm_aligned = _align_to_gt(gt_words, llm_words)
 
     correct_ocr = 0
     over_norm = 0
     passages: list[dict] = []
 
-    for i in range(n):
-        gt_w = gt_words[i]
-        ocr_w = ocr_words[i]
-        llm_w = llm_words[i]
-
-        if ocr_w == gt_w:
-            correct_ocr += 1
-            if llm_w != gt_w and len(passages) < max_examples:
-                over_norm += 1
-                passages.append({"gt": gt_w, "ocr": ocr_w, "llm": llm_w})
-            elif llm_w != gt_w:
-                over_norm += 1
+    for i, gt_w in enumerate(gt_words):
+        ocr_w = ocr_aligned[i]
+        if ocr_w != gt_w:
+            continue  # OCR n'avait pas ce mot correct → hors périmètre
+        correct_ocr += 1
+        llm_w = llm_aligned[i]
+        if llm_w != gt_w:
+            over_norm += 1
+            if len(passages) < max_examples:
+                passages.append({
+                    "gt": gt_w,
+                    "ocr": ocr_w,
+                    "llm": llm_w if llm_w is not None else "",
+                })
 
     return OverNormalizationResult(
         total_correct_ocr_words=correct_ocr,
