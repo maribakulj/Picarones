@@ -121,6 +121,22 @@ class PipelineConfig(BaseModel):
     autorisée pour indiquer qu'aucun LLM n'est attaché au moteur OCR.
     """
     prompt_file: str = Field(default="", max_length=_MAX_PROMPT_FILENAME)
+    max_image_dimension: int = Field(default=0, ge=0, le=8192)
+    """Plafond (px) du plus grand côté de l'image envoyée à un VLM
+    (modes ``text_and_image`` / ``zero_shot``).
+
+    ``0`` (défaut) = **pleine résolution, comportement inchangé** :
+    aucun impact méthodologique, fingerprint identique aux runs
+    historiques (pas d'invalidation des partiels en cache).
+
+    ``> 0`` = l'image est redimensionnée (ratio préservé) avant envoi
+    → coût en tokens vision réduit ~quadratiquement, ce qui permet de
+    rester sous une limite de débit (cause des HTTP 429 sur les appels
+    image+texte Mistral).  **Choix méthodologique explicite** : le
+    modèle voit une image plus petite, donc les résultats diffèrent
+    d'un run pleine résolution.  Redimensionnement journalisé
+    (``_image.py``) et intégré au fingerprint partial_store : un run
+    downscalé ne réutilise **jamais** un partiel pleine résolution."""
     expose_alto: bool = False
     """Phase B3-final corr-B (mai 2026) — active la production native
     d'ALTO XML par Tesseract via ``pytesseract.image_to_alto_xml``.

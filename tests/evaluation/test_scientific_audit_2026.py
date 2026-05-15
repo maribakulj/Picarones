@@ -762,3 +762,70 @@ class TestF9ContinuityCorrection:
         res = wilcoxon_test(a, b)
         assert res["p_value"] == pytest.approx(1.0)
         assert res["significant"] is False
+
+
+class TestF23ImageDownscaleFingerprintIsolation:
+    """Intégrité scientifique du downscale image opt-in.
+
+    Garantie 1 (rétro-compat) : ``max_image_dimension=0`` (défaut,
+    pleine résolution) doit produire **exactement** le fingerprint
+    historique — sinon tous les partiels en cache des runs pleine
+    résolution seraient invalidés et le « défaut = zéro changement »
+    serait faux.
+
+    Garantie 2 (anti-aliasing) : un run downscalé ne doit JAMAIS
+    partager le fingerprint d'un run pleine résolution (ni d'un autre
+    facteur de réduction) — sinon le partial_store réutiliserait un
+    résultat calculé sur une image différente (faux résultat
+    scientifique silencieux)."""
+
+    @staticmethod
+    def _engine(md_value):
+        from types import SimpleNamespace
+
+        # ``md_value=None`` → llm.config SANS la clé (état legacy,
+        # avant ce chantier) ; sinon clé présente avec la valeur.
+        llm_cfg = {} if md_value is None else {"max_image_dimension": md_value}
+        return SimpleNamespace(
+            is_pipeline=True,
+            name="ocr_to_llm",
+            mode="text_and_image",
+            prompt_template="corrige l'OCR",
+            llm_adapter=SimpleNamespace(
+                model="mistral-small-latest",
+                name="mistral",
+                config=llm_cfg,
+            ),
+            ocr_adapter=SimpleNamespace(name="tesseract"),
+        )
+
+    def _cfg(self, md_value):
+        from picarones.app.services._benchmark_helpers import (
+            _engine_config_for_fingerprint,
+        )
+
+        return _engine_config_for_fingerprint(self._engine(md_value))
+
+    def _fp(self, md_value):
+        from picarones.app.services.partial_store import (
+            compute_run_fingerprint,
+        )
+
+        return compute_run_fingerprint(engine_config=self._cfg(md_value))
+
+    def test_default_zero_is_byte_identical_to_legacy(self) -> None:
+        # 0 (défaut) ≡ état legacy (clé absente) : aucune clé ajoutée,
+        # même dict, même fingerprint → zéro invalidation de cache.
+        legacy = self._cfg(None)
+        default0 = self._cfg(0)
+        assert "max_image_dimension" not in default0
+        assert default0 == legacy
+        assert self._fp(0) == self._fp(None)
+
+    def test_downscaled_run_never_aliases_full_res(self) -> None:
+        full_res = self._fp(0)
+        down1024 = self._fp(1024)
+        down2048 = self._fp(2048)
+        assert self._cfg(1024)["max_image_dimension"] == 1024
+        # Trois fingerprints deux-à-deux distincts.
+        assert len({full_res, down1024, down2048}) == 3

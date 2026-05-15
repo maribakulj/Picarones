@@ -347,3 +347,38 @@ class TestSSEFormat:
         être traité comme None."""
         out = sse_format("start", {}, seq=0)
         assert out.startswith("id: 0\n")
+
+
+class TestMaxImageDimensionPropagation:
+    """``max_image_dimension`` (PipelineConfig) doit atteindre la
+    ``config`` de l'adapter LLM, sinon le downscale opt-in est du
+    code mort (cause : appels image+texte Mistral en 429)."""
+
+    def test_default_is_zero_off(self) -> None:
+        comp = PipelineConfig(
+            name="t", engine_name="", llm_provider="mistral", llm_model="m",
+        )
+        assert comp.max_image_dimension == 0
+        adapter = _build_llm_adapter(comp)
+        # 0 = pleine résolution : l'adapter le lit comme no-op.
+        assert int(adapter.config.get("max_image_dimension", 0) or 0) == 0
+
+    @pytest.mark.parametrize(
+        "provider", ["openai", "anthropic", "mistral", "ollama"],
+    )
+    def test_value_reaches_adapter_config(self, provider: str) -> None:
+        comp = PipelineConfig(
+            name="t", engine_name="",
+            llm_provider=provider, llm_model="m",
+            max_image_dimension=1024,
+        )
+        adapter = _build_llm_adapter(comp)
+        assert adapter.config["max_image_dimension"] == 1024
+
+    def test_validation_bounds(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            PipelineConfig(llm_provider="mistral", max_image_dimension=-1)
+        with pytest.raises(ValidationError):
+            PipelineConfig(llm_provider="mistral", max_image_dimension=99999)

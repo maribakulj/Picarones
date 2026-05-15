@@ -95,18 +95,22 @@ def sse_format(event_type: str, data: Any, seq: Optional[int] = None) -> str:
 
 def _build_llm_adapter(comp: PipelineConfig) -> Any:
     """Instancie un adaptateur LLM depuis la config d'un concurrent."""
+    # ``max_image_dimension`` : 0 (défaut) = pleine résolution, no-op
+    # côté adapter (``int(... or 0)``) et fingerprint inchangé.  > 0 =
+    # downscale opt-in (cf. PipelineConfig / _image.py).
+    cfg = {"max_image_dimension": comp.max_image_dimension}
     if comp.llm_provider == "openai":
         from picarones.adapters.llm.openai_adapter import OpenAIAdapter
-        return OpenAIAdapter(model=comp.llm_model or None)
+        return OpenAIAdapter(model=comp.llm_model or None, config=cfg)
     elif comp.llm_provider == "anthropic":
         from picarones.adapters.llm.anthropic_adapter import AnthropicAdapter
-        return AnthropicAdapter(model=comp.llm_model or None)
+        return AnthropicAdapter(model=comp.llm_model or None, config=cfg)
     elif comp.llm_provider == "mistral":
         from picarones.adapters.llm.mistral_adapter import MistralAdapter
-        return MistralAdapter(model=comp.llm_model or None)
+        return MistralAdapter(model=comp.llm_model or None, config=cfg)
     elif comp.llm_provider == "ollama":
         from picarones.adapters.llm.ollama_adapter import OllamaAdapter
-        return OllamaAdapter(model=comp.llm_model or None)
+        return OllamaAdapter(model=comp.llm_model or None, config=cfg)
     else:
         raise ValueError(f"Provider LLM inconnu : {comp.llm_provider}")
 
