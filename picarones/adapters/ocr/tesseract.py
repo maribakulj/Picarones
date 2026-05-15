@@ -92,6 +92,16 @@ class TesseractAdapter(BaseOCRAdapter):
     tesseract_cmd:
         Chemin custom vers l'exécutable ``tesseract``.  Défaut
         ``None`` (laisse pytesseract trouver l'installation système).
+    timeout_seconds:
+        Délai max (s) du sous-processus ``tesseract`` par image.
+        Défaut ``120.0``.  **Garde-fou critique** : un appel
+        ``pytesseract`` sans timeout bloque indéfiniment le thread
+        worker si le binaire ``tesseract`` se fige sur une page
+        (le ``CorpusRunner`` ne peut pas interrompre un sous-processus
+        bloquant — cf. ``pipeline/runner.py``), ce qui gèle tout le
+        run sans log ni erreur.  Avec un timeout, pytesseract tue le
+        sous-processus et lève : le doc échoue proprement et le run
+        continue.  ``0`` désactive explicitement (déconseillé).
 
     Raises
     ------
@@ -131,6 +141,7 @@ class TesseractAdapter(BaseOCRAdapter):
         tesseract_cmd: str | None = None,
         expose_confidences: bool = True,
         expose_alto: bool = False,
+        timeout_seconds: float = 120.0,
     ) -> None:
         if not name or not name.strip():
             raise OCRAdapterError(
@@ -158,6 +169,11 @@ class TesseractAdapter(BaseOCRAdapter):
             raise OCRAdapterError(
                 f"TesseractAdapter : oem doit être ∈ [0, 3], reçu {oem}.",
             )
+        if timeout_seconds < 0:
+            raise OCRAdapterError(
+                "TesseractAdapter : timeout_seconds doit être >= 0 "
+                f"(0 = désactivé), reçu {timeout_seconds}.",
+            )
         self._name = name
         self._lang = lang
         self._psm = psm
@@ -165,6 +181,7 @@ class TesseractAdapter(BaseOCRAdapter):
         self._tesseract_cmd = tesseract_cmd
         self._expose_confidences = expose_confidences
         self._expose_alto = expose_alto
+        self._timeout = float(timeout_seconds)
 
     @property
     def name(self) -> str:
@@ -247,6 +264,7 @@ class TesseractAdapter(BaseOCRAdapter):
                     image,
                     lang=self._lang,
                     config=custom_config,
+                    timeout=self._timeout,
                 )
         except Exception as exc:
             raise OCRAdapterError(
@@ -348,6 +366,7 @@ class TesseractAdapter(BaseOCRAdapter):
                     lang=self._lang,
                     config=custom_config,
                     output_type=pytesseract_module.Output.DICT,
+                    timeout=self._timeout,
                 )
         except Exception as exc:  # noqa: BLE001 — best-effort
             logger.warning(
@@ -407,6 +426,7 @@ class TesseractAdapter(BaseOCRAdapter):
                     image,
                     lang=self._lang,
                     config=custom_config,
+                    timeout=self._timeout,
                 )
         except Exception as exc:  # noqa: BLE001 — best-effort
             logger.warning(
