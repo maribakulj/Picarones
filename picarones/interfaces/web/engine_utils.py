@@ -18,9 +18,28 @@ import json
 MISTRAL_TEXT_ONLY = frozenset({
     "ministral-3b-latest", "ministral-8b-latest", "mistral-tiny",
     "mistral-tiny-latest", "open-mistral-7b", "open-mixtral-8x7b",
-    "mistral-small-latest", "mistral-small-2409",
+    # Mistral Small versions antérieures à 3.1 : text-only.
+    # ``mistral-small-2402`` (fév 2024), ``mistral-small-2409``
+    # (Small v2, sept 2024), ``mistral-small-2501`` (Small 3,
+    # janv 2025) n'ont pas de support vision.
+    "mistral-small-2402", "mistral-small-2409", "mistral-small-2501",
 })
-"""Modèles Mistral explicitement text-only (pas de support vision)."""
+"""Modèles Mistral explicitement text-only (pas de support vision).
+
+Note (mai 2026) : ``mistral-small-latest`` a été RETIRÉ de cette
+liste — l'alias pointe désormais vers Mistral Small 3.1+
+(``mistral-small-2503`` puis ``2506``) qui sont multimodaux.
+Seules les versions datées antérieures à 3.1 restent text-only.
+``ministral-*`` reste text-only (modèles edge sans vision,
+cf. ``data/pricing.yaml``)."""
+
+MISTRAL_SMALL_VISION = frozenset({
+    "mistral-small-latest", "mistral-small-2503", "mistral-small-2506",
+})
+"""Mistral Small 3.1+ : multimodaux (vision).  Le runtime
+``MistralAdapter`` envoie effectivement l'image pour ces modèles
+(cf. ``mistral_adapter.py:_TEXT_ONLY_MODELS`` qui ne les exclut
+pas)."""
 
 MISTRAL_TEXT_ONLY_PREFIXES = (
     "ministral", "open-mistral", "open-mixtral", "codestral",
@@ -134,6 +153,13 @@ def infer_mistral_capabilities(model_id: str) -> list[str]:
     mid = model_id.lower()
     # Modèles explicitement vision (Pixtral)
     if "pixtral" in mid:
+        return ["text", "vision"]
+    # Mistral Small 3.1+ multimodaux — vérifié AVANT le test
+    # text-only pour ne pas se faire écraser par un éventuel
+    # préfixe.  ``mistral-small-latest`` est l'alias courant
+    # (Small 3.2) ; les versions datées 2503/2506 sont aussi
+    # multimodales.
+    if mid in MISTRAL_SMALL_VISION:
         return ["text", "vision"]
     # Modèles explicitement text-only
     if mid in MISTRAL_TEXT_ONLY or any(mid.startswith(p) for p in MISTRAL_TEXT_ONLY_PREFIXES):

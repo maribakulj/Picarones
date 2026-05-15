@@ -160,8 +160,13 @@ class DocumentMetricHook:
         n'utilisent pas avec ``**_``.
     requires_success:
         Si ``True``, le hook n'est appelé que quand
-        ``ocr_result.success`` (texte hyp non-vide). Évite de gaspiller
-        du temps sur des documents en erreur OCR.
+        ``ocr_result.success``.  Sémantique (corrigée mai 2026) :
+        ``success`` = « le pipeline s'est exécuté sans erreur »
+        (``engine_error is None``), PAS « le texte hyp est non-vide ».
+        Une sortie OCR vide sans erreur reste un résultat valide à
+        analyser — c'est le cœur du diagnostic d'un outil de
+        benchmark OCR (matrice de confusion = suppressions, etc.).
+        Seul un pipeline réellement en erreur saute ces hooks.
     requires_token_confidences:
         Si ``True``, le hook n'est appelé que quand
         ``ocr_result.token_confidences`` est non-vide. Réservé à la

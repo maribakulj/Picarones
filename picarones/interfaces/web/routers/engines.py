@@ -269,9 +269,12 @@ def _models_for_provider_sync(provider: str, capability: str) -> dict:
         except Exception as exc:  # noqa: BLE001
             fallback = [
                 model_entry("mistral-large-latest", ["text", "vision"]),
+                model_entry("mistral-medium-latest", ["text", "vision"]),
                 model_entry("pixtral-large-latest", ["text", "vision"]),
                 model_entry("pixtral-12b-2409", ["text", "vision"]),
-                model_entry("mistral-small-latest", ["text"]),
+                # Mistral Small 3.1+ est multimodal (cf.
+                # engine_utils.MISTRAL_SMALL_VISION).
+                model_entry("mistral-small-latest", ["text", "vision"]),
             ]
             return {**_format_models(provider, fallback, capability), "error": str(exc)}
 
