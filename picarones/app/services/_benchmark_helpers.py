@@ -175,6 +175,16 @@ def _engine_config_for_fingerprint(engine: Any) -> dict:
         if llm is not None:
             cfg["llm_model"] = getattr(llm, "model", "")
             cfg["llm_provider"] = getattr(llm, "name", "")
+            # Résolution image envoyée au VLM.  Intégrité scientifique :
+            # un run downscalé ne doit JAMAIS réutiliser un partiel
+            # pleine résolution.  Clé ajoutée UNIQUEMENT si > 0 → les
+            # runs pleine résolution (défaut 0) conservent le
+            # fingerprint historique (aucune invalidation de cache,
+            # zéro changement de comportement).
+            _md = int((getattr(llm, "config", {}) or {}).get(
+                "max_image_dimension", 0) or 0)
+            if _md > 0:
+                cfg["max_image_dimension"] = _md
         ocr = getattr(engine, "ocr_adapter", None)
         if ocr is not None:
             cfg["ocr_name"] = getattr(ocr, "name", "")

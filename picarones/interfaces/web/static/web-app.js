@@ -94,6 +94,8 @@ const T = {
     compose_llm_model: "Modèle LLM",
     compose_mode: "Mode pipeline",
     compose_prompt: "Prompt",
+    compose_max_image_dim: "Image max (px)",
+    compose_max_image_dim_hint: "0 = pleine résolution (défaut, méthodo inchangée). > 0 réduit l'image envoyée au VLM (modes image) pour éviter les 429 — change la méthodo, run fingerprinté à part.",
     compose_add: "+ Ajouter",
     compose_empty: "Aucun concurrent ajouté.",
     mode_text_only: "Post-correction texte",
@@ -184,6 +186,8 @@ const T = {
     compose_llm_model: "LLM Model",
     compose_mode: "Pipeline mode",
     compose_prompt: "Prompt",
+    compose_max_image_dim: "Max image (px)",
+    compose_max_image_dim_hint: "0 = full resolution (default, methodology unchanged). > 0 shrinks the image sent to the VLM (image modes) to avoid 429s — changes methodology, fingerprinted as a separate run.",
     compose_add: "+ Add",
     compose_empty: "No competitors added.",
     mode_text_only: "Text post-correction",
@@ -490,7 +494,10 @@ function addCompetitor() {
   const errEl = document.getElementById("compose-error");
 
   const comp = { name: "", engine_name: "", ocr_model: "",
-                  llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "" };
+                  llm_provider: "", llm_model: "", pipeline_mode: "", prompt_file: "",
+                  max_image_dimension: 0 };
+  const _maxImgDim = parseInt((document.getElementById("compose-max-image-dim") || {}).value, 10);
+  const maxImgDim = Number.isFinite(_maxImgDim) && _maxImgDim > 0 ? _maxImgDim : 0;
 
   if (mode === "postcorrection") {
     // Post-correction : OCR vient du corpus (.ocr.txt)
@@ -499,6 +506,7 @@ function addCompetitor() {
     comp.llm_model = document.getElementById("compose-llm-model").value;
     comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
     comp.prompt_file = document.getElementById("compose-prompt").value;
+    comp.max_image_dimension = maxImgDim;
     if (!comp.llm_provider || !comp.llm_model) {
       errEl.textContent = lang === "fr" ? "Sélectionnez un provider et un modèle LLM." : "Select an LLM provider and model.";
       return;
@@ -518,6 +526,7 @@ function addCompetitor() {
     comp.llm_model = document.getElementById("compose-llm-model").value;
     comp.pipeline_mode = document.getElementById("compose-pipeline-mode").value;
     comp.prompt_file = document.getElementById("compose-prompt").value;
+    comp.max_image_dimension = maxImgDim;
     if (!comp.llm_provider) {
       errEl.textContent = lang === "fr" ? "Sélectionnez un provider LLM." : "Select an LLM provider.";
       return;
