@@ -151,18 +151,34 @@ def test_reads_during_writes_no_locking_error(fresh_store: JobStore) -> None:
         except BaseException as exc:  # noqa: BLE001
             read_errors.append(exc)
 
+    # ``daemon=True`` : backstop. L'ancien ``join(timeout=2)`` (< le
+    # ``PRAGMA busy_timeout=5000`` de JobStore) abandonnait un writer
+    # encore bloqué dans SQLite sous la contention plus lente de Windows ;
+    # ce thread non-daemon fuité faisait ensuite *hanger*
+    # ``threading._shutdown()`` à la sortie de l'interpréteur (suite jamais
+    # terminée → SIGTERM CI / exit 124). En daemon, un thread bloqué ne
+    # peut jamais retenir l'arrêt de l'interpréteur, même dans ce cas
+    # pathologique.
     threads = [
-        threading.Thread(target=_writer),
-        threading.Thread(target=_writer),
-        threading.Thread(target=_reader),
-        threading.Thread(target=_reader),
+        threading.Thread(target=_writer, daemon=True),
+        threading.Thread(target=_writer, daemon=True),
+        threading.Thread(target=_reader, daemon=True),
+        threading.Thread(target=_reader, daemon=True),
     ]
     for t in threads:
         t.start()
     threading.Event().wait(0.5)  # 500 ms de charge mixte
     stop.set()
+    # ``join()`` sans timeout, volontairement. Mesuré : les threads se
+    # terminent en ~10 ms après ``stop.set()`` (au plus un appel SQLite en
+    # vol, borné par ``busy_timeout``). Un join borné masquerait un vrai
+    # deadlock régressif de JobStore (test vert, thread daemon tué à
+    # l'``exit``, aucun signal) ; un join non borné le fait au contraire
+    # remonter bruyamment via pytest-timeout (300 s, ``-X faulthandler``
+    # dumpe la stack de tous les threads). Le ``daemon=True`` ci-dessus
+    # garantit qu'un tel deadlock échoue proprement sans *hanger* la CI.
     for t in threads:
-        t.join(timeout=2)
+        t.join()
 
     assert not read_errors, f"Reads ont levé : {read_errors[:2]}"
     assert not write_errors, f"Writes ont levé : {write_errors[:2]}"
