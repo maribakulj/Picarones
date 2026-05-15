@@ -142,6 +142,68 @@ class TestF2WilcoxonExactSmallN:
 # ──────────────────────────────────────────────────────────────────────────
 
 
+class TestF3SyntheticDataIntegrity:
+    """Une donnée fabriquée ne peut pas être prise pour un résultat réel."""
+
+    def test_synthetic_benchmark_is_flagged(self) -> None:
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+
+        bm = generate_sample_benchmark(n_docs=3)
+        assert bm.is_demo is True
+        d = bm.as_dict()
+        assert d["is_demo"] is True
+        assert d["corpus"]["is_demo"] is True
+
+    def test_real_benchmark_defaults_to_not_demo(self) -> None:
+        from picarones.evaluation.benchmark_result import BenchmarkResult
+
+        bm = BenchmarkResult(
+            corpus_name="Vrai corpus", corpus_source=None,
+            document_count=0, engine_reports=[],
+        )
+        assert bm.is_demo is False
+        assert bm.as_dict()["is_demo"] is False
+
+    def test_is_demo_round_trips_through_json(self) -> None:
+        import json
+
+        from picarones.evaluation.benchmark_result import BenchmarkResult
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+
+        bm = generate_sample_benchmark(n_docs=3)
+        rt = BenchmarkResult.from_dict(json.loads(json.dumps(bm.as_dict())))
+        assert rt.is_demo is True
+
+    def test_html_report_carries_unremovable_banner_for_demo(
+        self, tmp_path,
+    ) -> None:
+        from picarones.evaluation.synthetic import generate_sample_benchmark
+        from picarones.reports.html.generator import ReportGenerator
+
+        bm = generate_sample_benchmark(n_docs=3)
+        out = tmp_path / "demo.html"
+        ReportGenerator(bm).generate(str(out))
+        html = out.read_text(encoding="utf-8")
+        assert 'role="alert"' in html
+        assert "DÉMONSTRATION" in html or "DEMONSTRATION" in html
+        # Pas de bouton de fermeture sur le bandeau d'intégrité.
+        assert "onclick=\"this.remove()\"" not in html
+
+    def test_real_html_report_has_no_demo_banner(self, tmp_path) -> None:
+        from picarones.evaluation.benchmark_result import BenchmarkResult
+        from picarones.reports.html.generator import ReportGenerator
+
+        bm = BenchmarkResult(
+            corpus_name="Vrai corpus", corpus_source=None,
+            document_count=0, engine_reports=[],
+        )
+        out = tmp_path / "real.html"
+        ReportGenerator(bm).generate(str(out))
+        html = out.read_text(encoding="utf-8")
+        assert "DÉMONSTRATION" not in html
+        assert "DEMONSTRATION DATA" not in html
+
+
 class TestF4MinimalAlignment:
     """Confusion matrix / diff alignés sur Levenshtein (≡ CER)."""
 
@@ -187,6 +249,83 @@ class TestF4MinimalAlignment:
         st = diff_stats(ops)
         edits = st["replace"] + st["insert"] + st["delete"]
         assert edits == Levenshtein.distance(gt, hyp) == 2
+
+
+class TestF5ImanDavenport:
+    """Friedman expose la correction F recommandée par Demšar (2006)."""
+
+    def test_f_statistic_fields_present_and_consistent(self) -> None:
+        from picarones.evaluation.statistics.friedman_nemenyi import (
+            friedman_test,
+        )
+
+        # 3 moteurs, 6 documents, séparation nette.
+        m = {
+            "A": [0.05, 0.04, 0.06, 0.05, 0.05, 0.04],
+            "B": [0.15, 0.14, 0.16, 0.15, 0.15, 0.14],
+            "C": [0.30, 0.31, 0.29, 0.30, 0.30, 0.31],
+        }
+        r = friedman_test(m)
+        assert r["f_df1"] == 2  # k-1
+        assert r["f_df2"] == 2 * (6 - 1)  # (k-1)(n-1)
+        assert r["decision_basis"] == "iman_davenport_F"
+        assert r["f_p_value"] is not None
+        # F recommandé moins conservateur que χ² : p_F ≤ p_χ².
+        assert r["f_p_value"] <= r["p_value"] + 1e-9
+        assert r["significant"] is True
+
+    def test_f_sf_matches_distribution_tables(self) -> None:
+        from picarones.evaluation.statistics.friedman_nemenyi import _f_sf
+
+        # Valeurs critiques F connues à α=0.05.
+        assert _f_sf(4.103, 2, 10) == pytest.approx(0.05, abs=1e-3)
+        assert _f_sf(3.490, 3, 12) == pytest.approx(0.05, abs=1e-3)
+        assert _f_sf(2.711, 5, 20) == pytest.approx(0.05, abs=1e-3)
+        assert _f_sf(float("inf"), 3, 9) == 0.0
+        assert _f_sf(0.0, 3, 9) == 1.0
+
+    def test_perfect_concordance_gives_infinite_F(self) -> None:
+        from picarones.evaluation.statistics.friedman_nemenyi import (
+            friedman_test,
+        )
+
+        # Ordre des moteurs identique sur tous les documents.
+        m = {
+            "A": [0.1, 0.1, 0.1, 0.1],
+            "B": [0.2, 0.2, 0.2, 0.2],
+            "C": [0.3, 0.3, 0.3, 0.3],
+        }
+        r = friedman_test(m)
+        assert r["f_statistic"] == float("inf")
+        assert r["f_p_value"] == 0.0
+        assert r["significant"] is True
+
+
+class TestF6NemenyiOutOfTable:
+    """q_α extrapolé vers le haut (conservateur), plus de clamp."""
+
+    def test_q_alpha_is_monotone_increasing_beyond_table(self) -> None:
+        from picarones.evaluation.statistics.friedman_nemenyi import (
+            _nemenyi_critical_value,
+        )
+
+        # Réutiliser q(50) pour tout k>50 (ancien code) sous-estimait
+        # q ⇒ anti-conservateur.  Doit désormais croître.
+        assert _nemenyi_critical_value(100, 0.05) > _nemenyi_critical_value(
+            50, 0.05,
+        )
+        assert _nemenyi_critical_value(60, 0.01) > _nemenyi_critical_value(
+            50, 0.01,
+        )
+
+    def test_nemenyi_posthoc_flags_extrapolation(self) -> None:
+        from picarones.evaluation.statistics.friedman_nemenyi import (
+            nemenyi_posthoc,
+        )
+
+        small = {f"e{i}": [0.1 * (i + 1), 0.2 * (i + 1)] for i in range(3)}
+        r = nemenyi_posthoc(small)
+        assert r["q_alpha_extrapolated"] is False
 
 
 class TestF9ContinuityCorrection:

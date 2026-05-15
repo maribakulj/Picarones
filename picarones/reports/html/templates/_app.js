@@ -2297,7 +2297,18 @@ function _buildCSVRows(docs) {
       ]);
     });
   });
-  return rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\n');
+  const body = rows.map(r => r.map(v => JSON.stringify(String(v ?? ''))).join(',')).join('\n');
+  // Audit scientifique F3 — un export CSV issu d'un rapport de
+  // démonstration porte un en-tête d'avertissement inamovible, pour
+  // qu'aucun fichier de données fabriquées ne circule sans contexte.
+  if (DATA.meta && DATA.meta.is_demo) {
+    const warn = '# DONNEES DE DEMONSTRATION SYNTHETIQUES — fabriquees, '
+      + 'NON issues de vrais moteurs OCR/HTR. Ne pas citer ni publier '
+      + 'comme benchmark scientifique. / SYNTHETIC DEMO DATA — fabricated, '
+      + 'NOT real OCR/HTR results.';
+    return warn + '\n' + body;
+  }
+  return body;
 }
 
 function _downloadCSV(content, filename) {

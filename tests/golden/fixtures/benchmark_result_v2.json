@@ -1,6 +1,7 @@
 {
   "corpus": {
     "document_count": 2,
+    "is_demo": false,
     "name": "test_corpus_s5",
     "source": "/fixtures/corpus.zip"
   },
@@ -210,6 +211,7 @@
       "engine_version": "2.1.3"
     }
   ],
+  "is_demo": false,
   "metadata": {
     "deterministic": true,
     "sprint": "S5"

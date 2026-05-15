@@ -495,6 +495,9 @@ def generate_sample_benchmark(
         corpus_source="/corpus/chroniques/",
         document_count=n_docs,
         engine_reports=engine_reports,
+        # Audit scientifique F3 — marque ce benchmark comme fabriqué :
+        # propagé au JSON, au bandeau HTML et à l'export CSV.
+        is_demo=True,
         metadata={
             "description": "Données de démonstration synthétiques",
             "script": "gothique textura",

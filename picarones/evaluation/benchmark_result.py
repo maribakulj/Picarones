@@ -537,6 +537,14 @@ class BenchmarkResult:
     run_date: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
     picarones_version: str = __version__
     metadata: dict = field(default_factory=dict)
+    # Audit scientifique F3 — intégrité des données.  ``True`` quand le
+    # benchmark provient de ``generate_sample_benchmark`` (commande
+    # ``picarones demo``) : résultats **fabriqués** par des fonctions de
+    # transformation, pas de vrais moteurs OCR.  Sérialisé dans le JSON
+    # et propagé au rapport HTML (bandeau d'avertissement inamovible) et
+    # à l'export CSV, pour qu'un rapport de démonstration ne puisse
+    # jamais être diffusé comme un résultat scientifique réel.
+    is_demo: bool = False
     # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
     # complémentarité / oracle).  Calculée par le runner avant compact()
     # afin d'avoir accès aux hypothèses brutes.  ``None`` si moins de
@@ -818,10 +826,15 @@ class BenchmarkResult:
         d = {
             "picarones_version": self.picarones_version,
             "run_date": self.run_date,
+            # F3 — drapeau d'intégrité au niveau racine ET corpus pour
+            # qu'aucun consommateur (HTML, CSV, scripts tiers) ne puisse
+            # l'ignorer par accident.
+            "is_demo": self.is_demo,
             "corpus": {
                 "name": self.corpus_name,
                 "source": self.corpus_source,
                 "document_count": self.document_count,
+                "is_demo": self.is_demo,
             },
             "ranking": self.ranking(),
             "engine_reports": [r.as_dict() for r in self.engine_reports],
@@ -887,6 +900,11 @@ class BenchmarkResult:
             run_date=data.get("run_date", ""),
             picarones_version=data.get("picarones_version", ""),
             metadata=data.get("metadata", {}) or {},
+            # F3 — accepte le drapeau à la racine ou dans ``corpus``
+            # (round-trip fidèle, y compris depuis un JSON de démo).
+            is_demo=bool(
+                data.get("is_demo", corpus_info.get("is_demo", False))
+            ),
         )
 
     @classmethod

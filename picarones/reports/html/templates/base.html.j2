@@ -15,6 +15,28 @@
 
 <body>
 
+{# Audit scientifique F3 — bandeau d'intégrité des données.
+   Rendu côté serveur (présent même si JavaScript est désactivé),
+   sans bouton de fermeture : un rapport de démonstration ne doit
+   jamais pouvoir être pris pour un résultat scientifique réel. #}
+{% if is_demo %}
+<div role="alert" style="position:sticky;top:0;z-index:9999;background:#7f1d1d;color:#fff;
+     padding:.7rem 1.25rem;font-family:system-ui,-apple-system,sans-serif;font-size:.95rem;
+     font-weight:700;text-align:center;border-bottom:3px solid #fca5a5;letter-spacing:.01em">
+  {% if html_lang == 'en' %}
+  ⚠ DEMONSTRATION DATA — These results are SYNTHETIC, fabricated by
+  transformation functions for layout preview only. They are NOT real
+  OCR/HTR engine measurements and must never be cited, published or
+  circulated as a scientific benchmark.
+  {% else %}
+  ⚠ DONNÉES DE DÉMONSTRATION — Ces résultats sont SYNTHÉTIQUES, fabriqués
+  par des fonctions de transformation pour prévisualiser la mise en page.
+  Ce ne sont PAS des mesures réelles de moteurs OCR/HTR : ils ne doivent
+  jamais être cités, publiés ni diffusés comme un benchmark scientifique.
+  {% endif %}
+</div>
+{% endif %}
+
 {% include '_header.html' %}
 
 {% include 'view_ranking.html' %}

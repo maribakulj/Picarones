@@ -90,6 +90,9 @@ def build_report_data(
             "run_date": benchmark.run_date,
             "picarones_version": benchmark.picarones_version,
             "metadata": benchmark.metadata,
+            # Audit scientifique F3 — propagé au bandeau d'avertissement
+            # inamovible (cf. _app.js / base.html.j2).
+            "is_demo": getattr(benchmark, "is_demo", False),
         },
         "ranking": benchmark.ranking(),
         "engines": engines_summary,
