@@ -18,6 +18,9 @@ from picarones.adapters._retry import (
     DEFAULT_MAX_RETRIES as _DEFAULT_MAX_RETRIES,
 )
 from picarones.adapters._retry import (
+    compute_retry_wait as _compute_retry_wait,
+)
+from picarones.adapters._retry import (
     is_retryable as _is_retryable,
 )
 
@@ -350,7 +353,9 @@ class BaseLLMAdapter(ABC):
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 if attempt < max_retries and _is_retryable(exc):
-                    wait = backoff_base ** (attempt + 1)
+                    # Honore Retry-After (borne inférieure) + jitter
+                    # anti thundering-herd — cf. adapters/_retry.py.
+                    wait = _compute_retry_wait(attempt, backoff_base, exc)
                     logger.warning(
                         "[%s] erreur retryable (tentative %d/%d, attente %.1fs) : %s",
                         self.name, attempt + 1, max_retries + 1, wait, exc,

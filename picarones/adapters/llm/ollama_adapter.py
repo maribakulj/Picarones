@@ -62,6 +62,11 @@ class OllamaAdapter(BaseLLMAdapter):
             "options": {"temperature": temperature},
         }
         if image_b64:
+            # Réduction optionnelle (off par défaut) — cf. _image.py.
+            max_edge = int(self.config.get("max_image_dimension", 0) or 0)
+            if max_edge > 0:
+                from picarones.adapters._image import downscale_b64_image
+                image_b64 = downscale_b64_image(image_b64, max_edge)
             payload["images"] = [image_b64]
 
         data = json.dumps(payload).encode("utf-8")

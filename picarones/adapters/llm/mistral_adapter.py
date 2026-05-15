@@ -103,6 +103,14 @@ class MistralAdapter(BaseLLMAdapter):
             image_b64 = None
 
         if image_b64:
+            # Réduction optionnelle (désactivée par défaut) : limite le
+            # coût en tokens vision qui saturait la limite Mistral sur
+            # les appels image+texte.  Sans ``max_image_dimension``
+            # configuré, image inchangée (résultats non affectés).
+            max_edge = int(self.config.get("max_image_dimension", 0) or 0)
+            if max_edge > 0:
+                from picarones.adapters._image import downscale_b64_image
+                image_b64 = downscale_b64_image(image_b64, max_edge)
             content: list | str = [
                 {"type": "text", "text": prompt},
                 {
