@@ -166,6 +166,39 @@ RUN apt-get update -o Acquire::Retries=3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# ── Vérification fail-fast de Tesseract (incident 2026-05-16) ───
+# ``apt-get upgrade --fix-missing`` (résilience à la rotation du pool
+# debian-security, commit d5d68ae) peut laisser un jeu de libs
+# runtime INCOHÉRENT si un .deb co-dépendant est sauté : le binaire
+# ``tesseract`` se fige alors à la reconnaissance (deadlock OpenMP /
+# mismatch ABI liblept/libstdc++) et le run prod timeoute sur CHAQUE
+# document — sans que le build n'ait rien signalé.
+#
+# On exige donc, au build : (a) que Tesseract charge ses libs et
+# expose la langue ``fra``, (b) qu'une reconnaissance réelle se
+# termine sous 30 s.  Un Tesseract cassé OU figé casse désormais le
+# BUILD (le Space conserve l'image précédente fonctionnelle) au lieu
+# de déployer une image qui gèle en silence.  ``--fix-missing`` est
+# conservé : l'intention CVE de d5d68ae n'est pas régressée, seule
+# la défaillance silencieuse est convertie en échec bruyant.
+RUN set -eu; \
+    timeout 30 tesseract --version; \
+    timeout 30 tesseract --list-langs 2>&1 | grep -qx fra; \
+    printf 'P1\n16 16\n' > /tmp/tess_smoke.pbm; \
+    i=0; while [ "$i" -lt 16 ]; do \
+        printf '1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0\n' >> /tmp/tess_smoke.pbm; \
+        i=$((i + 1)); \
+    done; \
+    rc=0; \
+    timeout 30 tesseract /tmp/tess_smoke.pbm - -l fra --psm 6 \
+        > /dev/null 2>&1 || rc=$?; \
+    rm -f /tmp/tess_smoke.pbm; \
+    if [ "$rc" = 124 ]; then \
+        echo "FATAL: tesseract a gelé (timeout reconnaissance) — \
+build refusé, libs runtime probablement incohérentes." >&2; \
+        exit 1; \
+    fi
+
 # Patch pip/setuptools/wheel système du runtime (en dehors du venv).
 # Trivy scanne /usr/local/lib/python3.11/site-packages indépendamment.
 RUN /usr/local/bin/pip install --upgrade --no-cache-dir \
