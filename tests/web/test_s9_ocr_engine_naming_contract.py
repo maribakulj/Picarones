@@ -76,6 +76,40 @@ def test_two_distinct_configs_coexist_in_resolver(
     assert resolver(eng_b.name) is eng_b
 
 
+def test_pipelines_differing_only_by_mode_get_distinct_names() -> None:
+    """Régression : deux pipelines mêmes OCR+LLM+prompt mais
+    ``pipeline_mode`` distinct (text_only vs text_and_image) doivent
+    recevoir des ``name`` distincts.
+
+    Bug rapporté en prod : avec 3 pipelines partageant tesseract +
+    mistral-small et ne variant que par mode/prompt, le rapport
+    affichait N lignes IDENTIQUES (toutes = dernier pipeline ajouté).
+    Cause : le nom par défaut encodait ocr/llm/prompt mais PAS le
+    mode → ``EngineReport.engine_name`` identiques → clé
+    ``per_pipeline_state`` / ``view_results`` partagée (dernier écrit
+    gagne).  Le discriminant prompt seul ne suffit pas."""
+    common = dict(
+        engine_name="tesseract",
+        ocr_model="fra",
+        llm_provider="mistral",
+        llm_model="mistral-small-latest",
+        prompt_file="correction_medieval_french.txt",
+    )
+    comp_text = PipelineConfig(pipeline_mode="text_only", **common)
+    comp_img = PipelineConfig(pipeline_mode="text_and_image", **common)
+    try:
+        eng_text = _engine_from_competitor(comp_text)
+        eng_img = _engine_from_competitor(comp_img)
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"pipeline non instanciable ici : {exc}")
+
+    assert eng_text.name != eng_img.name, (
+        "text_only et text_and_image (même OCR+LLM+prompt) produisent "
+        f"le même name ({eng_text.name!r}) — collision silencieuse, "
+        "N lignes identiques dans le rapport."
+    )
+
+
 @pytest.mark.parametrize("engine_id", sorted(_OCR_KWARGS_BUILDERS))
 def test_standalone_plus_pipeline_same_config_coexist(
     engine_id: str,

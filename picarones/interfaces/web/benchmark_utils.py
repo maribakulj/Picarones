@@ -315,21 +315,26 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
     prompt_filename = comp.prompt_file or "correction_medieval_french.txt"
     prompt_content = _load_prompt_content(prompt_filename)
 
-    # Le prompt fait partie de l'identité LOGIQUE d'un pipeline de
-    # post-correction.  Benchmarker « un même modèle, plusieurs
-    # prompts » est un cas d'usage de premier ordre (comparer
-    # l'efficacité des prompts) : chaque competitor doit être un
-    # engine DISTINCT.  Sans discriminant prompt dans le nom par
-    # défaut, N variantes de prompt obtiennent le même
-    # ``pipeline.name`` → ``EngineReport.engine_name`` identiques
-    # (N lignes indistinguables dans le rapport) ET clé
-    # ``view_results`` partagée (clobber doc-par-doc).  Quand
-    # l'utilisateur ne nomme pas explicitement le competitor, on
-    # dérive un nom qui inclut le stem du fichier de prompt.
+    # Le prompt ET le mode font partie de l'identité LOGIQUE d'un
+    # pipeline de post-correction.  Benchmarker « un même modèle,
+    # plusieurs prompts » ou « text_only vs text_and_image » sont des
+    # cas d'usage de premier ordre : chaque competitor doit être un
+    # engine DISTINCT.  Sans discriminant {mode, prompt} dans le nom
+    # par défaut, N variantes obtiennent le même ``pipeline.name`` →
+    # ``EngineReport.engine_name`` identiques (N lignes indistinguables
+    # dans le rapport) ET clé ``view_results`` / ``per_pipeline_state``
+    # / partial-store partagée (clobber, le dernier écrit gagne).  Le
+    # discriminant ``prompt`` seul (ajouté antérieurement) ne couvrait
+    # PAS l'axe ``mode`` : deux pipelines mêmes OCR+LLM+prompt mais
+    # text_only vs text_and_image s'écrasaient encore.  Quand
+    # l'utilisateur ne nomme pas explicitement le competitor, on dérive
+    # un nom qui inclut le mode ET le stem du fichier de prompt.
     prompt_stem = Path(prompt_filename).stem
     _llm_label = comp.llm_model or comp.llm_provider
     _ocr_label = "corpus_ocr" if is_corpus_ocr else engine_id
-    pipeline_name = comp.name or f"{_ocr_label} → {_llm_label} [{prompt_stem}]"
+    pipeline_name = comp.name or (
+        f"{_ocr_label} → {_llm_label} [{mode}/{prompt_stem}]"
+    )
 
     return OCRLLMPipelineConfig(
         ocr_adapter=ocr,
@@ -377,6 +382,32 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
 
         if not engines:
             raise ValueError("Aucun concurrent valide disponible.")
+
+        # Anti-collision d'identité (intégrité scientifique).  Deux
+        # competitors au même ``name`` se clobbereraient mutuellement
+        # dans ``per_pipeline_state`` / ``view_results`` / le
+        # partial-store (dict keyés par ``engine_name`` ; dernier écrit
+        # gagne → N lignes IDENTIQUES au lieu de N résultats distincts).
+        # Le nom par défaut encode déjà ocr/llm/mode/prompt ; s'il
+        # reste un doublon (deux competitors nommés explicitement
+        # pareil, ou ne différant que par un knob hors-nom), on REFUSE
+        # le run.  Sur une plateforme de benchmark, des chiffres faux
+        # silencieux sont le pire résultat — règle anti-`except: pass`.
+        _name_counts: dict[str, int] = {}
+        for _eng in engines:
+            _name_counts[_eng.name] = _name_counts.get(_eng.name, 0) + 1
+        _dup_names = sorted(n for n, c in _name_counts.items() if c > 1)
+        if _dup_names:
+            raise ValueError(
+                "Identité de pipeline ambiguë : "
+                + ", ".join(
+                    f"{n!r} (×{_name_counts[n]})" for n in _dup_names
+                )
+                + ".  Plusieurs competitors résolvent au même nom et "
+                "écraseraient leurs résultats mutuellement.  Donnez un "
+                "``name`` distinct à chaque pipeline, ou variez "
+                "OCR / LLM / mode / prompt."
+            )
 
         # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
         # par le router (validated_path).  ``report_name`` est sanitizé
