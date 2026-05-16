@@ -878,7 +878,7 @@ class TestFastAPIModels:
         assert r.status_code == 200
         d = r.json()
         assert isinstance(d["models"], list)
-        assert len(d["models"]) >= 5  # 8 prompts intégrés
+        assert len(d["models"]) >= 5  # 16 prompts intégrés (seuil souple)
 
     def test_models_prompts_are_txt_files(self, client):
         r = client.get("/api/models/prompts")

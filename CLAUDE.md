@@ -107,7 +107,7 @@ picarones/
 │   │                           engines, info, demo, report, import (group)
 │   └── web/                    FastAPI : UI Jinja2 + SSE benchmark + ZIP upload
 │
-├── prompts/                    8 fichiers .txt FR+EN
+├── prompts/                    16 fichiers .txt (FR/EN/DE) — médiéval, imprimé ancien, presse XIXe
 ├── data/                       Tables indicatives (pricing.yaml)
 └── i18n.py                     Helper i18n (multi-langue rapports)
 ```
