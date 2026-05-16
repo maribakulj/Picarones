@@ -47,8 +47,47 @@ def _is_canonical_adapter(engine: Any) -> bool:
 
 
 def _llm_adapter_name(llm_adapter: Any) -> str:
-    """Identifiant ``provider:model`` stable pour un adapter LLM/VLM."""
-    return f"{llm_adapter.name}:{llm_adapter.model}"
+    """Identifiant stable et **injectif** pour un adapter LLM/VLM.
+
+    Base ``provider:model``.  Si l'adapter porte une ``config`` aux
+    valeurs significatives (``max_image_dimension`` > 0,
+    ``temperature``, ``max_tokens``…), un segment
+    ``:cfg<hash8>`` déterministe est ajouté.
+
+    Pourquoi
+    --------
+    ``build_adapter_resolver`` mappe ``name → executor`` et lève
+    ``PicaronesError`` (« états distincts ») si deux adapters non
+    équivalents partagent un ``name``.  Avant ce correctif, deux
+    competitors « même modèle, ``max_image_dimension`` différent »
+    obtenaient le même ``provider:model`` → collision *à tort* (le
+    cas exact remonté en prod : benchmark de post-correction avec
+    un même modèle mais des prompts différents, l'un en mode
+    ``text_and_image`` avec downscale, l'autre non).
+
+    Le **prompt** n'entre volontairement PAS dans ce nom : il ne
+    fait pas partie de l'état de l'adapter (il voyage dans
+    ``llm_params`` du ``PipelineStep``).  Une même instance LLM
+    peut donc servir plusieurs pipelines à prompts différents —
+    seule une *config* d'adapter distincte donne un nom distinct.
+
+    Les valeurs falsy/défaut (``max_image_dimension == 0`` =
+    pleine résolution, ``temperature == 0.0``…) ne modifient pas
+    le nom : on préserve les identifiants historiques quand aucune
+    option n'est activée (déduplication idempotente S9 intacte,
+    fingerprint partial_store inchangé).
+    """
+    base = f"{llm_adapter.name}:{llm_adapter.model}"
+    config = getattr(llm_adapter, "config", None) or {}
+    significant = {k: v for k, v in config.items() if v}
+    if not significant:
+        return base
+    import hashlib
+    import json
+
+    sig = json.dumps(significant, sort_keys=True, default=str)
+    digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
+    return f"{base}:cfg{digest}"
 
 
 def _safe_pipeline_name(name: str) -> str:
@@ -140,10 +179,23 @@ def _ocr_llm_pipeline_to_spec(pipeline: Any) -> PipelineSpec:
     llm_params: dict[str, str | int | float | bool] = {
         "prompt_template": pipeline.prompt_template,
     }
+    # ``spec.name`` devient ``PipelineResult.pipeline_name`` et la
+    # clé d'agrégation de ``view_results`` (cf.
+    # ``_benchmark_converter``).  Le nom auto-généré
+    # ``ocr_llm_{mode}_{ocr}_to_{llm}`` IGNORE le prompt : deux
+    # pipelines « même OCR+LLM, prompts différents » obtenaient le
+    # même ``spec.name`` → collision silencieuse (view_results se
+    # clobberent doc-par-doc, threads homonymes).  On dérive le nom
+    # du ``pipeline.name`` (qui inclut désormais le discriminant
+    # prompt, cf. ``_engine_from_competitor``) pour préserver la
+    # distinction de bout en bout.  ``PipelineSpec.name`` est borné
+    # à 128 chars.
+    spec_name = _safe_pipeline_name(pipeline.name)[:128] or None
     if mode == "zero_shot":
         return make_ocr_llm_pipeline_spec(
             mode="zero_shot",
             llm_adapter_name=llm_name,
+            name=spec_name,
             llm_params=llm_params,
         )
     if pipeline.ocr_engine is None:
@@ -155,6 +207,7 @@ def _ocr_llm_pipeline_to_spec(pipeline: Any) -> PipelineSpec:
         mode=mode,
         ocr_adapter_name=pipeline.ocr_engine.name,
         llm_adapter_name=llm_name,
+        name=spec_name,
         llm_params=llm_params,
     )
 

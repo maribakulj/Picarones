@@ -315,10 +315,21 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
     prompt_filename = comp.prompt_file or "correction_medieval_french.txt"
     prompt_content = _load_prompt_content(prompt_filename)
 
-    if is_corpus_ocr:
-        pipeline_name = comp.name or f"corpus_ocr → {comp.llm_model or comp.llm_provider}"
-    else:
-        pipeline_name = comp.name or f"{engine_id} → {comp.llm_model or comp.llm_provider}"
+    # Le prompt fait partie de l'identité LOGIQUE d'un pipeline de
+    # post-correction.  Benchmarker « un même modèle, plusieurs
+    # prompts » est un cas d'usage de premier ordre (comparer
+    # l'efficacité des prompts) : chaque competitor doit être un
+    # engine DISTINCT.  Sans discriminant prompt dans le nom par
+    # défaut, N variantes de prompt obtiennent le même
+    # ``pipeline.name`` → ``EngineReport.engine_name`` identiques
+    # (N lignes indistinguables dans le rapport) ET clé
+    # ``view_results`` partagée (clobber doc-par-doc).  Quand
+    # l'utilisateur ne nomme pas explicitement le competitor, on
+    # dérive un nom qui inclut le stem du fichier de prompt.
+    prompt_stem = Path(prompt_filename).stem
+    _llm_label = comp.llm_model or comp.llm_provider
+    _ocr_label = "corpus_ocr" if is_corpus_ocr else engine_id
+    pipeline_name = comp.name or f"{_ocr_label} → {_llm_label} [{prompt_stem}]"
 
     return OCRLLMPipelineConfig(
         ocr_adapter=ocr,
