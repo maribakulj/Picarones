@@ -512,7 +512,8 @@ function addCompetitor() {
       return;
     }
     const modeLabel = {"text_only":"texte","text_and_image":"img+texte","zero_shot":"zero-shot"}[comp.pipeline_mode] || comp.pipeline_mode;
-    comp.name = `📝 ${comp.llm_model} [${modeLabel}]`;
+    const promptStem = (comp.prompt_file || "").split("/").pop().replace(/\.txt$/i, "");
+    comp.name = `📝 ${comp.llm_model} [${modeLabel}${promptStem ? "/" + promptStem : ""}]`;
   } else if (mode === "pipeline") {
     const ocrEngine = document.getElementById("compose-ocr-engine").value;
     const ocrModel = document.getElementById("compose-ocr-model").value;
@@ -531,7 +532,9 @@ function addCompetitor() {
       errEl.textContent = lang === "fr" ? "Sélectionnez un provider LLM." : "Select an LLM provider.";
       return;
     }
-    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_model || comp.llm_provider}`;
+    const modeLabel = {"text_only":"texte","text_and_image":"img+texte","zero_shot":"zero-shot"}[comp.pipeline_mode] || comp.pipeline_mode;
+    const promptStem = (comp.prompt_file || "").split("/").pop().replace(/\.txt$/i, "");
+    comp.name = `${ocrEngine}${ocrModel ? ":"+ocrModel : ""} → ${comp.llm_model || comp.llm_provider} [${modeLabel}${promptStem ? "/" + promptStem : ""}]`;
   } else {
     // OCR seul
     const ocrEngine = document.getElementById("compose-ocr-engine").value;
