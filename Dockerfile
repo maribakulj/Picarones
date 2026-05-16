@@ -223,6 +223,12 @@ USER picarones
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=utf-8
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+# Tesseract LSTM (oem=3) parallélise via OpenMP. Sur le Space HF
+# (~2 vCPU partagés) l'OpenMP non borné suroccupe le CPU (N threads
+# pour 2 cœurs) → OCR plus LENT et instable. Le forcer mono-thread
+# par appel est ici PLUS rapide et déterministe (le parallélisme
+# inter-documents est déjà géré par le ThreadPool du CorpusRunner).
+ENV OMP_THREAD_LIMIT=1
 
 # ── Ports ───────────────────────────────────────────────────────
 EXPOSE 7860
