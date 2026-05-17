@@ -228,8 +228,11 @@ class TestTesseractAdapterExecute:
         assert out_path.exists()
         assert out_path.read_text(encoding="utf-8") == "Bonjour le monde"
 
-        # Convention : <stem>.<name>.txt à côté de l'image.
-        assert out_path.name == "page.tesseract.txt"
+        # Convention : <stem>.<pipeline_seg>.<name>.txt à côté de
+        # l'image (segment pipeline = isolation par pipeline).
+        from picarones.adapters.output_paths import _pipeline_path_segment
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"page.{seg}.tesseract.txt"
         assert out_path.parent == tmp_path
 
     @patch("PIL.Image.open")
@@ -251,7 +254,9 @@ class TestTesseractAdapterExecute:
             context=_make_context(),
         )
         out_path = Path(result[ArtifactType.RAW_TEXT].uri)
-        assert out_path.name == "page.tess_lat_psm6.txt"
+        from picarones.adapters.output_paths import _pipeline_path_segment
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"page.{seg}.tess_lat_psm6.txt"
 
     @patch("PIL.Image.open")
     @patch("pytesseract.image_to_string")

@@ -398,7 +398,9 @@ class TestAzureDocIntelREST:
                 context=_make_context(),
             )
         out_path = Path(result[ArtifactType.RAW_TEXT].uri)
-        assert out_path.name == "page.my_azure.txt"
+        from picarones.adapters.output_paths import _pipeline_path_segment
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"page.{seg}.my_azure.txt"
 
 
 # ──────────────────────────────────────────────────────────────────────

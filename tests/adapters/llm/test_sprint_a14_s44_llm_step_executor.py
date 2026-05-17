@@ -25,6 +25,7 @@ import pytest
 
 from picarones.adapters.llm.base import BaseLLMAdapter
 from picarones.adapters.llm.base import LLMAdapterError
+from picarones.adapters.output_paths import _pipeline_path_segment
 from picarones.domain.artifacts import Artifact, ArtifactType
 from picarones.pipeline.types import RunContext
 
@@ -135,7 +136,10 @@ class TestLLMExecuteNominal:
         out_path = Path(produced.uri)
         assert out_path.exists()
         assert out_path.read_text(encoding="utf-8") == "texte sans erreurs"
-        assert out_path.name == "doc01.stub_llm.corrected.txt"
+        # Le nom inclut le segment pipeline (isolation par pipeline,
+        # mode sans workspace → segment intercalé dans le filename).
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"doc01.{seg}.stub_llm.corrected.txt"
 
     def test_artifact_id_uses_adapter_name(self, tmp_path: Path) -> None:
         text_path = tmp_path / "doc01.txt"

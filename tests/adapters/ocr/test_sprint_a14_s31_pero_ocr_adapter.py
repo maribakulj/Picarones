@@ -289,7 +289,9 @@ class TestPeroOCRAdapterExecute:
                 context=_make_context(),
             )
         out_path = Path(result[ArtifactType.RAW_TEXT].uri)
-        assert out_path.name == "page.my_pero.txt"
+        from picarones.adapters.output_paths import _pipeline_path_segment
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"page.{seg}.my_pero.txt"
         assert out_path.parent == tmp_path
 
     def test_pero_not_installed_raises_clean_error(

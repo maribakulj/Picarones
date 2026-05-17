@@ -254,7 +254,9 @@ class TestMistralOCRNativeAPI:
                 context=_make_context(),
             )
         out_path = Path(result[ArtifactType.RAW_TEXT].uri)
-        assert out_path.name == "page.my_mistral.txt"
+        from picarones.adapters.output_paths import _pipeline_path_segment
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"page.{seg}.my_mistral.txt"
 
     def test_native_api_raises_on_http_error(self, tmp_path: Path) -> None:
         adapter = MistralOCRAdapter(api_key="x")
