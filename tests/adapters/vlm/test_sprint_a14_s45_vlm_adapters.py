@@ -111,7 +111,9 @@ class TestVLMExecuteNominal:
         out_path = Path(produced.uri)
         assert out_path.exists()
         assert out_path.read_text(encoding="utf-8") == "ceci est le texte"
-        assert out_path.name == "doc01.stub_vlm.txt"
+        from picarones.adapters.output_paths import _pipeline_path_segment
+        seg = _pipeline_path_segment(_make_context())
+        assert out_path.name == f"doc01.{seg}.stub_vlm.txt"
 
     def test_image_passed_to_llm_as_base64(self, tmp_path: Path) -> None:
         image_path = tmp_path / "doc01.png"
