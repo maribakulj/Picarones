@@ -197,3 +197,39 @@ class TestComposeStartabilityCoherence:
         )
         assert "PICARONES_CSRF_REQUIRED=1" in text
         assert "PICARONES_SECURE_COOKIES=1" in text
+
+
+class TestDockerPortCoherence:
+    """Régression P0.4 — le conteneur sert sur 7860 (EXPOSE + CMD).
+    Tout mapping ``8000:8000`` est cassé (rien n'écoute sur :8000
+    côté conteneur).  Verrouille l'absence de drift Dockerfile /
+    Makefile / compose."""
+
+    def test_dockerfile_serves_and_exposes_7860(self) -> None:
+        text = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert "EXPOSE 7860" in text
+        assert '"--port", "7860"' in text
+        assert "8000:8000" not in text, (
+            "commentaires Dockerfile : mapping 8000:8000 trompeur "
+            "(le conteneur sert sur 7860)."
+        )
+
+    def test_dockerfile_version_label_not_hardcoded(self) -> None:
+        text = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert 'LABEL version="1.0.0"' not in text, (
+            "version Docker figée à 1.0.0 — dérive de la version "
+            "réelle (setuptools-scm).  Utiliser ARG PICARONES_VERSION."
+        )
+        assert "ARG PICARONES_VERSION" in text
+
+    def test_makefile_docker_targets_use_7860(self) -> None:
+        text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+        # La cible docker-run mappait 8000:8000 → conteneur muet.
+        assert "-p 8000:8000" not in text, (
+            "make docker-run mappait 8000:8000 alors que le conteneur "
+            "sert sur 7860 — cible cassée."
+        )
+        assert "-p 7860:7860" in text
+        assert "picarones:1.0.0" not in text, (
+            "tag Docker figé picarones:1.0.0 — dériver la version."
+        )

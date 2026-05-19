@@ -203,12 +203,18 @@ build-exe-onefile:  ## Génère un exécutable unique (plus lent au démarrage)
 # Docker
 # ──────────────────────────────────────────────────────────────────
 
-docker-build:  ## Construit l'image Docker Picarones
-	docker build -t picarones:latest -t picarones:1.0.0 .
-	@echo "$(GREEN)✓ Image Docker : picarones:latest$(RESET)"
+# Version dérivée du package (setuptools-scm), repli ``dev`` si le
+# paquet n'est pas installé sur la machine de build.  Plus de tag
+# ``1.0.0`` figé qui ment sur la version réelle.
+DOCKER_VERSION := $(shell python -c "import importlib.metadata as m; print(m.version('picarones'))" 2>/dev/null || echo dev)
 
-docker-run:  ## Lance Picarones dans Docker (http://localhost:8000)
-	docker run --rm -p 8000:8000 \
+docker-build:  ## Construit l'image Docker Picarones
+	docker build --build-arg PICARONES_VERSION=$(DOCKER_VERSION) \
+	  -t picarones:latest -t picarones:$(DOCKER_VERSION) .
+	@echo "$(GREEN)✓ Image Docker : picarones:latest (= picarones:$(DOCKER_VERSION))$(RESET)"
+
+docker-run:  ## Lance Picarones dans Docker (http://localhost:7860)
+	docker run --rm -p 7860:7860 \
 	  -e OPENAI_API_KEY="$${OPENAI_API_KEY:-}" \
 	  -e ANTHROPIC_API_KEY="$${ANTHROPIC_API_KEY:-}" \
 	  -e MISTRAL_API_KEY="$${MISTRAL_API_KEY:-}" \
@@ -218,7 +224,7 @@ docker-run:  ## Lance Picarones dans Docker (http://localhost:8000)
 docker-compose-up:  ## Lance Picarones + Ollama avec Docker Compose
 	docker compose up -d
 	@echo "$(GREEN)✓ Services démarrés$(RESET)"
-	@echo "  Picarones : http://localhost:8000"
+	@echo "  Picarones : http://localhost:7860"
 	@echo "  Ollama    : http://localhost:11434"
 
 docker-compose-down:  ## Arrête les services Docker Compose
