@@ -165,10 +165,15 @@ def apply_dir(target_dir: str) -> int:
         t = tp.read_text(encoding="utf-8")
         orig = t
         for old_stem, new_stem in stem_map.items():
-            # Borné par ``.`` (dotted import) — pas de match partiel
-            # sur un préfixe de nom plus long.
-            t = re.sub(rf"(?<=\.){re.escape(old_stem)}(?=\s|$|\.| import)",
-                       new_stem, t)
+            # Couvre l'import DOTTED (``from tests.x.y.<stem> import``)
+            # ET l'import BARE (``from <stem> import`` / ``import
+            # <stem>`` — style pytest rootdir, sans point).  Borné par
+            # ``\b`` + lookahead pour ne pas matcher un préfixe d'un
+            # nom plus long.
+            t = re.sub(
+                rf"\b{re.escape(old_stem)}\b(?=\s*(?:import|$|\.|\n))",
+                new_stem, t,
+            )
         if t != orig:
             tp.write_text(t, encoding="utf-8")
             print(f"patché import inter-tests : "
