@@ -47,7 +47,7 @@ fait dans une fixture partagée.
 
 | # | Fichier | Rôle |
 |---|---|---|
-| B1 | `tests/golden/test_s5_benchmark_result_json_stable.py` | Round-trip JSON stable. Inchangé tant que `BenchmarkResult.from_json_object`/`to_dict` restent. |
+| B1 | `tests/golden/test_benchmark_result_json_stable.py` | Round-trip JSON stable. Inchangé tant que `BenchmarkResult.from_json_object`/`to_dict` restent. |
 | B2 | `tests/reports/test_report.py` | Rendu HTML. Inchangé tant que `ReportGenerator(result)` accepte `BenchmarkResult`. |
 | B3 | `tests/reports/test_extra_metrics.py` | Métriques additionnelles attachées au rapport. |
 | B4 | `tests/reports/test_worst_lines.py` | Worst-N lines (consomme `BenchmarkResult` non-compacté). |
