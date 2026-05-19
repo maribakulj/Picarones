@@ -287,3 +287,24 @@ class TestZipStreamingGuards:
             flatten_zip_to_dir(zf, out, validate_images=False)
         assert (out / "doc01.gt.txt").read_bytes() == b"Bonjour"
         assert (out / "doc01.ocr.txt").exists()
+
+    def test_skips_dir_entries_and_hidden_files(
+        self, tmp_path: Path,
+    ) -> None:
+        """Couvre les branches ``continue`` (entrée dossier + fichier
+        caché ``.``/macOS) : seul le couple valide est extrait."""
+        from picarones.interfaces.web.corpus_utils import flatten_zip_to_dir
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("sub/", b"")              # entrée dossier
+            zf.writestr(".DS_Store", b"junk")     # fichier caché
+            zf.writestr("sub/doc01.gt.txt", b"GT")
+            zf.writestr("sub/doc01.ocr.txt", b"OCR")
+        buf.seek(0)
+        out = tmp_path / "out"
+        with zipfile.ZipFile(buf) as zf:
+            flatten_zip_to_dir(zf, out, validate_images=False)
+        assert sorted(p.name for p in out.iterdir()) == [
+            "doc01.gt.txt", "doc01.ocr.txt",
+        ]

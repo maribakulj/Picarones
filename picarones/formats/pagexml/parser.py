@@ -59,14 +59,16 @@ def _parse_coords(elem: Any) -> str | None:
     """Cherche le premier ``<Coords points="...">`` enfant direct."""
     for child in elem:
         if _local(child.tag) == "Coords":
-            return child.attrib.get("points")
+            pts = child.attrib.get("points")
+            return None if pts is None else str(pts)
     return None
 
 
 def _parse_baseline(elem: Any) -> str | None:
     for child in elem:
         if _local(child.tag) == "Baseline":
-            return child.attrib.get("points")
+            pts = child.attrib.get("points")
+            return None if pts is None else str(pts)
     return None
 
 

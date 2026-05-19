@@ -24,6 +24,7 @@ Anti-sur-ingénierie
 
 from __future__ import annotations
 
+from typing import cast
 from xml.etree import ElementTree as ET
 
 from picarones.formats.alto.types import (
@@ -141,7 +142,7 @@ def write_alto(
         ET.indent(root, space="  ")
 
     body = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    return body
+    return cast(bytes, body)
 
 
 __all__ = ["write_alto"]

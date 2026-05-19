@@ -16,7 +16,38 @@ la whitelist externe de la couche ``evaluation``.
 from __future__ import annotations
 
 import statistics as _stats
-from typing import Any, Optional
+from typing import Any, Mapping, Optional, Protocol, Sequence
+
+
+# Protocols structurels (audit prod P1.3) — remplacent le duck-typing
+# ``Any`` sans réintroduire de cycle ``benchmark_result`` ↔ ce module
+# (un Protocol est structurel : aucun import de ``EngineReport``).
+# Annotations seules (``from __future__ import annotations`` ⇒ lazy,
+# zéro impact runtime) : documentent le contrat consommé ici.
+class _MetricsLike(Protocol):
+    error: object | None
+    cer: float | None
+    wer: float | None
+    cer_errors: int | None
+    cer_ref_chars: int | None
+    wer_errors: int | None
+    wer_ref_words: int | None
+
+
+class _DocResultLike(Protocol):
+    doc_id: str
+    metrics: _MetricsLike | None
+
+
+class _EngineReportLike(Protocol):
+    engine_name: str
+    micro_cer: float | None
+    micro_wer: float | None
+    mean_cer: float | None
+    median_cer: float | None
+    mean_wer: float | None
+    document_results: Sequence[_DocResultLike]
+    aggregated_metrics: Mapping[str, Any]
 
 
 def _sort_key(entry: dict) -> tuple:
@@ -30,7 +61,7 @@ def _sort_key(entry: dict) -> tuple:
     return (primary is None, primary if primary is not None else float("inf"))
 
 
-def compute_ranking(engine_reports: list[Any]) -> list[dict]:
+def compute_ranking(engine_reports: Sequence[_EngineReportLike]) -> list[dict]:
     """Classement des moteurs trié par **CER micro-moyenné** croissant.
 
     Audit scientifique F1 (mai 2026) — le tri par défaut bascule vers
@@ -100,7 +131,7 @@ def doc_ids_in_stratum(
 
 
 def compute_stratified_ranking(
-    engine_reports: list[Any],
+    engine_reports: Sequence[_EngineReportLike],
     doc_strata: Optional[dict[str, str]],
 ) -> dict[str, list[dict]]:
     """Retourne un classement séparé par strate ``script_type``.
@@ -202,7 +233,7 @@ def compute_stratified_ranking(
 
 
 def compute_corpus_homogeneity(
-    engine_reports: list[Any],
+    engine_reports: Sequence[_EngineReportLike],
     doc_strata: Optional[dict[str, str]],
 ) -> Optional[dict]:
     """Mesure d'hétérogénéité du corpus du point de vue NER/OCR.

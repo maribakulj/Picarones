@@ -25,7 +25,7 @@ niveau du package).
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from typing import Optional
+from typing import Optional, cast
 
 import defusedxml
 import defusedxml.ElementTree as _SafeET
@@ -49,7 +49,7 @@ def safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
     ``DTDForbidden``, ``NotSupportedError``).
     """
     try:
-        return _SafeET.fromstring(xml_bytes, forbid_dtd=True)
+        return cast("Optional[ET.Element]", _SafeET.fromstring(xml_bytes, forbid_dtd=True))
     except (ET.ParseError, defusedxml.DefusedXmlException):
         return None
 
