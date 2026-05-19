@@ -3,8 +3,8 @@
 #
 # Usage :
 #   docker build -t picarones:latest .
-#   docker run -p 8000:8000 picarones:latest
-#   docker run -p 8000:8000 -v $(pwd)/corpus:/app/corpus picarones:latest
+#   docker run -p 7860:7860 picarones:latest
+#   docker run -p 7860:7860 -v $(pwd)/corpus:/app/corpus picarones:latest
 #
 # Variables d'environnement supportées :
 #   OPENAI_API_KEY, ANTHROPIC_API_KEY, MISTRAL_API_KEY
@@ -111,8 +111,12 @@ RUN /usr/local/bin/pip install --upgrade --no-cache-dir \
 ARG PYTHON_BASE_IMAGE=python:3.11.13-slim@sha256:9bffe4353b925a1656688797ebc68f9c525e79b1d377a764d232182a519eeec4
 FROM ${PYTHON_BASE_IMAGE} AS runtime
 
+# Version injectée au build (``--build-arg PICARONES_VERSION=…``) ;
+# défaut ``dev`` plutôt qu'un ``1.0.0`` figé qui dérive de la version
+# réelle (setuptools-scm).  Le Makefile la dérive automatiquement.
+ARG PICARONES_VERSION=dev
 LABEL description="Picarones — Plateforme de comparaison de moteurs OCR pour documents patrimoniaux"
-LABEL version="1.0.0"
+LABEL org.opencontainers.image.version="${PICARONES_VERSION}"
 LABEL org.opencontainers.image.source="https://github.com/maribakulj/Picarones"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 

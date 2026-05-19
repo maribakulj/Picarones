@@ -141,3 +141,95 @@ class TestOllamaOriginsRestricted:
             "une override par variable d'env (avec un défaut "
             "restrictif)."
         )
+
+
+class TestComposeStartabilityCoherence:
+    """Régression P0 — ``docker compose up`` (chemin local documenté)
+    doit démarrer SANS configuration : un défaut ``CSRF_REQUIRED=1``
+    sans ``CSRF_SECRET`` fait échouer ``validate_csrf_config`` au
+    lifespan.  Le durcissement CSRF vit dans l'override prod, qui
+    EXIGE le secret via la substitution Compose ``:?``."""
+
+    def _compose(self, name: str) -> str:
+        return (REPO_ROOT / name).read_text(encoding="utf-8")
+
+    def test_local_compose_does_not_force_csrf_required(self) -> None:
+        text = self._compose("docker-compose.yml")
+        assert "PICARONES_CSRF_REQUIRED=${PICARONES_CSRF_REQUIRED:-0}" in text, (
+            "Le compose local ne doit PAS forcer CSRF_REQUIRED=1 : "
+            "sans CSRF_SECRET, validate_csrf_config refuse le "
+            "démarrage et ``docker compose up`` casse."
+        )
+
+    def test_local_compose_default_env_passes_startup_guards(self) -> None:
+        """Simule les defaults du compose local et vérifie que les
+        garde-fous lifespan ne lèvent pas."""
+        import os
+
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+            validate_csrf_config,
+        )
+
+        snapshot = dict(os.environ)
+        try:
+            for k in (
+                "PICARONES_CSRF_REQUIRED", "PICARONES_CSRF_SECRET",
+                "PICARONES_SECURE_COOKIES", "SPACE_ID",
+            ):
+                os.environ.pop(k, None)
+            os.environ["PICARONES_PUBLIC_MODE"] = "1"  # défaut compose local
+            validate_csrf_config()          # ne doit pas lever
+            check_deployment_coherence()    # ne doit pas lever
+        finally:
+            os.environ.clear()
+            os.environ.update(snapshot)
+
+    def test_prod_override_requires_csrf_secret(self) -> None:
+        """``docker-compose.prod.yml`` doit exiger le secret via la
+        substitution Compose ``${PICARONES_CSRF_SECRET:?...}`` —
+        Compose refuse AVANT de lancer le conteneur, message clair."""
+        text = self._compose("docker-compose.prod.yml")
+        assert "PICARONES_CSRF_SECRET=${PICARONES_CSRF_SECRET:?" in text, (
+            "L'override prod doit rendre le secret OBLIGATOIRE "
+            "(forme ``:?`` — échec Compose explicite, pas un crash "
+            "conteneur au lifespan)."
+        )
+        assert "PICARONES_CSRF_REQUIRED=1" in text
+        assert "PICARONES_SECURE_COOKIES=1" in text
+
+
+class TestDockerPortCoherence:
+    """Régression P0.4 — le conteneur sert sur 7860 (EXPOSE + CMD).
+    Tout mapping ``8000:8000`` est cassé (rien n'écoute sur :8000
+    côté conteneur).  Verrouille l'absence de drift Dockerfile /
+    Makefile / compose."""
+
+    def test_dockerfile_serves_and_exposes_7860(self) -> None:
+        text = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert "EXPOSE 7860" in text
+        assert '"--port", "7860"' in text
+        assert "8000:8000" not in text, (
+            "commentaires Dockerfile : mapping 8000:8000 trompeur "
+            "(le conteneur sert sur 7860)."
+        )
+
+    def test_dockerfile_version_label_not_hardcoded(self) -> None:
+        text = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert 'LABEL version="1.0.0"' not in text, (
+            "version Docker figée à 1.0.0 — dérive de la version "
+            "réelle (setuptools-scm).  Utiliser ARG PICARONES_VERSION."
+        )
+        assert "ARG PICARONES_VERSION" in text
+
+    def test_makefile_docker_targets_use_7860(self) -> None:
+        text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+        # La cible docker-run mappait 8000:8000 → conteneur muet.
+        assert "-p 8000:8000" not in text, (
+            "make docker-run mappait 8000:8000 alors que le conteneur "
+            "sert sur 7860 — cible cassée."
+        )
+        assert "-p 7860:7860" in text
+        assert "picarones:1.0.0" not in text, (
+            "tag Docker figé picarones:1.0.0 — dériver la version."
+        )

@@ -1,0 +1,25 @@
+# docker-compose.prod.yml — override durcissement institutionnel
+#
+# Usage :
+#   export PICARONES_CSRF_SECRET=$(openssl rand -hex 32)
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Différences vs le compose local :
+#   - CSRF exigé ET secret OBLIGATOIRE (``:?`` → Compose refuse de
+#     démarrer AVANT de lancer le conteneur, avec un message clair,
+#     plutôt que le conteneur qui crashe au lifespan) ;
+#   - cookies Secure forcés (déploiement derrière TLS/reverse-proxy) ;
+#   - bind 0.0.0.0 par défaut (le reverse-proxy gère l'exposition).
+#
+# Ce fichier n'embarque AUCUN secret : ``PICARONES_CSRF_SECRET`` doit
+# venir de l'environnement / du gestionnaire de secrets institutionnel.
+
+services:
+  picarones:
+    ports:
+      - "${PICARONES_BIND:-0.0.0.0}:${PICARONES_PORT:-7860}:7860"
+    environment:
+      - PICARONES_PUBLIC_MODE=${PICARONES_PUBLIC_MODE:-1}
+      - PICARONES_CSRF_REQUIRED=1
+      - PICARONES_SECURE_COOKIES=1
+      - PICARONES_CSRF_SECRET=${PICARONES_CSRF_SECRET:?PICARONES_CSRF_SECRET requis en prod — générer avec: openssl rand -hex 32}

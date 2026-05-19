@@ -292,11 +292,12 @@ class TestEntityExtractorAllowlist:
         with pytest.raises(PermissionError, match="entity_extractor"):
             assert_entity_extractor_allowed("os:getcwd")
 
-    def test_non_public_without_allowlist_tolerated(
+    def test_non_public_without_allowlist_also_rejects(
         self, monkeypatch,
     ) -> None:
-        """Opérateur local de confiance — cohérent avec le modèle
-        ``compute_browse_roots`` (cwd autorisé hors mode public)."""
+        """P0.2 — fail-closed strict : même HORS mode public, sans
+        allowlist, le web refuse (la surface réseau est dangereuse
+        quel que soit le mode ; l'ancienne tolérance était un trou)."""
         from picarones.interfaces.web.security import (
             assert_entity_extractor_allowed,
         )
@@ -305,7 +306,8 @@ class TestEntityExtractorAllowlist:
         monkeypatch.delenv(
             "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
         )
-        assert_entity_extractor_allowed("mypkg.ner:Extractor")  # no raise
+        with pytest.raises(PermissionError, match="désactivé côté web"):
+            assert_entity_extractor_allowed("mypkg.ner:Extractor")
 
     def test_allowlist_match_allowed_all_modes(
         self, monkeypatch,
@@ -363,17 +365,25 @@ class TestSecureCookies:
         self._clear(monkeypatch)
         assert secure_cookies() is False
 
-    def test_public_mode_or_hf_space_default_true(
+    def test_hf_space_default_true(self, monkeypatch) -> None:
+        """HF Space = HTTPS certain ⇒ Secure par défaut."""
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("SPACE_ID", "user/space")
+        assert secure_cookies() is True
+
+    def test_public_mode_alone_does_not_imply_secure(
         self, monkeypatch,
     ) -> None:
+        """Axe découplé : « mutualisé » n'implique pas « HTTPS ».
+        Le compose local est public_mode=1 mais http://127.0.0.1 —
+        un cookie Secure y serait silencieusement ignoré."""
         from picarones.interfaces.web.security import secure_cookies
 
         self._clear(monkeypatch)
         monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
-        assert secure_cookies() is True
-        monkeypatch.delenv("PICARONES_PUBLIC_MODE")
-        monkeypatch.setenv("SPACE_ID", "user/space")
-        assert secure_cookies() is True
+        assert secure_cookies() is False
 
 
 class TestDeploymentCoherence:
