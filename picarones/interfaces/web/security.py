@@ -226,7 +226,7 @@ def _get_csrf_secret() -> bytes:
 class CSRFConfigError(RuntimeError):
     """Levée au démarrage si la config CSRF est incohérente.
 
-    Sprint S6.9 — en mode institutionnel
+    en mode institutionnel
     (``PICARONES_CSRF_REQUIRED=1``), exiger un ``PICARONES_CSRF_SECRET``
     stable ; sans lui, les tokens sont invalidés à chaque redémarrage,
     ce qui dégrade l'UX et masque une mauvaise configuration ops.
@@ -236,7 +236,7 @@ class CSRFConfigError(RuntimeError):
 def validate_csrf_config() -> None:
     """Refuse le démarrage si la config CSRF est dangereuse.
 
-    Sprint S6.9 — appelé au lifespan de l'app FastAPI.  Trois cas :
+    appelé au lifespan de l'app FastAPI.  Trois cas :
 
     1. ``PICARONES_CSRF_REQUIRED`` désactivé → bypass total
        (mode public HF Space).  Aucun secret nécessaire.

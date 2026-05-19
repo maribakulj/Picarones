@@ -1,4 +1,4 @@
-"""Persistance SQLite des jobs de benchmark (Sprint 26).
+"""Persistance SQLite des jobs de benchmark
 
 Avant le Sprint 26, l'état des benchmarks vivait uniquement en mémoire dans
 ``picarones.interfaces.web.app._JOBS``. Trois conséquences :

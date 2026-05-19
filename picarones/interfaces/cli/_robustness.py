@@ -196,4 +196,4 @@ def robustness_cmd(
 
 
 # ---------------------------------------------------------------------------
-# Sprint 70 — sous-groupe `pipeline` : runner et compare de pipelines
+# sous-groupe `pipeline` : runner et compare de pipelines

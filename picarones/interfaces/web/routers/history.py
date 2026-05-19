@@ -72,7 +72,7 @@ async def api_history_regressions(
     else:
         try:
             entries = history.query(limit=10000)
-            # Sprint S4 — fix : ``HistoryEntry`` expose
+            # fix : ``HistoryEntry`` expose
             # ``engine_name``, pas ``engine`` (typo masquée par
             # l'``except`` générique).  Avant ce fix, l'endpoint
             # sans param ``engine`` retournait toujours 0

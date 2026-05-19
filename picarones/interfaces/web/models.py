@@ -66,7 +66,7 @@ NormalizationProfileId = Literal[
 Liste alignée sur ``measurements.normalization.NORMALIZATION_PROFILES``
 (11 profils). Toute addition côté ``normalization.py`` doit être
 répercutée ici sous peine de rejet Pydantic au niveau API web.
-Sprint A14-S1 — alignement README ↔ web models ↔ runtime."""
+alignement README ↔ web models ↔ runtime."""
 
 # Phase 7.1 audit code-quality (2026-05) : ``PipelineMode`` est désormais
 # importé depuis :data:`picarones.domain.pipeline_spec.PipelineMode`

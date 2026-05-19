@@ -266,7 +266,7 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
     if not is_corpus_ocr:
         from picarones.adapters.ocr.factory import ocr_adapter_from_name
 
-        # Sprint S9 — dispatch uniforme via ``_OCR_KWARGS_BUILDERS``.
+        # dispatch uniforme via ``_OCR_KWARGS_BUILDERS``.
         # Le ``name`` est dérivé systématiquement de
         # ``(engine_id, ocr_model)`` par ``_build_ocr_kwargs`` — il
         # n'est plus possible de l'oublier pour un nouveau moteur.
@@ -454,11 +454,11 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 "OCR / LLM / mode / prompt."
             )
 
-        # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
+        # A.I.0 P0 : ``output_dir`` a déjà été validé
         # par le router (validated_path).  ``report_name`` est sanitizé
         # ici pour défense en profondeur (refuse ``../``, séparateurs,
         # caractères de contrôle) avant concaténation à output_dir.
-        # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
+        # A.I.0 P0 : ``output_dir`` a déjà été validé
         # par le router (validated_path).  ``report_name`` sanitizé
         # ici (défense en profondeur) avant concaténation à output_dir.
         from picarones.interfaces.web.security import safe_report_name

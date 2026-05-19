@@ -453,7 +453,7 @@ def demo_cmd(
 
 
 # ---------------------------------------------------------------------------
-# Imports en cascade des sous-modules — chantier 5 post-Sprint 97
+# Imports en cascade des sous-modules — chantier 5 post
 # ---------------------------------------------------------------------------
 #
 # Chaque sous-module enregistre ses commandes via ``@cli.command(...)`` au

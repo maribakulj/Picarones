@@ -1,4 +1,4 @@
-"""Commande ``history`` : consultation de l'historique SQLite (Sprint 8).
+"""Commande ``history`` : consultation de l'historique SQLite
 
 Sous-module CLI extrait de l'ancien ``picarones/cli.py`` (1519 lignes)
 lors du chantier 5 post-Sprint 97.  Les commandes ici s'enregistrent

@@ -79,7 +79,7 @@ async def api_status() -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Sprint S8.2 — Endpoint /metrics au format Prometheus exposition.
+# Endpoint /metrics au format Prometheus exposition.
 # Opt-in via PICARONES_METRICS_ENABLED=1.  Désactivé par défaut pour
 # ne pas exposer de surface publique en mode HuggingFace Space.
 # ──────────────────────────────────────────────────────────────────────
