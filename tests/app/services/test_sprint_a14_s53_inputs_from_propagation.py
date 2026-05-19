@@ -59,7 +59,7 @@ def test_orchestrator_propagates_inputs_from_to_pipeline_step(
     # inputs_from.
     from unittest.mock import MagicMock, patch
     with patch(
-        "picarones.app.services.run_orchestrator.resolve_adapter_class",
+        "picarones.app.services.run_orchestrator_helpers.builders.resolve_adapter_class",
         return_value=MagicMock,
     ):
         pipeline_specs, _resolver, _kwargs = orch._build_pipelines(spec)
@@ -95,7 +95,7 @@ def test_step_without_inputs_from_yields_empty_dict(tmp_path) -> None:
     orch = RunOrchestrator(output_dir=tmp_path / "out")
     from unittest.mock import MagicMock, patch
     with patch(
-        "picarones.app.services.run_orchestrator.resolve_adapter_class",
+        "picarones.app.services.run_orchestrator_helpers.builders.resolve_adapter_class",
         return_value=MagicMock,
     ):
         pipeline_specs, _, _ = orch._build_pipelines(spec)
