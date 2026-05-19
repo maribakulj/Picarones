@@ -142,7 +142,7 @@ les deps Picarones et produit ~160 collection errors trompeurs.
 
 En cas de régression sur un de ces bugs, chercher les fichiers de test
 correspondants (`test_llm_pipeline_bugs.py`, `test_escriptorium_gallica.py`,
-`test_sprint6_web_interface.py`) avant de ré-ouvrir une enquête.
+`test_web_interface.py`) avant de ré-ouvrir une enquête.
 
 ---
 

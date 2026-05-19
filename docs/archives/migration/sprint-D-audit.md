@@ -173,7 +173,7 @@ partie délicate (les structures sont différentes par design).
 
 Le caller le plus simple à migrer (le plus récent, code propre) :
 remplacer `run_benchmark(...)` par `run_benchmark_via_service(...)`.
-Tests `tests/web/test_sprint28_ux_save_compare.py` doivent rester
+Tests `tests/web/test_ux_save_compare.py` doivent rester
 verts.
 
 **Effort** : 0.5 j.
