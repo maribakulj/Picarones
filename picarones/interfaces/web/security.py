@@ -247,6 +247,30 @@ def get_max_upload_mb() -> int:
         return 100
 
 
+#: Taille de bloc pour le streaming multipart → disque.  Le fichier
+#: n'est jamais matérialisé en un seul ``bytes`` en RAM : on lit par
+#: blocs bornés et on écrit au fil de l'eau.
+UPLOAD_CHUNK_SIZE = 1024 * 1024
+
+
+def get_max_total_upload_mb() -> int:
+    """Plafond dur cumulé d'une requête d'upload (tous fichiers).
+
+    Sans plafond total, N fichiers chacun sous la limite unitaire
+    saturent quand même le disque/la RAM.  Défaut 500 Mo — aligné sur
+    ``MAX_ZIP_TOTAL_SIZE`` (taille décompressée max d'un corpus ZIP).
+    """
+    raw = os.environ.get("PICARONES_MAX_TOTAL_UPLOAD_MB", "500")
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        logger.warning(
+            "[security] PICARONES_MAX_TOTAL_UPLOAD_MB invalide (%r) — "
+            "défaut 500 Mo.", raw,
+        )
+        return 500
+
+
 def validate_image_safe(data: bytes, filename: str = "<upload>") -> None:
     """Vérifie qu'un buffer décode comme une image valide sans bombe.
 
@@ -508,6 +532,70 @@ def is_csrf_required() -> bool:
     return os.environ.get("PICARONES_CSRF_REQUIRED", "").strip() in ("1", "true", "yes")
 
 
+def secure_cookies() -> bool:
+    """Décide de l'attribut ``Secure`` des cookies posés par l'app.
+
+    Auparavant codé en dur à ``False`` (foot-gun : le cookie CSRF
+    transitait en clair même derrière TLS).  Désormais :
+
+    - ``PICARONES_SECURE_COOKIES`` explicite ⇒ prioritaire
+      (``1/true/yes`` vs ``0/false/no``) ;
+    - sinon, ``True`` si l'instance est servie en HTTPS de façon
+      certaine — HuggingFace Space (toujours TLS) ou mode public
+      (supposé derrière reverse-proxy/TLS, defaults durcis) ;
+    - sinon ``False`` (dev local en http simple — un cookie ``Secure``
+      ne serait jamais renvoyé par le navigateur, cassant l'UX).
+    """
+    raw = os.environ.get("PICARONES_SECURE_COOKIES", "").strip().lower()
+    if raw in ("1", "true", "yes"):
+        return True
+    if raw in ("0", "false", "no"):
+        return False
+    return is_huggingface_space() or is_public_mode()
+
+
+def check_deployment_coherence() -> None:
+    """Échoue *au démarrage* sur une combinaison de config dangereuse.
+
+    Principe : un défaut sûr ne doit pas dépendre de la lecture
+    intégrale de la doc par l'opérateur (cf. audit prod).  On bloque
+    le seul cas réellement contradictoire et exploitable :
+
+      CSRF exigé + cookies non-``Secure`` + déploiement exposé
+      (HF Space ou mode public)
+
+    → le token CSRF transiterait en clair, vidant la protection de
+    son sens.  Les autres incohérences ne sont que loggées (warning
+    non bloquant) pour ne pas casser un dev local légitime.
+    """
+    exposed = is_huggingface_space() or is_public_mode()
+    if is_csrf_required() and not secure_cookies() and exposed:
+        raise RuntimeError(
+            "Config incohérente : PICARONES_CSRF_REQUIRED=1 sur un "
+            "déploiement exposé (HF Space / mode public) mais cookies "
+            "non-Secure. Le token CSRF transiterait en clair. Poser "
+            "PICARONES_SECURE_COOKIES=1 (derrière TLS) ou désactiver "
+            "le mode public."
+        )
+
+    cloud_keys = [
+        k for k in (
+            "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "MISTRAL_API_KEY",
+            "AZURE_DOC_INTEL_KEY", "AWS_SECRET_ACCESS_KEY",
+        )
+        if os.environ.get(k, "").strip()
+    ]
+    if cloud_keys and not is_public_mode() and not is_csrf_required():
+        logger.warning(
+            "[security] Clés cloud présentes (%s) sans mode public ni "
+            "CSRF : une surface web non authentifiée peut déclencher "
+            "des appels facturés. Activer PICARONES_PUBLIC_MODE=1 ou "
+            "PICARONES_CSRF_REQUIRED=1 (+ SSO) si l'instance est "
+            "accessible au-delà de localhost.",
+            ", ".join(cloud_keys),
+        )
+
+
 def _get_csrf_secret() -> bytes:
     """Retourne le secret HMAC.  Priorité ``PICARONES_CSRF_SECRET``,
     sinon génère un secret runtime persistant durant la vie du process.
@@ -695,6 +783,6 @@ async def csrf_middleware(request, call_next):
                 value=generate_csrf_token(),
                 httponly=False,  # le JS doit pouvoir le lire
                 samesite="strict",
-                secure=False,  # mis à True derrière TLS via reverse proxy
+                secure=secure_cookies(),
             )
     return response

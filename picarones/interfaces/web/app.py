@@ -81,8 +81,15 @@ async def _lifespan(app: FastAPI):
     import asyncio
 
     # Étape 1 — validation config (échec rapide si dangereux).
-    from picarones.interfaces.web.security import validate_csrf_config
+    # ``validate_csrf_config`` : CSRF requis ⇒ secret stable obligatoire.
+    # ``check_deployment_coherence`` : refuse un déploiement exposé qui
+    # transporterait le token CSRF en clair (+ warning clés cloud).
+    from picarones.interfaces.web.security import (
+        check_deployment_coherence,
+        validate_csrf_config,
+    )
     validate_csrf_config()
+    check_deployment_coherence()
 
     # Étape 2 — nettoyage jobs orphelins.
     # NB : on accède via ``state.JOB_STORE`` (pas un import direct) pour

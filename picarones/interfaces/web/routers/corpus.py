@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import shutil
 import uuid
@@ -15,7 +14,13 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 
 from picarones.interfaces.web.corpus_utils import analyze_corpus_dir, flatten_zip_to_dir
-from picarones.interfaces.web.security import compute_browse_roots, validate_image_safe
+from picarones.interfaces.web.security import (
+    UPLOAD_CHUNK_SIZE,
+    compute_browse_roots,
+    get_max_total_upload_mb,
+    get_max_upload_mb,
+    validate_image_safe,
+)
 from picarones.interfaces.web.state import IMAGE_EXTS, UPLOADS_DIR
 
 router = APIRouter()
@@ -82,39 +87,68 @@ async def api_corpus_browse(
 async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
     """Upload un corpus : soit un ``.zip``, soit une sélection d'images + ``.gt.txt``.
 
-    Pour chaque fichier, la lecture multipart (``uf.read()``) reste
-    sur l'event loop car FastAPI/Starlette gèrent l'asynchronisme du
-    streaming HTTP. L'écriture disque (potentiellement 500 Mo pour
-    un ZIP) et l'analyse du corpus sont déléguées à un thread.
+    Chaque fichier est *streamé* vers le disque par blocs bornés
+    (``UPLOAD_CHUNK_SIZE``) — jamais matérialisé en un seul ``bytes``
+    en RAM.  Deux plafonds durs sont appliqués pendant le streaming :
+    par fichier (``PICARONES_MAX_UPLOAD_MB``) et cumulé sur la requête
+    (``PICARONES_MAX_TOTAL_UPLOAD_MB``).  Le dossier est purgé sur
+    *toute* sortie anormale (violation de quota, déconnexion client,
+    erreur) — pas de résidu disque.  La finalisation (validation
+    image, extraction ZIP, analyse) est déléguée à un thread.
     """
     corpus_id = str(uuid.uuid4())
     corpus_dir = UPLOADS_DIR / corpus_id
     corpus_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        # Étape 1 (async) : lire les bytes multipart pour ne pas
-        # bloquer l'event loop sur la réception réseau.
-        payloads: list[tuple[str, bytes]] = []
-        for uf in files:
-            filename = uf.filename or "upload"
-            # Empêcher la traversée via le nom de fichier reçu
-            # depuis le client (multipart). On garde uniquement le basename.
-            safe_name = Path(filename).name
-            data = await uf.read()
-            payloads.append((safe_name, data))
+    max_file_bytes = get_max_upload_mb() * 1024 * 1024
+    max_total_bytes = get_max_total_upload_mb() * 1024 * 1024
 
-        # Étape 2 (thread) : écriture disque + analyse synchrone.
+    try:
+        total = 0
+        staged: list[str] = []
+        for uf in files:
+            # Empêcher la traversée via le nom reçu du client
+            # (multipart) : on ne garde que le basename.
+            safe_name = Path(uf.filename or "upload").name
+            dest = corpus_dir / safe_name
+            written = 0
+            with dest.open("wb") as fh:
+                while True:
+                    chunk = await uf.read(UPLOAD_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    total += len(chunk)
+                    if written > max_file_bytes:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=(
+                                f"Fichier '{safe_name}' dépasse "
+                                f"{get_max_upload_mb()} Mo "
+                                "(PICARONES_MAX_UPLOAD_MB)."
+                            ),
+                        )
+                    if total > max_total_bytes:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=(
+                                "Upload total dépasse "
+                                f"{get_max_total_upload_mb()} Mo "
+                                "(PICARONES_MAX_TOTAL_UPLOAD_MB)."
+                            ),
+                        )
+                    fh.write(chunk)
+            staged.append(safe_name)
+
         try:
             summary = await asyncio.to_thread(
-                _write_payloads_and_analyze, corpus_dir, payloads,
+                _finalize_uploaded_dir, corpus_dir, staged,
             )
         except ValueError as exc:
-            # Validation d'image rejetée (taille, format, bombe de
-            # décompression, ZIP trop volumineux, etc.).
+            # Image invalide / ZIP corrompu ou bombe de décompression.
             raise HTTPException(status_code=415, detail=str(exc))
 
         if not summary["usable"]:
-            shutil.rmtree(corpus_dir, ignore_errors=True)
             raise HTTPException(
                 status_code=422,
                 detail="Aucune paire image/.gt.txt valide trouvée dans les fichiers uploadés.",
@@ -126,38 +160,47 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
             **summary,
         }
     except HTTPException:
+        # Nettoyage garanti : violation de quota, 422, déconnexion.
+        shutil.rmtree(corpus_dir, ignore_errors=True)
         raise
     except Exception as exc:  # noqa: BLE001
         shutil.rmtree(corpus_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-def _write_payloads_and_analyze(
-    corpus_dir: Path, payloads: list[tuple[str, bytes]],
-) -> dict:
-    """Écrit les bytes multipart sur disque puis analyse le résultat.
+def _finalize_uploaded_dir(corpus_dir: Path, staged: list[str]) -> dict:
+    """Valide et normalise les fichiers déjà streamés sur disque.
 
     Exécuté dans un thread (lib appelante : ``api_corpus_upload``).
     Lève ``ValueError`` sur image invalide ou ZIP corrompu —
     l'appelant doit traduire en HTTP 415.
+
+    - ``.zip`` : extrait via ``flatten_zip_to_dir`` (ouvert depuis le
+      chemin disque, pas de chargement RAM intégral), puis supprimé.
+    - image : validée en place (``validate_image_safe``) — la lecture
+      est bornée par le plafond unitaire appliqué au streaming.
+    - ``.txt``/``.xml``/``.gt.txt`` : conservés tels quels.
+    - autre : supprimé (type ignoré).
     """
-    for safe_name, data in payloads:
-        suffix = Path(safe_name).suffix.lower()
+    for name in staged:
+        p = corpus_dir / name
+        if not p.exists():
+            continue
+        suffix = p.suffix.lower()
         if suffix == ".zip":
-            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            with zipfile.ZipFile(p) as zf:
                 flatten_zip_to_dir(zf, corpus_dir)
+            p.unlink(missing_ok=True)
         elif suffix in IMAGE_EXTS:
-            # Valider l'image avant écriture (Pillow.verify,
-            # taille max, rejet des bombes de décompression).
-            validate_image_safe(data, filename=safe_name)
-            (corpus_dir / safe_name).write_bytes(data)
+            validate_image_safe(p.read_bytes(), filename=name)
         elif (
-            safe_name.endswith(".gt.txt")
-            or safe_name.endswith(".ocr.txt")
+            name.endswith(".gt.txt")
+            or name.endswith(".ocr.txt")
             or suffix in (".txt", ".xml")
         ):
-            (corpus_dir / safe_name).write_bytes(data)
-        # Sinon : type ignoré (silence intentionnel).
+            continue  # conservé
+        else:
+            p.unlink(missing_ok=True)  # type ignoré
 
     return analyze_corpus_dir(corpus_dir)
 

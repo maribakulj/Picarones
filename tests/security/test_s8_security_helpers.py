@@ -337,3 +337,90 @@ class TestEntityExtractorAllowlist:
         )
         with pytest.raises(PermissionError, match="hors allowlist"):
             assert_entity_extractor_allowed("os:system")
+
+
+class TestSecureCookies:
+    """``secure_cookies`` — fin du ``secure=False`` codé en dur."""
+
+    def _clear(self, mp):
+        for v in (
+            "PICARONES_SECURE_COOKIES", "PICARONES_PUBLIC_MODE", "SPACE_ID",
+        ):
+            mp.delenv(v, raising=False)
+
+    def test_explicit_env_wins(self, monkeypatch) -> None:
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "1")
+        assert secure_cookies() is True
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "0")
+        assert secure_cookies() is False
+
+    def test_local_dev_default_false(self, monkeypatch) -> None:
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        assert secure_cookies() is False
+
+    def test_public_mode_or_hf_space_default_true(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        assert secure_cookies() is True
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE")
+        monkeypatch.setenv("SPACE_ID", "user/space")
+        assert secure_cookies() is True
+
+
+class TestDeploymentCoherence:
+    """``check_deployment_coherence`` — refuse une combinaison
+    exposée + CSRF requis + cookies en clair (fail-fast démarrage)."""
+
+    def _clear(self, mp):
+        for v in (
+            "PICARONES_SECURE_COOKIES", "PICARONES_PUBLIC_MODE",
+            "PICARONES_CSRF_REQUIRED", "SPACE_ID",
+        ):
+            mp.delenv(v, raising=False)
+
+    def test_local_csrf_without_secure_is_tolerated(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+        )
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
+        check_deployment_coherence()  # non exposé → pas de raise
+
+    def test_exposed_csrf_without_secure_cookies_blocks_startup(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+        )
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "0")
+        with pytest.raises(RuntimeError, match="incohérente"):
+            check_deployment_coherence()
+
+    def test_exposed_csrf_with_secure_cookies_ok(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+        )
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "1")
+        check_deployment_coherence()  # cohérent → pas de raise
