@@ -70,12 +70,6 @@ EXTERNAL_REF_FILES = [
 ]
 # Docs : nombreuses réfs ``test_s*`` — patchées par lot via grep
 # ciblé au moment du renommage du dossier correspondant (cf. --apply).
-# Import inter-tests connu (même lot tests/evaluation/metrics) :
-INTRA_TEST_IMPORT = (
-    "tests/evaluation/metrics/test_sprint23_anti_hallucination.py",
-    "tests.evaluation.metrics.test_sprint19_narrative_engine",
-    "tests.evaluation.metrics.test_narrative_engine",
-)
 
 
 def build_map() -> dict[str, str]:
@@ -158,14 +152,27 @@ def apply_dir(target_dir: str) -> int:
         if txt != orig:
             sp.write_text(txt, encoding="utf-8")
             print(f"patché refs : {src}")
-    # Import inter-tests connu.
-    if target_dir.rstrip("/") == "tests/evaluation/metrics":
-        ip = REPO / INTRA_TEST_IMPORT[0]
-        if ip.exists():
-            t = ip.read_text(encoding="utf-8").replace(
-                INTRA_TEST_IMPORT[1], INTRA_TEST_IMPORT[2])
-            ip.write_text(t, encoding="utf-8")
-            print(f"patché import inter-tests : {INTRA_TEST_IMPORT[0]}")
+    # Sweep GÉNÉRIQUE des imports inter-tests : tout module renommé
+    # dans ce lot, référencé en dotted-path depuis n'importe quel
+    # fichier de ``tests/`` (``from tests.x.y.<old_stem> import`` ou
+    # ``import tests.x.y.<old_stem>``), est repointé vers le nouveau
+    # stem.  Remplace l'ancien cas hardcodé fragile (ordre-dépendant).
+    stem_map = {
+        Path(old_name).stem: Path(new_name).stem
+        for old_name, new_name in renamed
+    }
+    for tp in TESTS.rglob("*.py"):
+        t = tp.read_text(encoding="utf-8")
+        orig = t
+        for old_stem, new_stem in stem_map.items():
+            # Borné par ``.`` (dotted import) — pas de match partiel
+            # sur un préfixe de nom plus long.
+            t = re.sub(rf"(?<=\.){re.escape(old_stem)}(?=\s|$|\.| import)",
+                       new_stem, t)
+        if t != orig:
+            tp.write_text(t, encoding="utf-8")
+            print(f"patché import inter-tests : "
+                  f"{tp.relative_to(REPO).as_posix()}")
     return 0
 
 

@@ -163,7 +163,7 @@ class TestEndToEndWithEmptyWhitelist:
     def test_every_number_traceable_with_empty_whitelist(self, lang):
         from picarones.reports.narrative import extract_numbers
 
-        from tests.evaluation.metrics.test_sprint19_narrative_engine import _numbers_in_payload
+        from tests.evaluation.metrics.test_narrative_engine import _numbers_in_payload
 
         result = build_synthesis(_full_data(), lang)
         allowed: set[str] = set()
