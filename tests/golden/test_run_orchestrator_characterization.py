@@ -18,8 +18,14 @@ attrape ».  Cinq groupes, un par cas de risque identifié :
    threads parallèles : isolation cancel/progress, pas de fuite
    d'état entre instances.
 
-Déterminisme : ``PrecomputedTextAdapter`` (lit ``<stem>.<label>.txt``,
-aucun OCR/réseau).  Un garde explicite
+6. :class:`TestExecutePresetCharacterization` — chemin
+   ``execute_preset`` (objets domain pré-construits : CLI
+   diagnose/economics/edition + worker web) : hotfix ``corpus_legacy``
+   (trou #9 B3-final), doc_idx global, cancel, resume.
+
+Déterminisme : ``PrecomputedTextAdapter`` (lit ``<stem>.<label>.txt``)
+pour ``execute`` ; ``_MockOCR`` en mémoire pour ``execute_preset`` —
+aucun OCR/réseau.  Un garde explicite
 (:meth:`TestGoldenMultiTopology.test_snapshot_is_deterministic`)
 échoue si le snapshot n'est pas reproductible — un golden flaky
 serait pire que pas de golden.
@@ -38,8 +44,11 @@ from typing import Any
 
 import pytest
 
+from picarones.adapters.ocr.base import BaseOCRAdapter
 from picarones.app.schemas.run_spec import load_run_spec_from_yaml
-from picarones.app.services import RunOrchestrator
+from picarones.app.services import RunOrchestrator, prepare_preset_args
+from picarones.domain.artifacts import Artifact, ArtifactType
+from picarones.evaluation.corpus import Corpus, Document
 
 _FIX_DIR = Path(__file__).parent / "fixtures" / "run_orchestrator"
 
@@ -587,3 +596,194 @@ class TestConcurrencyIsolation:
         )
         # A annulé : strictement moins que 6.
         assert len(prog_a) < 6, f"A non annulé : {prog_a}"
+
+
+# ---------------------------------------------------------------------------
+# 6. execute_preset — trou comblé (objets domain pré-construits)
+# ---------------------------------------------------------------------------
+
+class _MockOCR(BaseOCRAdapter):
+    """Adapter déterministe en mémoire (aucun OCR/réseau) : écrit
+    ``"hello"`` et retourne un RAW_TEXT.  Recette copiée verbatim de
+    ``tests/app/services/test_python_helpers.py`` (infra préset
+    canonique)."""
+
+    def __init__(self, name: str = "mock") -> None:
+        self._name = name
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def execute(self, inputs: Any, params: Any, context: Any) -> Any:
+        d = Path(context.workspace_uri)
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / f"{context.document_id}.txt"
+        p.write_text("hello", encoding="utf-8")
+        return {ArtifactType.RAW_TEXT: Artifact(
+            id=f"{context.document_id}:{self._name}:raw_text",
+            document_id=context.document_id,
+            type=ArtifactType.RAW_TEXT,
+            produced_by_step="ocr",
+            uri=str(p),
+        )}
+
+
+def _legacy_corpus(tmp: Path, n: int = 3) -> Any:
+    docs = []
+    for i in range(1, n + 1):
+        img = tmp / f"doc{i:02d}.png"
+        img.write_bytes(b"x")
+        docs.append(Document(
+            image_path=img, ground_truth="hello", doc_id=f"doc{i:02d}",
+        ))
+    return Corpus(name="preset_charac", documents=docs)
+
+
+def _preset_run(
+    tmp: Path, n: int, engines: list[Any], **prep: Any,
+) -> tuple[Any, Any, Any]:
+    """Recette préset déterministe : Corpus mémoire + MockOCR →
+    prepare_preset_args → execute_preset.  Retourne
+    (OrchestrationResult, corpus, PresetArgs)."""
+    # Sépare les kwargs de CONTRÔLE (réservés au harnais) des kwargs
+    # de ``prepare_preset_args``.
+    cb = prep.pop("_cb", None)
+    ev = prep.pop("_ev", None)
+    pass_legacy = prep.pop("_pass_corpus_legacy", True)
+
+    (tmp / "src").mkdir(parents=True, exist_ok=True)
+    corpus = _legacy_corpus(tmp / "src", n)
+    out = tmp / "out"
+    args = prepare_preset_args(
+        corpus, engines,
+        workspace_dir=tmp / "ws", output_dir=out, **prep,
+    )
+    kw: dict[str, Any] = {}
+    if pass_legacy:
+        kw["corpus_legacy"] = corpus
+    res = RunOrchestrator(out).execute_preset(
+        spec=args.spec,
+        corpus_spec=args.corpus_spec,
+        extracted_dir=args.extracted_dir,
+        pipeline_specs=args.pipeline_specs,
+        adapter_resolver=args.adapter_resolver,
+        adapter_kwargs=args.adapter_kwargs,
+        progress_callback=cb,
+        cancel_event=ev,
+        **kw,
+    )
+    return res, corpus, args
+
+
+class TestExecutePresetCharacterization:
+    """Trou comblé : ``execute_preset`` (variante objets domain
+    pré-construits, utilisée par CLI ``diagnose/economics/edition``
+    et le worker web).  Caractérise le surface-risque PRÉSET-
+    SPÉCIFIQUE pour Phase B."""
+
+    def test_preset_happy_path_four_artifacts_deterministic_cer(
+        self, tmp_path: Path,
+    ) -> None:
+        res, _, _ = _preset_run(tmp_path, 3, [_MockOCR()])
+        assert res.run_result.n_documents == 3
+        rd = tmp_path / "out" / "results"
+        for f in (
+            "run_manifest.json", "pipeline_results.jsonl",
+            "view_results.jsonl", "artifacts_index.jsonl",
+        ):
+            assert (rd / f).exists(), f"artefact manquant : {f}"
+        pr, vr = sorted({r["document_id"] for r in _jsonl(rd / "pipeline_results.jsonl")}), \
+            sorted({r["document_id"] for r in _jsonl(rd / "view_results.jsonl")})
+        assert pr == vr == ["doc01", "doc02", "doc03"]
+
+    def test_preset_corpus_legacy_hotfix_writes_legacy_json(
+        self, tmp_path: Path,
+    ) -> None:
+        """Trou #9 (B3-final) : ``output_json`` + ``corpus_legacy``
+        fourni ⇒ JSON legacy écrit SANS erreur (court-circuite le
+        reload depuis ``workspace_dir`` qui n'a que des .gt.txt)."""
+        oj = tmp_path / "legacy.json"
+        res, _, _ = _preset_run(
+            tmp_path, 2, [_MockOCR()], output_json=oj,
+        )
+        assert res.run_result.n_documents == 2
+        assert oj.exists(), "JSON legacy non écrit malgré corpus_legacy"
+
+    def test_preset_without_corpus_legacy_reproduces_trou9_DEFECT(
+        self, tmp_path: Path,
+    ) -> None:
+        """⚠️ CONTRAT DU HOTFIX ⚠️ : ``output_json`` SANS
+        ``corpus_legacy`` ⇒ ``ValueError`` (reload impossible depuis
+        le ``workspace_dir`` synthétisé).  C'est précisément le bug
+        que le hotfix corrige : si Phase B réorganise
+        ``_persist_legacy_benchmark_json``, ce contrat ne doit pas
+        changer en silence (sinon le hotfix devient inopérant ou le
+        message d'erreur trompeur revient)."""
+        oj = tmp_path / "legacy.json"
+        with pytest.raises(ValueError, match="impossible de reloader"):
+            _preset_run(
+                tmp_path, 2, [_MockOCR()],
+                output_json=oj, _pass_corpus_legacy=False,
+            )
+
+    def test_preset_doc_idx_global_across_two_engines(
+        self, tmp_path: Path,
+    ) -> None:
+        """``execute_preset`` partage ``_make_context_factory`` :
+        2 engines (⇒ 2 pipelines) × 3 docs ⇒ compteur GLOBAL contigu
+        0..5 (même invariant que ``execute``, via le chemin préset)."""
+        calls: list[int] = []
+        _preset_run(
+            tmp_path, 3, [_MockOCR("a"), _MockOCR("b")],
+            _cb=lambda e, i, d: calls.append(i),
+        )
+        assert sorted(calls) == [0, 1, 2, 3, 4, 5], (
+            f"compteur préset non global/contigu : {sorted(calls)}"
+        )
+
+    def test_preset_preset_cancel_short_circuits(
+        self, tmp_path: Path,
+    ) -> None:
+        ev = threading.Event()
+        ev.set()
+        t0 = time.monotonic()
+        _preset_run(tmp_path, 5, [_MockOCR()], _ev=ev)
+        assert time.monotonic() - t0 < 10.0
+
+    def test_preset_resume_keeps_views_complete_FIX_GUARD(
+        self, tmp_path: Path,
+    ) -> None:
+        """Le chemin préset délègue à ``_execute_with_partial`` : le
+        FIX resume/vues doit tenir AUSSI via ``execute_preset``.
+        Interruption réelle puis resume ⇒ pipeline ET vues complets
+        (== run propre).  Garde anti-régression du fix par le chemin
+        préset."""
+        partial = tmp_path / "pd"
+        partial.mkdir()
+        ev = threading.Event()
+        seen = {"n": 0}
+
+        def cb(e: str, i: int, d: str) -> None:
+            seen["n"] += 1
+            if seen["n"] == 2:
+                ev.set()
+
+        # Run 1 : interrompu après 2 docs.
+        _preset_run(
+            tmp_path / "r1", 5, [_MockOCR()],
+            partial_dir=str(partial), _cb=cb, _ev=ev,
+        )
+        # Run 2 : même partial_dir, sans cancel → doit compléter.
+        res2, _, _ = _preset_run(
+            tmp_path / "r2", 5, [_MockOCR()], partial_dir=str(partial),
+        )
+        rd = tmp_path / "r2" / "out" / "results"
+        pr = sorted({r["document_id"] for r in _jsonl(rd / "pipeline_results.jsonl")})
+        vr = sorted({r["document_id"] for r in _jsonl(rd / "view_results.jsonl")})
+        full = ["doc01", "doc02", "doc03", "doc04", "doc05"]
+        assert pr == full, f"pipeline incomplet (préset resume) : {pr}"
+        assert vr == full, (
+            f"vues incomplètes au resume PRÉSET : {vr} — le fix "
+            "resume/vues ne tient pas via execute_preset"
+        )
