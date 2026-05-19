@@ -646,10 +646,38 @@ class RunOrchestrator:
         # Map (doc_id, pipeline_name) → list[ViewResult]
         vr_index: dict[tuple[str, str], list[Any]] = {}
 
-        # Charge les pipeline_results depuis les partials (rechargés).
+        # Charge les pipeline_results depuis les partials (rechargés)
+        # ET recalcule leurs view_results.
+        #
+        # Fix défaut resume (harnais de caractérisation) : le partial
+        # store persiste ``PipelineResult`` mais PAS ``ViewResult``.
+        # Sans ce recalcul, les docs repris du partial sortaient avec
+        # leurs pipeline_results mais SANS view_results → métriques
+        # agrégées (CER…) silencieusement faussées après reprise.
+        # Les vues sont une fonction PURE de (pipeline_results + GT +
+        # profil) : les recalculer pour les docs repris est correct,
+        # ne change pas le format du partial, et garantit des vues
+        # fraîches (cohérentes avec le code d'éval courant) plutôt que
+        # potentiellement périmées si on les avait persistées.
+        doc_by_id = {d.id: d for d in corpus_spec.documents}
         for pipeline_name, (_, loaded_list) in per_pipeline_state.items():
             for pr in loaded_list:
                 pr_index[(pr.document_id, pipeline_name)] = pr
+                doc = doc_by_id.get(pr.document_id)
+                if doc is None:
+                    continue
+                # ``_evaluate_document_in_views`` est l'entrée d'éval
+                # canonique (même chemin que le run frais) ; appelée
+                # ici en isolation sur le PR rechargé.
+                for vr in bench._evaluate_document_in_views(
+                    document=doc,
+                    pipeline_results=[pr],
+                    views=views,
+                    ground_truth_factory=_default_gt_factory,
+                ):
+                    vr_index.setdefault(
+                        (pr.document_id, ""), [],
+                    ).append(vr)
 
         # Charge les pipeline_results et view_results depuis les sub-runs.
         for sub_result in sub_run_results:

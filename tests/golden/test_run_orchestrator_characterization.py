@@ -368,22 +368,20 @@ class TestCrashResumeConsistency:
     on stoppe mi-run via cancel, puis on relance SANS cancel avec le
     même ``partial_dir``.
 
-    ⚠️ DÉFAUT PRÉ-EXISTANT DÉCOUVERT PAR CE HARNAIS ⚠️
-    Le partial store persiste ``PipelineResult`` mais PAS
-    ``ViewResult``.  Au resume, les documents rechargés du partial
-    récupèrent leurs ``pipeline_results`` mais **pas** leurs
-    ``view_results`` (jamais recalculés).  Conséquence : après une
-    reprise, ``view_results.jsonl`` est incomplet → toute métrique
-    agrégée (CER…) dérivée des vues est silencieusement faussée pour
-    les documents repris.
+    HISTORIQUE — DÉFAUT DÉCOUVERT PAR CE HARNAIS, PUIS CORRIGÉ.
+    Le partial store persistait ``PipelineResult`` mais PAS
+    ``ViewResult`` : au resume, les docs rechargés du partial
+    sortaient avec ``pipeline_results`` mais SANS ``view_results``
+    (jamais recalculés) → ``view_results.jsonl`` incomplet →
+    métriques agrégées (CER…) silencieusement faussées après reprise
+    (linéaire/DAG ; non manifesté en multi-pipeline).
 
-    Ces tests CARACTÉRISENT le comportement ACTUEL (warts inclus) —
-    rôle d'un harnais de caractérisation — pour que Phase B ne
-    l'aggrave pas ET qu'une correction future du défaut soit
-    consciente (le test échouera, forçant la revue).  Le défaut
-    lui-même est remonté à l'opérateur, pas corrigé furtivement ici
-    (resume/views = changement stateful risqué, hors périmètre
-    « construire le harnais »)."""
+    FIX : ``_execute_with_partial`` recalcule les vues des docs
+    repris via ``_evaluate_document_in_views`` (fonction pure de
+    pipeline_results + GT + profil ; aucun changement de format de
+    partial).  Ces tests, qui caractérisaient le défaut, ont été
+    BASCULÉS pour verrouiller le comportement CORRIGÉ (= run propre)
+    — toute régression Phase B refaisant l'incohérence échoue ici."""
 
     def _persisted_doc_ids(self, results_dir: Path) -> tuple[list[str], list[str]]:
         pr = sorted({r["document_id"] for r in _jsonl(results_dir / "pipeline_results.jsonl")})
@@ -435,53 +433,37 @@ class TestCrashResumeConsistency:
         pr, _ = self._persisted_doc_ids(resumed)
         assert pr == ["doc01", "doc02", "doc03", "doc04", "doc05"]
 
-    #: Relation ``view_results`` vs ``pipeline_results`` APRÈS resume,
-    #: par topologie — comportement RÉEL observé (le défaut est
-    #: topologie-dépendant : présent en linéaire/DAG, absent en
-    #: multi-pipeline avec cette synchro d'interruption).
-    _RESUME_VIEW_RELATION = {
-        "single_linear": "strict_subset",   # défaut : vues ⊊ pipeline
-        "branching_dag": "strict_subset",   # défaut idem
-        "multi_pipeline": "equal",          # pas de défaut ici
-    }
-
     @pytest.mark.parametrize(
         "topo", ["single_linear", "multi_pipeline", "branching_dag"],
     )
-    def test_resume_view_vs_pipeline_relation_DEFECT_characterized(
+    def test_resume_view_results_complete_and_consistent(
         self, tmp_path: Path, topo: str,
     ) -> None:
-        """⚠️ CARACTÉRISE LE DÉFAUT (topologie-dépendant) ⚠️ : au
-        resume, ``pipeline_results`` couvre tout le corpus, mais la
-        relation ``view_results`` vs ``pipeline_results`` dépend de la
-        topologie (cf. :data:`_RESUME_VIEW_RELATION`) :
+        """Régression-guard du FIX du défaut resume/vues.
 
-        - ``single_linear`` / ``branching_dag`` : vues ⊊ pipeline —
-          les vues des docs repris du partial ne sont jamais
-          recalculées (métriques agrégées faussées après reprise).
-        - ``multi_pipeline`` : vues == pipeline (le défaut ne se
-          manifeste pas avec cette synchro d'interruption).
+        Historique : ce harnais a découvert qu'au resume le partial
+        store rejouait ``pipeline_results`` mais PAS ``view_results``
+        des docs repris (linéaire/DAG : vues ⊊ pipeline → métriques
+        agrégées faussées après reprise).  CORRIGÉ par recalcul des
+        vues au resume (``_execute_with_partial`` : ``_evaluate_
+        document_in_views`` sur les PR rechargés — fonction pure).
 
-        Toute évolution de l'une de ces relations (Phase B, ou
-        correction du défaut) fait échouer ce test et force une revue
-        consciente."""
+        Invariant verrouillé désormais : après resume, sur TOUTES les
+        topologies, ``view_results`` couvre exactement le même
+        ensemble de docs que ``pipeline_results`` (= corpus complet),
+        comme un run propre.  Si Phase B (ou un futur changement)
+        recasse l'égalité, ce test échoue."""
         _, resumed = self._interrupt_then_resume(
             tmp_path, 5, stop_after=2, topo=topo,
         )
         pr, vr = self._persisted_doc_ids(resumed)
         full = ["doc01", "doc02", "doc03", "doc04", "doc05"]
         assert pr == full, f"pipeline incomplet au resume ({topo}): {pr}"
-        rel = self._RESUME_VIEW_RELATION[topo]
-        if rel == "strict_subset":
-            assert set(vr) < set(pr), (
-                f"[{topo}] défaut resume/vues changé : pipeline={pr} "
-                f"vues={vr}. Attendu : vues ⊊ pipeline."
-            )
-        else:
-            assert set(vr) == set(pr), (
-                f"[{topo}] relation resume/vues changée : pipeline={pr}"
-                f" vues={vr}. Attendu : vues == pipeline."
-            )
+        assert vr == full, (
+            f"[{topo}] vues incomplètes au resume : pipeline={pr} "
+            f"vues={vr}. Le fix recalcule les vues des docs repris — "
+            "une régression ici refait des métriques faussées."
+        )
 
     def test_resume_does_not_duplicate_documents(
         self, tmp_path: Path,
