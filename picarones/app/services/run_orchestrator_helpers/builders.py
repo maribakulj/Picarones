@@ -1,7 +1,7 @@
 """Constructeurs stateless du ``RunOrchestrator`` (corpus / pipelines /
 vues / service).
 
-Audit prod Phase A — extraction des 4 ``@staticmethod`` (sans
+extraction des 4 ``@staticmethod`` (sans
 ``self``) hors du god-module ``run_orchestrator.py``.  Déplacement
 verbatim, comportement strictement préservé : ``run_orchestrator``
 réimporte ces noms (façade) et conserve un wrapper mince
@@ -163,7 +163,7 @@ def _build_views(
 ) -> list[Any]:
     """Map noms canoniques → vues construites.
 
-    Phase B2.5 — ``normalization_profile`` et ``char_exclude``
+    ``normalization_profile`` et ``char_exclude``
     sont propagés aux vues qui les supportent (``text_final`` et
     ``searchability``).  ``alto_documentary`` les ignore : ses
     métriques structurelles n'opèrent pas sur du texte.
@@ -190,7 +190,7 @@ def _build_benchmark_service(
 ) -> BenchmarkService:
     """Assemble ``BenchmarkService`` avec un loader filesystem.
 
-    Phase B2.2 — quand ``cancel_event`` est fourni, le
+    quand ``cancel_event`` est fourni, le
     ``CorpusRunner.run`` est wrappé pour injecter l'event dans
     chaque appel.  Pattern strictement copié de
     ``_benchmark_execution.py:142-149`` (legacy).

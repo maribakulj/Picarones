@@ -1,6 +1,6 @@
 """Helpers stateless du ``RunOrchestrator`` (sous-package cohésif).
 
-Audit prod P1.1 — l'ancien module plat ``run_orchestrator_helpers.py``
+l'ancien module plat ``run_orchestrator_helpers.py``
 était un signal de dette (« poubelle propre » fourre-tout).  Éclaté
 en sous-modules cohésifs :
 

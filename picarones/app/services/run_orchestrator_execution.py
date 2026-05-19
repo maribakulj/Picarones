@@ -1,6 +1,6 @@
 """Exécution pivotée par pipeline avec reprise (partial store).
 
-Audit prod Phase B — extraction du plus gros bloc stateful de
+extraction du plus gros bloc stateful de
 ``run_orchestrator.py`` (ex-``RunOrchestrator._execute_with_partial``,
 ~283 l).  Fonction libre : la seule dépendance à ``self`` était
 ``self._progress_callback``, désormais paramètre explicite.  Aucun

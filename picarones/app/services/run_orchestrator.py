@@ -165,7 +165,7 @@ class RunOrchestrator:
             ``app/services/`` d'importer ``reports/`` (couche plus
             externe — interdit par l'architecture).
         progress_callback:
-            Phase B1.2 — kwarg d'exécution non-sérialisable. Callable
+            kwarg d'exécution non-sérialisable. Callable
             invoqué ``(engine_name, doc_idx, doc_id)`` à chaque
             document traité.  Le branchement concret au runner est
             fait en Phase B2.1.  Pour l'instant, le kwarg est accepté
@@ -173,7 +173,7 @@ class RunOrchestrator:
             consommé quand B2.1 portera le pattern verrou+compteur
             depuis ``_benchmark_execution.py:109-139``.
         cancel_event:
-            Phase B1.2 — kwarg d'exécution non-sérialisable.
+            kwarg d'exécution non-sérialisable.
             ``threading.Event`` qui, quand ``set()``, demande l'arrêt
             propre du run en cours.  Phase B2.2 le branchera au
             ``CorpusRunner`` (pattern existant dans
@@ -187,7 +187,7 @@ class RunOrchestrator:
             Si la résolution dotted-path d'un ``adapter_class``
             échoue.
         """
-        # Phase B1.2 — kwargs d'exécution stockés temporairement sur
+        # kwargs d'exécution stockés temporairement sur
         # l'instance.  Phase B2.1/B2.2 les consommera depuis ici.
         # Volontairement public-protected (un underscore) : ce sont
         # des paramètres d'exécution, pas une configuration durable.
@@ -226,15 +226,15 @@ class RunOrchestrator:
         )
 
         # 6. Capture du verrou de dépendances pour la reproductibilité.
-        # Sprint S8.5 — capture aussi les binaires système (Tesseract,
+        # capture aussi les binaires système (Tesseract,
         # etc.) qui ne sont pas couverts par le wheel ``pytesseract``.
         deps_lock = capture_dependencies_lock()
         bin_lock = capture_system_binaries_lock()
 
-        # Phase B2.3 — si ``spec.partial_dir`` est fourni, on pivote
+        # si ``spec.partial_dir`` est fourni, on pivote
         # par pipeline avec reprise sur interruption.  Sinon, chemin
         # rapide en un seul ``bench.run`` multi-pipeline.
-        # Phase B4 — workspace_uri dédié au runtime des adapters
+        # workspace_uri dédié au runtime des adapters
         # (artefacts intermédiaires).  Distinct du extracted_dir
         # qui porte les images source du corpus.
         runtime_dir = self._output_dir / "runtime"
@@ -391,7 +391,7 @@ class RunOrchestrator:
         bin_lock = capture_system_binaries_lock()
         adapter_kwargs_clean = adapter_kwargs or {}
 
-        # Phase B4 — workspace_uri pour les adapters.
+        # workspace_uri pour les adapters.
         runtime_dir = self._output_dir / "runtime"
         runtime_dir.mkdir(parents=True, exist_ok=True)
 
