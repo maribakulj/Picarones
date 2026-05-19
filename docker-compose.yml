@@ -11,6 +11,15 @@
 #
 # Variables d'environnement :
 #   Créer un fichier .env à la racine (voir .env.example)
+#
+# Defaults fail-closed (P0 durcissement) :
+#   - le port n'est publié que sur 127.0.0.1 (poser PICARONES_BIND=0.0.0.0
+#     pour exposer délibérément derrière un reverse-proxy/TLS) ;
+#   - PICARONES_PUBLIC_MODE=1 par défaut : moteurs OCR cloud + LLM
+#     mutualisés désactivés, browse roots confinés ;
+#   - PICARONES_CSRF_REQUIRED=1 par défaut.
+#   Un opérateur institutionnel surcharge ces valeurs en connaissance
+#   de cause via .env ; l'inverse (ouvert par défaut) serait un foot-gun.
 
 services:
 
@@ -26,7 +35,8 @@ services:
     container_name: picarones
     restart: unless-stopped
     ports:
-      - "${PICARONES_PORT:-7860}:7860"
+      # Bind localhost par défaut — exposition LAN/WAN = choix explicite.
+      - "${PICARONES_BIND:-127.0.0.1}:${PICARONES_PORT:-7860}:7860"
     volumes:
       # Corpus à benchmarker (lecture seule)
       - "${CORPUS_DIR:-./corpus}:/app/corpus:ro"
@@ -48,6 +58,11 @@ services:
       - AZURE_DOC_INTEL_KEY=${AZURE_DOC_INTEL_KEY:-}
       # Ollama (si le service ollama est actif)
       - OLLAMA_BASE_URL=http://ollama:11434
+      # Sécurité — fail-closed par défaut (cf. en-tête du fichier).
+      # Surcharger explicitement dans .env pour un déploiement
+      # institutionnel derrière SSO/reverse-proxy.
+      - PICARONES_PUBLIC_MODE=${PICARONES_PUBLIC_MODE:-1}
+      - PICARONES_CSRF_REQUIRED=${PICARONES_CSRF_REQUIRED:-1}
       # Python
       - PYTHONUNBUFFERED=1
       - PYTHONIOENCODING=utf-8
@@ -65,7 +80,9 @@ services:
   # Activer avec : docker compose --profile ollama up
   # ────────────────────────────────────────────────
   ollama:
-    image: ollama/ollama:latest
+    # Tag pinné pour la reproductibilité (surcharge via OLLAMA_IMAGE).
+    # Éviter ``latest`` : un pull ultérieur peut changer le comportement.
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.3.14}
     container_name: picarones_ollama
     restart: unless-stopped
     profiles:
@@ -82,7 +99,9 @@ services:
       # (réseau Docker interne) ; un opérateur peut surcharger via
       # ``OLLAMA_ORIGINS`` env var pour ajouter un origin de
       # développement (ex : ``http://localhost:3000``).
-      - OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-http://web:7860,http://localhost:7860}
+      # NB : le service web s'appelle ``picarones`` (pas ``web``) —
+      # l'origin réseau Docker interne doit donc être picarones:7860.
+      - OLLAMA_ORIGINS=${OLLAMA_ORIGINS:-http://picarones:7860,http://localhost:7860}
     deploy:
       resources:
         reservations:

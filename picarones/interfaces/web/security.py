@@ -96,6 +96,55 @@ def assert_llm_provider_allowed(llm_provider: str) -> None:
         )
 
 
+def entity_extractor_allowlist() -> frozenset[str]:
+    """Dotted paths d'extracteurs NER explicitement autorisés côté web.
+
+    Lue depuis ``PICARONES_ENTITY_EXTRACTOR_ALLOWLIST`` (séparateur
+    virgule).  Vide par défaut : le champ ``entity_extractor`` du
+    payload web déclenche un ``importlib.import_module`` *puis un
+    appel* du symbole résolu (cf. ``run_orchestrator._resolve_entity_
+    extractor``).  C'est un gadget d'exécution — il doit être opt-in
+    explicite, jamais ouvert par défaut sur une instance partagée.
+    """
+    raw = os.environ.get("PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", "")
+    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+
+
+def assert_entity_extractor_allowed(dotted_path: str) -> None:
+    """Lève ``PermissionError`` si le dotted path NER n'est pas autorisé.
+
+    Politique fail-closed :
+
+    - Vide ⇒ aucun NER attaché, rien à valider.
+    - Si une allowlist est définie ⇒ le dotted path doit en faire
+      partie (s'applique dans tous les modes — l'admin sait ce qu'il
+      ouvre).
+    - Sinon, sans allowlist ⇒ refusé en mode public (instance
+      mutualisée : on ne laisse pas un payload importer/appeler du
+      code arbitraire).  Toléré hors mode public (opérateur local
+      de confiance, cohérent avec :func:`compute_browse_roots`).
+    """
+    dotted_path = (dotted_path or "").strip()
+    if not dotted_path:
+        return
+    allowlist = entity_extractor_allowlist()
+    if allowlist:
+        if dotted_path not in allowlist:
+            raise PermissionError(
+                f"entity_extractor {dotted_path!r} hors allowlist. "
+                "Ajouter le dotted path à PICARONES_ENTITY_EXTRACTOR_"
+                "ALLOWLIST (séparateur virgule) pour l'autoriser."
+            )
+        return
+    if is_public_mode():
+        raise PermissionError(
+            "Mode public actif — le champ entity_extractor (import "
+            "dynamique + appel d'un symbole) est désactivé. Définir "
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST pour l'activer de "
+            "façon contrôlée, ou utiliser la CLI."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Validation des chemins utilisateur (Sprint A14-S1, A.I.0 P0)
 #

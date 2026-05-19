@@ -258,3 +258,82 @@ class TestRateLimiterPruning:
         rl = RateLimiter(max_per_hour=0)
         for _ in range(100):
             rl.check("9.9.9.9")  # no raise
+
+
+class TestEntityExtractorAllowlist:
+    """Garde-fou P0 — le champ ``entity_extractor`` du payload web
+    déclenche un ``importlib.import_module`` + appel du symbole résolu.
+    C'est un gadget d'exécution : il doit être fail-closed sur instance
+    partagée et explicitement allowlisté en institutionnel."""
+
+    def test_empty_is_noop(self, monkeypatch) -> None:
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE", raising=False)
+        monkeypatch.delenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
+        )
+        assert_entity_extractor_allowed("")  # no raise
+        assert_entity_extractor_allowed("   ")  # no raise
+
+    def test_public_mode_without_allowlist_rejects(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.delenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
+        )
+        with pytest.raises(PermissionError, match="entity_extractor"):
+            assert_entity_extractor_allowed("os:getcwd")
+
+    def test_non_public_without_allowlist_tolerated(
+        self, monkeypatch,
+    ) -> None:
+        """Opérateur local de confiance — cohérent avec le modèle
+        ``compute_browse_roots`` (cwd autorisé hors mode public)."""
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE", raising=False)
+        monkeypatch.delenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
+        )
+        assert_entity_extractor_allowed("mypkg.ner:Extractor")  # no raise
+
+    def test_allowlist_match_allowed_all_modes(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.setenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST",
+            "mypkg.ner:Extractor, other.mod:Fn",
+        )
+        assert_entity_extractor_allowed("mypkg.ner:Extractor")  # no raise
+        assert_entity_extractor_allowed("other.mod:Fn")  # no raise
+
+    def test_allowlist_set_rejects_unlisted_even_non_public(
+        self, monkeypatch,
+    ) -> None:
+        """Allowlist définie ⇒ s'applique dans tous les modes : un
+        dotted path hors liste est refusé même hors mode public."""
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE", raising=False)
+        monkeypatch.setenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", "mypkg.ner:Extractor",
+        )
+        with pytest.raises(PermissionError, match="hors allowlist"):
+            assert_entity_extractor_allowed("os:system")
