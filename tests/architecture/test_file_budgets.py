@@ -48,7 +48,10 @@ FILE_BUDGETS: dict[str, int] = {
     # référencés ailleurs.  L'historique reste accessible via git log
     # + CHANGELOG.
     "picarones/reports/html/generator.py": 550,        # actuel 471
-    "picarones/evaluation/benchmark_result.py": 1058,     # actuel ~920 (audit F1 : micro-CER/WER + tri)
+    # Audit prod P1 — ranking/stratification/homogénéité extraits vers
+    # ``benchmark_result_ranking.py`` (284 LOC, sous seuil 400 : pas
+    # d'entrée).  Budget resserré 1058 → 845 (actuel ~733 + 15 %).
+    "picarones/evaluation/benchmark_result.py": 845,      # actuel ~733
     "picarones/evaluation/statistics/friedman_nemenyi.py": 560,  # actuel 486 (audit F5 : F d'Iman-Davenport + betainc natif)
     "picarones/evaluation/metrics/image_quality.py": 470,  # actuel 408 (audit F17 : branche image vide qui pose error)
     "picarones/reports/html/renderers/philological.py": 700,  # actuel 601
