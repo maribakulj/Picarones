@@ -85,6 +85,7 @@ from picarones.app.services.run_orchestrator_helpers import (
     _filesystem_payload_loader as _filesystem_payload_loader,
     _kwargs_signature as _kwargs_signature,
     _make_context_factory as _make_context_factory,
+    _persist_legacy_benchmark_json as _persist_legacy_benchmark_json,
     _resolve_entity_extractor as _resolve_entity_extractor,
 )
 
@@ -288,7 +289,7 @@ class RunOrchestrator:
         # les consommateurs historiques (rapport HTML legacy, narrative
         # engine) tant que la migration n'est pas terminée.
         if spec.output_json:
-            self._persist_legacy_benchmark_json(
+            _persist_legacy_benchmark_json(
                 run_result=result,
                 extracted_dir=extracted_dir,
                 pipeline_specs=pipeline_specs,
@@ -436,7 +437,7 @@ class RunOrchestrator:
         persisted = bench.persist(result, persist_dir)
 
         if spec.output_json:
-            self._persist_legacy_benchmark_json(
+            _persist_legacy_benchmark_json(
                 run_result=result,
                 extracted_dir=extracted_dir,
                 pipeline_specs=pipeline_specs,
@@ -833,164 +834,6 @@ class RunOrchestrator:
             manifest=manifest,
             document_results=tuple(final_doc_results),
         )
-
-    @staticmethod
-    def _persist_legacy_benchmark_json(
-        *,
-        run_result: Any,
-        extracted_dir: Path,
-        pipeline_specs: list[Any],
-        corpus_name: str,
-        output_json: Path,
-        char_exclude: str | None,
-        normalization_profile: str | None,
-        profile: str,
-        entity_extractor: str | None = None,
-        corpus_legacy: Any | None = None,
-    ) -> None:
-        """Phase B2.7 — converti ``RunResult`` → ``BenchmarkResult`` legacy
-        et persiste en JSON.
-
-        Délègue à
-        :func:`picarones.app.services._benchmark_converter.run_result_to_benchmark_result`
-        (utilisé aussi par ``run_benchmark_via_service``) pour
-        garantir l'équivalence numérique du format de sortie.
-
-        Le caller fournit :
-
-        - ``run_result`` : le ``RunResult`` produit par le ``BenchmarkService``.
-        - ``extracted_dir`` : où le corpus a été extrait — sert à
-          recharger un ``Corpus`` legacy via
-          ``load_corpus_from_directory`` **quand** ``corpus_legacy``
-          n'est pas fourni (mode ``execute()`` avec extraction réelle
-          d'un zip/dir).  Le converter attend des ``Document`` legacy
-          avec ``image_path`` et ``ground_truth``.
-        - ``pipeline_specs`` : la liste des pipelines exécutées, dans
-          l'ordre soumis à ``BenchmarkService.run``.  Chaque spec est
-          wrappée en ``_PipelineEngineProxy`` qui expose le contrat
-          minimal attendu par le converter (``name``, ``config``).
-        - ``output_json`` : chemin de sortie ; les répertoires parents
-          sont créés.
-        - ``char_exclude``, ``normalization_profile``, ``profile`` :
-          paramètres legacy propagés au converter (qui les passe à
-          ``compute_metrics`` et aux hooks document-level).
-        - ``corpus_legacy`` *(Phase B3-final hotfix mai 2026)* : Corpus
-          legacy déjà en mémoire.  Quand fourni, court-circuite le
-          ``load_corpus_from_directory(extracted_dir)`` qui échoue dans
-          le path ``execute_preset`` : en mode preset, ``extracted_dir``
-          pointe vers le ``workspace_dir`` qui ne contient que les
-          ``.gt.txt`` synthétisés par ``document_to_document_ref``, pas
-          les images sources — ``load_corpus_from_directory`` itère
-          alors sur zéro image et lève ``ValueError: Aucun document
-          valide trouvé``.  Symptôme observé en prod : le benchmark
-          web/CLI échouait silencieusement après la 1re exécution OCR
-          avec ce message trompeur.
-
-        Notes
-        -----
-        Le format produit est strictement identique à celui de
-        ``run_benchmark_via_service(output_json=...)`` (testé via le
-        snapshot d'invariance ``test_migration_invariance.py``).
-        """
-        from picarones.app.services._benchmark_converter import (
-            run_result_to_benchmark_result,
-        )
-        from picarones.app.services._benchmark_persistence import (
-            persist_benchmark_result_json,
-        )
-
-        if corpus_legacy is not None:
-            # Mode preset : le caller a déjà le ``Corpus`` en mémoire
-            # (typiquement chargé depuis ``uploads/`` côté web ou via
-            # ``load_corpus_from_directory(corpus_arg)`` côté CLI).
-            # Pas de reload — évite la divergence ``extracted_dir`` ≠
-            # vrai source dir documentée plus haut.
-            corpus = corpus_legacy
-        else:
-            from picarones.evaluation.corpus import load_corpus_from_directory
-
-            # Mode ``execute()`` classique : le corpus est physiquement
-            # disponible dans ``extracted_dir`` (zip extrait ou dossier
-            # source).  ``name`` passé explicitement pour matcher
-            # ``corpus_spec.name`` (sinon le loader retourne
-            # ``"Corpus"`` par défaut, ce qui casserait le snapshot
-            # d'invariance).
-            try:
-                corpus = load_corpus_from_directory(
-                    extracted_dir, name=corpus_name,
-                )
-            except (ValueError, FileNotFoundError) as exc:
-                # Audit B3-final mai 2026, trou #9 : si ``extracted_dir``
-                # est en fait un ``workspace_dir`` synthétisé par
-                # ``prepare_preset_args`` (= gt-only, pas d'images), le
-                # reload lève ``ValueError: Aucun document valide
-                # trouvé`` — message cryptique qui masque le vrai
-                # problème (caller direct à ``execute_preset(...,
-                # output_json=set)`` sans passer ``corpus_legacy``).
-                # On enrichit le message pour pointer le caller.
-                raise ValueError(
-                    "_persist_legacy_benchmark_json : impossible de "
-                    f"reloader le corpus depuis {extracted_dir!r}.\n"
-                    "Si vous êtes en mode preset (corpus chargé en "
-                    "mémoire avant ``execute_preset()``), passer "
-                    "``corpus_legacy=corpus`` à ``execute_preset()`` "
-                    "pour éviter ce reload — le ``workspace_dir`` "
-                    "synthétisé par ``prepare_preset_args`` ne "
-                    "contient que les .gt.txt, pas les images "
-                    f"sources.\nErreur originale : {exc}",
-                ) from exc
-
-        # Wrappe chaque PipelineSpec en proxy minimal pour le converter.
-        # Le converter ne consomme que ``.name``, ``.config`` et tolère
-        # l'absence de ``.version`` (cf. ``_safe_engine_version``).
-        engines = [_PipelineEngineProxy(spec) for spec in pipeline_specs]
-
-        # Phase B2.5 — le converter legacy passe ``normalization_profile``
-        # à ``compute_metrics`` qui attend un objet ``NormalizationProfile``,
-        # pas une string.  Résolution explicite ici pour aligner avec ce que
-        # font les call sites legacy (CLI ``_workflows.py`` via
-        # ``resolve_normalization_profile``).  ``char_exclude`` reste string —
-        # ``compute_metrics`` le traite comme un set/frozenset implicite.
-        resolved_profile: Any = None
-        if normalization_profile:
-            from picarones.formats.text.normalization import get_builtin_profile
-            try:
-                resolved_profile = get_builtin_profile(normalization_profile)
-            except KeyError:
-                # Profil inconnu — on laisse ``None`` (le converter
-                # tombera dans son default ``DEFAULT_DIPLOMATIC_PROFILE``).
-                # Cohérent avec le legacy qui logge un warning sans
-                # casser le run.
-                logger.warning(
-                    "[run_orchestrator] profil normalisation %r inconnu "
-                    "pour output_json — fallback default diplomatique.",
-                    normalization_profile,
-                )
-
-        benchmark_result = run_result_to_benchmark_result(
-            run_result,
-            corpus=corpus,
-            engines=engines,
-            char_exclude=frozenset(char_exclude) if char_exclude else None,
-            normalization_profile=resolved_profile,
-            profile=profile,
-        )
-
-        # Phase B2.4 — NER attach post-process si un entity_extractor
-        # est fourni.  Pattern identique à
-        # ``run_benchmark_via_service:261-264`` :  on résout le dotted
-        # path, on instancie la factory, on attache au BenchmarkResult.
-        if entity_extractor:
-            extractor_callable = _resolve_entity_extractor(entity_extractor)
-            if extractor_callable is not None:
-                from picarones.app.services._benchmark_ner import (
-                    attach_ner_metrics_to_benchmark,
-                )
-                attach_ner_metrics_to_benchmark(
-                    benchmark_result, corpus, extractor_callable,
-                )
-
-        persist_benchmark_result_json(benchmark_result, output_json)
 
     @staticmethod
     def _build_views(

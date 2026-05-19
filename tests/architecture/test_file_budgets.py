@@ -119,11 +119,12 @@ FILE_BUDGETS: dict[str, int] = {
     # --- Services applicatifs (couche 6).  Budgets ``current + 15 %``.
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
-    # Audit prod P1 — helpers stateless extraits vers
-    # ``run_orchestrator_helpers.py`` (289 LOC, sous le seuil 400 :
-    # pas d'entrée budget).  Budget resserré 1500 → 1230 (actuel
-    # ~1070 + 15 %) : le dégonflage est désormais verrouillé en CI.
-    "picarones/app/services/run_orchestrator.py": 1230,   # actuel ~1070
+    # Audit prod P1 — dégonflage du god-module : helpers stateless +
+    # _persist_legacy_benchmark_json extraits vers
+    # ``run_orchestrator_helpers.py``.  Budgets resserrés et verrouillés
+    # en CI (plus de dérive possible).
+    "picarones/app/services/run_orchestrator.py": 1050,   # actuel ~913
+    "picarones/app/services/run_orchestrator_helpers.py": 520,  # actuel ~448
     "picarones/adapters/ocr/tesseract.py": 560,          # actuel 479 — Phase B5 migration Option B (+ ALTO_XML expose)
     "picarones/app/schemas/run_spec.py": 620,             # actuel 530 — Phase B1 migration Option B (+90 LOC : 7 nouveaux champs + 2 validators)
     "picarones/reports/html/render.py": 700,           # actuel 615
