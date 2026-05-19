@@ -1,6 +1,6 @@
 """Modélisation des coûts — APIs cloud et temps d'inférence local.
 
-Sert uniquement à la vue Pareto coût/qualité du rapport (Sprint 5).
+Sert uniquement à la vue Pareto coût/qualité du rapport
 Les prix sont indicatifs et vieillissent vite : voir ``picarones/data/pricing.yaml``
 pour les hypothèses, dates et URLs de référence.
 
@@ -25,7 +25,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-# Sprint A14-S10 — chemin ajusté après déplacement de
+# chemin ajusté après déplacement de
 # ``picarones/measurements/pricing.py`` vers
 # ``picarones/evaluation/metrics/pricing.py``.  Le YAML reste dans
 # ``picarones/data/``, donc on remonte de 3 niveaux au lieu de 2.

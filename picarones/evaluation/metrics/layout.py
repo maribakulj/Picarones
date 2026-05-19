@@ -1,6 +1,6 @@
-"""Layout F1 par type de région — Sprint 54.
+"""Layout F1 par type de région
 
-Sprint 54 — A.II.2.2 du plan d'évolution 2026.
+A.II.2.2 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -24,7 +24,7 @@ réutilise une approche éprouvée plutôt que d'en inventer une nouvelle.
 Stratégie de découpage
 ----------------------
 Cohérente avec NER (Sprint 38), Flesch (Sprint 52), Reading order F1
-(Sprint 53) : couche de calcul pure d'abord.  L'utilisateur fournit
+couche de calcul pure d'abord.  L'utilisateur fournit
 deux listes de ``Region`` (typiquement extraites de ALTO/PAGE par un
 parser amont — le parser ALTO/PAGE standard de Picarones suivra
 dans un sprint dédié).  Pas de câblage runner ni de vue HTML ici.

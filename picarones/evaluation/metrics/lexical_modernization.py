@@ -1,7 +1,7 @@
 """Détection de la sur-normalisation lexicale par les LLM/VLM —
 Sprint 80 (A.I.7).
 
-Sprint 80 — A.I.7 du plan d'évolution 2026.
+A.I.7 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

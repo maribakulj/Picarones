@@ -1,6 +1,6 @@
 """Métriques longitudinales — Sprint 92 (A.II.9).
 
-Sprint 92 — A.II.9 du plan d'évolution 2026.
+A.II.9 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

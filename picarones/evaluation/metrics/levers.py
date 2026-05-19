@@ -1,6 +1,6 @@
 """Section « Leviers d'amélioration » — Sprint 82 (A.I.9).
 
-Sprint 82 — A.I.9 du plan d'évolution 2026.
+A.I.9 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -367,7 +367,7 @@ def detect_complementarity_observation(
     *,
     min_relative_gap: float = 0.20,
 ) -> list[Lever]:
-    """Reformule factuellement le `complementarity_gap` (Sprint 35).
+    """Reformule factuellement le `complementarity_gap`
 
     Lit `benchmark_data["inter_engine_analysis"]`. Garde-fou : ne
     déclenche que si `relative_gap` ≥ `min_relative_gap`. **Aucune

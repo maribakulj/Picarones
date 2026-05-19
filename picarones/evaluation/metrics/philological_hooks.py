@@ -1,13 +1,13 @@
 """Helpers de câblage des métriques philologiques (Sprints 55-60) au runner.
 
-Sprint 61 — câblage backend des 6 modules philologiques :
+câblage backend des 6 modules philologiques :
 
-- ``unicode_blocks``    (Sprint 55)
-- ``abbreviations``     (Sprint 56)
-- ``mufi``              (Sprint 57)
-- ``early_modern``      (Sprint 58)
-- ``modern_archives``   (Sprint 59)
-- ``roman_numerals``    (Sprint 60)
+``unicode_blocks``
+``abbreviations``
+``mufi``
+``early_modern``
+``modern_archives``
+``roman_numerals``
 
 Principe « adaptive »
 ----------------------

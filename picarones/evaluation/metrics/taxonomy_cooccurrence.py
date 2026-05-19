@@ -1,6 +1,6 @@
 """Co-occurrence des classes taxonomiques d'erreur — Sprint 75 (A.I.4 chantier 1).
 
-Sprint 75 — A.I.4 chantier 1 du plan d'évolution 2026.
+A.I.4 chantier 1 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

@@ -1,4 +1,4 @@
-"""Projecteurs PAGE XML — Sprint A14-S9.
+"""Projecteurs PAGE XML
 
 Convertit un ``PageDocument`` (ou un artefact ``PAGE_XML``) vers
 d'autres types d'artefacts.  Symétrique de ``formats.alto.projector``.

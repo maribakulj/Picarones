@@ -16,14 +16,14 @@ import zlib
 from picarones.evaluation.metric_result import MetricsResult
 from picarones.evaluation.benchmark_result import BenchmarkResult, DocumentResult, EngineReport
 from picarones.evaluation.metrics.over_normalization import detect_over_normalization
-# Sprint 5 — métriques avancées
+# métriques avancées
 from picarones.evaluation.metrics.confusion import build_confusion_matrix
 from picarones.evaluation.metrics.char_scores import compute_ligature_score, compute_diacritic_score
 from picarones.evaluation.metrics.taxonomy import classify_errors, aggregate_taxonomy
 from picarones.evaluation.metrics.structure import analyze_structure, aggregate_structure
 from picarones.evaluation.metrics.image_quality import generate_mock_quality_scores, aggregate_image_quality
 from picarones.evaluation.metrics.char_scores import aggregate_ligature_scores, aggregate_diacritic_scores
-# Sprint 10 — distribution des erreurs + hallucinations VLM
+# distribution des erreurs + hallucinations VLM
 from picarones.evaluation.metrics.line_metrics import compute_line_metrics, aggregate_line_metrics, LineMetrics
 from picarones.evaluation.metrics.hallucination import compute_hallucination_metrics, aggregate_hallucination_metrics
 
@@ -298,7 +298,7 @@ def generate_sample_benchmark(
                 ],
             },
         ),
-        # Sprint 10 — Modèle VLM fictif avec hallucinations simulées
+        # Modèle VLM fictif avec hallucinations simulées
         (
             "gpt-4o-vision (zero-shot)",
             "gpt-4o-2024-11-20",
@@ -367,21 +367,21 @@ def generate_sample_benchmark(
 
             metrics = _make_metrics(gt, hypothesis)
 
-            # Sprint 10 — distribution des erreurs par ligne
+            # distribution des erreurs par ligne
             # Pour simuler des textes multi-lignes, on découpe GT et hypothèse en lignes
             gt_multiline = "\n".join(gt[i:i+30] for i in range(0, len(gt), 30))
             hyp_multiline = "\n".join(hypothesis[i:i+30] for i in range(0, len(hypothesis), 30))
             lm = compute_line_metrics(gt_multiline, hyp_multiline)
             hm = compute_hallucination_metrics(gt, hypothesis)
 
-            # Sprint 5 — métriques avancées patrimoniales
+            # métriques avancées patrimoniales
             cm = build_confusion_matrix(gt, hypothesis)
             lig_score = compute_ligature_score(gt, hypothesis)
             diac_score = compute_diacritic_score(gt, hypothesis)
             taxonomy_result = classify_errors(gt, hypothesis)
             struct_result = analyze_structure(gt, hypothesis)
             iq_result = generate_mock_quality_scores(doc_id, seed=rng.randint(0, 999999))
-            # Sprint 7 — script_type par document (pour scatter plot coloré)
+            # script_type par document (pour scatter plot coloré)
             _script_types = ["gothique textura", "humanistique", "cursive administrative", "imprimé ancien"]
             _script_type = _script_types[i % len(_script_types)]
 
@@ -463,7 +463,7 @@ def generate_sample_benchmark(
             for dr in doc_results if dr.image_quality
         ])
 
-        # Sprint 10 — agrégation distribution des erreurs + hallucinations
+        # agrégation distribution des erreurs + hallucinations
         agg_line = aggregate_line_metrics([
             LineMetrics.from_dict(dr.line_metrics)
             for dr in doc_results if dr.line_metrics

@@ -1,4 +1,4 @@
-"""Courbes de distribution de la performance (Sprint 7).
+"""Courbes de distribution de la performance
 
 - :func:`compute_reliability_curve` — pour les X % docs les plus
   faciles, quel est le CER moyen ? Révèle si un moteur a un long

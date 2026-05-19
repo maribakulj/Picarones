@@ -1,6 +1,6 @@
 """Enregistrement des hooks de métriques natifs de Picarones.
 
-Chantier 2 du plan d'évolution post-Sprint 97.
+Chantier 2 du plan d'évolution post
 
 Ce module **migre** les 12 hooks document-level et 12 agrégateurs
 corpus-level qui étaient codés en dur dans
@@ -87,7 +87,7 @@ def calibration_from_engine_result(
 ) -> Optional[dict]:
     """Aligne les ``token_confidences`` du moteur sur la GT (bag-of-words)
     pour produire les listes parallèles ``confidences`` / ``is_correct``,
-    puis appelle ``compute_calibration_metrics`` (Sprint 39).
+    puis appelle ``compute_calibration_metrics``
 
     Convention d'alignement (proxy bag-of-words avec multiplicité, comme
     ``oracle_token_recall`` du Sprint 35) : un token de l'hypothèse est

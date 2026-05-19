@@ -1,6 +1,6 @@
 """Évolution intra-document des classes taxonomiques — Sprint 76 (A.I.4 chantier 2).
 
-Sprint 76 — A.I.4 chantier 2 du plan d'évolution 2026.
+A.I.4 chantier 2 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

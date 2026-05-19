@@ -1,6 +1,6 @@
-"""Câblage runner de la recherchabilité (Sprint 86).
+"""Câblage runner de la recherchabilité
 
-Sprint 86 — A.II.5a (vue HTML + câblage runner).
+A.II.5a (vue HTML + câblage runner).
 
 Le module ``picarones/core/searchability.py`` (Sprint 84) a livré
 la couche de calcul.  Ce helper prépare la donnée pour le runner

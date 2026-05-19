@@ -1,4 +1,4 @@
-"""Projecteurs ALTO — Sprint A14-S9.
+"""Projecteurs ALTO
 
 Convertit un ``AltoDocument`` (ou un artefact ``ALTO_XML``) vers
 d'autres types d'artefacts, en documentant explicitement les
@@ -119,7 +119,7 @@ def _extract_line_text(
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Projecteur conforme au protocole ``Projector`` (Sprint S5)
+# Projecteur conforme au protocole ``Projector``
 # ──────────────────────────────────────────────────────────────────────
 
 

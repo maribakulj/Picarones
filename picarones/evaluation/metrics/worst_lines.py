@@ -1,6 +1,6 @@
-"""Extraction transversale des « Worst lines » du corpus — Sprint 72.
+"""Extraction transversale des « Worst lines » du corpus
 
-Sprint 72 — A.I.1 chantier 1 du plan d'évolution 2026.
+A.I.1 chantier 1 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

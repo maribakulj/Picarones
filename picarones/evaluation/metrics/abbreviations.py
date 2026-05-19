@@ -1,6 +1,6 @@
-"""Score d'expansion d'abréviations médiévales — Sprint 56.
+"""Score d'expansion d'abréviations médiévales
 
-Sprint 56 — A.II.3.2 du plan d'évolution 2026 (axe philologique).
+A.II.3.2 du plan d'évolution 2026 (axe philologique).
 
 Pourquoi ce module
 ------------------
@@ -309,7 +309,7 @@ def abbreviation_expansion_score(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

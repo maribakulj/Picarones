@@ -307,7 +307,7 @@ def pairwise_disagreement_rate(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Agrégation au niveau benchmark (Sprint 36)
+# Agrégation au niveau benchmark
 # ──────────────────────────────────────────────────────────────────────────
 
 

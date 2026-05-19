@@ -1,6 +1,6 @@
 """Comparaison à la baseline historique — Sprint 73 (A.I.3).
 
-Sprint 73 — chantier 2 d'A.I.3 du plan d'évolution 2026.
+chantier 2 d'A.I.3 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -27,7 +27,7 @@ Un dict par moteur :
         "off_baseline": True,
     }
 
-Le détecteur narratif ``engine_off_baseline`` (Sprint 73)
+Le détecteur narratif ``engine_off_baseline``
 consomme cette structure pour émettre des Facts.
 
 Garde-fous

@@ -1,6 +1,6 @@
 """Métrique d'absorption d'erreur — Sprint 94 (B.3).
 
-Sprint 94 — B.3 du plan d'évolution 2026.
+B.3 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

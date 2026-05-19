@@ -1,6 +1,6 @@
 """Throughput effectif (Sprint 91 — A.II.6).
 
-Sprint 91 — A.II.6 du plan d'évolution 2026.
+A.II.6 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

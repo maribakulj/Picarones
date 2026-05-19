@@ -1,4 +1,4 @@
-"""Intervalle de confiance par bootstrap (Sprint 7).
+"""Intervalle de confiance par bootstrap
 
 Méthode de rééchantillonnage non-paramétrique. Pas d'hypothèse de
 distribution normale — adapté aux distributions asymétriques de CER

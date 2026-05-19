@@ -1,4 +1,4 @@
-"""``ProjectorRegistry`` — Sprint A14-S13.
+"""``ProjectorRegistry``
 
 Container instancié explicitement qui mappe ``projector_name``
 vers une instance ``Projector``.  Symétrique du ``MetricRegistry``

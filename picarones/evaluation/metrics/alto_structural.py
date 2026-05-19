@@ -1,4 +1,4 @@
-"""Métriques structurelles ALTO — Sprint A14-S15.
+"""Métriques structurelles ALTO
 
 Métriques typées ``(ALTO_XML, ALTO_XML)`` qui mesurent la fidélité
 **documentaire** d'un ALTO produit par un pipeline (par exemple un

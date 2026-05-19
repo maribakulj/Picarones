@@ -1,6 +1,6 @@
 """Calibration des moteurs : ECE, MCE, reliability diagram.
 
-Sprint 39 — A.II.1.b du plan d'évolution 2026 : couche de calcul pure.
+A.II.1.b du plan d'évolution 2026 : couche de calcul pure.
 
 Pourquoi ce module
 ------------------

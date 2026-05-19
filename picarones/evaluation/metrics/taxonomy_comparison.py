@@ -1,6 +1,6 @@
 """Taxonomie comparative entre deux moteurs — Sprint 77 (A.I.4 chantier 3).
 
-Sprint 77 — A.I.4 chantier 3 du plan d'évolution 2026 (clôture A.I.4).
+A.I.4 chantier 3 du plan d'évolution 2026 (clôture A.I.4).
 
 Pourquoi ce module
 ------------------

@@ -1,4 +1,4 @@
-"""Test de Wilcoxon signé-rangé + tests pairwise (Sprint 7).
+"""Test de Wilcoxon signé-rangé + tests pairwise
 
 Test non-paramétrique pour comparer 2 séries appariées (mêmes
 documents, deux moteurs différents). Utilise scipy si disponible

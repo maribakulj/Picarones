@@ -291,7 +291,7 @@ class Corpus:
             "gt_length_max": max(gt_lengths),
             "has_ocr_text": self.has_ocr_text,
             "ocr_text_count": self.ocr_text_count,
-            # Sprint 32 — exposition de la couverture multi-niveaux
+            # exposition de la couverture multi-niveaux
             "gt_level_coverage": {lvl.value: n for lvl, n in self.gt_level_coverage().items()},
         }
         return s

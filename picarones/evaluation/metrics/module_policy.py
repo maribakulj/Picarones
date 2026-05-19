@@ -1,6 +1,6 @@
 """Politique de modules contribués — Sprint 97 (B.6).
 
-Sprint 97 — B.6 du plan d'évolution 2026.
+B.6 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -75,7 +75,7 @@ class ModuleManifest:
         Description courte (≤ 1 phrase).
     input_types:
         Liste des types d'entrée (chaînes).  Doit correspondre
-        à ``module.input_types`` (Sprint 33).
+        à ``module.input_types``
     output_types:
         Liste des types de sortie.  Doit correspondre à
         ``module.output_types``.
@@ -293,7 +293,7 @@ def audit_module(
     # Comparaison case-insensitive : on accepte "TEXT" ou "text"
     # côté manifest, le contrat sémantique est le même.
     #
-    # Phase 4-bis : on normalise aussi les aliases legacy
+    # on normalise aussi les aliases legacy
     # (``"text"`` ↔ ``"raw_text"``, etc.) pour qu'un module qui
     # déclare ``ArtifactType.TEXT`` (valeur canonique
     # ``"raw_text"``) soit accepté contre un manifest qui

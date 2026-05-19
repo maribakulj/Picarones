@@ -1,4 +1,4 @@
-"""Rendu SVG du Critical Difference Diagram (Sprint 17).
+"""Rendu SVG du Critical Difference Diagram
 
 Visualisation canonique du résultat Friedman-Nemenyi (Demšar 2006) :
 axe horizontal des rangs moyens + barres horizontales reliant les

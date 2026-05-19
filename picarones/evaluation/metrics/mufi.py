@@ -1,6 +1,6 @@
-"""Couverture MUFI — Sprint 57.
+"""Couverture MUFI
 
-Sprint 57 — A.II.3.3 du plan d'évolution 2026 (clôture axe A.II.3
+A.II.3.3 du plan d'évolution 2026 (clôture axe A.II.3
 philologique).
 
 Pourquoi ce module
@@ -246,7 +246,7 @@ def mufi_coverage(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

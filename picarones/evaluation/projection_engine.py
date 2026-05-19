@@ -1,4 +1,4 @@
-"""``ProjectionEngine`` — Sprint A14-S27.
+"""``ProjectionEngine``
 
 Le S13 fusionnait dans ``DefaultEvaluationViewExecutor`` deux
 responsabilités distinctes : transformer un artefact d'un type vers

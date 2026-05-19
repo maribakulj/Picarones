@@ -1,6 +1,6 @@
-"""Métriques de lisibilité (Flesch) — Sprint 52.
+"""Métriques de lisibilité (Flesch)
 
-Sprint 52 — A.II.2.3 du plan d'évolution 2026 : couche de calcul pure
+A.II.2.3 du plan d'évolution 2026 : couche de calcul pure
 de la métrique Flesch, indépendante de tout alignement OCR/GT.
 
 Pourquoi ce module
@@ -208,7 +208,7 @@ def flesch_delta(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

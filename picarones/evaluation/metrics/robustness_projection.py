@@ -1,7 +1,7 @@
 """Projection de robustesse synthétique sur le corpus réel —
 Sprint 81 (A.I.8).
 
-Sprint 81 — A.I.8 du plan d'évolution 2026.
+A.I.8 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

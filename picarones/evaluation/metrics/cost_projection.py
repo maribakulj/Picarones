@@ -1,6 +1,6 @@
 """Projection de coût en volume cible — Sprint 79 (A.I.6).
 
-Sprint 79 — A.I.6 du plan d'évolution 2026.
+A.I.6 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

@@ -1,6 +1,6 @@
 """Coût marginal par erreur évitée — Sprint 91 (A.II.6 chantier 2).
 
-Sprint 91 — A.II.6 chantier 2 du plan d'évolution 2026.
+A.II.6 chantier 2 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
