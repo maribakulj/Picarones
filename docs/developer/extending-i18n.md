@@ -41,9 +41,9 @@ automatiquement sur `fr` si une langue manque.
 
 ## Tests à mettre à jour
 
-- `test_sprint17_jinja2_refactor.py::TestI18nFromJSON::test_fr_and_en_have_same_keys`
+- `test_jinja2_refactor.py::TestI18nFromJSON::test_fr_and_en_have_same_keys`
   vérifie la symétrie. Pour 3 langues, étendre.
-- `test_sprint21_glossary_customize.py::TestGlossaryCompleteness::test_fr_and_en_have_same_keys`
+- `test_glossary_customize.py::TestGlossaryCompleteness::test_fr_and_en_have_same_keys`
   vérifie la symétrie du glossaire.
 
 ## Format YAML pour les templates narratifs

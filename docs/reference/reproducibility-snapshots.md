@@ -208,7 +208,7 @@ reproductible (cf. Stodden et al., *Computational reproducibility*).
 
 ## Tests
 
-`tests/report/test_sprint27_reproducibility_snapshots.py` (Sprint 27)
+`tests/report/test_reproducibility_snapshots.py` (Sprint 27)
 valide que `snapshot_all()` est :
 
 - déterministe (même input → même bytes en sortie),

@@ -679,9 +679,9 @@ deviennent des shims minimaux (< 20 lignes) avec
   ``"specialization"`` : son shim legacy n'a plus de consommateur
   production (le renderer est désormais dans ``reports/``).
 - 3 tests (``test_extra_metrics.py``,
-  ``test_sprint86_aii5_html.py``,
-  ``test_sprint87_readability_html.py``,
-  ``test_sprint89_specialization.py``) mis à jour pour pointer
+  ``test_aii5_html.py``,
+  ``test_readability_html.py``,
+  ``test_specialization.py``) mis à jour pour pointer
   vers les nouveaux chemins canoniques.
 - ``picarones/report/generator.py`` mis à jour pour importer les
   5 renderers depuis ``reports/html/renderers/``.
@@ -884,7 +884,7 @@ Total : ~776 lignes relocalisées.
 
 **Adaptations transverses** :
 
-- ``test_sprint82_levers.py`` : monkeypatch sur `_FORMATTERS`
+- ``test_levers.py`` : monkeypatch sur `_FORMATTERS`
   pointe désormais vers le module canonique
   ``picarones.reports.html.renderers.levers``.
 - ``test_file_budgets.py`` : entrée

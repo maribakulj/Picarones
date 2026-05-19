@@ -50,7 +50,7 @@ fait dans une fixture partagée.
 | B1 | `tests/golden/test_s5_benchmark_result_json_stable.py` | Round-trip JSON stable. Inchangé tant que `BenchmarkResult.from_json_object`/`to_dict` restent. |
 | B2 | `tests/reports/test_report.py` | Rendu HTML. Inchangé tant que `ReportGenerator(result)` accepte `BenchmarkResult`. |
 | B3 | `tests/reports/test_extra_metrics.py` | Métriques additionnelles attachées au rapport. |
-| B4 | `tests/reports/test_sprint72_worst_lines.py` | Worst-N lines (consomme `BenchmarkResult` non-compacté). |
+| B4 | `tests/reports/test_worst_lines.py` | Worst-N lines (consomme `BenchmarkResult` non-compacté). |
 | B5 | `tests/evaluation/metrics/test_results.py` | API `MetricsResult` / `aggregate_metrics`. |
 | B6 | `tests/evaluation/metrics/test_ensemble_narrative.py` | Narrative engine. Lit `benchmark_data` dict. |
 | B7 | `tests/evaluation/metrics/test_median_default.py` | Médiane/Pareto. |

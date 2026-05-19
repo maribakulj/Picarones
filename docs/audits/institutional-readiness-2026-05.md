@@ -590,7 +590,7 @@ ouvrés pour un triage initial des issues.
 ### M-12 — Reproductibilité des snapshots sous-documentée
 
 **État** : `picarones/report/snapshot.py` (266 lignes) et
-`tests/report/test_sprint27_reproducibility_snapshots.py` existent.
+`tests/report/test_reproducibility_snapshots.py` existent.
 Mais ni le `README` ni `docs/user/reading-a-report.md` n'expliquent :
 - ce que contient un snapshot (versions OCR, modèles LLM, hash du code,
   hash du corpus, seeds…)

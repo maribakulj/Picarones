@@ -55,7 +55,7 @@ The `?` icon is rendered automatically when a `<th>` carries the
 
 ## Tests
 
-`tests/report/test_sprint21_glossary_customize.py` validates:
+`tests/report/test_glossary_customize.py` validates:
 
 - Both languages have the same exact set of keys.
 - Every entry has the 4 required fields (definition, measures,
