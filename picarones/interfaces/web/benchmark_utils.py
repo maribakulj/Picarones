@@ -345,6 +345,51 @@ def _engine_from_competitor(comp: PipelineConfig) -> Any:
     )
 
 
+def _confine_web_output_paths(
+    output_dir: Path,
+    default_output_json: str,
+    req_output_json: str,
+    req_partial_dir: str,
+) -> tuple[str, str | None]:
+    """Audit prod P0.3 — confine ``output_json`` / ``partial_dir``
+    client SOUS ``output_dir`` (déjà validé par le router).
+
+    Le validateur Pydantic ne bloque que ``../`` et l'absolu : un
+    relatif (``"result.json"``) s'écrirait sinon CWD-relative, hors
+    du périmètre validé.  On dérive tout sous ``output_dir`` via
+    ``safe_report_name`` (composant de chemin sûr — strip séparateurs
+    / contrôle / dots).  Une valeur qui s'annule au nettoyage ⇒ repli
+    sur le défaut confiné (champ optionnel, ne tue pas le job).
+
+    Retourne ``(output_json, partial_dir | None)``.  Helper pur,
+    testable isolément — la logique ne vit pas enfouie dans le worker.
+    """
+    from picarones.app.services.path_security import PathValidationError
+    from picarones.interfaces.web.security import safe_report_name
+
+    output_json = default_output_json
+    if req_output_json:
+        try:
+            stem = safe_report_name(Path(req_output_json).stem)
+            output_json = str(output_dir / f"{stem}.json")
+        except PathValidationError:
+            logger.warning(
+                "[benchmark] output_json %r invalide après nettoyage "
+                "— défaut confiné utilisé.", req_output_json,
+            )
+    partial_dir: str | None = None
+    if req_partial_dir:
+        try:
+            seg = safe_report_name(Path(req_partial_dir).name)
+            partial_dir = str(output_dir / "partials" / seg)
+        except PathValidationError:
+            logger.warning(
+                "[benchmark] partial_dir %r invalide après nettoyage "
+                "— resume désactivé pour ce run.", req_partial_dir,
+            )
+    return output_json, partial_dir
+
+
 def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None:
     """Exécute un benchmark à partir d'une liste de ``PipelineConfig``."""
     job.set_status("running")
@@ -413,12 +458,22 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
         # par le router (validated_path).  ``report_name`` est sanitizé
         # ici pour défense en profondeur (refuse ``../``, séparateurs,
         # caractères de contrôle) avant concaténation à output_dir.
+        # Sprint A14-S1 — A.I.0 P0 : ``output_dir`` a déjà été validé
+        # par le router (validated_path).  ``report_name`` sanitizé
+        # ici (défense en profondeur) avant concaténation à output_dir.
         from picarones.interfaces.web.security import safe_report_name
         output_dir = Path(req.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         raw_name = req.report_name or f"rapport_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         report_name = safe_report_name(raw_name)
-        output_json = str(output_dir / f"{report_name}.json")
+        # P0.3 — output_json / partial_dir client confinés sous
+        # output_dir (helper pur testable, cf. _confine_web_output_paths).
+        output_json, safe_partial_dir = _confine_web_output_paths(
+            output_dir,
+            str(output_dir / f"{report_name}.json"),
+            req.output_json or "",
+            req.partial_dir or "",
+        )
         output_html = str(output_dir / f"{report_name}.html")
 
         n_engines = len(engines)
@@ -465,9 +520,9 @@ def run_benchmark_thread_v2(job: BenchmarkJob, req: BenchmarkRunRequest) -> None
                 char_exclude=char_excl,
                 normalization_profile=req.normalization_profile,
                 profile=req.profile,
-                partial_dir=req.partial_dir or None,
+                partial_dir=safe_partial_dir,
                 entity_extractor=req.entity_extractor or None,
-                output_json=req.output_json or output_json,
+                output_json=output_json,
             )
             _orch_result = RunOrchestrator(_run_dir).execute_preset(
                 spec=_preset.spec,

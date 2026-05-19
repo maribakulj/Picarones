@@ -275,3 +275,51 @@ class TestPathTraversalSecurity:
         assert req.partial_dir == ""
         assert req.output_json == ""
         assert req.entity_extractor == ""
+
+
+class TestP03OutputPathConfinement:
+    """Audit prod P0.3 — ``output_json`` / ``partial_dir`` client
+    confinés SOUS ``output_dir`` validé.  Le validateur Pydantic ne
+    bloque que ``../``/absolu ; un relatif s'écrirait CWD-relative
+    hors périmètre sans ce confinement."""
+
+    def _confine(self, *a):
+        from picarones.interfaces.web.benchmark_utils import (
+            _confine_web_output_paths,
+        )
+        return _confine_web_output_paths(*a)
+
+    def test_empty_returns_default_no_partial(self) -> None:
+        from pathlib import Path
+
+        oj, pd = self._confine(
+            Path("/srv/out"), "/srv/out/rap.json", "", "",
+        )
+        assert oj == "/srv/out/rap.json"
+        assert pd is None
+
+    def test_relative_value_confined_under_output_dir(self) -> None:
+        from pathlib import Path
+
+        oj, pd = self._confine(
+            Path("/srv/out"), "/srv/out/rap.json",
+            "result.json", "checkpoints",
+        )
+        # Pas CWD-relative : forcé sous output_dir.
+        assert oj == "/srv/out/result.json"
+        assert pd == "/srv/out/partials/checkpoints"
+
+    def test_path_segments_stripped_to_basename(self) -> None:
+        """Même si Pydantic laisse passer un relatif multi-segments,
+        ``safe_report_name`` ne garde que le composant final → tout
+        reste strictement sous ``output_dir``."""
+        from pathlib import Path
+
+        oj, pd = self._confine(
+            Path("/srv/out"), "/srv/out/rap.json",
+            "sub/dir/evil.json", "a/b/c",
+        )
+        assert oj == "/srv/out/evil.json"
+        assert pd == "/srv/out/partials/c"
+        assert oj.startswith("/srv/out/")
+        assert pd.startswith("/srv/out/")
