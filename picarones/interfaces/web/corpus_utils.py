@@ -26,6 +26,19 @@ MAX_ZIP_TOTAL_SIZE = 500 * 1024 * 1024
 MAX_ZIP_FILES = 2000
 """Nombre maximum de fichiers extraits."""
 
+MAX_ZIP_MEMBER_SIZE = 100 * 1024 * 1024
+"""Taille décompressée max d'UN membre (aligné sur l'upload image)."""
+
+MAX_ZIP_COMPRESSION_RATIO = 200
+"""Ratio décompressé/compressé max par membre.  Une image ou un
+texte patrimonial légitime reste sous ~200:1 ; au-delà = zip bomb
+(les bombes classiques sont à 1000:1+).  Garde-fou complémentaire
+du plafond absolu : attrape une bombe AVANT de la décompresser."""
+
+_ZIP_CHUNK_SIZE = 1024 * 1024
+"""Bloc de lecture pour l'extraction ZIP en flux (jamais le membre
+entier en RAM)."""
+
 
 # ──────────────────────────────────────────────────────────────────────────
 # Détection ALTO / PAGE depuis bytes XML
@@ -240,7 +253,7 @@ def flatten_zip_to_dir(
     """
     # Import retardé : ``security`` dépend de ``state`` qui dépend de
     # ``corpus_utils`` → circulaire si import toplevel.
-    from picarones.interfaces.web.security import validate_image_safe
+    from picarones.interfaces.web.security import validate_image_file_safe
 
     dest.mkdir(parents=True, exist_ok=True)
     total_size = 0
@@ -263,28 +276,32 @@ def flatten_zip_to_dir(
         ):
             continue
 
-        total_size += member.file_size
-        if total_size > MAX_ZIP_TOTAL_SIZE:
-            raise ValueError(
-                f"ZIP trop volumineux : taille décompressée > "
-                f"{MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
-            )
         file_count += 1
         if file_count > MAX_ZIP_FILES:
             raise ValueError(f"ZIP contient trop de fichiers (> {MAX_ZIP_FILES})")
 
-        data = zf.read(member.filename)
+        # Garde-fous AVANT décompression (header ZIP).  Audit P0.5 :
+        # rejet précoce d'un membre trop gros ou au ratio de bombe,
+        # sans avoir à le décompresser.
+        declared = member.file_size
+        if declared > MAX_ZIP_MEMBER_SIZE:
+            raise ValueError(
+                f"Membre ZIP '{name}' trop volumineux : "
+                f"{declared // (1024*1024)} Mo décompressé > "
+                f"{MAX_ZIP_MEMBER_SIZE // (1024*1024)} Mo"
+            )
+        comp = member.compress_size
+        if comp > 0 and declared / comp > MAX_ZIP_COMPRESSION_RATIO:
+            raise ValueError(
+                f"Membre ZIP '{name}' : ratio de compression "
+                f"{declared // max(comp, 1)}:1 > "
+                f"{MAX_ZIP_COMPRESSION_RATIO}:1 — bombe de "
+                "décompression suspectée."
+            )
 
-        # Validation image après extraction (les images directes sont
-        # déjà validées par ``api_corpus_upload``, mais celles extraites
-        # d'un ZIP ne passaient pas par cette vérification — vecteur de
-        # zip bomb passant les 500 Mo brut).
-        if is_image and validate_images:
-            validate_image_safe(data, filename=name)
-
-        # Détection de collision : ``a/img.png`` et ``b/img.png`` ne
-        # doivent pas s'écraser silencieusement (vecteur de
-        # mauvaise association image/GT après aplatissement).
+        # Détection de collision AVANT écriture : ``a/img.png`` et
+        # ``b/img.png`` ne doivent pas s'écraser silencieusement
+        # (vecteur de mauvaise association image/GT après aplatissement).
         if name in written_names:
             new_name = _resolve_collision(name, p, written_names)
             logger.warning(
@@ -295,7 +312,42 @@ def flatten_zip_to_dir(
             name = new_name
         written_names.add(name)
 
-        (dest / name).write_bytes(data)
+        # Extraction EN FLUX (audit P0.5) : jamais le membre entier en
+        # RAM.  On compte les octets RÉELLEMENT décompressés (un header
+        # ZIP menteur ne contourne donc pas les plafonds).
+        dest_path = dest / name
+        written = 0
+        try:
+            with zf.open(member) as src, dest_path.open("wb") as dst:
+                while True:
+                    chunk = src.read(_ZIP_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    total_size += len(chunk)
+                    if written > MAX_ZIP_MEMBER_SIZE:
+                        raise ValueError(
+                            f"Membre ZIP '{name}' dépasse "
+                            f"{MAX_ZIP_MEMBER_SIZE // (1024*1024)} Mo "
+                            "à la décompression (header menteur ?)."
+                        )
+                    if total_size > MAX_ZIP_TOTAL_SIZE:
+                        raise ValueError(
+                            f"ZIP trop volumineux : taille décompressée > "
+                            f"{MAX_ZIP_TOTAL_SIZE // (1024*1024)} Mo"
+                        )
+                    dst.write(chunk)
+            # Validation image depuis le FICHIER (pas de read_bytes
+            # intégral) — les images extraites d'un ZIP doivent passer
+            # la même vérification que les uploads directs.
+            if is_image and validate_images:
+                validate_image_file_safe(dest_path, filename=name)
+        except Exception:
+            # Nettoyage du fichier partiel/invalide ; le caller purge
+            # de toute façon corpus_dir, mais on ne laisse pas de
+            # résidu si flatten est utilisé hors api_corpus_upload.
+            dest_path.unlink(missing_ok=True)
+            raise
 
 
 __all__ = [
