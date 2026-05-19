@@ -327,3 +327,16 @@ class TestP03OutputPathConfinement:
         assert pd == str(out / "partials" / "c")
         assert oj.startswith(str(out))
         assert pd.startswith(str(out))
+
+    def test_value_annihilated_falls_back_to_safe_default(self) -> None:
+        """Couvre les branches ``except PathValidationError`` :
+        un nom qui s'annule au nettoyage (``"..."``) ⇒ repli sur le
+        défaut confiné pour output_json, resume désactivé (None) pour
+        partial_dir — le job n'est pas tué (champs optionnels)."""
+        from pathlib import Path
+
+        out = Path("/srv/out")
+        default = str(out / "rap.json")
+        oj, pd = self._confine(out, default, "...", "...")
+        assert oj == default          # défaut confiné conservé
+        assert pd is None             # resume désactivé proprement

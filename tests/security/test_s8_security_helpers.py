@@ -434,3 +434,26 @@ class TestDeploymentCoherence:
         monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
         monkeypatch.setenv("PICARONES_SECURE_COOKIES", "1")
         check_deployment_coherence()  # cohérent → pas de raise
+
+
+class TestUploadHelpersEdgeBranches:
+    """Couvre les branches défensives P0.5 de ``security_uploads``."""
+
+    def test_max_total_upload_invalid_env_returns_default(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import get_max_total_upload_mb
+
+        monkeypatch.setenv("PICARONES_MAX_TOTAL_UPLOAD_MB", "pas-un-int")
+        assert get_max_total_upload_mb() == 500
+
+    def test_validate_image_file_safe_rejects_oversized(
+        self, monkeypatch, tmp_path,
+    ) -> None:
+        from picarones.interfaces.web.security import validate_image_file_safe
+
+        monkeypatch.setenv("PICARONES_MAX_UPLOAD_MB", "1")
+        big = tmp_path / "big.png"
+        big.write_bytes(b"\x00" * (2 * 1024 * 1024))  # 2 Mo > 1 Mo
+        with pytest.raises(ValueError, match="PICARONES_MAX_UPLOAD_MB"):
+            validate_image_file_safe(big)
