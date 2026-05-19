@@ -301,13 +301,16 @@ class TestP03OutputPathConfinement:
     def test_relative_value_confined_under_output_dir(self) -> None:
         from pathlib import Path
 
+        out = Path("/srv/out")
         oj, pd = self._confine(
-            Path("/srv/out"), "/srv/out/rap.json",
+            out, str(out / "rap.json"),
             "result.json", "checkpoints",
         )
-        # Pas CWD-relative : forcé sous output_dir.
-        assert oj == "/srv/out/result.json"
-        assert pd == "/srv/out/partials/checkpoints"
+        # Pas CWD-relative : forcé sous output_dir.  Attendu construit
+        # via Path pour rester OS-agnostique (Windows ⇒ ``\`` ; le
+        # serveur écrit sur SON filesystem, la chaîne est correcte).
+        assert oj == str(out / "result.json")
+        assert pd == str(out / "partials" / "checkpoints")
 
     def test_path_segments_stripped_to_basename(self) -> None:
         """Même si Pydantic laisse passer un relatif multi-segments,
@@ -315,11 +318,12 @@ class TestP03OutputPathConfinement:
         reste strictement sous ``output_dir``."""
         from pathlib import Path
 
+        out = Path("/srv/out")
         oj, pd = self._confine(
-            Path("/srv/out"), "/srv/out/rap.json",
+            out, str(out / "rap.json"),
             "sub/dir/evil.json", "a/b/c",
         )
-        assert oj == "/srv/out/evil.json"
-        assert pd == "/srv/out/partials/c"
-        assert oj.startswith("/srv/out/")
-        assert pd.startswith("/srv/out/")
+        assert oj == str(out / "evil.json")
+        assert pd == str(out / "partials" / "c")
+        assert oj.startswith(str(out))
+        assert pd.startswith(str(out))
