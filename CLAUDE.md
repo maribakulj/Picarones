@@ -141,7 +141,7 @@ les deps Picarones et produit ~160 collection errors trompeurs.
 | Test HuggingFace `test_search_language_filter` | ✅ Résolu | Assertion corrigée |
 
 En cas de régression sur un de ces bugs, chercher les fichiers de test
-correspondants (`test_sprint15_llm_pipeline_bugs.py`, `test_sprint8_escriptorium_gallica.py`,
+correspondants (`test_llm_pipeline_bugs.py`, `test_escriptorium_gallica.py`,
 `test_sprint6_web_interface.py`) avant de ré-ouvrir une enquête.
 
 ---
@@ -299,7 +299,7 @@ d'entrée ; les **nombres** sont soit verbatim, soit une **fonction
 déterministe et auditable** de valeurs d'entrée (écart relatif,
 accélération, largeur d'IC…).  L'ancienne formulation « chaque nombre
 provient du JSON » était trop forte (dérivations) et le test
-historique `test_sprint19_narrative_engine.py` était *circulaire* (il
+historique `test_narrative_engine.py` était *circulaire* (il
 validait les nombres rendus contre le `payload` du `Fact`, lui-même
 rempli par le détecteur).  La traçabilité **à la source** est désormais
 vérifiée par `tests/evaluation/test_scientific_audit_2026.py`

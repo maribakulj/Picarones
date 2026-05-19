@@ -56,7 +56,7 @@ fait dans une fixture partagée.
 | B7 | `tests/evaluation/metrics/test_median_default.py` | Médiane/Pareto. |
 | B8 | `tests/evaluation/metrics/test_stratification.py` | Stratification du corpus. |
 | B9 | `tests/evaluation/test_robust_filtering.py` | Filtre robustesse. |
-| B10 | `tests/adapters/corpus/test_sprint8_escriptorium_gallica.py` | Importer eScriptorium / Gallica. |
+| B10 | `tests/adapters/corpus/test_escriptorium_gallica.py` | Importer eScriptorium / Gallica. |
 | B11 | `tests/integration/test_importer_fallback_wiring.py` | Fallback importer. Test d'intégration. |
 | B12 | `tests/integration/test_s5_disk_full_simulation.py` | Disque plein. |
 | B13 | `tests/security/test_phase1_post_rewrite_wiring.py` | Sécurité post-rewrite. |
