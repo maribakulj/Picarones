@@ -30,14 +30,10 @@ mainteneur à patcher du code lors du passage à la prod.
 
 from __future__ import annotations
 
-import io
 import logging
 import os
-import threading
-import time
-from collections import deque
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -234,284 +230,36 @@ def compute_workspace_roots(uploads_dir: Path) -> list[Path]:
 
 
 # ---------------------------------------------------------------------------
-# Validation des images uploadées
+# Clusters extraits (audit prod P1.2 — dégonflage du god-module).
+# Réimportés ici : ``security`` reste le point d'import public
+# (``from picarones.interfaces.web.security import validate_image_safe``
+# etc. reste valide ; ``security._csrf_secret_runtime`` aussi car le
+# bloc CSRF n'a pas bougé).  Les ``as`` signalent un ré-export
+# explicite (ruff F401 OK).
 # ---------------------------------------------------------------------------
 
-def get_max_upload_mb() -> int:
-    raw = os.environ.get("PICARONES_MAX_UPLOAD_MB", "100")
-    try:
-        return max(1, int(raw))
-    except ValueError:
-        logger.warning(
-            "[security] PICARONES_MAX_UPLOAD_MB invalide (%r) — défaut 100 Mo.", raw
-        )
-        return 100
-
-
-#: Taille de bloc pour le streaming multipart → disque.  Le fichier
-#: n'est jamais matérialisé en un seul ``bytes`` en RAM : on lit par
-#: blocs bornés et on écrit au fil de l'eau.
-UPLOAD_CHUNK_SIZE = 1024 * 1024
-
-
-def get_max_total_upload_mb() -> int:
-    """Plafond dur cumulé d'une requête d'upload (tous fichiers).
-
-    Sans plafond total, N fichiers chacun sous la limite unitaire
-    saturent quand même le disque/la RAM.  Défaut 500 Mo — aligné sur
-    ``MAX_ZIP_TOTAL_SIZE`` (taille décompressée max d'un corpus ZIP).
-    """
-    raw = os.environ.get("PICARONES_MAX_TOTAL_UPLOAD_MB", "500")
-    try:
-        return max(1, int(raw))
-    except ValueError:
-        logger.warning(
-            "[security] PICARONES_MAX_TOTAL_UPLOAD_MB invalide (%r) — "
-            "défaut 500 Mo.", raw,
-        )
-        return 500
-
-
-def _verify_image_with_pillow(source: Any, filename: str) -> None:
-    """Cœur partagé : ``Image.open(source).verify()`` + mapping erreurs.
-
-    ``source`` peut être un ``io.BytesIO`` (upload bufferisé) OU un
-    ``Path`` (Pillow lit alors le fichier en flux, sans charger les
-    octets en RAM — c'est tout l'intérêt de la variante fichier).
-    Factorisé pour ne pas dupliquer le mapping d'exceptions entre
-    :func:`validate_image_safe` et :func:`validate_image_file_safe`.
-    """
-    try:
-        import importlib
-        Image = importlib.import_module("PIL.Image")
-        UnidentifiedImageError = importlib.import_module("PIL").UnidentifiedImageError
-    except ImportError as exc:  # pragma: no cover — Pillow est core
-        logger.warning("[security] Pillow indisponible — validation image sautée : %s", exc)
-        return
-
-    try:
-        with Image.open(source) as im:
-            im.verify()
-    except UnidentifiedImageError as exc:
-        raise ValueError(
-            f"Image '{filename}' refusée : format non reconnu par Pillow ({exc})."
-        ) from exc
-    except Image.DecompressionBombError as exc:
-        raise ValueError(
-            f"Image '{filename}' refusée : bombe de décompression détectée ({exc})."
-        ) from exc
-    except Exception as exc:
-        # Pillow lève un panel d'exceptions hétérogènes (SyntaxError sur les
-        # GIF malformés, OSError sur les TIFF corrompus, ValueError divers).
-        raise ValueError(
-            f"Image '{filename}' refusée : erreur de décodage Pillow ({type(exc).__name__}: {exc})."
-        ) from exc
-
-
-def validate_image_safe(data: bytes, filename: str = "<upload>") -> None:
-    """Vérifie qu'un buffer décode comme une image valide sans bombe.
-
-    Levée de ``ValueError`` (à mapper en HTTP 415/422) si :
-      - taille > limite ;
-      - Pillow rejette l'image (UnidentifiedImageError, DecompressionBombError) ;
-      - le format ouvert ne correspond pas à ce que prétend l'extension.
-
-    On ne bloque pas l'absence de Pillow (il est dépendance core), mais on
-    log si l'import échoue pour aider au diagnostic.
-    """
-    max_mb = get_max_upload_mb()
-    if len(data) > max_mb * 1024 * 1024:
-        raise ValueError(
-            f"Image '{filename}' refusée : taille {len(data) / (1024 * 1024):.1f} Mo > "
-            f"limite {max_mb} Mo (PICARONES_MAX_UPLOAD_MB)."
-        )
-    _verify_image_with_pillow(io.BytesIO(data), filename)
-
-
-def validate_image_file_safe(path: Path, filename: str | None = None) -> None:
-    """Variante *fichier* de :func:`validate_image_safe` (audit P0.5).
-
-    Ne lit PAS le fichier entier en RAM : la taille est lue via
-    ``stat()`` et Pillow décode en flux depuis le chemin.  À utiliser
-    pour les fichiers déjà sur disque (image extraite d'un ZIP, upload
-    déjà streamé) au lieu de ``validate_image_safe(path.read_bytes())``.
-    """
-    name = filename or path.name
-    max_mb = get_max_upload_mb()
-    size = path.stat().st_size
-    if size > max_mb * 1024 * 1024:
-        raise ValueError(
-            f"Image '{name}' refusée : taille {size / (1024 * 1024):.1f} Mo > "
-            f"limite {max_mb} Mo (PICARONES_MAX_UPLOAD_MB)."
-        )
-    _verify_image_with_pillow(path, name)
-
-
-# ---------------------------------------------------------------------------
-# Rate limiting + concurrence
-# ---------------------------------------------------------------------------
-
-def get_max_concurrent_jobs() -> int:
-    raw = os.environ.get("PICARONES_MAX_CONCURRENT_JOBS", "2")
-    try:
-        return max(1, int(raw))
-    except ValueError:
-        logger.warning(
-            "[security] PICARONES_MAX_CONCURRENT_JOBS invalide (%r) — défaut 2.", raw
-        )
-        return 2
-
-
-def get_rate_limit_per_hour() -> int:
-    """Nombre maximal de jobs lancés par IP et par heure (mode public).
-
-    En mode dev, on ne limite pas (retourne 0 = illimité).
-    """
-    if not is_public_mode():
-        return 0
-    raw = os.environ.get("PICARONES_RATE_LIMIT_PER_HOUR", "5")
-    try:
-        return max(0, int(raw))
-    except ValueError:
-        return 5
-
-
-class RateLimiter:
-    """Limiteur de débit en mémoire, fenêtre glissante par IP.
-
-    Implémentation volontairement simple : un ``deque`` de timestamps par IP
-    avec purge paresseuse. Suffisant pour un Space HF (RAM constante, ~1 Ko
-    par IP active). Pour de l'institutionnel multi-replica, voir Sprint 26
-    (file SQLite partagée).
-    """
-
-    def __init__(self, max_per_hour: int):
-        self.max_per_hour = max_per_hour
-        self._buckets: dict[str, deque[float]] = {}
-        self._lock = threading.Lock()
-
-    def check(self, ip: str) -> None:
-        """Lève ``PermissionError`` si ``ip`` dépasse le quota horaire."""
-        if self.max_per_hour <= 0:
-            return  # désactivé
-        now = time.monotonic()
-        cutoff = now - 3600.0
-        with self._lock:
-            bucket = self._buckets.setdefault(ip, deque())
-            while bucket and bucket[0] < cutoff:
-                bucket.popleft()
-            if len(bucket) >= self.max_per_hour:
-                # Temps avant que le plus ancien hit ne sorte de la fenêtre
-                retry_after = max(1, int(bucket[0] + 3600.0 - now))
-                raise PermissionError(
-                    f"Quota dépassé : {self.max_per_hour} jobs/heure max. "
-                    f"Réessayer dans {retry_after} s."
-                )
-            bucket.append(now)
-
-    def reset(self) -> None:
-        """Vide complètement les buckets (utile aux tests)."""
-        with self._lock:
-            self._buckets.clear()
-
-
-# ---------------------------------------------------------------------------
-# CSP middleware
-# ---------------------------------------------------------------------------
-
-def is_huggingface_space() -> bool:
-    """Vrai si l'instance tourne dans un HuggingFace Space.
-
-    HuggingFace injecte ``SPACE_ID`` (au format ``user/space``) dans
-    l'environnement du container — c'est le marqueur canonique
-    documenté par HuggingFace, présent quel que soit le SDK (Docker,
-    Streamlit, Gradio…). On l'utilise pour adapter automatiquement la
-    CSP : un Space est servi via une ``<iframe>`` côté
-    ``huggingface.co`` / ``*.hf.space``, donc ``frame-ancestors 'none'``
-    et ``X-Frame-Options: DENY`` rendent la SPA invisible (page blanche
-    bien que le serveur réponde).
-    """
-    return bool(os.environ.get("SPACE_ID", "").strip())
-
-
-#: Origines autorisées à embarquer la SPA dans une iframe quand on tourne
-#: dans un HuggingFace Space. ``huggingface.co`` est l'origine du Hub qui
-#: rend la page parente, ``*.hf.space`` est le domaine où HF expose les
-#: containers Space (utilisé par certains rendus directs et liens
-#: partageables).
-_HF_FRAME_ANCESTORS = "'self' https://huggingface.co https://*.hf.space"
-
-
-def _frame_ancestors_directive() -> str:
-    """Retourne la directive ``frame-ancestors`` adaptée au déploiement.
-
-    - Local / institutionnel : ``'none'`` (pas d'embed possible).
-    - HuggingFace Space : autorise ``huggingface.co`` et ``*.hf.space``
-      pour que la SPA s'affiche dans l'iframe du Space sans tomber en
-      page blanche.
-    """
-    return f"frame-ancestors {_HF_FRAME_ANCESTORS}" if is_huggingface_space() else "frame-ancestors 'none'"
-
-
-#: Politique CSP par défaut (sans la directive ``frame-ancestors``, qui est
-#: composée dynamiquement par :func:`get_csp_policy` selon le déploiement).
-#:
-#: Sprint 25 a extrait tout le JavaScript de la SPA (~1131 lignes) dans
-#: ``picarones/web/static/web-app.js`` — c'est la victoire concrète. Reste
-#: dans le HTML environ 30 ``onclick="..."`` inline qui forcent à conserver
-#: ``'unsafe-inline'`` dans ``script-src``. Leur migration vers
-#: ``addEventListener`` est planifiée (sous-sprint dédié à ne pas mélanger
-#: avec l'extraction des templates pour limiter les risques de régression).
-#: ``style-src`` reste sur ``'unsafe-inline'`` pour les ``style="..."``
-#: sémantiques dans les partials (états vert/rouge/jaune).
-_CSP_BASE = (
-    "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline'; "
-    "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data: blob:; "
-    "font-src 'self' data:; "
-    "connect-src 'self'; "
-    "base-uri 'self'; "
-    "form-action 'self'"
+from picarones.interfaces.web.security_csp import (
+    DEFAULT_CSP as DEFAULT_CSP,
+    _CSP_BASE as _CSP_BASE,
+    _HF_FRAME_ANCESTORS as _HF_FRAME_ANCESTORS,
+    _frame_ancestors_directive as _frame_ancestors_directive,
+    csp_middleware as csp_middleware,
+    get_csp_policy as get_csp_policy,
+    is_huggingface_space as is_huggingface_space,
 )
-
-#: Politique CSP complète exposée pour rétrocompatibilité (mode local
-#: strict). En production HuggingFace, :func:`get_csp_policy` la
-#: recompose dynamiquement avec ``frame-ancestors`` permissif.
-DEFAULT_CSP = _CSP_BASE + "; frame-ancestors 'none'"
-
-
-def get_csp_policy() -> str:
-    """Retourne la CSP à appliquer (override possible via env).
-
-    Si ``PICARONES_CSP`` est défini, il prend précédence absolue —
-    l'admin sait ce qu'il fait. Sinon, on compose ``_CSP_BASE`` plus la
-    directive ``frame-ancestors`` adaptée à l'environnement détecté
-    (HF Space ou local).
-    """
-    override = os.environ.get("PICARONES_CSP")
-    if override:
-        return override
-    return f"{_CSP_BASE}; {_frame_ancestors_directive()}"
-
-
-async def csp_middleware(request, call_next):
-    """Middleware FastAPI : ajoute Content-Security-Policy + en-têtes durcis.
-
-    Sur HuggingFace Space, ``X-Frame-Options: DENY`` est sciemment omis :
-    ce header (priorité absolue dans les anciens navigateurs, fallback
-    moderne quand le navigateur ne supporte pas ``frame-ancestors``)
-    bloque l'iframe parente du Hub HF même si la CSP est permissive.
-    Le contrôle d'embed est alors entièrement délégué à
-    ``frame-ancestors``.
-    """
-    response = await call_next(request)
-    response.headers.setdefault("Content-Security-Policy", get_csp_policy())
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    if not is_huggingface_space():
-        response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    return response
+from picarones.interfaces.web.security_rate_limit import (
+    RateLimiter as RateLimiter,
+    get_max_concurrent_jobs as get_max_concurrent_jobs,
+    get_rate_limit_per_hour as get_rate_limit_per_hour,
+)
+from picarones.interfaces.web.security_uploads import (
+    UPLOAD_CHUNK_SIZE as UPLOAD_CHUNK_SIZE,
+    _verify_image_with_pillow as _verify_image_with_pillow,
+    get_max_total_upload_mb as get_max_total_upload_mb,
+    get_max_upload_mb as get_max_upload_mb,
+    validate_image_file_safe as validate_image_file_safe,
+    validate_image_safe as validate_image_safe,
+)
 
 
 # ---------------------------------------------------------------------------
