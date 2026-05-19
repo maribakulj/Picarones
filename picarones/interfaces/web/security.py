@@ -540,18 +540,24 @@ def secure_cookies() -> bool:
 
     - ``PICARONES_SECURE_COOKIES`` explicite ⇒ prioritaire
       (``1/true/yes`` vs ``0/false/no``) ;
-    - sinon, ``True`` si l'instance est servie en HTTPS de façon
-      certaine — HuggingFace Space (toujours TLS) ou mode public
-      (supposé derrière reverse-proxy/TLS, defaults durcis) ;
-    - sinon ``False`` (dev local en http simple — un cookie ``Secure``
-      ne serait jamais renvoyé par le navigateur, cassant l'UX).
+    - sinon, ``True`` **uniquement** sur HuggingFace Space (servi en
+      HTTPS de façon certaine — signal factuel) ;
+    - sinon ``False``.
+
+    Axe découplé volontairement de ``PICARONES_PUBLIC_MODE`` :
+    « public/mutualisé » (restriction fonctionnelle) n'implique pas
+    « servi en HTTPS ».  Le compose local met ``PUBLIC_MODE=1`` mais
+    binde ``127.0.0.1`` en HTTP simple : un cookie ``Secure`` y serait
+    silencieusement ignoré par le navigateur (préférence de langue
+    cassée).  Le durcissement prod pose ``PICARONES_SECURE_COOKIES=1``
+    explicitement (override ``docker-compose.prod.yml``).
     """
     raw = os.environ.get("PICARONES_SECURE_COOKIES", "").strip().lower()
     if raw in ("1", "true", "yes"):
         return True
     if raw in ("0", "false", "no"):
         return False
-    return is_huggingface_space() or is_public_mode()
+    return is_huggingface_space()
 
 
 def check_deployment_coherence() -> None:

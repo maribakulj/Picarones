@@ -141,3 +141,59 @@ class TestOllamaOriginsRestricted:
             "une override par variable d'env (avec un défaut "
             "restrictif)."
         )
+
+
+class TestComposeStartabilityCoherence:
+    """Régression P0 — ``docker compose up`` (chemin local documenté)
+    doit démarrer SANS configuration : un défaut ``CSRF_REQUIRED=1``
+    sans ``CSRF_SECRET`` fait échouer ``validate_csrf_config`` au
+    lifespan.  Le durcissement CSRF vit dans l'override prod, qui
+    EXIGE le secret via la substitution Compose ``:?``."""
+
+    def _compose(self, name: str) -> str:
+        return (REPO_ROOT / name).read_text(encoding="utf-8")
+
+    def test_local_compose_does_not_force_csrf_required(self) -> None:
+        text = self._compose("docker-compose.yml")
+        assert "PICARONES_CSRF_REQUIRED=${PICARONES_CSRF_REQUIRED:-0}" in text, (
+            "Le compose local ne doit PAS forcer CSRF_REQUIRED=1 : "
+            "sans CSRF_SECRET, validate_csrf_config refuse le "
+            "démarrage et ``docker compose up`` casse."
+        )
+
+    def test_local_compose_default_env_passes_startup_guards(self) -> None:
+        """Simule les defaults du compose local et vérifie que les
+        garde-fous lifespan ne lèvent pas."""
+        import os
+
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+            validate_csrf_config,
+        )
+
+        snapshot = dict(os.environ)
+        try:
+            for k in (
+                "PICARONES_CSRF_REQUIRED", "PICARONES_CSRF_SECRET",
+                "PICARONES_SECURE_COOKIES", "SPACE_ID",
+            ):
+                os.environ.pop(k, None)
+            os.environ["PICARONES_PUBLIC_MODE"] = "1"  # défaut compose local
+            validate_csrf_config()          # ne doit pas lever
+            check_deployment_coherence()    # ne doit pas lever
+        finally:
+            os.environ.clear()
+            os.environ.update(snapshot)
+
+    def test_prod_override_requires_csrf_secret(self) -> None:
+        """``docker-compose.prod.yml`` doit exiger le secret via la
+        substitution Compose ``${PICARONES_CSRF_SECRET:?...}`` —
+        Compose refuse AVANT de lancer le conteneur, message clair."""
+        text = self._compose("docker-compose.prod.yml")
+        assert "PICARONES_CSRF_SECRET=${PICARONES_CSRF_SECRET:?" in text, (
+            "L'override prod doit rendre le secret OBLIGATOIRE "
+            "(forme ``:?`` — échec Compose explicite, pas un crash "
+            "conteneur au lifespan)."
+        )
+        assert "PICARONES_CSRF_REQUIRED=1" in text
+        assert "PICARONES_SECURE_COOKIES=1" in text

@@ -12,14 +12,20 @@
 # Variables d'environnement :
 #   Créer un fichier .env à la racine (voir .env.example)
 #
-# Defaults fail-closed (P0 durcissement) :
-#   - le port n'est publié que sur 127.0.0.1 (poser PICARONES_BIND=0.0.0.0
+# Ce fichier est le chemin LOCAL/DÉMO : il doit démarrer sans
+# configuration supplémentaire (``docker compose up`` fonctionne).
+#   - port publié uniquement sur 127.0.0.1 (poser PICARONES_BIND=0.0.0.0
 #     pour exposer délibérément derrière un reverse-proxy/TLS) ;
-#   - PICARONES_PUBLIC_MODE=1 par défaut : moteurs OCR cloud + LLM
-#     mutualisés désactivés, browse roots confinés ;
-#   - PICARONES_CSRF_REQUIRED=1 par défaut.
-#   Un opérateur institutionnel surcharge ces valeurs en connaissance
-#   de cause via .env ; l'inverse (ouvert par défaut) serait un foot-gun.
+#   - PICARONES_PUBLIC_MODE=1 : moteurs OCR cloud + LLM mutualisés
+#     désactivés, browse roots confinés (restriction fonctionnelle) ;
+#   - PICARONES_CSRF_REQUIRED=0 : CSRF sans secret stable est du
+#     théâtre (tokens invalidés à chaque restart) — sur une instance
+#     bindée localhost ce n'est pas le risque.  Le durcissement CSRF
+#     est dans l'override prod, où il EXIGE un secret.
+#
+# Déploiement institutionnel exposé :
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+#   (force CSRF + cookies Secure + exige PICARONES_CSRF_SECRET).
 
 services:
 
@@ -58,11 +64,10 @@ services:
       - AZURE_DOC_INTEL_KEY=${AZURE_DOC_INTEL_KEY:-}
       # Ollama (si le service ollama est actif)
       - OLLAMA_BASE_URL=http://ollama:11434
-      # Sécurité — fail-closed par défaut (cf. en-tête du fichier).
-      # Surcharger explicitement dans .env pour un déploiement
-      # institutionnel derrière SSO/reverse-proxy.
+      # Sécurité — défaut local opérable (cf. en-tête du fichier).
+      # Le durcissement CSRF/cookies vit dans docker-compose.prod.yml.
       - PICARONES_PUBLIC_MODE=${PICARONES_PUBLIC_MODE:-1}
-      - PICARONES_CSRF_REQUIRED=${PICARONES_CSRF_REQUIRED:-1}
+      - PICARONES_CSRF_REQUIRED=${PICARONES_CSRF_REQUIRED:-0}
       # Python
       - PYTHONUNBUFFERED=1
       - PYTHONIOENCODING=utf-8

@@ -363,17 +363,25 @@ class TestSecureCookies:
         self._clear(monkeypatch)
         assert secure_cookies() is False
 
-    def test_public_mode_or_hf_space_default_true(
+    def test_hf_space_default_true(self, monkeypatch) -> None:
+        """HF Space = HTTPS certain ⇒ Secure par défaut."""
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("SPACE_ID", "user/space")
+        assert secure_cookies() is True
+
+    def test_public_mode_alone_does_not_imply_secure(
         self, monkeypatch,
     ) -> None:
+        """Axe découplé : « mutualisé » n'implique pas « HTTPS ».
+        Le compose local est public_mode=1 mais http://127.0.0.1 —
+        un cookie Secure y serait silencieusement ignoré."""
         from picarones.interfaces.web.security import secure_cookies
 
         self._clear(monkeypatch)
         monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
-        assert secure_cookies() is True
-        monkeypatch.delenv("PICARONES_PUBLIC_MODE")
-        monkeypatch.setenv("SPACE_ID", "user/space")
-        assert secure_cookies() is True
+        assert secure_cookies() is False
 
 
 class TestDeploymentCoherence:
