@@ -34,6 +34,7 @@ from __future__ import annotations
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +169,7 @@ class NormalizationProfile:
     nfc: bool = True
     caseless: bool = False
     diplomatic_table: dict[str, str] = field(default_factory=dict)
-    exclude_chars: frozenset = field(default_factory=frozenset)
+    exclude_chars: frozenset[str] = field(default_factory=frozenset)
     description: str = ""
 
     def normalize(self, text: str) -> str:
@@ -183,7 +184,7 @@ class NormalizationProfile:
             text = _apply_diplomatic_table(text, self.diplomatic_table)
         return text
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "nfc": self.nfc,
@@ -232,7 +233,7 @@ class NormalizationProfile:
         )
 
     @classmethod
-    def from_dict(cls, data: dict) -> "NormalizationProfile":
+    def from_dict(cls, data: dict[str, Any]) -> "NormalizationProfile":
         """Charge un profil depuis un dictionnaire (ex : section YAML inline)."""
         return cls(
             name=data.get("name", "custom"),
@@ -364,7 +365,7 @@ def get_builtin_profile(name: str) -> NormalizationProfile:
 # Fonctions utilitaires
 # ---------------------------------------------------------------------------
 
-def _parse_exclude_chars(value: "str | list | None") -> frozenset:
+def _parse_exclude_chars(value: "str | list[str] | None") -> frozenset[str]:
     """Convertit une liste de caractères (str ou list) en frozenset.
 
     Accepte :

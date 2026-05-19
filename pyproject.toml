@@ -270,6 +270,16 @@ strict = true
 disallow_any_generics = false
 warn_return_any = false
 
+# Ratchet audit prod P1.3 — ``picarones.formats`` promu strict COMPLET
+# (couche pure parsing/sérialisation, petite et sans état).  Les 9
+# erreurs (args génériques + retours ``Any``) ont été corrigées, donc
+# ``disallow_any_generics``/``warn_return_any`` restent actifs ici
+# (contrairement à domain qui les relâche encore).  Prochaine cible du
+# ratchet : ``pipeline`` puis ``evaluation``.
+[[tool.mypy.overrides]]
+module = "picarones.formats.*"
+strict = true
+
 # ──────────────────────────────────────────────────────────────────
 # Sprint A1 (B-7) — configuration bandit (scan sécurité statique).
 #
@@ -312,5 +322,16 @@ target-version = "py311"
 # E/W = pycodestyle, F = pyflakes. On conserve les mêmes règles que le CI
 # d'origine (avant Sprint 22), qui excluait les lignes longues (E501) et les
 # imports non-top (E402, parfois utiles pour imports conditionnels).
-select = ["E", "W", "F"]
+#
+# Ratchet audit prod P1.4 — durcissement par famille, JAMAIS en bloc.
+# Famille activée uniquement si elle est déjà à ZÉRO violation (lock
+# sans churn) :
+#   - ISC : implicit-str-concat — attrape le bug « virgule oubliée
+#           dans une liste de chaînes → concaténation silencieuse ».
+#   - FLY : static-join-to-fstring.
+#   - G   : logging-format (pas de f-string/format dans logging.*).
+# Backlog ratchet (NON activé — churn massif, à faire 1 famille/sprint
+# dédié, avec baseline) : UP≈736, RUF≈498, TRY≈368, I≈95, PERF≈47,
+# B≈34, ARG≈32, SIM≈25, C4≈15, RET≈11, PTH≈9.
+select = ["E", "W", "F", "ISC", "FLY", "G"]
 ignore = ["E501", "E402"]
