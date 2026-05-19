@@ -71,10 +71,11 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/corpus/escriptorium.py": 650,     # actuel 553
     # Sprint A14-S1 — A.I.0 P0 : ajout de validated_path,
     # validated_prompt_filename, safe_report_name et compute_workspace_roots.
-    # Audit prod P1.2 — clusters uploads/rate_limit/csp extraits vers
-    # security_{uploads,rate_limit,csp}.py (chacun < 400 : pas
-    # d'entrée budget).  Budget resserré 850 → 650 (actuel ~572).
-    "picarones/interfaces/web/security.py": 650,  # actuel ~572
+    # Audit prod P1.2 — clusters uploads/rate_limit/csp/public_mode/
+    # paths extraits vers security_*.py (chacun < 400 : pas d'entrée).
+    # Budget resserré 850 → 480 (actuel ~397) : ne restent que le bloc
+    # CSRF (état mutable) + secure_cookies/deployment + la façade.
+    "picarones/interfaces/web/security.py": 480,  # actuel ~397
     # Sprint A14-S8 — CorpusRunner introduit pour orchestrer les
     # pipelines composées sur un corpus avec backpressure / timeout
     # réel / annulation propre.  Budget stable, l'extension
