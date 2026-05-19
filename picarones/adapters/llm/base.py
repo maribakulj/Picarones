@@ -226,7 +226,7 @@ class BaseLLMAdapter(ABC):
     429 → rate limit, 5xx → serveur).  Auparavant ce log était
     dupliqué chez Mistral/OpenAI et absent chez Anthropic.
 
-    Sprint A14-S44 — intégration pipeline native
+    intégration pipeline native
     ---------------------------------------------
     ``BaseLLMAdapter`` implémente désormais le contrat ``StepExecutor``
     du pipeline (``input_types``, ``output_types``, ``execution_mode``,
@@ -248,7 +248,7 @@ class BaseLLMAdapter(ABC):
     api_key_env_var: Optional[str] = None
 
     # ──────────────────────────────────────────────────────────────────
-    # Sprint A14-S44 — contrat StepExecutor du pipeline
+    # contrat StepExecutor du pipeline
     # ──────────────────────────────────────────────────────────────────
 
     #: Types d'artefacts consommés par défaut.  Surchargeable par
@@ -373,7 +373,7 @@ class BaseLLMAdapter(ABC):
         )
 
     # ──────────────────────────────────────────────────────────────────
-    # Sprint A14-S44 — execute() pour le pipeline
+    # execute() pour le pipeline
     # ──────────────────────────────────────────────────────────────────
 
     def execute(

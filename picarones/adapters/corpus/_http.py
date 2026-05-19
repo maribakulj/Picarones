@@ -82,7 +82,7 @@ def _is_blocked_host(hostname: str) -> bool:
 def validate_http_url(url: str) -> None:
     """Valide une URL externe avant fetch — anti-SSRF statique.
 
-    Sprint S1.6 — durcissement.  Refuse :
+    durcissement.  Refuse :
 
     - Schémas non-HTTP (``file://``, ``ftp://``, ``data:``,
       ``javascript:``, ``gopher://``, etc.).

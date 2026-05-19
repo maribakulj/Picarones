@@ -342,7 +342,7 @@ class TesseractAdapter(BaseOCRAdapter):
             if confidences_artifact is not None:
                 outputs[ArtifactType.CONFIDENCES] = confidences_artifact
 
-        # Phase B5 — production ALTO XML natif (best-effort).
+        # production ALTO XML natif (best-effort).
         # Tesseract sait nativement produire un ALTO 4 via
         # ``pytesseract.image_to_alto_xml``.  Désactivé par défaut
         # (compat ascendante : les pipelines existants ne s'attendent

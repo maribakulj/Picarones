@@ -1,4 +1,4 @@
-"""``ArtifactStore`` — Sprint A14-S29.
+"""``ArtifactStore``
 
 Le S7 livrait ``ArtifactCache`` (in-memory, hash basique sur
 inputs + step + code_version).  S29 introduit un ``ArtifactStore``
@@ -65,7 +65,7 @@ class ArtifactStoreError(PicaronesError):
     """
 
 
-# Sprint A14-S47 — ``ArtifactKey`` (type pur) a migré dans
+# ``ArtifactKey`` (type pur) a migré dans
 # ``picarones/domain/artifact_key.py``.  Re-import ici pour ne pas
 # casser les callers (``from picarones.adapters.storage import
 # ArtifactKey`` reste valide).

@@ -1,4 +1,4 @@
-"""``BaseVLMAdapter`` — Sprint A14-S45.
+"""``BaseVLMAdapter``
 
 Adapter VLM (Vision-Language Model) qui hérite de ``BaseLLMAdapter``
 et surcharge le contrat StepExecutor pour consommer ``IMAGE`` au

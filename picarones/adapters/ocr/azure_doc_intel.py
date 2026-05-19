@@ -1,4 +1,4 @@
-"""``AzureDocIntelAdapter`` natif — Sprint A14-S34.
+"""``AzureDocIntelAdapter`` natif
 ``BaseOCRAdapter`` (S26).  **Pas un shim**.
 
 Cas d'usage BnF
