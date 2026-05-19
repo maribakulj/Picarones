@@ -22,11 +22,11 @@ d'instances d'adapter en mémoire.
 
 | # | Fichier | Taille | Occurrences | Priorité B4 | Notes |
 |---|---|---|---|---|---|
-| A1 | `tests/app/test_sprint_d2b_partial_dir_resume.py` | 506 LOC | 12 | **Haute** | Teste le resume `partial_dir`. Doit valider le port vers `_orchestrator_partial.py` (Phase B2.3). Cœur de la non-régression. |
-| A2 | `tests/app/test_sprint_d2cdef_features.py` | 473 LOC | 14 | **Haute** | Teste les 7 paramètres étendus (`profile`, `entity_extractor`, `cancel_event`, etc.). Doit valider chaque feature portée en Phase B2. |
+| A1 | `tests/app/test_partial_dir_resume.py` | 506 LOC | 12 | **Haute** | Teste le resume `partial_dir`. Doit valider le port vers `_orchestrator_partial.py` (Phase B2.3). Cœur de la non-régression. |
+| A2 | `tests/app/test_features.py` | 473 LOC | 14 | **Haute** | Teste les 7 paramètres étendus (`profile`, `entity_extractor`, `cancel_event`, etc.). Doit valider chaque feature portée en Phase B2. |
 | A3 | `tests/web/test_sprint6_web_interface.py` | 1392 LOC | 10 | **Haute** | Test d'intégration web. Confirmera que la migration `run_benchmark_thread_v2` ne casse rien côté UI. |
 | A4 | `tests/app/test_character_analysis_in_runner.py` | 246 LOC | 12 | Moyenne | Teste l'analyse caractère par engine. Conversion mécanique. |
-| A5 | `tests/app/test_sprint_h2b_canonical_in_runner.py` | 191 LOC | 9 | Moyenne | Teste l'extraction du `CANONICAL_DOCUMENT`. À adapter au nouveau ViewExecutor. |
+| A5 | `tests/app/test_canonical_in_runner.py` | 191 LOC | 9 | Moyenne | Teste l'extraction du `CANONICAL_DOCUMENT`. À adapter au nouveau ViewExecutor. |
 | A6 | `tests/evaluation/test_public_api.py` | — | 7 | Moyenne | API publique. Inclura un test de présence pour `RunOrchestrator`. |
 | A7 | `tests/evaluation/metrics/test_nouvelles_fonctionnalites.py` | 288 LOC | 4 | Basse | Conversion mécanique. |
 | A8 | `tests/evaluation/metrics/test_normalization_propagation.py` | — | 2 | Basse | Vérifie `normalization_profile` — valide la Phase B2.5 (propagation via `EvaluationView`). |
