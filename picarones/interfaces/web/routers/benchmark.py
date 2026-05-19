@@ -47,6 +47,7 @@ from picarones.interfaces.web.models import BenchmarkRunRequest
 from picarones.interfaces.web.security import (
     PathValidationError,
     assert_engines_allowed,
+    assert_entity_extractor_allowed,
     assert_llm_provider_allowed,
     compute_workspace_roots,
     get_max_concurrent_jobs,
@@ -94,6 +95,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
         for comp in req.competitors:
             assert_engines_allowed([comp.engine_name] if comp.engine_name else [])
             assert_llm_provider_allowed(comp.llm_provider)
+        assert_entity_extractor_allowed(req.entity_extractor)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 

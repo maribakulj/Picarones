@@ -418,6 +418,14 @@ class TestFastAPIReports:
         assert "modified" in rep
         assert "url" in rep
 
+    def test_reports_dir_outside_roots_rejected(self, client):
+        """P0 — confinement : un reports_dir hors des racines
+        autorisées renvoie 403 (pas d'énumération filesystem
+        arbitraire) au lieu de lister ``/etc``."""
+        r = client.get("/api/reports?reports_dir=/etc")
+        assert r.status_code == 403
+        assert "autoris" in r.json()["detail"].lower()
+
 
 # ===========================================================================
 # TestFastAPIHTRUnited

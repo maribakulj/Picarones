@@ -187,16 +187,18 @@ class TestUploadsListing:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# /api/corpus/upload — image rejetée → 415
+# /api/corpus/upload — dépassement de quota → 413 (streaming)
 # ──────────────────────────────────────────────────────────────────────
 
 
 class TestUploadImageRejection:
-    def test_oversized_image_returns_415(
+    def test_oversized_file_returns_413_at_stream_time(
         self, tmp_path, monkeypatch,
     ) -> None:
-        """Image > limite → ``ValueError`` côté validation, mappé
-        en HTTP 415 par le handler."""
+        """Fichier > plafond unitaire → rejet **au streaming** (413),
+        avant toute matérialisation RAM complète. Plus correct que
+        l'ancien 415 (qui exigeait de bufferiser le fichier entier
+        avant de le refuser)."""
         from fastapi.testclient import TestClient
 
         app, uploads_dir = _make_app(tmp_path, monkeypatch)
@@ -210,8 +212,38 @@ class TestUploadImageRejection:
                 "/api/corpus/upload",
                 files={"files": ("big.png", big_data, "image/png")},
             )
-            assert r.status_code == 415, r.text
-            assert "taille" in r.text.lower() or "limite" in r.text.lower()
+            assert r.status_code == 413, r.text
+            assert "PICARONES_MAX_UPLOAD_MB" in r.text
+        # Quota dépassé ⇒ corpus_dir purgé (pas de résidu disque).
+        assert list(uploads_dir.iterdir()) == [], (
+            "corpus_dir aurait dû être supprimé après dépassement quota"
+        )
+
+    def test_total_upload_cap_returns_413(
+        self, tmp_path, monkeypatch,
+    ) -> None:
+        """Plusieurs fichiers chacun sous la limite unitaire mais dont
+        le cumul dépasse ``PICARONES_MAX_TOTAL_UPLOAD_MB`` → 413."""
+        from fastapi.testclient import TestClient
+
+        app, uploads_dir = _make_app(tmp_path, monkeypatch)
+        uploads_dir.mkdir()
+        monkeypatch.setenv("PICARONES_MAX_UPLOAD_MB", "10")
+        monkeypatch.setenv("PICARONES_MAX_TOTAL_UPLOAD_MB", "1")
+
+        blob = b"\x00" * (700 * 1024)  # 0.7 Mo, sous la limite unitaire
+
+        with TestClient(app) as client:
+            r = client.post(
+                "/api/corpus/upload",
+                files=[
+                    ("files", ("a.txt", blob, "text/plain")),
+                    ("files", ("b.txt", blob, "text/plain")),
+                ],
+            )
+            assert r.status_code == 413, r.text
+            assert "PICARONES_MAX_TOTAL_UPLOAD_MB" in r.text
+        assert list(uploads_dir.iterdir()) == []
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -257,10 +289,9 @@ class TestBrowsePermissionError:
 
 class TestUploadGenericException:
     """Branche catch-all dans ``api_corpus_upload`` : si le
-    ``_write_payloads_and_analyze`` lève autre chose qu'une
+    ``_finalize_uploaded_dir`` lève autre chose qu'une
     ``ValueError`` (par ex. ``OSError`` disque plein), on doit
-    nettoyer ``corpus_dir`` ET retourner un 500 propre.  Couvre
-    lignes 130-132."""
+    nettoyer ``corpus_dir`` ET retourner un 500 propre."""
 
     def test_unexpected_exception_returns_500_and_cleans_corpus_dir(
         self, tmp_path, monkeypatch,
@@ -272,13 +303,13 @@ class TestUploadGenericException:
         app, uploads_dir = _make_app(tmp_path, monkeypatch)
         uploads_dir.mkdir()
 
-        # Mock _write_payloads_and_analyze pour lever une exception
+        # Mock _finalize_uploaded_dir pour lever une exception
         # non-ValueError (donc non interceptée par le 415 path).
-        def raising_write(corpus_dir, payloads):
+        def raising_finalize(corpus_dir, staged):
             raise RuntimeError("disk full simulé")
 
         monkeypatch.setattr(
-            corpus_router, "_write_payloads_and_analyze", raising_write,
+            corpus_router, "_finalize_uploaded_dir", raising_finalize,
         )
 
         with TestClient(app) as client:

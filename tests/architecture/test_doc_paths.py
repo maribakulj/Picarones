@@ -164,6 +164,16 @@ PATH_PATTERN: re.Pattern[str] = re.compile(
     r"picarones/[a-z_][a-z_0-9]*(?:/[a-z_][a-z_0-9]*)*\.py"
 )
 
+#: Fichiers générés à l'install (setuptools-scm) — réels et présents
+#: dans tout environnement installé/CI, mais absents et git-ignorés
+#: d'un checkout source vierge.  Sans cette liste, le résultat du
+#: test dépendrait de la présence ou non de ``pip install -e`` :
+#: 164 (installé) vs 165 (checkout frais).  Les neutraliser rend le
+#: compte *déterministe* — c'est le contraire d'institutionnaliser la
+#: poussière : on retire une fausse entrée environnement-dépendante,
+#: le baseline (164) reste inchangé.
+GENERATED_OK: frozenset[str] = frozenset({"picarones/_version.py"})
+
 
 def _doc_files() -> list[Path]:
     files: list[Path] = []
@@ -182,6 +192,8 @@ def _broken_paths() -> list[tuple[str, str]]:
             continue
         rel_doc = doc.relative_to(REPO_ROOT).as_posix()
         for match in PATH_PATTERN.findall(text):
+            if match in GENERATED_OK:
+                continue
             if not (REPO_ROOT / match).exists():
                 broken.add((rel_doc, match))
     return sorted(broken)

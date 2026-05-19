@@ -258,3 +258,169 @@ class TestRateLimiterPruning:
         rl = RateLimiter(max_per_hour=0)
         for _ in range(100):
             rl.check("9.9.9.9")  # no raise
+
+
+class TestEntityExtractorAllowlist:
+    """Garde-fou P0 — le champ ``entity_extractor`` du payload web
+    déclenche un ``importlib.import_module`` + appel du symbole résolu.
+    C'est un gadget d'exécution : il doit être fail-closed sur instance
+    partagée et explicitement allowlisté en institutionnel."""
+
+    def test_empty_is_noop(self, monkeypatch) -> None:
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE", raising=False)
+        monkeypatch.delenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
+        )
+        assert_entity_extractor_allowed("")  # no raise
+        assert_entity_extractor_allowed("   ")  # no raise
+
+    def test_public_mode_without_allowlist_rejects(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.delenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
+        )
+        with pytest.raises(PermissionError, match="entity_extractor"):
+            assert_entity_extractor_allowed("os:getcwd")
+
+    def test_non_public_without_allowlist_tolerated(
+        self, monkeypatch,
+    ) -> None:
+        """Opérateur local de confiance — cohérent avec le modèle
+        ``compute_browse_roots`` (cwd autorisé hors mode public)."""
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE", raising=False)
+        monkeypatch.delenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", raising=False,
+        )
+        assert_entity_extractor_allowed("mypkg.ner:Extractor")  # no raise
+
+    def test_allowlist_match_allowed_all_modes(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.setenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST",
+            "mypkg.ner:Extractor, other.mod:Fn",
+        )
+        assert_entity_extractor_allowed("mypkg.ner:Extractor")  # no raise
+        assert_entity_extractor_allowed("other.mod:Fn")  # no raise
+
+    def test_allowlist_set_rejects_unlisted_even_non_public(
+        self, monkeypatch,
+    ) -> None:
+        """Allowlist définie ⇒ s'applique dans tous les modes : un
+        dotted path hors liste est refusé même hors mode public."""
+        from picarones.interfaces.web.security import (
+            assert_entity_extractor_allowed,
+        )
+
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE", raising=False)
+        monkeypatch.setenv(
+            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST", "mypkg.ner:Extractor",
+        )
+        with pytest.raises(PermissionError, match="hors allowlist"):
+            assert_entity_extractor_allowed("os:system")
+
+
+class TestSecureCookies:
+    """``secure_cookies`` — fin du ``secure=False`` codé en dur."""
+
+    def _clear(self, mp):
+        for v in (
+            "PICARONES_SECURE_COOKIES", "PICARONES_PUBLIC_MODE", "SPACE_ID",
+        ):
+            mp.delenv(v, raising=False)
+
+    def test_explicit_env_wins(self, monkeypatch) -> None:
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "1")
+        assert secure_cookies() is True
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "0")
+        assert secure_cookies() is False
+
+    def test_local_dev_default_false(self, monkeypatch) -> None:
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        assert secure_cookies() is False
+
+    def test_public_mode_or_hf_space_default_true(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import secure_cookies
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        assert secure_cookies() is True
+        monkeypatch.delenv("PICARONES_PUBLIC_MODE")
+        monkeypatch.setenv("SPACE_ID", "user/space")
+        assert secure_cookies() is True
+
+
+class TestDeploymentCoherence:
+    """``check_deployment_coherence`` — refuse une combinaison
+    exposée + CSRF requis + cookies en clair (fail-fast démarrage)."""
+
+    def _clear(self, mp):
+        for v in (
+            "PICARONES_SECURE_COOKIES", "PICARONES_PUBLIC_MODE",
+            "PICARONES_CSRF_REQUIRED", "SPACE_ID",
+        ):
+            mp.delenv(v, raising=False)
+
+    def test_local_csrf_without_secure_is_tolerated(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+        )
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
+        check_deployment_coherence()  # non exposé → pas de raise
+
+    def test_exposed_csrf_without_secure_cookies_blocks_startup(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+        )
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "0")
+        with pytest.raises(RuntimeError, match="incohérente"):
+            check_deployment_coherence()
+
+    def test_exposed_csrf_with_secure_cookies_ok(
+        self, monkeypatch,
+    ) -> None:
+        from picarones.interfaces.web.security import (
+            check_deployment_coherence,
+        )
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("PICARONES_CSRF_REQUIRED", "1")
+        monkeypatch.setenv("PICARONES_PUBLIC_MODE", "1")
+        monkeypatch.setenv("PICARONES_SECURE_COOKIES", "1")
+        check_deployment_coherence()  # cohérent → pas de raise

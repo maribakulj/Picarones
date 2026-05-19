@@ -11,6 +11,7 @@ from picarones.interfaces.web.security import (
     CSRF_COOKIE,
     generate_csrf_token,
     is_csrf_required,
+    secure_cookies,
 )
 from picarones.interfaces.web.state import LANG_COOKIE, SUPPORTED_LANGS, iso_now
 
@@ -61,7 +62,7 @@ async def api_csrf_token(response: Response) -> dict:
         value=token,
         httponly=False,
         samesite="strict",
-        secure=False,
+        secure=secure_cookies(),
     )
     return {"enabled": True, "token": token}
 
@@ -212,5 +213,6 @@ async def api_set_lang(lang_code: str, response: Response) -> dict:
         max_age=60 * 60 * 24 * 365,  # 1 an
         httponly=False,
         samesite="strict",
+        secure=secure_cookies(),
     )
     return {"lang": lang_code, "message": f"Langue définie : {lang_code}"}
