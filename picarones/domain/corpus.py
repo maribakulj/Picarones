@@ -1,4 +1,4 @@
-"""``CorpusSpec`` — Sprint A14-S4.
+"""``CorpusSpec``
 
 Description **immuable et déclarative** d'un corpus à benchmarker.
 Construit par un adapter de corpus (``picarones.adapters.corpus.*``),

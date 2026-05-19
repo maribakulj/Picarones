@@ -4,7 +4,7 @@ Description **purement déclarative** d'un DAG de transformation
 documentaire.  Sérialisable en YAML, versionnable en git, valide
 sans avoir besoin d'instancier les modules concrets.
 
-Sprint S40 — migration depuis ``picarones.pipeline.spec``
+migration depuis ``picarones.pipeline.spec``
 ---------------------------------------------------------
 Le module canonique est désormais en cercle 1 (``picarones/domain/``)
 — c'est un type pur qui n'a aucune dépendance d'exécution
@@ -14,7 +14,7 @@ exposé en re-export pour ne pas casser les callers existants — ce
 n'est pas un shim au sens architectural (adaptation d'une API
 incompatible) mais un alias de chemin.
 
-Différence avec ``picarones.evaluation.pipeline`` (Sprint 63)
+Différence avec ``picarones.evaluation.pipeline``
 -------------------------------------------------------------
 ``PipelineStep`` legacy (relocalisé en ``picarones.evaluation.pipeline``)
 porte un champ ``module: BaseModule``

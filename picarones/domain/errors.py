@@ -1,4 +1,4 @@
-"""Exceptions du domaine — Sprint A14-S4.
+"""Exceptions du domaine
 
 Hiérarchie centrée sur ``PicaronesError`` pour qu'un caller puisse
 attraper "toute erreur métier Picarones" avec un seul ``except``.

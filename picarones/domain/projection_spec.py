@@ -1,4 +1,4 @@
-"""``ProjectionSpec`` — Sprint A14-S5.
+"""``ProjectionSpec``
 
 Une projection convertit un artefact d'un type vers un autre, en
 documentant explicitement la perte d'information (cf.
