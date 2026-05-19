@@ -60,7 +60,7 @@ fait dans une fixture partagée.
 | B11 | `tests/integration/test_importer_fallback_wiring.py` | Fallback importer. Test d'intégration. |
 | B12 | `tests/integration/test_s5_disk_full_simulation.py` | Disque plein. |
 | B13 | `tests/security/test_phase1_post_rewrite_wiring.py` | Sécurité post-rewrite. |
-| B14 | `tests/security/test_s1_xss_in_reports.py` | XSS dans rapports. |
+| B14 | `tests/security/test_xss_in_reports.py` | XSS dans rapports. |
 | B15 | `tests/test_minimal_install.py` | Installation minimale (smoke test). |
 | B16 | `tests/web/test_ux_save_compare.py` | UX save/compare web. |
 
