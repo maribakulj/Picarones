@@ -113,35 +113,36 @@ def entity_extractor_allowlist() -> frozenset[str]:
 def assert_entity_extractor_allowed(dotted_path: str) -> None:
     """Lève ``PermissionError`` si le dotted path NER n'est pas autorisé.
 
-    Politique fail-closed :
+    Politique fail-closed **stricte côté web, tous modes confondus**
+    (audit prod P0.2) :
 
     - Vide ⇒ aucun NER attaché, rien à valider.
-    - Si une allowlist est définie ⇒ le dotted path doit en faire
-      partie (s'applique dans tous les modes — l'admin sait ce qu'il
-      ouvre).
-    - Sinon, sans allowlist ⇒ refusé en mode public (instance
-      mutualisée : on ne laisse pas un payload importer/appeler du
-      code arbitraire).  Toléré hors mode public (opérateur local
-      de confiance, cohérent avec :func:`compute_browse_roots`).
+    - Allowlist vide ⇒ refusé **quel que soit le mode**.  Le web est
+      une surface réseau : importer dynamiquement + appeler un symbole
+      utilisateur est trop puissant, même hors mode public, même
+      derrière SSO.  L'ancienne tolérance « hors mode public » était
+      un trou (un déploiement non-public mais exposé restait ouvert).
+      La CLI, elle, appelle ``_resolve_entity_extractor`` directement
+      sans passer par ce garde-fou : elle reste libre.
+    - Allowlist définie ⇒ le dotted path doit en faire partie.
     """
     dotted_path = (dotted_path or "").strip()
     if not dotted_path:
         return
     allowlist = entity_extractor_allowlist()
-    if allowlist:
-        if dotted_path not in allowlist:
-            raise PermissionError(
-                f"entity_extractor {dotted_path!r} hors allowlist. "
-                "Ajouter le dotted path à PICARONES_ENTITY_EXTRACTOR_"
-                "ALLOWLIST (séparateur virgule) pour l'autoriser."
-            )
-        return
-    if is_public_mode():
+    if not allowlist:
         raise PermissionError(
-            "Mode public actif — le champ entity_extractor (import "
-            "dynamique + appel d'un symbole) est désactivé. Définir "
-            "PICARONES_ENTITY_EXTRACTOR_ALLOWLIST pour l'activer de "
-            "façon contrôlée, ou utiliser la CLI."
+            "entity_extractor est désactivé côté web (import dynamique "
+            "+ appel d'un symbole = surface réseau trop puissante). "
+            "Définir PICARONES_ENTITY_EXTRACTOR_ALLOWLIST (séparateur "
+            "virgule) pour autoriser des dotted paths précis, ou "
+            "utiliser la CLI."
+        )
+    if dotted_path not in allowlist:
+        raise PermissionError(
+            f"entity_extractor {dotted_path!r} hors allowlist. "
+            "Ajouter le dotted path à PICARONES_ENTITY_EXTRACTOR_"
+            "ALLOWLIST (séparateur virgule) pour l'autoriser."
         )
 
 
