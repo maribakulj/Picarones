@@ -1,6 +1,6 @@
 """Visualisation DAG d'un pipeline composé — Sprint 95 (B.4).
 
-Sprint 95 — B.4 du plan d'évolution 2026.
+B.4 du plan d'évolution 2026.
 
 Outil d'inspection, pas de construction
 ---------------------------------------
@@ -28,7 +28,7 @@ Adaptive : ``""`` si moins d'un nœud.
 Note d'intégration
 ------------------
 Module pur — l'utilisateur compose les structures simples
-``nodes`` et ``edges`` depuis sa ``PipelineSpec`` (Sprint 63)
+``nodes`` et ``edges`` depuis sa ``PipelineSpec``
 et son ``PipelineBenchmarkResult`` (Sprint 64) :
 
 .. code-block:: python

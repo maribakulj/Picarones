@@ -1,4 +1,4 @@
-"""Comparaison de deux runs de benchmark (Sprint 28).
+"""Comparaison de deux runs de benchmark
 
 Le Sprint 8 a livré la persistance longitudinale via SQLite
 (``picarones.evaluation.metrics.history``) et un détecteur de régression CLI. Mais

@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 
 # ──────────────────────────────────────────────────────────────────
-# Rare-token recall (Sprint 71)
+# Rare-token recall
 # ──────────────────────────────────────────────────────────────────
 
 
@@ -102,7 +102,7 @@ def compute_rare_token_recall_per_engine(
 
 
 # ──────────────────────────────────────────────────────────────────
-# Co-occurrence taxonomique (Sprint 75)
+# Co-occurrence taxonomique
 # ──────────────────────────────────────────────────────────────────
 
 
@@ -152,7 +152,7 @@ def compute_taxonomy_cooccurrence_section(
 
 
 # ──────────────────────────────────────────────────────────────────
-# Heatmap intra-document class × position (Sprint 76)
+# Heatmap intra-document class × position
 # ──────────────────────────────────────────────────────────────────
 
 
@@ -212,7 +212,7 @@ def compute_taxonomy_intra_doc_section(
 
 
 # ──────────────────────────────────────────────────────────────────
-# Coût marginal inter-moteurs (Sprint 91)
+# Coût marginal inter-moteurs
 # ──────────────────────────────────────────────────────────────────
 
 

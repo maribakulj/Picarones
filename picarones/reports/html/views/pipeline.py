@@ -1,4 +1,4 @@
-"""Vue pipeline composée — chantier 3 post-Sprint 97.
+"""Vue pipeline composée — chantier 3 post
 
 Regroupe les renderers spécifiques aux benchmarks de **pipelines
 composées** (axe B du plan d'évolution 2026, Sprints 63-68, 94-97) :
@@ -6,16 +6,16 @@ composées** (axe B du plan d'évolution 2026, Sprints 63-68, 94-97) :
 - :func:`picarones.reports.html.renderers.pipeline.build_pipeline_summary_html`
   — résumé corpus-wide (taux de succès, durée, métriques aux jonctions).
 - :func:`picarones.reports.html.renderers.pipeline.build_pipeline_steps_table_html`
-  — tableau par étape (Sprint 67).
+  tableau par étape
 - :func:`picarones.reports.html.renderers.pipeline_dag.build_pipeline_dag_html`
   — visualisation SVG du DAG avec couleur des arêtes selon la métrique.
 - :func:`picarones.reports.html.renderers.error_absorption.build_error_absorption_html`
-  — corrections vs introductions à chaque jonction (Sprint 94).
+  corrections vs introductions à chaque jonction
 - :func:`picarones.reports.html.renderers.incremental_comparison.build_incremental_comparison_html`
   — effet isolé d'un slot (LLM, reconstructeur, etc.) en contrôlant
-  les autres (Sprint 96).
+  les autres
 - :func:`picarones.reports.html.renderers.module_audit.build_module_audit_html`
-  — audit de conformité des modules contribués (Sprint 97).
+  audit de conformité des modules contribués
 
 Cette vue ne s'applique pas au rapport standard (mono-moteur OCR
 classique). Elle est appelée explicitement par le workflow
@@ -28,7 +28,7 @@ Toutes les sous-sections consomment des structures opt-in passées
 en ``opts``. Aucune n'est calculée à partir de ``report_data`` —
 c'est par construction (un rapport classique n'a pas de DAG).
 
-- ``opts["pipeline_benchmark"]`` : ``PipelineBenchmarkResult`` (Sprint 64).
+``opts["pipeline_benchmark"]`` : ``PipelineBenchmarkResult``
 - ``opts["dag_nodes"]`` / ``opts["dag_labels"]`` / ``opts["dag_edges"]``
   / ``opts["dag_thresholds"]`` / ``opts["dag_higher_is_better"]`` :
   arguments directs de :func:`build_pipeline_dag_html`.
@@ -78,16 +78,16 @@ def build_pipeline_view_html(
         ``PipelineBenchmarkResult`` (Sprint 64) — active les sections
         ``summary`` et ``steps_table`` du :mod:`pipeline_render`.
     dag_nodes, dag_labels, dag_edges, dag_thresholds, dag_higher_is_better:
-        Arguments de :func:`build_pipeline_dag_html` (Sprint 95).
+        Arguments de :func:`build_pipeline_dag_html`
     junctions:
         Liste de dicts ``{junction_name, before, after, ...}`` pour
-        :func:`build_error_absorption_html` (Sprint 94).
+        func:`build_error_absorption_html`
     incremental_runs, incremental_varying_slot, incremental_higher_is_better:
         Arguments de :func:`build_incremental_comparison_html`
         (Sprint 96).
     module_audits:
         Liste de tuples ``(ModuleManifest, AuditResult)`` pour
-        :func:`build_module_audit_html` (Sprint 97).
+        func:`build_module_audit_html`
 
     Returns
     -------

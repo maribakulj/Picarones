@@ -151,7 +151,7 @@ def build_view_results_html(
     ----------
     view_results:
         Map ``{view_name: {engine_name: {doc_id: {metric: value}}}}``
-        produite par ``run_result_to_benchmark_result`` (Phase B6).
+        produite par ``run_result_to_benchmark_result``
         ``None`` ou vide → retour ``""`` (rapport legacy intact).
     all_engine_names:
         Liste de tous les noms d'engines du benchmark, pour identifier

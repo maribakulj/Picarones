@@ -2,10 +2,10 @@
 
 4 détecteurs déplacés depuis ``narrative/detectors.py`` :
 
-- :func:`detect_error_profile_outlier`  (Sprint 4)
-- :func:`detect_llm_hallucination_flag` (Sprint 4)
-- :func:`detect_robustness_fragile`     (Sprint 4)
-- :func:`detect_confidence_warning`     (Sprint 4)
+func:`detect_error_profile_outlier`
+func:`detect_llm_hallucination_flag`
+func:`detect_robustness_fragile`
+func:`detect_confidence_warning`
 """
 
 from __future__ import annotations

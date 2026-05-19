@@ -3,9 +3,9 @@
 3 détecteurs + 1 helper (``_stratum_cer_by_engine``) déplacés depuis
 ``narrative/detectors.py`` :
 
-- :func:`detect_stratum_winner`             (Sprint 4)
-- :func:`detect_stratum_collapse`           (Sprint 4)
-- :func:`detect_stratification_recommended` (Sprint 45)
+func:`detect_stratum_winner`
+func:`detect_stratum_collapse`
+func:`detect_stratification_recommended`
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ def detect_stratification_recommended(benchmark_data: dict) -> list[Fact]:
     serait trompeur).
 
     Lit ``benchmark_data["corpus_homogeneity"]`` exposé par
-    ``BenchmarkResult.as_dict()`` (Sprint 45).
+    ``BenchmarkResult.as_dict()``
     """
     homog = benchmark_data.get("corpus_homogeneity")
     if not homog:

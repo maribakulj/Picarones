@@ -1,4 +1,4 @@
-"""Rendu JSON canonique des résultats de benchmark — Sprint A14-S43.
+"""Rendu JSON canonique des résultats de benchmark
 
 API publique :
 

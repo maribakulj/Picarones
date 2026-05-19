@@ -1,4 +1,4 @@
-"""Vue taxonomique avancée — chantier 3 post-Sprint 97.
+"""Vue taxonomique avancée — chantier 3 post
 
 Regroupe les renderers orientés *édition critique* qui examinent la
 structure des erreurs OCR au-delà du CER global :

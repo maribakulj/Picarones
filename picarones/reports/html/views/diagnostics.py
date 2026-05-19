@@ -1,4 +1,4 @@
-"""Vue diagnostique du rapport — chantier 3 post-Sprint 97.
+"""Vue diagnostique du rapport — chantier 3 post
 
 Regroupe les renderers orientés *« comprendre POURQUOI on a ces
 résultats »* :

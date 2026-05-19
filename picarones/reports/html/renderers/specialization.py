@@ -1,4 +1,4 @@
-"""Rendu HTML « Spécialisation inter-moteurs » — Sprint 89
+"""Rendu HTML « Spécialisation inter-moteurs »
 (A.II.8b).
 
 Suite directe ``picarones/core/specialization.py``.  Vue

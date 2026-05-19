@@ -1,4 +1,4 @@
-"""``CsvReportRenderer`` — Sprint A14-S42.
+"""``CsvReportRenderer``
 
 Rendu CSV d'un ``RunResult`` : une ligne par paire
 (document × pipeline × view × metric) avec sa valeur numérique ou

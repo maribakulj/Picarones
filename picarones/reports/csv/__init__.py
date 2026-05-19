@@ -1,4 +1,4 @@
-"""Rendu CSV des résultats de benchmark — Sprint A14-S42.
+"""Rendu CSV des résultats de benchmark
 
 API publique :
 

@@ -1,4 +1,4 @@
-"""Rendu HTML server-side de la section NER (Sprint 41).
+"""Rendu HTML server-side de la section NER
 
 Suite directe des Sprints 38-40 : la couche de calcul, le backend
 extracteur et le câblage runner sont en place ; ce module produit les

@@ -2,9 +2,9 @@
 
 3 détecteurs déplacés depuis ``narrative/detectors.py`` :
 
-- :func:`detect_engine_off_baseline`    (Sprint 73)
-- :func:`detect_engine_unstable`        (Sprint 90)
-- :func:`detect_regression_in_history`  (Sprint 92)
+func:`detect_engine_off_baseline`
+func:`detect_engine_unstable`
+func:`detect_regression_in_history`
 """
 
 from __future__ import annotations
@@ -166,7 +166,7 @@ def detect_engine_unstable(benchmark_data: dict) -> list[Fact]:
 def detect_regression_in_history(benchmark_data: dict) -> list[Fact]:
     """Émet un Fact pour chaque moteur dont l'historique montre
     une dégradation : pente positive significative ou rupture
-    brutale (Sprint 92).
+    brutale
 
     Lit ``benchmark_data["longitudinal_trends"]`` : liste de
     dicts produits par ``compute_corpus_longitudinal`` du module

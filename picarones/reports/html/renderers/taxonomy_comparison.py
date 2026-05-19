@@ -1,4 +1,4 @@
-"""Rendu HTML du diagramme miroir taxonomique — Sprint 77.
+"""Rendu HTML du diagramme miroir taxonomique
 
 A.I.4 chantier 3 du plan d'évolution 2026.
 

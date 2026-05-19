@@ -1,4 +1,4 @@
-"""Rendu HTML de la vue « Worst lines globale » — Sprint 72.
+"""Rendu HTML de la vue « Worst lines globale »
 
 Suite directe de ``picarones/core/worst_lines.py`` (extraction
 transversale).  Pattern identique aux Sprints 41/43/62/67 : rendu

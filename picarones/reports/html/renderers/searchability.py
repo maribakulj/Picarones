@@ -1,7 +1,7 @@
 """Rendu HTML « Recherchabilité fuzzy » — Sprint 86 (A.II.5a HTML).
 
 Suite directe ``picarones/core/searchability.py`` (Sprint 84) +
-câblage runner (Sprint 86).
+câblage runner
 
 Pattern identique aux autres rendus (Sprints 41/43/62/67/72) :
 **server-side**, pas de JavaScript, anti-injection systématique.

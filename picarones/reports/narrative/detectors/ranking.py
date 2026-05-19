@@ -2,11 +2,11 @@
 
 5 détecteurs déplacés depuis ``narrative/detectors.py`` :
 
-- :func:`detect_global_leader_cer`     (Sprint 4)
-- :func:`detect_statistical_tie`       (Sprint 18)
-- :func:`detect_significant_gap`       (Sprint 4)
-- :func:`detect_speed_winner`          (Sprint 4)
-- :func:`detect_median_mean_gap_warning` (Sprint 44)
+func:`detect_global_leader_cer`
+func:`detect_statistical_tie`
+func:`detect_significant_gap`
+func:`detect_speed_winner`
+func:`detect_median_mean_gap_warning`
 
 Comportement et signature inchangés. Tous restent enregistrés
 automatiquement via ``@register_detector`` à l'import.
@@ -233,7 +233,7 @@ def detect_median_mean_gap_warning(benchmark_data: dict) -> list[Fact]:
     dépasse 30 %, ce qui indique une distribution fortement asymétrique
     où la moyenne masque les performances réelles.
 
-    Sprint 44 — A.I.2 du plan d'évolution. Cohérent avec le passage du
+    A.I.2 du plan d'évolution. Cohérent avec le passage du
     tri par défaut sur la médiane : si la moyenne du leader diverge
     fortement de la médiane, l'utilisateur doit le savoir pour
     interpréter correctement les chiffres.

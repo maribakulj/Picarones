@@ -1,4 +1,4 @@
-"""Rendu de l'encart « Ce corpus est-il habituel ? » — Sprint 74.
+"""Rendu de l'encart « Ce corpus est-il habituel ? »
 
 A.I.3 chantier 1 du plan d'évolution 2026.
 

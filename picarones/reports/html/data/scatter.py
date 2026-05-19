@@ -1,4 +1,4 @@
-"""Scatter plots du rapport (Sprint 10).
+"""Scatter plots du rapport
 
 - ``gini_vs_cer`` — corrélation Gini (concentration des erreurs)
   vs CER moyen, par moteur.

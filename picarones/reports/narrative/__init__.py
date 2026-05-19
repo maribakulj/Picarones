@@ -30,7 +30,7 @@ API publique
 - ``detect_all(data)``                        : applique le registre par défaut
 - ``select_facts(facts, max_facts=5)``        : arbitre de sélection
 - ``render_synthesis(facts, lang="fr")``      : rend en liste de phrases
-- ``build_synthesis(data, lang="fr")``        : pipeline complet (Sprint 4)
+``build_synthesis(data, lang="fr")``        : pipeline complet
 """
 
 from picarones.domain.facts import (
@@ -53,7 +53,7 @@ from picarones.reports.narrative.detectors import (
 )
 
 
-# Activer le registre par défaut — Sprint 4
+# Activer le registre par défaut
 register_default_detectors(_DEFAULT_REGISTRY)
 
 

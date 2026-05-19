@@ -9,7 +9,7 @@ Depuis le Sprint 17, les traductions sont stockées dans des fichiers
 JSON et chargées au premier accès.  ``TRANSLATIONS`` reste exposé
 comme dict pour compatibilité ascendante.
 
-Sprint 30 — durcissement
+durcissement
 ------------------------
 - Chargement lazy + thread-safe via verrou explicite ; les serveurs
   web sous charge concurrente ne peuvent plus initialiser deux fois.
