@@ -1,4 +1,4 @@
-"""Structures internes ALTO — Sprint A14-S9.
+"""Structures internes ALTO
 
 Représentation **typée et immuable** d'un document ALTO XML pour
 manipulation, projection, et round-trip parser/writer.  Indépendante

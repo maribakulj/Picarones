@@ -61,21 +61,77 @@ def _layer(p: Path) -> str:
     return rel[0] if rel else "<root>"
 
 
+# Dé-taguage SÛR uniquement : tag = préfixe propre, OU ``(tag)``
+# isolé en fin (rien d'autre dans la parenthèse).  Tout tag en
+# milieu de phrase / fusionné (``Sprint A9 / M-5``, ``S11 + Phase
+# 8``, ``(Sprint A3, item B-3)``) → NON auto-dé-tagable (le retirer
+# mutile la phrase) → catégorie R (revue humaine).
+_PREFIX = re.compile(
+    r"^\(?\s*(?:" + TAG.pattern + r")\s*\)?\s*[—\-:]\s+(?P<rest>\S.*)$",
+)
+_TRAIL = re.compile(
+    r"^(?P<head>\S.*?)\s*(?:\((?:" + TAG.pattern + r")\)|[—\-]\s*(?:"
+    + TAG.pattern + r"))\s*[.]?\s*$",
+)
+_TAG_ALONE = re.compile(
+    r"^\(?\s*(?:" + TAG.pattern + r")\s*\)?\s*[.:]?\s*$",
+)
+
+
 def _classify(text: str) -> tuple[str, str, bool]:
     """text = contenu du commentaire SANS le ``# `` initial.
-    Retourne (catégorie, remplacement_proposé, forced_non_A)."""
+    Retourne (catégorie, remplacement_proposé, forced_non_A).
+
+    Conservateur : on n'auto-modifie QUE les cas dont le résultat
+    est syntaxiquement propre et déterministe.  Tout le reste → R.
+    """
     forced = bool(CONSTRAINT.search(text) or CROSSREF.search(text))
-    remainder = TAG_PREFIX.sub("", text).strip()
-    tag_only = remainder == "" or remainder == text.strip()
-    if tag_only:
-        # le commentaire EST (essentiellement) le tag → rien à garder
+    t = text.strip()
+
+    # Tag seul (± parenthèse/ponctuation) : suppression sûre.
+    if _TAG_ALONE.match(t):
         return ("R" if forced else "A", "", forced)
-    # il reste du texte après le tag
-    if forced or len(remainder.split()) > 3:
-        return ("B", remainder, forced)
-    # reste court non contraint : libellé de section (« métriques
-    # avancées ») → A, sauf filet
-    return ("R" if forced else "A", "", forced)
+
+    # Tag = préfixe propre ``Tag — <reste>`` → garder <reste>.
+    m = _PREFIX.match(t)
+    if m:
+        rest = m.group("rest").strip()
+        if rest and not TAG.search(rest):  # pas de 2e tag résiduel
+            return ("B", rest, forced)
+        return ("R", "", forced)
+
+    # ``<head> (Tag)`` ou ``<head> — Tag`` en fin, rien d'autre dans
+    # la parenthèse → garder <head>.
+    m = _TRAIL.match(t)
+    if m:
+        head = m.group("head").strip(" .—-:")
+        if head and not TAG.search(head):
+            return ("B", head, forced)
+        return ("R", "", forced)
+
+    # Tag en milieu / fusionné / parenthèse à contenu mixte :
+    # retrait mécanique mutilerait la phrase → revue humaine.
+    return ("R", "", forced)
+
+
+def analyze_line(ln: str) -> dict | None:
+    """Source de vérité unique : classe UNE ligne live.
+    Retourne ``None`` si pas de tag.  Utilisé par scan() ET apply()
+    (re-lecture live → robuste à toute dérive)."""
+    if not TAG.search(ln):
+        return None
+    stripped = ln.lstrip()
+    if stripped.startswith("#"):
+        text, kind = stripped[1:].strip(), "comment"
+    elif "#" in ln and TAG.search(ln.split("#", 1)[1]):
+        text, kind = ln.split("#", 1)[1].strip(), "trailing"
+    else:
+        text, kind = stripped, "docstring"
+    cat, repl, forced = _classify(text)
+    if kind == "docstring" and cat == "A":
+        cat = "R"  # jamais d'auto-suppression de prose-en-chaîne
+    return {"kind": kind, "cat": cat, "repl": repl,
+            "forced_non_A": forced, "text": text}
 
 
 def scan() -> list[dict]:
@@ -83,32 +139,84 @@ def scan() -> list[dict]:
     for p in sorted(PKG.rglob("*.py")):
         lines = p.read_text(encoding="utf-8").splitlines()
         for i, ln in enumerate(lines, 1):
-            if not TAG.search(ln):
+            a = analyze_line(ln)
+            if a is None:
                 continue
-            stripped = ln.lstrip()
-            is_comment = stripped.startswith("#")
-            # commentaire de ligne pur, ou trailing ``code  # ...``
-            if is_comment:
-                text = stripped[1:].strip()
-                kind = "comment"
-            elif "#" in ln and TAG.search(ln.split("#", 1)[1]):
-                text = ln.split("#", 1)[1].strip()
-                kind = "trailing"
-            else:
-                # marqueur dans une docstring / chaîne
-                text = stripped
-                kind = "docstring"
-            cat, repl, forced = _classify(text)
-            if kind == "docstring":
-                # jamais d'auto-A sur du texte en chaîne : revue
-                cat = "R" if cat == "A" else cat
             rows.append({
                 "file": p.relative_to(REPO).as_posix(),
-                "line": i, "layer": _layer(p), "kind": kind,
-                "cat": cat, "forced_non_A": forced,
-                "text": text, "repl": repl,
+                "line": i, "layer": _layer(p), **a,
             })
     return rows
+
+
+def _tq(s: str) -> int:
+    return s.count('"""') + s.count("'''")
+
+
+def apply_layer(layer: str) -> int:
+    """Applique A+B d'UNE couche.  Re-lecture live + recalcul (pas de
+    confiance au scan stocké) ; A/B comment+trailing+docstring ;
+    invariant : triple-quotes inchangées (docstring) ; garde ultime :
+    si le fichier résultant ne parse plus (ast) → NON écrit, abort."""
+    import ast
+    targets: dict[Path, list[int]] = {}
+    for r in scan():
+        if r["layer"] == layer and r["cat"] in ("A", "B"):
+            targets.setdefault(REPO / r["file"], []).append(r["line"])
+    if not targets:
+        print(f"Aucun A/B dans la couche {layer}")
+        return 0
+    n_a = n_b = n_skip = 0
+    for fp, line_nos in targets.items():
+        lines = fp.read_text(encoding="utf-8").splitlines(keepends=True)
+        drop: set[int] = set()
+        for ln_no in sorted(set(line_nos), reverse=True):
+            raw = lines[ln_no - 1]
+            nl = "\n" if raw.endswith("\n") else ""
+            ln = raw[:-1] if nl else raw
+            a = analyze_line(ln)
+            if a is None or a["cat"] not in ("A", "B"):
+                n_skip += 1
+                continue
+            indent = ln[: len(ln) - len(ln.lstrip())]
+            if a["cat"] == "A":
+                if a["kind"] == "comment":
+                    drop.add(ln_no - 1)
+                    n_a += 1
+                elif a["kind"] == "trailing":
+                    code = ln.split("#", 1)[0].rstrip()
+                    lines[ln_no - 1] = code + nl
+                    n_a += 1
+                else:
+                    n_skip += 1
+                continue
+            # cat == B
+            repl = a["repl"]
+            if not repl or TAG.search(repl):
+                n_skip += 1
+                continue
+            if a["kind"] == "comment":
+                new = f"{indent}# {repl}"
+            elif a["kind"] == "trailing":
+                new = f"{ln.split('#', 1)[0].rstrip()}  # {repl}"
+            else:  # docstring : prose-en-chaîne
+                new = f"{indent}{repl}"
+                if _tq(new) != _tq(ln):  # invariant quotes
+                    n_skip += 1
+                    continue
+            lines[ln_no - 1] = new + nl
+            n_b += 1
+        new_text = "".join(
+            x for k, x in enumerate(lines) if k not in drop
+        )
+        try:
+            ast.parse(new_text)
+        except SyntaxError as e:
+            print(f"ABORT {fp} : ne parse plus ({e}) — NON écrit")
+            return 2
+        fp.write_text(new_text, encoding="utf-8")
+    print(f"{layer} : A={n_a} B={n_b} skip={n_skip}")
+    return 0
 
 
 def main() -> int:
@@ -116,7 +224,11 @@ def main() -> int:
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--dump", metavar="FILE",
                     help="écrit la table complète (revue)")
+    ap.add_argument("--apply", metavar="LAYER",
+                    help="applique A+B d'une couche (re-lecture live)")
     a = ap.parse_args()
+    if a.apply:
+        return apply_layer(a.apply)
     rows = scan()
     by_layer: dict[str, dict[str, int]] = {}
     for r in rows:

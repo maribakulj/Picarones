@@ -1,4 +1,4 @@
-"""Parser PAGE XML tolérant — Sprint A14-S9.
+"""Parser PAGE XML tolérant
 
 Détection auto du namespace PRIMA (plusieurs versions co-existent
 dans la nature : ``2010-03-19``, ``2013-07-15``, ``2017-07-15``,
