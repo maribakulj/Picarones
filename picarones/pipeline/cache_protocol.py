@@ -1,6 +1,6 @@
 """``ArtifactCachePort`` — port (Protocol) consommé par ``PipelineExecutor``.
 
-Sprint A14-S47 — inversion de dépendance pour le branchement
+inversion de dépendance pour le branchement
 ``ArtifactStore`` dans le pipeline.
 
 Pourquoi ce Protocol

@@ -1,4 +1,4 @@
-"""``StepExecutor`` (Protocol) — Sprint A14-S6.
+"""``StepExecutor`` (Protocol)
 
 Contrat que doit satisfaire tout adapter exécutable par le pipeline
 runner.  Une fonction ou une classe peut satisfaire le protocole —

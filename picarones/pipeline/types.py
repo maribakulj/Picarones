@@ -1,4 +1,4 @@
-"""``RunContext``, ``StepResult``, ``PipelineResult`` — Sprint A14-S6.
+"""``RunContext``, ``StepResult``, ``PipelineResult``
 
 Types runtime du pipeline executor (à implémenter au Sprint S7).
 Distincts des specs déclaratives (``picarones.pipeline.spec``) —

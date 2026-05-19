@@ -1,4 +1,4 @@
-"""Sérialisation YAML des ``PipelineSpec`` — Sprint A14-S6.
+"""Sérialisation YAML des ``PipelineSpec``
 
 Helpers de chargement / écriture YAML.  Volontairement minces —
 ``pydantic.model_dump()`` produit déjà un dict imbriqué

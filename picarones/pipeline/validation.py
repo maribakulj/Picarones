@@ -1,4 +1,4 @@
-"""``validate_spec`` — Sprint A14-S6.
+"""``validate_spec``
 
 Validation statique d'une ``PipelineSpec`` : vérifier que les
 types s'enchaînent, qu'il n'y a pas d'IDs dupliqués, que les
