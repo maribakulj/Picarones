@@ -80,9 +80,12 @@ services:
   # Activer avec : docker compose --profile ollama up
   # ────────────────────────────────────────────────
   ollama:
-    # Tag pinné pour la reproductibilité (surcharge via OLLAMA_IMAGE).
-    # Éviter ``latest`` : un pull ultérieur peut changer le comportement.
-    image: ${OLLAMA_IMAGE:-ollama/ollama:0.3.14}
+    # Image paramétrable pour la reproductibilité : poser
+    # ``OLLAMA_IMAGE=ollama/ollama:<tag>`` dans .env pour épingler une
+    # version (recommandé en institutionnel — ``latest`` peut dériver
+    # entre deux pulls).  Défaut ``latest`` conservé pour ne pas casser
+    # le profil optionnel avec un tag codé en dur non vérifié.
+    image: ${OLLAMA_IMAGE:-ollama/ollama:latest}
     container_name: picarones_ollama
     restart: unless-stopped
     profiles:
