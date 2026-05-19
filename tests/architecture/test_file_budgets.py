@@ -71,10 +71,11 @@ FILE_BUDGETS: dict[str, int] = {
     "picarones/adapters/corpus/escriptorium.py": 650,     # actuel 553
     # Sprint A14-S1 — A.I.0 P0 : ajout de validated_path,
     # validated_prompt_filename, safe_report_name et compute_workspace_roots.
-    # Ces helpers seront extraits dans ``picarones/web/path_security.py``
-    # lors du Sprint S20 du rewrite ciblé (création couche app/services/).
-    # Sprint F du plan v2.0 — déplacé vers ``interfaces/web/``.
-    "picarones/interfaces/web/security.py": 850,  # actuel 751
+    # Audit prod P1.2 — clusters uploads/rate_limit/csp/public_mode/
+    # paths extraits vers security_*.py (chacun < 400 : pas d'entrée).
+    # Budget resserré 850 → 480 (actuel ~397) : ne restent que le bloc
+    # CSRF (état mutable) + secure_cookies/deployment + la façade.
+    "picarones/interfaces/web/security.py": 480,  # actuel ~397
     # Sprint A14-S8 — CorpusRunner introduit pour orchestrer les
     # pipelines composées sur un corpus avec backpressure / timeout
     # réel / annulation propre.  Budget stable, l'extension
@@ -122,12 +123,10 @@ FILE_BUDGETS: dict[str, int] = {
     # --- Services applicatifs (couche 6).  Budgets ``current + 15 %``.
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
-    # Audit prod P1 — dégonflage du god-module : helpers stateless +
-    # _persist_legacy_benchmark_json extraits vers
-    # ``run_orchestrator_helpers.py``.  Budgets resserrés et verrouillés
-    # en CI (plus de dérive possible).
+    # Audit prod P1 — dégonflage du god-module : helpers extraits, puis
+    # (P1.1) ``run_orchestrator_helpers`` éclaté en sous-package cohésif
+    # (factories/loaders/legacy, chacun < 400 : pas d'entrée budget).
     "picarones/app/services/run_orchestrator.py": 1050,   # actuel ~913
-    "picarones/app/services/run_orchestrator_helpers.py": 520,  # actuel ~448
     "picarones/adapters/ocr/tesseract.py": 560,          # actuel 479 — Phase B5 migration Option B (+ ALTO_XML expose)
     "picarones/app/schemas/run_spec.py": 620,             # actuel 530 — Phase B1 migration Option B (+90 LOC : 7 nouveaux champs + 2 validators)
     "picarones/reports/html/render.py": 700,           # actuel 615

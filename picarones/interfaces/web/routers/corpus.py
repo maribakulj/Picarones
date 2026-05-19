@@ -19,7 +19,7 @@ from picarones.interfaces.web.security import (
     compute_browse_roots,
     get_max_total_upload_mb,
     get_max_upload_mb,
-    validate_image_safe,
+    validate_image_file_safe,
 )
 from picarones.interfaces.web.state import IMAGE_EXTS, UPLOADS_DIR
 
@@ -30,6 +30,25 @@ _logger = logging.getLogger(__name__)
 # Racines configurables via PICARONES_BROWSE_ROOTS, sinon
 # défaut restreint en mode public, défaut historique en mode dev.
 _BROWSE_ROOTS = compute_browse_roots(UPLOADS_DIR)
+
+
+def _dedupe_name(raw: str, seen: set[str]) -> str:
+    """Évite l'écrasement silencieux de deux fichiers multipart de
+    même basename (audit P0.5).
+
+    ``photo.png`` envoyé 2× ⇒ ``photo.png`` puis ``photo_1.png`` —
+    pas de perte de données silencieuse, pas de mauvaise association
+    image/GT.
+    """
+    if raw not in seen:
+        return raw
+    stem, dot, ext = raw.partition(".")
+    i = 1
+    while True:
+        candidate = f"{stem}_{i}{dot}{ext}"
+        if candidate not in seen:
+            return candidate
+        i += 1
 
 
 def _is_path_allowed(target: Path) -> bool:
@@ -106,39 +125,48 @@ async def api_corpus_upload(files: list[UploadFile] = File(...)) -> dict:
     try:
         total = 0
         staged: list[str] = []
+        seen_names: set[str] = set()
         for uf in files:
-            # Empêcher la traversée via le nom reçu du client
-            # (multipart) : on ne garde que le basename.
-            safe_name = Path(uf.filename or "upload").name
-            dest = corpus_dir / safe_name
-            written = 0
-            with dest.open("wb") as fh:
-                while True:
-                    chunk = await uf.read(UPLOAD_CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    written += len(chunk)
-                    total += len(chunk)
-                    if written > max_file_bytes:
-                        raise HTTPException(
-                            status_code=413,
-                            detail=(
-                                f"Fichier '{safe_name}' dépasse "
-                                f"{get_max_upload_mb()} Mo "
-                                "(PICARONES_MAX_UPLOAD_MB)."
-                            ),
-                        )
-                    if total > max_total_bytes:
-                        raise HTTPException(
-                            status_code=413,
-                            detail=(
-                                "Upload total dépasse "
-                                f"{get_max_total_upload_mb()} Mo "
-                                "(PICARONES_MAX_TOTAL_UPLOAD_MB)."
-                            ),
-                        )
-                    fh.write(chunk)
-            staged.append(safe_name)
+            try:
+                # Empêcher la traversée via le nom reçu du client
+                # (multipart) : basename seul ; puis dédup pour ne pas
+                # écraser silencieusement un fichier de même nom.
+                raw_name = Path(uf.filename or "upload").name
+                safe_name = _dedupe_name(raw_name, seen_names)
+                seen_names.add(safe_name)
+                dest = corpus_dir / safe_name
+                written = 0
+                with dest.open("wb") as fh:
+                    while True:
+                        chunk = await uf.read(UPLOAD_CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        written += len(chunk)
+                        total += len(chunk)
+                        if written > max_file_bytes:
+                            raise HTTPException(
+                                status_code=413,
+                                detail=(
+                                    f"Fichier '{safe_name}' dépasse "
+                                    f"{get_max_upload_mb()} Mo "
+                                    "(PICARONES_MAX_UPLOAD_MB)."
+                                ),
+                            )
+                        if total > max_total_bytes:
+                            raise HTTPException(
+                                status_code=413,
+                                detail=(
+                                    "Upload total dépasse "
+                                    f"{get_max_total_upload_mb()} Mo "
+                                    "(PICARONES_MAX_TOTAL_UPLOAD_MB)."
+                                ),
+                            )
+                        fh.write(chunk)
+                staged.append(safe_name)
+            finally:
+                # Fermeture explicite du SpooledTemporaryFile sous-jacent
+                # (libère le fd / le fichier temp même en cas d'erreur).
+                await uf.close()
 
         try:
             summary = await asyncio.to_thread(
@@ -177,8 +205,8 @@ def _finalize_uploaded_dir(corpus_dir: Path, staged: list[str]) -> dict:
 
     - ``.zip`` : extrait via ``flatten_zip_to_dir`` (ouvert depuis le
       chemin disque, pas de chargement RAM intégral), puis supprimé.
-    - image : validée en place (``validate_image_safe``) — la lecture
-      est bornée par le plafond unitaire appliqué au streaming.
+    - image : validée depuis le fichier (``validate_image_file_safe``,
+      Pillow lit en flux — pas de ``read_bytes()`` intégral).
     - ``.txt``/``.xml``/``.gt.txt`` : conservés tels quels.
     - autre : supprimé (type ignoré).
     """
@@ -192,7 +220,7 @@ def _finalize_uploaded_dir(corpus_dir: Path, staged: list[str]) -> dict:
                 flatten_zip_to_dir(zf, corpus_dir)
             p.unlink(missing_ok=True)
         elif suffix in IMAGE_EXTS:
-            validate_image_safe(p.read_bytes(), filename=name)
+            validate_image_file_safe(p, filename=name)
         elif (
             name.endswith(".gt.txt")
             or name.endswith(".ocr.txt")

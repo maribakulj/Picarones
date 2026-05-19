@@ -225,3 +225,65 @@ class TestLegitimateZIPPasses:
         # exception n'a été levée et qu'un répertoire d'extraction
         # existe sous corpus_root.
         assert (tmp_path / "corpora" / "legit").exists()
+
+
+class TestZipStreamingGuards:
+    """Audit P0.5 — extraction ZIP en flux + garde-fous bombe :
+    plafond par membre, ratio de compression, nettoyage du fichier
+    partiel si le plafond saute en cours de décompression."""
+
+    def test_compression_ratio_bomb_rejected(self, tmp_path: Path) -> None:
+        from picarones.interfaces.web.corpus_utils import flatten_zip_to_dir
+
+        # 4 Mo de zéros → compresse à quelques Ko ⇒ ratio ≫ 200:1,
+        # mais taille déclarée < MAX_ZIP_MEMBER_SIZE : c'est le garde
+        # RATIO (pas le plafond absolu) qui doit déclencher.
+        bomb = b"\x00" * (4 * 1024 * 1024)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("doc01.gt.txt", bomb)
+        buf.seek(0)
+        with zipfile.ZipFile(buf) as zf:
+            with pytest.raises(ValueError, match="ratio de compression"):
+                flatten_zip_to_dir(
+                    zf, tmp_path / "out", validate_images=False,
+                )
+
+    def test_member_over_cap_rejected_and_partial_cleaned(
+        self, tmp_path: Path, monkeypatch,
+    ) -> None:
+        import picarones.interfaces.web.corpus_utils as cu
+
+        # Plafond ramené à 64 Kio + ratio désarmé pour isoler le
+        # garde TAILLE.  Données incompressibles (random) → pas de
+        # ratio suspect, mais > plafond ⇒ rejet EN COURS de flux.
+        monkeypatch.setattr(cu, "MAX_ZIP_MEMBER_SIZE", 64 * 1024)
+        monkeypatch.setattr(cu, "MAX_ZIP_COMPRESSION_RATIO", 10**9)
+        import os as _os
+        big = _os.urandom(256 * 1024)  # 256 Kio > 64 Kio
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as zf:
+            zf.writestr("doc01.gt.txt", big)
+        buf.seek(0)
+        out = tmp_path / "out"
+        with zipfile.ZipFile(buf) as zf:
+            with pytest.raises(ValueError, match="trop volumineux|décompression"):
+                cu.flatten_zip_to_dir(zf, out, validate_images=False)
+        # Le fichier partiel ne doit PAS subsister.
+        assert not (out / "doc01.gt.txt").exists(), (
+            "fichier partiel non nettoyé après dépassement du plafond"
+        )
+
+    def test_legit_small_zip_still_extracts(self, tmp_path: Path) -> None:
+        from picarones.interfaces.web.corpus_utils import flatten_zip_to_dir
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("a/doc01.gt.txt", b"Bonjour")
+            zf.writestr("a/doc01.ocr.txt", b"Bonjuor")
+        buf.seek(0)
+        out = tmp_path / "out"
+        with zipfile.ZipFile(buf) as zf:
+            flatten_zip_to_dir(zf, out, validate_images=False)
+        assert (out / "doc01.gt.txt").read_bytes() == b"Bonjour"
+        assert (out / "doc01.ocr.txt").exists()

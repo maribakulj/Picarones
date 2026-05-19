@@ -372,3 +372,34 @@ class TestIsPathAllowedException:
         assert corpus_router._is_path_allowed(
             RealPath("/totally/unrelated"),
         ) is False
+
+
+class TestMultipartDedupe:
+    """Audit P0.5 — deux fichiers multipart de même basename ne
+    doivent pas s'écraser silencieusement (perte de données /
+    mauvaise association image-GT)."""
+
+    def test_unique_name_unchanged(self) -> None:
+        from picarones.interfaces.web.routers.corpus import _dedupe_name
+
+        assert _dedupe_name("photo.png", set()) == "photo.png"
+
+    def test_duplicate_gets_suffix_not_overwrite(self) -> None:
+        from picarones.interfaces.web.routers.corpus import _dedupe_name
+
+        seen: set[str] = set()
+        n1 = _dedupe_name("photo.png", seen)
+        seen.add(n1)
+        n2 = _dedupe_name("photo.png", seen)
+        seen.add(n2)
+        n3 = _dedupe_name("photo.png", seen)
+        assert n1 == "photo.png"
+        assert n2 == "photo_1.png"
+        assert n3 == "photo_2.png"
+        assert len({n1, n2, n3}) == 3  # aucun écrasement
+
+    def test_compound_extension_preserved(self) -> None:
+        from picarones.interfaces.web.routers.corpus import _dedupe_name
+
+        # ``.gt.txt`` : partition('.') garde la 1re extension + reste.
+        assert _dedupe_name("doc.gt.txt", {"doc.gt.txt"}) == "doc_1.gt.txt"
