@@ -78,7 +78,7 @@ test-fast:  ## Tests rapides uniquement (exclut les tests lents)
 	$(PYTEST) tests/ -q --tb=short -x
 
 test-sprint9:  ## Tests Sprint 9 uniquement
-	$(PYTEST) tests/test_sprint9_packaging.py -v
+	$(PYTEST) tests/integration/test_packaging.py -v
 
 # ──────────────────────────────────────────────────────────────────
 # Qualité du code
