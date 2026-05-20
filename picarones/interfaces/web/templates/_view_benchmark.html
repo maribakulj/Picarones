@@ -31,24 +31,39 @@
       <span class="sec-num">01</span>
       <div style="flex:1; display:flex; flex-direction:column;">
         <div class="sec-title" data-i18n="bench_corpus_title">Corpus</div>
-        <div class="sec-sub" data-i18n="bench_corpus_label">Chemin vers le dossier corpus (paires image / .gt.txt)</div>
+        <div class="sec-sub" data-i18n="bench_corpus_sub">Choisir un corpus chargé dans la Bibliothèque.</div>
       </div>
       <div class="sec-aside" id="corpus-info-aside"></div>
     </div>
     <div class="sec-body">
 
-      <div class="tabs" style="margin-bottom:14px;">
-        <button class="on" id="ctab-browse" type="button" onclick="switchCorpusTab('browse')">
-          <span data-i18n="corpus_tab_browse">Parcourir</span>
-        </button>
-        <button id="ctab-upload" type="button" onclick="switchCorpusTab('upload')">
-          <span data-i18n="corpus_tab_upload">Uploader</span>
-        </button>
+      <div class="grid-2" style="gap:14px; align-items:flex-end;">
+        <div class="field">
+          <div class="field-label">
+            <span data-i18n="bench_corpus_pick">Corpus</span>
+            <span class="opt" id="corpus-select-meta">0 disponible(s)</span>
+          </div>
+          <select id="corpus-select" onchange="onCorpusSelectChange()">
+            <option value="" data-i18n="bench_corpus_pick_placeholder">— Choisir un corpus —</option>
+          </select>
+        </div>
+        <div class="row" style="gap:8px;">
+          <button class="btn" type="button" onclick="showView('import')">
+            <span data-i18n="bench_corpus_open_library">Ouvrir la Bibliothèque</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="toggleCorpusFreeInput()">
+            <span data-i18n="bench_corpus_advanced">Mode expert</span>
+          </button>
+        </div>
       </div>
 
-      <div id="corpus-tab-browse">
+      {# Mode expert : pointer un dossier libre du filesystem #}
+      <div id="corpus-free-input" style="display:none; margin-top:14px;">
         <div class="field">
-          <div class="field-label"><span data-i18n="bench_corpus_label">Chemin corpus</span></div>
+          <div class="field-label">
+            <span data-i18n="bench_corpus_free_label">Chemin libre (filesystem)</span>
+            <span class="opt" data-i18n="bench_corpus_free_hint">non recommandé hors usage local</span>
+          </div>
           <div style="display:flex; gap:8px;">
             <input type="text" id="corpus-path" placeholder="./corpus/" value="" class="mono-input" />
             <button class="btn" type="button" onclick="openFileBrowser()">
@@ -56,42 +71,10 @@
             </button>
           </div>
         </div>
-        <div id="file-browser-container" style="display:none; margin-top:12px;">
+        <div id="file-browser-container" style="display:none; margin-top:10px;">
           <div class="surface-flat" style="font-family:var(--mono); font-size:12px; color:var(--g-500); padding:9px 16px; margin-bottom:6px;" id="fb-current-path">.</div>
           <div id="file-browser" class="file-list"></div>
         </div>
-      </div>
-
-      <div id="corpus-tab-upload" style="display:none;">
-        <div class="row" style="gap:14px; margin-bottom:10px;">
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px;">
-            <input type="radio" name="upload-mode" value="zip" checked onchange="onUploadModeChange()">
-            <span data-i18n="upload_zip_mode">Archive ZIP</span>
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px;">
-            <input type="radio" name="upload-mode" value="files" onchange="onUploadModeChange()">
-            <span data-i18n="upload_files_mode">Fichiers individuels</span>
-          </label>
-        </div>
-
-        <div id="upload-dropzone" class="dropzone"
-             onclick="document.getElementById('upload-file-input').click()"
-             ondragover="event.preventDefault(); this.classList.add('active')"
-             ondragleave="this.classList.remove('active')"
-             ondrop="onDropFiles(event)">
-          <span class="dz-marker">⬆</span>
-          <div id="upload-dropzone-text" data-i18n="upload_drop_zip">Glissez un .zip ici ou cliquez pour sélectionner</div>
-          <div class="foot" style="margin-top:6px;">ZIP · max 500 MB · paires auto-détectées</div>
-          <input type="file" id="upload-file-input" style="display:none" accept=".zip" onchange="onFileInputChange(event)" />
-        </div>
-
-        <div id="upload-progress-container" style="display:none; margin-top:12px;">
-          <div class="progress thick"><div class="progress-bar" id="upload-progress-bar" style="width:0%;"></div></div>
-          <div id="upload-progress-text" class="foot" style="margin-top:6px;"></div>
-        </div>
-
-        <div id="upload-preview" style="margin-top:12px;"></div>
-        <div id="uploads-list" style="margin-top:14px;"></div>
       </div>
 
       <div id="corpus-info" class="foot" style="margin-top:10px;"></div>
@@ -221,13 +204,29 @@
       </div>
     </div>
     <div class="sec-body">
-      <div class="grid-4" style="gap:14px;">
+      <div class="grid-2" style="gap:14px;">
+        <div class="field">
+          <div class="field-label">
+            <span data-i18n="bench_profile_label">Profil de run</span>
+          </div>
+          <select id="run-profile">
+            <option value="standard" data-i18n="bench_profile_standard">standard — défaut</option>
+            <option value="minimal" data-i18n="bench_profile_minimal">minimal — CER/WER seulement</option>
+            <option value="philological" data-i18n="bench_profile_philological">philological — édition critique</option>
+            <option value="diagnostics" data-i18n="bench_profile_diagnostics">diagnostics — diagnostic approfondi</option>
+            <option value="economics" data-i18n="bench_profile_economics">economics — coûts API LLM</option>
+            <option value="full" data-i18n="bench_profile_full">full — tout activé</option>
+          </select>
+          <small class="help" style="margin-top:6px; padding-left:0; border-left:0;" data-i18n="bench_profile_hint">Métriques activées et sections du rapport HTML.</small>
+        </div>
         <div class="field">
           <div class="field-label"><span data-i18n="bench_norm_label">Profil normalisation</span></div>
           <select id="norm-profile">
             <option value="nfc">NFC (standard)</option>
           </select>
         </div>
+      </div>
+      <div class="grid-3" style="gap:14px; margin-top:14px;">
         <div class="field">
           <div class="field-label"><span data-i18n="bench_char_exclude_label">Caractères à ignorer</span></div>
           <input type="text" id="char-exclude" class="mono-input" placeholder="ex : ', -, –, ." />
