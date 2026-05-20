@@ -16,7 +16,7 @@ Sprint 25 fait pareil pour la SPA web : l'ancien ``_HTML_TEMPLATE`` de
       └── _modals.html
 
     picarones/web/static/
-      ├── retro.css        (existait déjà)
+      ├── picarones.css    (refonte XerOCR — Bauhaus/Xerox-Star)
       └── web-app.js       (extrait du <script> inline)
 
 Ce module vérifie :

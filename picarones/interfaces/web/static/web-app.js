@@ -457,7 +457,7 @@ async function loadBenchmarkSections() {
     _refreshSysCounts(d);
   } catch(e) {
     const c = document.getElementById("ocr-engines-status-list");
-    if (c) c.innerHTML = `<div style="color:var(--danger);font-size:12px;">Erreur : ${e.message}</div>`;
+    if (c) c.innerHTML = `<div style="color:var(--err);font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -476,19 +476,19 @@ function _refreshSysCounts(d) {
 }
 
 function _makeProviderRow(eng, msId) {
-  const dotCls = eng.available ? "status-ok" : (eng.status === "not_running" ? "status-warn" : "status-err");
+  const dotCls = eng.available ? "on" : (eng.status === "not_running" ? "warn" : "off");
   let statusLabel;
   if (eng.available) statusLabel = eng.version ? eng.version : (lang === "fr" ? "disponible" : "available");
-  else if (eng.status === "missing_key") statusLabel = eng.key_env ? `<code style="font-size:11px;color:var(--warning)">${eng.key_env}</code>` : (lang === "fr" ? "clé manquante" : "key missing");
+  else if (eng.status === "missing_key") statusLabel = eng.key_env ? `<code class="mono" style="font-size:11px;color:var(--clay-deep)">${_escapeHtml(eng.key_env)}</code>` : (lang === "fr" ? "clé manquante" : "key missing");
   else if (eng.status === "not_running") statusLabel = lang === "fr" ? "inactif" : "not running";
   else statusLabel = lang === "fr" ? "non installé" : "not installed";
 
   const row = document.createElement("div");
-  row.className = "provider-row";
+  row.style = "display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--g-50); font-size:13px;";
   row.innerHTML = `
-    <div class="provider-label"><span class="engine-status ${dotCls}"></span><strong>${eng.label}</strong></div>
-    <div class="provider-status">${statusLabel}</div>
-    <div class="provider-model-select" id="${msId}">${eng.available ? '<span class="spinner"></span>' : ""}</div>`;
+    <div style="display:flex; align-items:center; gap:10px;"><span class="dot ${dotCls}"></span><strong>${_escapeHtml(eng.label)}</strong></div>
+    <div class="mono" style="font-size:11.5px; color:var(--g-500);">${statusLabel}</div>
+    <div id="${msId}" class="mono" style="font-size:11.5px; min-width:120px; text-align:right;">${eng.available ? '<span class="dot busy"></span>' : ""}</div>`;
   return row;
 }
 
@@ -504,11 +504,11 @@ async function renderOCREnginesSection(engines) {
         const div = document.getElementById(msId);
         if (!div) return;
         div.innerHTML = models.length === 0
-          ? `<span style="color:var(--text-muted);font-size:11px;">—</span>`
+          ? `<span style="color:var(--g-400);font-size:11px;">—</span>`
           : `<span style="font-size:12px;">${models.slice(0,5).join(", ")}${models.length > 5 ? ` +${models.length-5}` : ""}</span>`;
       }).catch(() => {
         const div = document.getElementById(msId);
-        if (div) div.innerHTML = `<span style="color:var(--danger);font-size:11px;">Erreur API</span>`;
+        if (div) div.innerHTML = `<span style="color:var(--err);font-size:11px;">Erreur API</span>`;
       });
     }
   }
@@ -526,11 +526,11 @@ async function renderLLMSection(llms) {
         const div = document.getElementById(msId);
         if (!div) return;
         div.innerHTML = models.length === 0
-          ? `<span style="color:var(--text-muted);font-size:11px;">—</span>`
+          ? `<span style="color:var(--g-400);font-size:11px;">—</span>`
           : `<span style="font-size:12px;">${models.slice(0,3).join(", ")}${models.length > 3 ? ` +${models.length-3}` : ""}</span>`;
       }).catch(() => {
         const div = document.getElementById(msId);
-        if (div) div.innerHTML = `<span style="color:var(--danger);font-size:11px;">Erreur API</span>`;
+        if (div) div.innerHTML = `<span style="color:var(--err);font-size:11px;">Erreur API</span>`;
       });
     }
   }
@@ -830,16 +830,16 @@ async function browsePath(path) {
     fb.innerHTML = "";
     if (d.parent_path) {
       const up = document.createElement("div");
-      up.className = "fb-item";
-      up.innerHTML = `<span class="fb-icon">⬆</span><span class="fb-name">..</span>`;
+      up.className = "file-row";
+      up.innerHTML = `<span class="icon">⬆</span><span>..</span><span class="meta"></span><span class="meta"></span>`;
       up.onclick = () => browsePath(d.parent_path);
       fb.appendChild(up);
     }
     d.items.filter(i => i.is_dir).forEach(item => {
       const el = document.createElement("div");
-      el.className = "fb-item";
-      const hasCorpus = item.has_corpus ? `<span class="fb-badge" style="color:var(--success)">✓ ${item.gt_count} GT</span>` : "";
-      el.innerHTML = `<span class="fb-icon">📁</span><span class="fb-name">${item.name}</span>${hasCorpus}`;
+      el.className = "file-row";
+      const hasCorpus = item.has_corpus ? `<span class="tag tag-fern">✓ ${item.gt_count} GT</span>` : "";
+      el.innerHTML = `<span class="icon">📁</span><span>${_escapeHtml(item.name)}</span><span class="meta"></span>${hasCorpus}`;
       el.onclick = () => {
         if (item.has_corpus) {
           document.getElementById("corpus-path").value = item.path;
@@ -853,11 +853,11 @@ async function browsePath(path) {
       fb.appendChild(el);
     });
     if (fb.children.length === 0) {
-      fb.innerHTML = '<div style="padding:12px; color: var(--text-muted); font-size:12px;">Dossier vide</div>';
+      fb.innerHTML = '<div class="empty">Dossier vide</div>';
     }
   } catch(e) {
     document.getElementById("file-browser").innerHTML =
-      `<div style="padding:12px; color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+      `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -1393,14 +1393,14 @@ async function searchHTRUnited() {
   const lang2 = document.getElementById("htr-lang-filter").value;
   const script = document.getElementById("htr-script-filter").value;
   const container = document.getElementById("htr-results");
-  container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("loading")}</div>`;
+  container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${t("loading")}</div>`;
   try {
     const url = `/api/htr-united/catalogue?query=${encodeURIComponent(q)}&language=${encodeURIComponent(lang2)}&script=${encodeURIComponent(script)}`;
     const r = await fetch(url);
     const d = await r.json();
     _updateHtrDemoBanner(Boolean(d.is_demo));
     if (d.entries.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
+      container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
       return;
     }
     container.innerHTML = d.entries.map(e => {
@@ -1423,7 +1423,7 @@ async function searchHTRUnited() {
       </div>`;
     }).join("");
   } catch(e) {
-    container.innerHTML = `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div style="color: var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -1432,13 +1432,13 @@ async function searchHuggingFace() {
   const langFilter = document.getElementById("hf-lang-filter").value;
   const tags = document.getElementById("hf-tags").value;
   const container = document.getElementById("hf-results");
-  container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("loading")}</div>`;
+  container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${t("loading")}</div>`;
   try {
     const url = `/api/huggingface/search?query=${encodeURIComponent(q)}&language=${encodeURIComponent(langFilter)}&tags=${encodeURIComponent(tags)}`;
     const r = await fetch(url);
     const d = await r.json();
     if (d.datasets.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
+      container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
       return;
     }
     container.innerHTML = d.datasets.map(ds => {
@@ -1460,7 +1460,7 @@ async function searchHuggingFace() {
       </div>`;
     }).join("");
   } catch(e) {
-    container.innerHTML = `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div style="color: var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -1498,11 +1498,11 @@ async function confirmImport() {
     const msg = lang === "fr"
       ? `✓ Import terminé. ${d.files_imported || 0} fichiers dans <code>${d.output_dir}</code>`
       : `✓ Import done. ${d.files_imported || 0} files in <code>${d.output_dir}</code>`;
-    statusDiv.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+    statusDiv.innerHTML = `<div class="surface-flat" style="padding:10px 14px; font-size:12.5px; color:var(--fern-deep); background:var(--fern-soft);">${msg}</div>`;
     // Suggestion de corpus path
     document.getElementById("corpus-path").value = d.output_dir;
   } catch(e) {
-    statusDiv.innerHTML = `<div class="alert alert-error">Erreur : ${e.message}</div>`;
+    statusDiv.innerHTML = `<div class="surface-flat" style="padding:10px 14px; font-size:12.5px; color:var(--err); background:oklch(0.95 0.03 28);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -1513,11 +1513,10 @@ function switchCorpusTab(tab) {
   document.getElementById("corpus-tab-browse").style.display = tab === "browse" ? "block" : "none";
   document.getElementById("corpus-tab-upload").style.display = tab === "upload" ? "block" : "none";
   // XerOCR tabs : la class `on` est utilisee par picarones.css.
-  // On garde `active` en parallele pour compat retro.css.
   const b = document.getElementById("ctab-browse");
   const u = document.getElementById("ctab-upload");
-  if (b) { b.classList.toggle("on", tab === "browse"); b.classList.toggle("active", tab === "browse"); }
-  if (u) { u.classList.toggle("on", tab === "upload"); u.classList.toggle("active", tab === "upload"); }
+  if (b) b.classList.toggle("on", tab === "browse");
+  if (u) u.classList.toggle("on", tab === "upload");
   if (tab === "upload") loadUploadedCorpora();
 }
 
@@ -1542,7 +1541,7 @@ function onFileInputChange(event) {
 
 function onDropFiles(event) {
   event.preventDefault();
-  document.getElementById("upload-dropzone").classList.remove("dragover");
+  document.getElementById("upload-dropzone").classList.remove("active");
   const files = Array.from(event.dataTransfer.files);
   if (files.length > 0) uploadCorpus(files);
 }
@@ -1579,7 +1578,7 @@ async function uploadCorpus(files) {
     }
     const d = await r.json();
     progressText.textContent = `✓ ${t("upload_success")} — ${d.doc_count} ${t("upload_pairs")}`;
-    progressBar.style.background = "var(--success)";
+    progressBar.style.background = "var(--ok)";
 
     // Show preview
     renderUploadPreview(d, previewEl);
@@ -1594,14 +1593,14 @@ async function uploadCorpus(files) {
     loadUploadedCorpora();
   } catch(e) {
     progressBar.style.width = "100%";
-    progressBar.style.background = "var(--danger)";
+    progressBar.style.background = "var(--err)";
     progressText.textContent = `✗ ${e.message}`;
   }
 }
 
 function renderUploadPreview(data, container) {
   const missingBadge = data.has_missing_gt
-    ? `<span class="badge badge-err" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
+    ? `<span class="tag tag-clay" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
     : "";
   const ocrBadge = (data.has_ocr_text && data.ocr_text_count > 0)
     ? `<span class="badge" style="margin-left:8px; background:#dcfce7; color:#16a34a;">📝 ${data.ocr_text_count} .ocr.txt</span>`
@@ -1612,16 +1611,16 @@ function renderUploadPreview(data, container) {
     </div>`;
   for (const p of data.pairs) {
     html += `<div class="corpus-preview-pair">
-      <span style="color:var(--text-muted);">🖼</span><span>${p.image}</span>
-      <span style="color:var(--text-muted); margin-left:auto;">↔</span>
-      <span style="color:var(--success);">${p.gt}</span>
+      <span style="color:var(--g-400);">🖼</span><span>${p.image}</span>
+      <span style="color:var(--g-400); margin-left:auto;">↔</span>
+      <span style="color:var(--ok);">${p.gt}</span>
     </div>`;
   }
   if (data.total_pairs > data.pairs.length) {
     html += `<div class="corpus-preview-more">… et ${data.total_pairs - data.pairs.length} autres paires</div>`;
   }
   for (const w of (data.warnings || [])) {
-    html += `<div style="padding:5px 12px; font-size:11px; color:var(--warning);">⚠ ${w}</div>`;
+    html += `<div style="padding:5px 12px; font-size:11px; color:var(--warn);">⚠ ${w}</div>`;
   }
   html += `</div>`;
   container.innerHTML = html;
@@ -1649,26 +1648,26 @@ async function loadUploadedCorpora() {
     const r = await fetch("/api/corpus/uploads");
     const d = await r.json();
     if (d.uploads.length === 0) {
-      container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">${t("upload_no_corpus")}</div>`;
+      container.innerHTML = `<div style="color:var(--g-400); font-size:12px;">${t("upload_no_corpus")}</div>`;
       return;
     }
     const currentPath = document.getElementById("corpus-path").value;
     container.innerHTML = d.uploads.map(u => {
       const isSelected = u.corpus_path === currentPath;
       const missing = u.has_missing_gt
-        ? `<span class="badge badge-warn" style="margin-left:6px;">${t("upload_missing_gt")}</span>` : "";
+        ? `<span class="tag tag-butter" style="margin-left:6px;">${t("upload_missing_gt")}</span>` : "";
       return `<div class="upload-corpus-item${isSelected ? " selected" : ""}"
                    onclick="setCorpusPath('${u.corpus_path}', 'upload (${u.doc_count} docs)'); loadUploadedCorpora()">
         <span class="upload-corpus-label">
           <strong>${u.doc_count} ${t("upload_pairs")}</strong>${missing}
-          <span style="display:block; font-size:11px; color:var(--text-muted); font-family:monospace;">${u.corpus_path}</span>
+          <span style="display:block; font-size:11px; color:var(--g-400); font-family:monospace;">${u.corpus_path}</span>
         </span>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteUploadedCorpus('${u.corpus_id}')"
                 title="${t("upload_delete")}">✕</button>
       </div>`;
     }).join("");
   } catch(e) {
-    container.innerHTML = `<div style="color:var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div style="color:var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
