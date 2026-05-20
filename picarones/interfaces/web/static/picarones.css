@@ -70,8 +70,8 @@
 html, body {
   background-color: var(--paper);
   background-image:
-    /* Xerox-Star halftone — tighter, denser grid */
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'><circle cx='1' cy='1' r='0.9' fill='%231a1917' fill-opacity='0.34'/></svg>");
+    /* Xerox-Star halftone — tighter, denser grid (3px, r=0.6, opacity 0.28) */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='3' height='3' viewBox='0 0 3 3'><circle cx='1' cy='1' r='0.6' fill='%231a1917' fill-opacity='0.28'/></svg>");
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
