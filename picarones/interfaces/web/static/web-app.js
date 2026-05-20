@@ -1371,8 +1371,9 @@ let _libraryLocalCorpora = [];
 function switchLibraryPane(pane) {
   const local = document.getElementById("library-pane-local");
   const disc = document.getElementById("library-pane-discover");
-  if (local) local.style.display = pane === "local" ? "block" : "none";
-  if (disc) disc.style.display = pane === "discover" ? "block" : "none";
+  // flex (pas block) pour activer le flex-direction:column + gap inline.
+  if (local) local.style.display = pane === "local" ? "flex" : "none";
+  if (disc) disc.style.display = pane === "discover" ? "flex" : "none";
   const lt = document.getElementById("ltab-local");
   const dt = document.getElementById("ltab-discover");
   if (lt) lt.classList.toggle("on", pane === "local");
