@@ -55,15 +55,38 @@ const T = {
   fr: {
     app_title: "Picarones",
     nav_benchmark: "Benchmark",
+    nav_library: "Bibliothèque",
     nav_reports: "Rapports",
     nav_engines: "Moteurs",
     nav_import: "Import",
+    nav_history: "Historique",
+    nav_diagnose: "Diagnostic",
+    nav_economics: "Coûts",
+    nav_robustness: "Robustesse",
+    nav_edition: "Édition",
+    nav_compare: "Comparer",
+    sys_title: "Système",
+    sys_version: "Version",
+    sys_mode: "Mode",
+    sys_job: "Tâche",
+    sys_idle: "au repos",
+    sys_pipeline: "Pipeline",
+    sys_engines_online: "Moteurs en ligne",
+    sys_llms_online: "LLM en ligne",
     loading: "Chargement…",
     search: "Rechercher",
     all: "Tous",
     cancel: "Annuler",
-    bench_corpus_title: "1. Corpus",
+    bench_hero_title: "Banc d'essai",
+    bench_hero_desc: "Comparaison de pipelines OCR / HTR / VLM sur corpus patrimonial.",
+    bench_corpus_title: "Corpus",
     bench_corpus_label: "Chemin vers le dossier corpus (paires image / .gt.txt)",
+    bench_compose_desc: "Pipelines à comparer — OCR seul, OCR → LLM, ou VLM zero-shot",
+    bench_options_desc: "Normalisation, exclusions, destination du rapport",
+    bench_run_title: "Exécuter",
+    bench_run_desc: "Lancer le benchmark sur la file de concurrents",
+    queue_label: "QUEUE",
+    competitors_word: "concurrent(s)",
     bench_browse: "Parcourir",
     corpus_tab_browse: "📁 Parcourir",
     corpus_tab_upload: "⬆ Uploader",
@@ -116,10 +139,54 @@ const T = {
     bench_synthesis_title: "Synthèse narrative",
     bench_open_report: "Ouvrir le rapport",
     reports_title: "Rapports générés",
+    reports_hero_desc: "Rapports HTML produits par les benchmarks — tri par date.",
     reports_dir_label: "Dossier de rapports",
     reports_refresh: "Rafraîchir",
+    engines_hero_title: "Moteurs",
+    engines_hero_desc: "État des adapters OCR/HTR et providers LLM disponibles dans l'environnement.",
     engines_ocr_title: "Moteurs OCR",
+    engines_ocr_desc: "Tesseract, Pero, Kraken, Calamari, Mistral OCR, Google Vision, Azure DI.",
     engines_llm_title: "LLMs disponibles",
+    engines_llm_desc: "Providers texte / vision configurés via variables d'environnement.",
+    library_hero_title: "Bibliothèque de corpus",
+    library_hero_desc: "Catalogues distants HTR-United et HuggingFace, importables en un clic.",
+    history_hero_title: "Historique longitudinal",
+    history_hero_desc: "Régressions de CER détectées sur les benchmarks passés (BenchmarkHistory).",
+    history_filters: "Filtres",
+    history_filters_desc: "Moteur, seuil CER, base SQLite (validée contre les workspace roots)",
+    history_engine: "Moteur",
+    history_threshold: "Seuil CER (%)",
+    history_db: "Chemin SQLite",
+    history_load: "Charger",
+    history_regressions_title: "Régressions détectées",
+    history_regressions_desc: "Moteurs dont le CER courant a augmenté au-delà du seuil par rapport à la baseline.",
+    history_empty: "Aucune donnée chargée — clique sur « Charger » pour interroger la base.",
+    diagnose_hero_title: "Diagnostic approfondi",
+    diagnose_hero_desc: "Benchmark + leviers d'amélioration + image_predictive — comprendre pourquoi un moteur réussit ou échoue sur ce corpus.",
+    diagnose_preset_desc: "profile=diagnostics → vue HTML « Diagnostic approfondi » avec leviers, profil d'image, baseline, longitudinal.",
+    diagnose_help: "Le diagnostic ouvrira la vue Benchmark pour suivre la progression. Le rapport HTML produit contiendra les sections diagnostic spécifiques au profil.",
+    economics_hero_title: "Coûts & économie",
+    economics_hero_desc: "Benchmark + throughput effectif + projection de coût (API LLM, tokens, latence).",
+    economics_preset_desc: "profile=economics → rapport HTML enrichi des sections coûts et throughput.",
+    economics_help: "Les coûts API LLM s'appuient sur picarones/data/pricing.yaml (table indicative). Les chiffres sont des projections, pas des factures réelles.",
+    edition_hero_title: "Édition critique",
+    edition_hero_desc: "Benchmark enrichi des métriques philologiques (MUFI, abréviations, ponctuation historique).",
+    edition_preset_desc: "profile=philological → rapport HTML avec métriques MUFI/diplomatic/punctuation.",
+    edition_help: "Profil pensé pour le médiéval / l'imprimé ancien. Pour la post-correction OCR → LLM avec prompt philologique, utilise la vue Benchmark en mode « OCR → LLM ».",
+    workflow_preset: "Preset",
+    workflow_engines: "Moteurs (CSV)",
+    workflow_run: "Lancer le diagnostic",
+    workflow_run_economics: "Lancer l'analyse coûts",
+    workflow_run_edition: "Lancer l'édition",
+    robustness_hero_title: "Robustesse aux dégradations",
+    robustness_hero_desc: "Test de tenue d'un moteur face aux dégradations d'image (bruit, flou, rotation, résolution, binarisation).",
+    robustness_demo_hint: "Pour un aperçu sans calcul réel, utilise picarones robustness --demo — génère un rapport HTML factice avec données synthétiques.",
+    compare_hero_title: "Comparer deux runs",
+    compare_hero_desc: "Diff entre deux benchmarks JSON — régressions, améliorations, écart CER significatif.",
+    compare_hint: "Le rapport HTML met en évidence les moteurs qui ont régressé ou amélioré au-delà du seuil (CER absolu, par défaut 0,5 pp).",
+    cli_only_title: "Disponible via CLI",
+    cli_only_sub: "Ce workflow n'a pas encore d'endpoint HTTP — utilise la ligne de commande.",
+    import_modal_desc: "Sélectionnez la destination et le nombre maximum de documents à télécharger.",
     import_htr_title: "Import HTR-United",
     import_htr_desc: "Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.",
     htr_demo_badge: "Mode démo",
@@ -147,15 +214,38 @@ const T = {
   en: {
     app_title: "Picarones",
     nav_benchmark: "Benchmark",
+    nav_library: "Library",
     nav_reports: "Reports",
     nav_engines: "Engines",
     nav_import: "Import",
+    nav_history: "History",
+    nav_diagnose: "Diagnose",
+    nav_economics: "Costs",
+    nav_robustness: "Robustness",
+    nav_edition: "Edition",
+    nav_compare: "Compare",
+    sys_title: "System",
+    sys_version: "Version",
+    sys_mode: "Mode",
+    sys_job: "Job",
+    sys_idle: "idle",
+    sys_pipeline: "Pipeline",
+    sys_engines_online: "Engines online",
+    sys_llms_online: "LLMs online",
     loading: "Loading…",
     search: "Search",
     all: "All",
     cancel: "Cancel",
-    bench_corpus_title: "1. Corpus",
+    bench_hero_title: "Benchmark",
+    bench_hero_desc: "Compare OCR / HTR / VLM pipelines on heritage corpora.",
+    bench_corpus_title: "Corpus",
     bench_corpus_label: "Path to corpus directory (image / .gt.txt pairs)",
+    bench_compose_desc: "Pipelines to compare — OCR only, OCR → LLM, or VLM zero-shot",
+    bench_options_desc: "Normalization, exclusions, report destination",
+    bench_run_title: "Execute",
+    bench_run_desc: "Run the benchmark on the queued competitors",
+    queue_label: "QUEUE",
+    competitors_word: "competitor(s)",
     bench_browse: "Browse",
     corpus_tab_browse: "📁 Browse",
     corpus_tab_upload: "⬆ Upload",
@@ -208,10 +298,54 @@ const T = {
     bench_synthesis_title: "Narrative synthesis",
     bench_open_report: "Open report",
     reports_title: "Generated reports",
+    reports_hero_desc: "HTML reports produced by benchmarks — sorted by date.",
     reports_dir_label: "Reports directory",
     reports_refresh: "Refresh",
+    engines_hero_title: "Engines",
+    engines_hero_desc: "Status of OCR/HTR adapters and available LLM providers.",
     engines_ocr_title: "OCR Engines",
+    engines_ocr_desc: "Tesseract, Pero, Kraken, Calamari, Mistral OCR, Google Vision, Azure DI.",
     engines_llm_title: "Available LLMs",
+    engines_llm_desc: "Text / vision providers configured via environment variables.",
+    library_hero_title: "Corpus library",
+    library_hero_desc: "Remote HTR-United and HuggingFace catalogues, one-click import.",
+    history_hero_title: "Longitudinal history",
+    history_hero_desc: "CER regressions detected across past benchmarks (BenchmarkHistory).",
+    history_filters: "Filters",
+    history_filters_desc: "Engine, CER threshold, SQLite path (validated against workspace roots)",
+    history_engine: "Engine",
+    history_threshold: "CER threshold (%)",
+    history_db: "SQLite path",
+    history_load: "Load",
+    history_regressions_title: "Detected regressions",
+    history_regressions_desc: "Engines whose current CER has risen above threshold vs the baseline.",
+    history_empty: "No data loaded — click \"Load\" to query the database.",
+    diagnose_hero_title: "In-depth diagnosis",
+    diagnose_hero_desc: "Benchmark + improvement levers + image_predictive — understand why an engine succeeds or fails on this corpus.",
+    diagnose_preset_desc: "profile=diagnostics → HTML view \"In-depth diagnosis\" with levers, image profile, baseline, longitudinal.",
+    diagnose_help: "The diagnosis will open the Benchmark view to follow the progress. The HTML report will contain the diagnostic sections specific to the profile.",
+    economics_hero_title: "Cost & economics",
+    economics_hero_desc: "Benchmark + effective throughput + cost projection (LLM API, tokens, latency).",
+    economics_preset_desc: "profile=economics → HTML report enriched with cost and throughput sections.",
+    economics_help: "LLM API costs rely on picarones/data/pricing.yaml (indicative table). Numbers are projections, not actual bills.",
+    edition_hero_title: "Critical edition",
+    edition_hero_desc: "Benchmark enriched with philological metrics (MUFI, abbreviations, historical punctuation).",
+    edition_preset_desc: "profile=philological → HTML report with MUFI/diplomatic/punctuation metrics.",
+    edition_help: "Profile designed for medieval / early modern print. For OCR → LLM post-correction with philological prompt, use the Benchmark view in \"OCR → LLM\" mode.",
+    workflow_preset: "Preset",
+    workflow_engines: "Engines (CSV)",
+    workflow_run: "Run diagnosis",
+    workflow_run_economics: "Run cost analysis",
+    workflow_run_edition: "Run edition",
+    robustness_hero_title: "Robustness to degradations",
+    robustness_hero_desc: "How an engine holds up under image degradations (noise, blur, rotation, resolution, binarization).",
+    robustness_demo_hint: "For a preview without actual computation, use picarones robustness --demo — generates a synthetic HTML report.",
+    compare_hero_title: "Compare two runs",
+    compare_hero_desc: "Diff between two benchmark JSONs — regressions, improvements, significant CER gap.",
+    compare_hint: "The HTML report highlights engines that have regressed or improved beyond the threshold (absolute CER, default 0.5 pp).",
+    cli_only_title: "Available via CLI",
+    cli_only_sub: "This workflow has no HTTP endpoint yet — use the command line.",
+    import_modal_desc: "Pick the destination directory and the maximum number of documents to download.",
     import_htr_title: "Import from HTR-United",
     import_htr_desc: "Community catalogue of HTR/OCR datasets for heritage documents.",
     htr_demo_badge: "Demo mode",
@@ -239,28 +373,35 @@ const T = {
 };
 let lang = "fr";
 function t(key) { return (T[lang][key]) || key; }
-function toggleLang() {
-  lang = lang === "fr" ? "en" : "fr";
-  document.getElementById("lang-btn").textContent = lang === "fr" ? "EN" : "FR";
+function setLang(next) {
+  if (next !== "fr" && next !== "en") return;
+  lang = next;
+  const legacyBtn = document.getElementById("lang-btn");
+  if (legacyBtn) legacyBtn.textContent = lang === "fr" ? "EN" : "FR";
+  const frBtn = document.getElementById("lang-btn-fr");
+  const enBtn = document.getElementById("lang-btn-en");
+  if (frBtn) frBtn.classList.toggle("on", lang === "fr");
+  if (enBtn) enBtn.classList.toggle("on", lang === "en");
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const k = el.getAttribute("data-i18n");
     if (T[lang][k]) el.textContent = T[lang][k];
   });
 }
+function toggleLang() { setLang(lang === "fr" ? "en" : "fr"); }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn, .nav-item").forEach(b => b.classList.remove("active"));
   const view = document.getElementById("view-" + name);
   if (view) view.classList.add("active");
-  const btns = document.querySelectorAll(".nav-btn");
-  const idx = ["benchmark","reports","engines","import"].indexOf(name);
-  if (btns[idx]) btns[idx].classList.add("active");
+  const btn = document.querySelector('[data-view="' + name + '"]');
+  if (btn) btn.classList.add("active");
 
   if (name === "reports") loadReports();
   if (name === "engines") loadEngines();
-  if (name === "import") { searchHTRUnited(); searchHuggingFace(); }
+  if (name === "import" || name === "library") { searchHTRUnited(); searchHuggingFace(); }
+  if (name === "history") { if (typeof loadHistory === "function") loadHistory(); }
 }
 
 // ─── Status / version ────────────────────────────────────────────────────────
@@ -313,31 +454,47 @@ async function loadBenchmarkSections() {
     _enginesData = d;
     renderOCREnginesSection(d.engines);
     renderLLMSection(d.llms);
+    _refreshSysCounts(d);
   } catch(e) {
-    document.getElementById("ocr-engines-status-list").innerHTML =
-      `<div style="color:var(--danger);font-size:12px;">Erreur : ${e.message}</div>`;
+    const c = document.getElementById("ocr-engines-status-list");
+    if (c) c.innerHTML = `<div style="color:var(--err);font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
+function _refreshSysCounts(d) {
+  if (!d) return;
+  const engOn = (d.engines || []).filter(e => e.available).length;
+  const engTot = (d.engines || []).length;
+  const llmOn = (d.llms || []).filter(l => l.available).length;
+  const llmTot = (d.llms || []).length;
+  const eEl = document.getElementById("sys-engines-online");
+  const lEl = document.getElementById("sys-llms-online");
+  const pcEl = document.getElementById("sys-pipeline-counts");
+  if (eEl) eEl.textContent = `${engOn} / ${engTot}`;
+  if (lEl) lEl.textContent = `${llmOn} / ${llmTot}`;
+  if (pcEl) pcEl.textContent = `${engOn}+${llmOn} · ${engTot + llmTot}`;
+}
+
 function _makeProviderRow(eng, msId) {
-  const dotCls = eng.available ? "status-ok" : (eng.status === "not_running" ? "status-warn" : "status-err");
+  const dotCls = eng.available ? "on" : (eng.status === "not_running" ? "warn" : "off");
   let statusLabel;
   if (eng.available) statusLabel = eng.version ? eng.version : (lang === "fr" ? "disponible" : "available");
-  else if (eng.status === "missing_key") statusLabel = eng.key_env ? `<code style="font-size:11px;color:var(--warning)">${eng.key_env}</code>` : (lang === "fr" ? "clé manquante" : "key missing");
+  else if (eng.status === "missing_key") statusLabel = eng.key_env ? `<code class="mono" style="font-size:11px;color:var(--clay-deep)">${_escapeHtml(eng.key_env)}</code>` : (lang === "fr" ? "clé manquante" : "key missing");
   else if (eng.status === "not_running") statusLabel = lang === "fr" ? "inactif" : "not running";
   else statusLabel = lang === "fr" ? "non installé" : "not installed";
 
   const row = document.createElement("div");
-  row.className = "provider-row";
+  row.style = "display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--g-50); font-size:13px;";
   row.innerHTML = `
-    <div class="provider-label"><span class="engine-status ${dotCls}"></span><strong>${eng.label}</strong></div>
-    <div class="provider-status">${statusLabel}</div>
-    <div class="provider-model-select" id="${msId}">${eng.available ? '<span class="spinner"></span>' : ""}</div>`;
+    <div style="display:flex; align-items:center; gap:10px;"><span class="dot ${dotCls}"></span><strong>${_escapeHtml(eng.label)}</strong></div>
+    <div class="mono" style="font-size:11.5px; color:var(--g-500);">${statusLabel}</div>
+    <div id="${msId}" class="mono" style="font-size:11.5px; min-width:120px; text-align:right;">${eng.available ? '<span class="dot busy"></span>' : ""}</div>`;
   return row;
 }
 
 async function renderOCREnginesSection(engines) {
   const container = document.getElementById("ocr-engines-status-list");
+  if (!container) return;
   container.innerHTML = "";
   for (const eng of engines) {
     const msId = `ms-ocr-${eng.id}`;
@@ -347,11 +504,11 @@ async function renderOCREnginesSection(engines) {
         const div = document.getElementById(msId);
         if (!div) return;
         div.innerHTML = models.length === 0
-          ? `<span style="color:var(--text-muted);font-size:11px;">—</span>`
+          ? `<span style="color:var(--g-400);font-size:11px;">—</span>`
           : `<span style="font-size:12px;">${models.slice(0,5).join(", ")}${models.length > 5 ? ` +${models.length-5}` : ""}</span>`;
       }).catch(() => {
         const div = document.getElementById(msId);
-        if (div) div.innerHTML = `<span style="color:var(--danger);font-size:11px;">Erreur API</span>`;
+        if (div) div.innerHTML = `<span style="color:var(--err);font-size:11px;">Erreur API</span>`;
       });
     }
   }
@@ -359,6 +516,7 @@ async function renderOCREnginesSection(engines) {
 
 async function renderLLMSection(llms) {
   const container = document.getElementById("llm-status-list");
+  if (!container) return;
   container.innerHTML = "";
   for (const llm of llms) {
     const msId = `ms-llm-${llm.id}`;
@@ -368,11 +526,11 @@ async function renderLLMSection(llms) {
         const div = document.getElementById(msId);
         if (!div) return;
         div.innerHTML = models.length === 0
-          ? `<span style="color:var(--text-muted);font-size:11px;">—</span>`
+          ? `<span style="color:var(--g-400);font-size:11px;">—</span>`
           : `<span style="font-size:12px;">${models.slice(0,3).join(", ")}${models.length > 3 ? ` +${models.length-3}` : ""}</span>`;
       }).catch(() => {
         const div = document.getElementById(msId);
-        if (div) div.innerHTML = `<span style="color:var(--danger);font-size:11px;">Erreur API</span>`;
+        if (div) div.innerHTML = `<span style="color:var(--err);font-size:11px;">Erreur API</span>`;
       });
     }
   }
@@ -389,6 +547,7 @@ function startAutoRefresh() {
         _enginesData = d;
         renderOCREnginesSection(d.engines);
         renderLLMSection(d.llms);
+        _refreshSysCounts(d);
       }
     } catch(e) {}
   }, 10000);
@@ -423,9 +582,29 @@ async function onComposeOCRChange() {
   }
 }
 
+function _getComposeMode() {
+  // Nouveau segmented control XerOCR (boutons + data-mode).
+  const onBtn = document.querySelector("#compose-mode-tabs button.on");
+  if (onBtn && onBtn.dataset.mode) return onBtn.dataset.mode;
+  // Fallback legacy : input[name=compose-mode]:checked.
+  const r = document.querySelector("input[name=compose-mode]:checked");
+  return r ? r.value : "ocr";
+}
+
+function setComposeMode(mode) {
+  const tabs = document.getElementById("compose-mode-tabs");
+  if (tabs) {
+    tabs.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+  }
+  // Sync legacy radio si encore present.
+  const radio = document.querySelector(`input[name=compose-mode][value="${mode}"]`);
+  if (radio) radio.checked = true;
+  onComposeModeChange();
+}
+
 async function onComposeLLMChange() {
   const provider = document.getElementById("compose-llm-provider").value;
-  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  const composeMode = _getComposeMode();
   const pipelineMode = document.getElementById("compose-pipeline-mode").value;
   // Apply capability filter for modes requiring vision
   const needsVision = (pipelineMode === "text_and_image" || pipelineMode === "zero_shot");
@@ -434,28 +613,26 @@ async function onComposeLLMChange() {
 }
 
 function onComposeModeChange() {
-  const mode = document.querySelector("input[name=compose-mode]:checked").value;
+  const mode = _getComposeMode();
   const ocrSection = document.getElementById("compose-ocr-section");
   const pipelineSection = document.getElementById("compose-pipeline-section");
 
   if (mode === "ocr") {
-    ocrSection.style.display = "flex";
-    pipelineSection.style.display = "none";
+    if (ocrSection) ocrSection.style.display = "grid";
+    if (pipelineSection) pipelineSection.style.display = "none";
   } else if (mode === "pipeline") {
-    ocrSection.style.display = "flex";
-    pipelineSection.style.display = "block";
-    // Reload LLM models without capability filter
+    if (ocrSection) ocrSection.style.display = "grid";
+    if (pipelineSection) pipelineSection.style.display = "block";
     onComposeLLMChange();
   } else if (mode === "postcorrection") {
-    ocrSection.style.display = "none";
-    pipelineSection.style.display = "block";
-    // Reload LLM models with capability filter based on pipeline mode
+    if (ocrSection) ocrSection.style.display = "none";
+    if (pipelineSection) pipelineSection.style.display = "block";
     onComposePipelineModeChange();
   }
 }
 
 function onComposePipelineModeChange() {
-  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  const composeMode = _getComposeMode();
   if (composeMode !== "postcorrection" && composeMode !== "pipeline") return;
   const pipelineMode = document.getElementById("compose-pipeline-mode").value;
   // Filter by vision capability for modes that need images
@@ -490,7 +667,7 @@ async function loadComposePrompts() {
 }
 
 function addCompetitor() {
-  const mode = document.querySelector("input[name=compose-mode]:checked").value;
+  const mode = _getComposeMode();
   const errEl = document.getElementById("compose-error");
 
   const comp = { name: "", engine_name: "", ocr_model: "",
@@ -560,33 +737,50 @@ function removeCompetitor(idx) {
 
 function renderCompetitors() {
   const container = document.getElementById("competitors-list");
+  if (!container) return;
+  _updateCompetitorCounts();
   if (_competitors.length === 0) {
-    container.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">${t("compose_empty")}</div>`;
+    container.innerHTML = `<div class="empty">${t("compose_empty")}</div>`;
     return;
   }
+  const colors = ["ink", "fern", "slate", "clay", "butter"];
   container.innerHTML = _competitors.map((c, i) => {
     const isCorpusOCR = c.engine_name === "corpus" || (c.engine_name === "" && c.llm_provider);
     const isPipeline = !!c.llm_provider && !isCorpusOCR;
-    let badge, detail;
+    let kind, chain;
     if (isCorpusOCR) {
-      badge = "📝 Post-correction";
-      detail = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+      kind = t("compose_postcorrection");
+      chain = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else if (isPipeline) {
-      badge = "⛓ Pipeline";
-      detail = `${c.engine_name}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+      kind = "OCR → LLM";
+      chain = `${c.engine_name}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else {
-      badge = "🔍 OCR";
-      detail = `${c.engine_name}:${c.ocr_model}`;
+      kind = "OCR";
+      chain = `${c.engine_name}:${c.ocr_model}`;
     }
-    return `<div class="competitor-card">
-      <div class="competitor-info">
-        <span class="competitor-badge">${badge}</span>
-        <span class="competitor-name">${c.name}</span>
-        <span class="competitor-detail">${detail}</span>
+    const cid = "C" + String(i + 1).padStart(2, "0");
+    const color = colors[i % colors.length];
+    return `<div class="competitor">
+      <span class="c-id ${color}">${cid}</span>
+      <div>
+        <div class="c-name">${_escapeHtml(c.name)}</div>
+        <div class="c-chain"><span class="tag tag-mono">${_escapeHtml(kind)}</span><span class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(chain)}</span></div>
       </div>
-      <button class="btn btn-danger btn-sm" onclick="removeCompetitor(${i})">✕</button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="removeCompetitor(${i})" title="${t("upload_delete")}">✕</button>
     </div>`;
   }).join("");
+}
+
+function _updateCompetitorCounts() {
+  const n = _competitors.length;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set("hero-competitors", n);
+  set("competitors-count", n);
+  set("competitors-count-inline", n);
+}
+
+function _escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
 // ─── Normalization profiles ──────────────────────────────────────────────────
@@ -610,7 +804,12 @@ async function loadNormProfiles() {
       if (p && p.exclude_chars && p.exclude_chars.length) {
         document.getElementById("char-exclude").value = p.exclude_chars.join(", ");
       }
+      const heroNorm = document.getElementById("hero-norm");
+      if (heroNorm) heroNorm.textContent = sel.value || "—";
     });
+    // Init hero-norm avec la valeur par défaut.
+    const heroNorm = document.getElementById("hero-norm");
+    if (heroNorm) heroNorm.textContent = sel.value || "—";
   } catch(e) {}
 }
 
@@ -631,16 +830,16 @@ async function browsePath(path) {
     fb.innerHTML = "";
     if (d.parent_path) {
       const up = document.createElement("div");
-      up.className = "fb-item";
-      up.innerHTML = `<span class="fb-icon">⬆</span><span class="fb-name">..</span>`;
+      up.className = "file-row";
+      up.innerHTML = `<span class="icon">⬆</span><span>..</span><span class="meta"></span><span class="meta"></span>`;
       up.onclick = () => browsePath(d.parent_path);
       fb.appendChild(up);
     }
     d.items.filter(i => i.is_dir).forEach(item => {
       const el = document.createElement("div");
-      el.className = "fb-item";
-      const hasCorpus = item.has_corpus ? `<span class="fb-badge" style="color:var(--success)">✓ ${item.gt_count} GT</span>` : "";
-      el.innerHTML = `<span class="fb-icon">📁</span><span class="fb-name">${item.name}</span>${hasCorpus}`;
+      el.className = "file-row";
+      const hasCorpus = item.has_corpus ? `<span class="tag tag-fern">✓ ${item.gt_count} GT</span>` : "";
+      el.innerHTML = `<span class="icon">📁</span><span>${_escapeHtml(item.name)}</span><span class="meta"></span>${hasCorpus}`;
       el.onclick = () => {
         if (item.has_corpus) {
           document.getElementById("corpus-path").value = item.path;
@@ -654,11 +853,11 @@ async function browsePath(path) {
       fb.appendChild(el);
     });
     if (fb.children.length === 0) {
-      fb.innerHTML = '<div style="padding:12px; color: var(--text-muted); font-size:12px;">Dossier vide</div>';
+      fb.innerHTML = '<div class="empty">Dossier vide</div>';
     }
   } catch(e) {
     document.getElementById("file-browser").innerHTML =
-      `<div style="padding:12px; color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+      `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -693,6 +892,7 @@ async function startBenchmark() {
   document.getElementById("bench-log").textContent = "";
   document.getElementById("engine-progress-list").innerHTML = "";
   document.getElementById("bench-status-text").textContent = lang === "fr" ? "Démarrage…" : "Starting…";
+  _setBenchState("RUN");
 
   try {
     const r = await fetch("/api/benchmark/run", {
@@ -743,19 +943,29 @@ function _startSSE(jobId) {
     const d = JSON.parse(e.data);
     const pct = Math.round(d.progress * 100);
     const engId = d.engine.replace(/[^a-z0-9_-]/gi, "_");
+    const colors = ["fern", "slate", "clay", "butter", "ink"];
     if (!seenEngines[engId]) {
-      seenEngines[engId] = true;
+      const idx = Object.keys(seenEngines).length;
+      seenEngines[engId] = colors[idx % colors.length];
+      const color = seenEngines[engId];
       const div = document.createElement("div");
-      div.style = "margin-bottom: 8px;";
-      div.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
-        <span>${d.engine}</span><span id="eng-pct-${engId}">0%</span></div>
-        <div class="progress-bar-outer"><div class="progress-bar-inner" id="eng-bar-${engId}" style="width:0%"></div></div>`;
+      div.style = "display:grid; grid-template-columns:1fr 60px; gap:14px; align-items:center; margin-bottom:10px; font-size:12.5px;";
+      div.innerHTML = `<div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span>${_escapeHtml(d.engine)}</span>
+            <span class="mono" style="color:var(--g-500);" id="eng-status-${engId}">${d.processed}/${d.total}</span>
+          </div>
+          <div class="progress ${color}"><div class="progress-bar" id="eng-bar-${engId}" style="width:0%"></div></div>
+        </div>
+        <span class="num" style="text-align:right; color:var(--g-500);" id="eng-pct-${engId}">0%</span>`;
       pl.appendChild(div);
     }
     const bar = document.getElementById(`eng-bar-${engId}`);
     const pctEl = document.getElementById(`eng-pct-${engId}`);
+    const statusEl = document.getElementById(`eng-status-${engId}`);
     if (bar) bar.style.width = pct + "%";
     if (pctEl) pctEl.textContent = pct + "%";
+    if (statusEl) statusEl.textContent = `${d.processed}/${d.total}`;
     document.getElementById("bench-status-text").textContent =
       `${pct}% — ${d.engine} (${d.processed}/${d.total})`;
   });
@@ -764,22 +974,22 @@ function _startSSE(jobId) {
     const d = JSON.parse(e.data);
     appendLog(d.message, "success");
     _showResults(d);
-    _finishBenchmark();
+    _finishBenchmark(true);
   });
 
   _eventSource.addEventListener("error", e => {
     const d = JSON.parse(e.data);
     appendLog(d.message, "error");
-    _finishBenchmark();
+    _finishBenchmark(false);
   });
 
   _eventSource.addEventListener("cancelled", e => {
     appendLog(lang === "fr" ? "Benchmark annulé." : "Benchmark cancelled.", "warn");
-    _finishBenchmark();
+    _finishBenchmark(false);
   });
 
-  _eventSource.addEventListener("done", e => { _finishBenchmark(); });
-  _eventSource.onerror = () => { if (_currentJobId) _finishBenchmark(); };
+  _eventSource.addEventListener("done", e => { _finishBenchmark(true); });
+  _eventSource.onerror = () => { if (_currentJobId) _finishBenchmark(false); };
 }
 
 function _showResults(data) {
@@ -790,11 +1000,24 @@ function _showResults(data) {
     link.href = `/reports/${data.output_html.split("/").pop()}`;
   }
   if (data.ranking) {
-    let html = `<table><thead><tr><th>#</th><th>${lang==="fr"?"Moteur":"Engine"}</th><th>CER</th><th>WER</th><th>${lang==="fr"?"Docs":"Docs"}</th></tr></thead><tbody>`;
+    let html = `<table class="data"><thead><tr>
+      <th style="width:60px">#</th>
+      <th>${lang==="fr"?"Moteur":"Engine"}</th>
+      <th class="num-cell">CER</th>
+      <th class="num-cell">WER</th>
+      <th class="num-cell">${lang==="fr"?"Docs":"Docs"}</th>
+    </tr></thead><tbody>`;
     data.ranking.forEach((row, i) => {
-      const cer = row.mean_cer != null ? (row.mean_cer*100).toFixed(2)+"%" : "N/A";
-      const wer = row.mean_wer != null ? (row.mean_wer*100).toFixed(2)+"%" : "N/A";
-      html += `<tr><td>${i+1}</td><td>${row.engine}</td><td>${cer}</td><td>${wer}</td><td>${row.total_docs || ""}</td></tr>`;
+      const cer = row.mean_cer != null ? (row.mean_cer*100).toFixed(2) : "—";
+      const wer = row.mean_wer != null ? (row.mean_wer*100).toFixed(2) : "—";
+      const pillCls = i === 0 ? "rank-pill first" : "rank-pill";
+      html += `<tr>
+        <td><span class="${pillCls}">#${i+1}</span></td>
+        <td style="font-weight:500">${_escapeHtml(row.engine)}</td>
+        <td class="num-cell">${cer}</td>
+        <td class="num-cell">${wer}</td>
+        <td class="num-cell">${row.total_docs || ""}</td>
+      </tr>`;
     });
     html += "</tbody></table>";
     document.getElementById("bench-ranking-table").innerHTML = html;
@@ -837,19 +1060,28 @@ async function _loadSynthesisPreview(jobId) {
   }
 }
 
-function _escapeHtml(s) {
-  /** Helper local : on injecte les phrases dans innerHTML donc il
-   * faut neutraliser les balises HTML potentielles (les phrases
-   * narratives peuvent contenir des noms de moteurs avec ``<`` ou ``>``
-   * théoriquement). */
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function _setBenchState(state) {
+  // state ∈ {"READY","RUN","DONE"}
+  const heroEl = document.getElementById("hero-state");
+  const sysJob = document.getElementById("sys-job");
+  if (heroEl) heroEl.textContent = state;
+  if (sysJob) {
+    const label = state === "RUN" ? (lang === "fr" ? "en cours" : "running")
+                : state === "DONE" ? (lang === "fr" ? "terminé" : "done")
+                : (lang === "fr" ? "au repos" : "idle");
+    sysJob.textContent = label;
+  }
 }
 
-function _finishBenchmark() {
+function _finishBenchmark(success) {
   if (_eventSource) { _eventSource.close(); _eventSource = null; }
-  document.getElementById("start-btn").disabled = false;
-  document.getElementById("cancel-btn").style.display = "none";
-  document.getElementById("bench-status-text").textContent = "";
+  const startBtn = document.getElementById("start-btn");
+  const cancelBtn = document.getElementById("cancel-btn");
+  const status = document.getElementById("bench-status-text");
+  if (startBtn) startBtn.disabled = false;
+  if (cancelBtn) cancelBtn.style.display = "none";
+  if (status) status.textContent = "";
+  _setBenchState(success ? "DONE" : "READY");
 }
 
 async function cancelBenchmark() {
@@ -859,11 +1091,14 @@ async function cancelBenchmark() {
 
 function appendLog(msg, cls) {
   const box = document.getElementById("bench-log");
+  if (!box) return;
+  const ts = new Date().toISOString().slice(11, 19);
   const line = document.createElement("div");
-  if (cls === "error") line.className = "log-error";
-  else if (cls === "warn") line.className = "log-warn";
-  else if (cls === "success") line.className = "log-success";
-  line.textContent = msg;
+  // Mappage : success → ok, error → err, warn → warn, info → (default), blue/slate → slate.
+  // Les class CSS XerOCR sont `.ts`, `.ok`, `.warn`, `.err`, `.blue`, `.slate`.
+  const map = { success: "ok", error: "err", warn: "warn", blue: "blue", slate: "slate" };
+  const lvl = map[cls] || "";
+  line.innerHTML = `<span class="ts">${ts}</span><span${lvl ? ` class="${lvl}"` : ""}>${_escapeHtml(msg)}</span>`;
   box.appendChild(line);
   box.scrollTop = box.scrollHeight;
 }
@@ -872,24 +1107,186 @@ function appendLog(msg, cls) {
 async function loadReports() {
   const dir = document.getElementById("reports-dir").value || ".";
   const container = document.getElementById("reports-list");
-  container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("loading")}</div>`;
+  if (!container) return;
+  container.innerHTML = `<div class="empty">${t("loading")}</div>`;
   try {
     const r = await fetch(`/api/reports?reports_dir=${encodeURIComponent(dir)}`);
     const d = await r.json();
+    const setMeta = (n) => {
+      const a = document.getElementById("reports-aside");
+      const c = document.getElementById("reports-count");
+      if (a) a.textContent = `${n} REPORT${n === 1 ? "" : "S"}`;
+      if (c) c.textContent = n;
+    };
+    setMeta(d.reports.length);
     if (d.reports.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("no_reports")}</div>`;
+      container.innerHTML = `<div class="empty">${t("no_reports")}</div>`;
       return;
     }
-    let html = `<table><thead><tr><th>${lang==="fr"?"Fichier":"File"}</th><th>${lang==="fr"?"Taille":"Size"}</th><th>${lang==="fr"?"Modifié":"Modified"}</th><th></th></tr></thead><tbody>`;
+    let html = `<table class="data"><thead><tr>
+      <th>${lang === "fr" ? "Fichier" : "File"}</th>
+      <th class="num-cell">${lang === "fr" ? "Taille" : "Size"}</th>
+      <th>${lang === "fr" ? "Modifié" : "Modified"}</th>
+      <th></th>
+    </tr></thead><tbody>`;
     d.reports.forEach(rep => {
       const date = new Date(rep.modified).toLocaleString(lang === "fr" ? "fr-FR" : "en-US");
-      html += `<tr><td>${rep.filename}</td><td>${rep.size_kb} Ko</td><td>${date}</td>
-        <td><a href="${rep.url}" target="_blank" class="btn btn-primary btn-sm">${lang==="fr"?"Ouvrir":"Open"}</a></td></tr>`;
+      html += `<tr>
+        <td class="mono" style="color:var(--g-700);">${_escapeHtml(rep.filename)}</td>
+        <td class="num-cell">${rep.size_kb} Ko</td>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(date)}</td>
+        <td style="text-align:right;"><a href="${rep.url}" target="_blank" class="btn btn-primary btn-sm">${lang === "fr" ? "Ouvrir" : "Open"}</a></td>
+      </tr>`;
     });
     html += "</tbody></table>";
     container.innerHTML = html;
   } catch(e) {
-    container.innerHTML = `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ─── Workflow presets (diagnose / economics / edition) ──────────────────────
+async function runWorkflowPreset(kind) {
+  /** Lance /api/benchmark/run avec un profile pre-cable.
+   *  Bascule ensuite vers la vue Benchmark pour afficher la
+   *  progression SSE (meme moteur que startBenchmark()).
+   *  kind ∈ {"diagnose", "economics", "edition"} → profile correspond
+   *  a {"diagnostics", "economics", "philological"}. */
+  const profileMap = {
+    diagnose: "diagnostics",
+    economics: "economics",
+    edition: "philological",
+  };
+  const profile = profileMap[kind];
+  if (!profile) return;
+  const corpus = (document.getElementById(`${kind}-corpus-path`).value || "").trim();
+  const enginesCsv = (document.getElementById(`${kind}-engines`).value || "").trim();
+  if (!corpus) {
+    alert(lang === "fr" ? "Indique un chemin corpus." : "Provide a corpus path.");
+    return;
+  }
+  if (!enginesCsv) {
+    alert(lang === "fr" ? "Indique au moins un moteur." : "Provide at least one engine.");
+    return;
+  }
+  const engineList = enginesCsv.split(",").map(s => s.trim()).filter(Boolean);
+  const competitors = engineList.map(name => ({
+    name,
+    engine_name: name,
+    ocr_model: "",
+    llm_provider: "",
+    llm_model: "",
+    pipeline_mode: "",
+    prompt_file: "",
+    max_image_dimension: 0,
+  }));
+  // Pre-fill le composer Benchmark pour coherence visuelle.
+  _competitors = competitors;
+  renderCompetitors();
+  document.getElementById("corpus-path").value = corpus;
+  showView("benchmark");
+  // Construit le payload et lance directement.
+  const payload = {
+    corpus_path: corpus,
+    competitors,
+    normalization_profile: document.getElementById("norm-profile").value || "nfc",
+    char_exclude: document.getElementById("char-exclude").value || "",
+    output_dir: document.getElementById("output-dir").value || "./rapports/",
+    report_name: document.getElementById("report-name").value || "",
+    report_lang: lang,
+    views: ["text_final"],
+    profile,
+  };
+  document.getElementById("start-btn").disabled = true;
+  document.getElementById("cancel-btn").style.display = "inline-flex";
+  document.getElementById("bench-progress-section").style.display = "block";
+  document.getElementById("bench-result-section").style.display = "none";
+  document.getElementById("bench-log").textContent = "";
+  document.getElementById("engine-progress-list").innerHTML = "";
+  document.getElementById("bench-status-text").textContent = lang === "fr" ? "Démarrage…" : "Starting…";
+  _setBenchState("RUN");
+  try {
+    const r = await fetch("/api/benchmark/run", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const d = await r.json();
+    _currentJobId = d.job_id;
+    _startSSE(_currentJobId);
+  } catch (e) {
+    appendLog(`Erreur : ${e.message}`, "error");
+    document.getElementById("start-btn").disabled = false;
+    document.getElementById("cancel-btn").style.display = "none";
+    document.getElementById("bench-status-text").textContent = "";
+    _setBenchState("READY");
+  }
+}
+
+// ─── History (regressions) ───────────────────────────────────────────────────
+async function loadHistory() {
+  const engine = (document.getElementById("history-engine").value || "").trim();
+  // L'endpoint /api/history/regressions attend un threshold en valeur
+  // absolue de CER (0.01 = 1pp).  L'UI affiche en %, on convertit.
+  const thresholdPct = parseFloat(document.getElementById("history-threshold").value) || 1.0;
+  const threshold = thresholdPct / 100;
+  const dbPath = (document.getElementById("history-db").value || "").trim();
+  const container = document.getElementById("history-results");
+  if (!container) return;
+  container.innerHTML = `<div class="empty">${t("loading")}</div>`;
+  const setMeta = (n) => {
+    const a = document.getElementById("history-aside");
+    const c = document.getElementById("history-regressions-count");
+    const th = document.getElementById("history-threshold-show");
+    if (a) a.textContent = `${n} REGRESSION${n === 1 ? "" : "S"}`;
+    if (c) c.textContent = n;
+    if (th) th.textContent = thresholdPct.toFixed(1);
+  };
+  try {
+    const params = new URLSearchParams();
+    if (engine) params.set("engine", engine);
+    params.set("threshold", String(threshold));
+    if (dbPath) params.set("db_path", dbPath);
+    const r = await fetch(`/api/history/regressions?${params}`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const d = await r.json();
+    setMeta(d.count || 0);
+    if (!d.regressions || d.regressions.length === 0) {
+      container.innerHTML = `<div class="empty">${lang === "fr" ? "Aucune régression détectée au-dessus du seuil." : "No regressions above the threshold."}</div>`;
+      return;
+    }
+    let html = `<table class="data"><thead><tr>
+      <th>${lang === "fr" ? "Moteur" : "Engine"}</th>
+      <th class="num-cell">${lang === "fr" ? "CER baseline" : "Baseline CER"}</th>
+      <th class="num-cell">${lang === "fr" ? "CER courant" : "Current CER"}</th>
+      <th class="num-cell">Δ CER (pp)</th>
+      <th class="mono">${lang === "fr" ? "Runs" : "Runs"}</th>
+    </tr></thead><tbody>`;
+    d.regressions.forEach(reg => {
+      const base = reg.baseline_cer != null ? (reg.baseline_cer * 100).toFixed(2) : "—";
+      const cur = reg.current_cer != null ? (reg.current_cer * 100).toFixed(2) : "—";
+      const delta = reg.delta_cer != null ? (reg.delta_cer * 100).toFixed(2) : "—";
+      const runs = `${reg.baseline_run_id || "—"} → ${reg.current_run_id || "—"}`;
+      html += `<tr>
+        <td style="font-weight:500">${_escapeHtml(reg.engine)}</td>
+        <td class="num-cell">${base}</td>
+        <td class="num-cell">${cur}</td>
+        <td class="num-cell" style="color:var(--err); font-weight:500">+${delta}</td>
+        <td class="mono" style="font-size:11.5px; color:var(--g-500);">${_escapeHtml(runs)}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  } catch (e) {
+    setMeta(0);
+    container.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -898,38 +1295,63 @@ async function loadEngines() {
   try {
     const r = await fetch("/api/engines");
     const d = await r.json();
+    _refreshSysCounts(d);
+
+    const setHero = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setHero("engines-count-total", `${d.engines.filter(e => e.available).length}/${d.engines.length}`);
+    setHero("llms-count-total", `${d.llms.filter(l => l.available).length}/${d.llms.length}`);
 
     // OCR
-    let html = `<table><thead><tr><th>ID</th><th>${lang==="fr"?"Nom":"Name"}</th><th>Version</th><th>Statut</th></tr></thead><tbody>`;
+    let html = `<table class="data"><thead><tr>
+      <th>ID</th>
+      <th>${lang === "fr" ? "Nom" : "Name"}</th>
+      <th>Version</th>
+      <th>Statut</th>
+    </tr></thead><tbody>`;
     d.engines.forEach(e => {
-      const cls = e.available ? "badge-ok" : "badge-err";
+      const tagCls = e.available ? "tag-fern" : "tag-clay";
       const lbl = e.available ? t("available") : t("not_installed");
-      html += `<tr><td><code>${e.id}</code></td><td>${e.label}</td><td>${e.version||"—"}</td>
-        <td><span class="badge ${cls}">${lbl}</span></td></tr>`;
+      html += `<tr>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(e.id)}</td>
+        <td style="font-weight:500">${_escapeHtml(e.label)}</td>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(e.version || "—")}</td>
+        <td><span class="tag ${tagCls}">${_escapeHtml(lbl)}</span></td>
+      </tr>`;
     });
     html += "</tbody></table>";
-    document.getElementById("engines-ocr-list").innerHTML = html;
+    const oList = document.getElementById("engines-ocr-list");
+    if (oList) oList.innerHTML = html;
 
     // LLMs
-    let llmHtml = `<table><thead><tr><th>ID</th><th>${lang==="fr"?"Nom":"Name"}</th><th>Statut</th><th>${lang==="fr"?"Détail":"Detail"}</th></tr></thead><tbody>`;
+    let llmHtml = `<table class="data"><thead><tr>
+      <th>ID</th>
+      <th>${lang === "fr" ? "Nom" : "Name"}</th>
+      <th>Statut</th>
+      <th>${lang === "fr" ? "Détail" : "Detail"}</th>
+    </tr></thead><tbody>`;
     d.llms.forEach(e => {
-      const cls = e.available ? "badge-ok" : "badge-warn";
+      const tagCls = e.available ? "tag-fern" : "tag-butter";
       const statusKey = e.status === "configured" ? "configured"
         : e.status === "running" ? "running"
         : e.status === "not_running" ? "not_running"
         : "missing_key";
       const lbl = t(statusKey);
-      let detail = "";
-      if (e.key_env) detail = `<code style="font-size:11px;">${e.key_env}</code>`;
-      if (e.models && e.models.length > 0) detail = e.models.slice(0, 3).join(", ");
-      llmHtml += `<tr><td><code>${e.id}</code></td><td>${e.label}</td>
-        <td><span class="badge ${cls}">${lbl}</span></td><td>${detail}</td></tr>`;
+      let detail = "—";
+      if (e.key_env) detail = `<code class="mono" style="font-size:11px; color:var(--clay-deep);">${_escapeHtml(e.key_env)}</code>`;
+      if (e.models && e.models.length > 0) detail = `<span class="mono" style="font-size:11.5px; color:var(--g-500);">${_escapeHtml(e.models.slice(0, 3).join(", "))}</span>`;
+      llmHtml += `<tr>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(e.id)}</td>
+        <td style="font-weight:500">${_escapeHtml(e.label)}</td>
+        <td><span class="tag ${tagCls}">${_escapeHtml(lbl)}</span></td>
+        <td>${detail}</td>
+      </tr>`;
     });
     llmHtml += "</tbody></table>";
-    document.getElementById("engines-llm-list").innerHTML = llmHtml;
+    const lList = document.getElementById("engines-llm-list");
+    if (lList) lList.innerHTML = llmHtml;
   } catch(e) {
-    document.getElementById("engines-ocr-list").innerHTML =
-      `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    const oList = document.getElementById("engines-ocr-list");
+    if (oList) oList.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -971,32 +1393,37 @@ async function searchHTRUnited() {
   const lang2 = document.getElementById("htr-lang-filter").value;
   const script = document.getElementById("htr-script-filter").value;
   const container = document.getElementById("htr-results");
-  container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("loading")}</div>`;
+  container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${t("loading")}</div>`;
   try {
     const url = `/api/htr-united/catalogue?query=${encodeURIComponent(q)}&language=${encodeURIComponent(lang2)}&script=${encodeURIComponent(script)}`;
     const r = await fetch(url);
     const d = await r.json();
     _updateHtrDemoBanner(Boolean(d.is_demo));
     if (d.entries.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
+      container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
       return;
     }
     container.innerHTML = d.entries.map(e => {
-      const tags = [...e.language, ...e.script].map(s => `<span class="ds-tag">${s}</span>`).join("");
+      const tags = [...e.language, ...e.script]
+        .map(s => `<span class="tag tag-slate">${_escapeHtml(s)}</span>`).join("");
       return `<div class="ds-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <h4>${e.title}</h4>
-          <button class="btn btn-primary btn-sm" onclick="openImportModal('htr', '${e.id}', '${e.title.replace(/'/g,"\\'")}')">
-            ${lang==="fr"?"Importer":"Import"}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div class="ds-name">${_escapeHtml(e.title)}</div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="openImportModal('htr', '${_escapeHtml(e.id)}', '${_escapeHtml(e.title).replace(/'/g, "&#39;")}')">
+            ${lang === "fr" ? "Importer" : "Import"}
           </button>
         </div>
-        <p>${e.description}</p>
-        <p style="color: var(--text-muted);">${e.institution} — ${e.lines.toLocaleString()} ${t("lines")} — ${e.format}</p>
-        <div class="ds-meta">${tags}</div>
+        <div class="ds-desc">${_escapeHtml(e.description)}</div>
+        <div class="ds-meta">
+          <span>${_escapeHtml(e.institution)}</span>
+          <span><b class="num">${e.lines.toLocaleString()}</b> ${t("lines")}</span>
+          <span>${_escapeHtml(e.format)}</span>
+        </div>
+        <div class="ds-tags">${tags}</div>
       </div>`;
     }).join("");
   } catch(e) {
-    container.innerHTML = `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div style="color: var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -1005,31 +1432,35 @@ async function searchHuggingFace() {
   const langFilter = document.getElementById("hf-lang-filter").value;
   const tags = document.getElementById("hf-tags").value;
   const container = document.getElementById("hf-results");
-  container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("loading")}</div>`;
+  container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${t("loading")}</div>`;
   try {
     const url = `/api/huggingface/search?query=${encodeURIComponent(q)}&language=${encodeURIComponent(langFilter)}&tags=${encodeURIComponent(tags)}`;
     const r = await fetch(url);
     const d = await r.json();
     if (d.datasets.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
+      container.innerHTML = `<div style="color: var(--g-400); font-size:12px;">${lang==="fr"?"Aucun résultat.":"No results."}</div>`;
       return;
     }
     container.innerHTML = d.datasets.map(ds => {
-      const tags2 = ds.tags.slice(0,5).map(s => `<span class="ds-tag">${s}</span>`).join("");
+      const tags2 = ds.tags.slice(0, 5)
+        .map(s => `<span class="tag tag-slate">${_escapeHtml(s)}</span>`).join("");
       return `<div class="ds-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <h4>${ds.title}</h4>
-          <button class="btn btn-primary btn-sm" onclick="openImportModal('hf', '${ds.dataset_id.replace(/'/g,"\\'")}', '${ds.title.replace(/'/g,"\\'")}')">
-            ${lang==="fr"?"Importer":"Import"}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div class="ds-name">${_escapeHtml(ds.title)}</div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="openImportModal('hf', '${_escapeHtml(ds.dataset_id).replace(/'/g, "&#39;")}', '${_escapeHtml(ds.title).replace(/'/g, "&#39;")}')">
+            ${lang === "fr" ? "Importer" : "Import"}
           </button>
         </div>
-        <p>${ds.description}</p>
-        <p style="color: var(--text-muted);">${ds.institution||ds.dataset_id} ${ds.downloads ? "— " + ds.downloads.toLocaleString() + " téléchargements" : ""}</p>
-        <div class="ds-meta">${tags2}</div>
+        <div class="ds-desc">${_escapeHtml(ds.description)}</div>
+        <div class="ds-meta">
+          <span>${_escapeHtml(ds.institution || ds.dataset_id)}</span>
+          ${ds.downloads ? `<span><b class="num">${ds.downloads.toLocaleString()}</b> ${lang === "fr" ? "téléchargements" : "downloads"}</span>` : ""}
+        </div>
+        <div class="ds-tags">${tags2}</div>
       </div>`;
     }).join("");
   } catch(e) {
-    container.innerHTML = `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div style="color: var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -1050,7 +1481,7 @@ async function confirmImport() {
   const outputDir = document.getElementById("import-modal-output").value;
   const maxSamples = parseInt(document.getElementById("import-modal-max").value);
   const statusDiv = document.getElementById("import-modal-status");
-  statusDiv.innerHTML = `<div class="alert alert-info"><span class="spinner"></span> ${lang==="fr"?"Import en cours…":"Importing…"}</div>`;
+  statusDiv.innerHTML = `<div class="surface-flat" style="padding:10px 14px; font-size:12.5px;"><span class="dot busy"></span> ${lang === "fr" ? "Import en cours…" : "Importing…"}</div>`;
 
   try {
     let url, body;
@@ -1067,11 +1498,11 @@ async function confirmImport() {
     const msg = lang === "fr"
       ? `✓ Import terminé. ${d.files_imported || 0} fichiers dans <code>${d.output_dir}</code>`
       : `✓ Import done. ${d.files_imported || 0} files in <code>${d.output_dir}</code>`;
-    statusDiv.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+    statusDiv.innerHTML = `<div class="surface-flat" style="padding:10px 14px; font-size:12.5px; color:var(--fern-deep); background:var(--fern-soft);">${msg}</div>`;
     // Suggestion de corpus path
     document.getElementById("corpus-path").value = d.output_dir;
   } catch(e) {
-    statusDiv.innerHTML = `<div class="alert alert-error">Erreur : ${e.message}</div>`;
+    statusDiv.innerHTML = `<div class="surface-flat" style="padding:10px 14px; font-size:12.5px; color:var(--err); background:oklch(0.95 0.03 28);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -1081,8 +1512,11 @@ let _uploadMode = "zip";  // "zip" | "files"
 function switchCorpusTab(tab) {
   document.getElementById("corpus-tab-browse").style.display = tab === "browse" ? "block" : "none";
   document.getElementById("corpus-tab-upload").style.display = tab === "upload" ? "block" : "none";
-  document.getElementById("ctab-browse").classList.toggle("active", tab === "browse");
-  document.getElementById("ctab-upload").classList.toggle("active", tab === "upload");
+  // XerOCR tabs : la class `on` est utilisee par picarones.css.
+  const b = document.getElementById("ctab-browse");
+  const u = document.getElementById("ctab-upload");
+  if (b) b.classList.toggle("on", tab === "browse");
+  if (u) u.classList.toggle("on", tab === "upload");
   if (tab === "upload") loadUploadedCorpora();
 }
 
@@ -1107,7 +1541,7 @@ function onFileInputChange(event) {
 
 function onDropFiles(event) {
   event.preventDefault();
-  document.getElementById("upload-dropzone").classList.remove("dragover");
+  document.getElementById("upload-dropzone").classList.remove("active");
   const files = Array.from(event.dataTransfer.files);
   if (files.length > 0) uploadCorpus(files);
 }
@@ -1144,7 +1578,7 @@ async function uploadCorpus(files) {
     }
     const d = await r.json();
     progressText.textContent = `✓ ${t("upload_success")} — ${d.doc_count} ${t("upload_pairs")}`;
-    progressBar.style.background = "var(--success)";
+    progressBar.style.background = "var(--ok)";
 
     // Show preview
     renderUploadPreview(d, previewEl);
@@ -1159,14 +1593,14 @@ async function uploadCorpus(files) {
     loadUploadedCorpora();
   } catch(e) {
     progressBar.style.width = "100%";
-    progressBar.style.background = "var(--danger)";
+    progressBar.style.background = "var(--err)";
     progressText.textContent = `✗ ${e.message}`;
   }
 }
 
 function renderUploadPreview(data, container) {
   const missingBadge = data.has_missing_gt
-    ? `<span class="badge badge-err" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
+    ? `<span class="tag tag-clay" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
     : "";
   const ocrBadge = (data.has_ocr_text && data.ocr_text_count > 0)
     ? `<span class="badge" style="margin-left:8px; background:#dcfce7; color:#16a34a;">📝 ${data.ocr_text_count} .ocr.txt</span>`
@@ -1177,16 +1611,16 @@ function renderUploadPreview(data, container) {
     </div>`;
   for (const p of data.pairs) {
     html += `<div class="corpus-preview-pair">
-      <span style="color:var(--text-muted);">🖼</span><span>${p.image}</span>
-      <span style="color:var(--text-muted); margin-left:auto;">↔</span>
-      <span style="color:var(--success);">${p.gt}</span>
+      <span style="color:var(--g-400);">🖼</span><span>${p.image}</span>
+      <span style="color:var(--g-400); margin-left:auto;">↔</span>
+      <span style="color:var(--ok);">${p.gt}</span>
     </div>`;
   }
   if (data.total_pairs > data.pairs.length) {
     html += `<div class="corpus-preview-more">… et ${data.total_pairs - data.pairs.length} autres paires</div>`;
   }
   for (const w of (data.warnings || [])) {
-    html += `<div style="padding:5px 12px; font-size:11px; color:var(--warning);">⚠ ${w}</div>`;
+    html += `<div style="padding:5px 12px; font-size:11px; color:var(--warn);">⚠ ${w}</div>`;
   }
   html += `</div>`;
   container.innerHTML = html;
@@ -1214,26 +1648,26 @@ async function loadUploadedCorpora() {
     const r = await fetch("/api/corpus/uploads");
     const d = await r.json();
     if (d.uploads.length === 0) {
-      container.innerHTML = `<div style="color:var(--text-muted); font-size:12px;">${t("upload_no_corpus")}</div>`;
+      container.innerHTML = `<div style="color:var(--g-400); font-size:12px;">${t("upload_no_corpus")}</div>`;
       return;
     }
     const currentPath = document.getElementById("corpus-path").value;
     container.innerHTML = d.uploads.map(u => {
       const isSelected = u.corpus_path === currentPath;
       const missing = u.has_missing_gt
-        ? `<span class="badge badge-warn" style="margin-left:6px;">${t("upload_missing_gt")}</span>` : "";
+        ? `<span class="tag tag-butter" style="margin-left:6px;">${t("upload_missing_gt")}</span>` : "";
       return `<div class="upload-corpus-item${isSelected ? " selected" : ""}"
                    onclick="setCorpusPath('${u.corpus_path}', 'upload (${u.doc_count} docs)'); loadUploadedCorpora()">
         <span class="upload-corpus-label">
           <strong>${u.doc_count} ${t("upload_pairs")}</strong>${missing}
-          <span style="display:block; font-size:11px; color:var(--text-muted); font-family:monospace;">${u.corpus_path}</span>
+          <span style="display:block; font-size:11px; color:var(--g-400); font-family:monospace;">${u.corpus_path}</span>
         </span>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteUploadedCorpus('${u.corpus_id}')"
                 title="${t("upload_delete")}">✕</button>
       </div>`;
     }).join("");
   } catch(e) {
-    container.innerHTML = `<div style="color:var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div style="color:var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -1389,8 +1823,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   onComposeOCRChange();      // Pre-populate Tesseract languages
   loadComposePrompts();       // Pre-load prompt files
   startAutoRefresh();         // Auto-detect new API keys every 10 s
+  _setBenchState("READY");
+  _updateCompetitorCounts();
+  // Hero norm sync on profile change
+  const normSel = document.getElementById("norm-profile");
+  if (normSel) {
+    normSel.addEventListener("change", () => {
+      const h = document.getElementById("hero-norm");
+      if (h) h.textContent = normSel.value || "—";
+    });
+  }
   // Close modal on backdrop click
-  document.getElementById("import-modal").addEventListener("click", e => {
-    if (e.target === document.getElementById("import-modal")) closeImportModal();
-  });
+  const importModal = document.getElementById("import-modal");
+  if (importModal) {
+    importModal.addEventListener("click", e => {
+      if (e.target === importModal) closeImportModal();
+    });
+  }
 });

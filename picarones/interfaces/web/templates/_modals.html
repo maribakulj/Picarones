@@ -1,20 +1,34 @@
-<div id="import-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; align-items:center; justify-content:center;">
-  <div class="card" style="width: 420px; max-width: 95vw;">
-    <h2 id="import-modal-title" data-i18n="import_modal_title">Importer le corpus</h2>
+{# Modal d'import corpus (HTR-United / HuggingFace).  Affiche sur fond
+ # dimmed + blur, ferme par closeImportModal() ou clic backdrop. #}
+<div id="import-modal" class="modal-backdrop" style="display:none;">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <div>
+        <h2 id="import-modal-title" data-i18n="import_modal_title">Importer le corpus</h2>
+        <p data-i18n="import_modal_desc">Sélectionnez la destination et le nombre maximum de documents à télécharger.</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="closeImportModal()" aria-label="close">✕</button>
+    </div>
     <input type="hidden" id="import-modal-type" />
     <input type="hidden" id="import-modal-id" />
-    <div class="form-group" style="margin-bottom:12px;">
-      <label data-i18n="import_output_dir">Dossier de destination</label>
-      <input type="text" id="import-modal-output" value="./corpus/" />
-    </div>
-    <div class="form-group" style="margin-bottom:16px;">
-      <label data-i18n="import_max_samples">Nombre max de documents</label>
-      <input type="number" id="import-modal-max" value="100" min="1" max="10000" />
-    </div>
-    <div id="import-modal-status" style="margin-bottom:12px;"></div>
-    <div style="display:flex; gap:8px;">
-      <button class="btn btn-primary" onclick="confirmImport()" data-i18n="import_confirm">Importer</button>
-      <button class="btn btn-secondary" onclick="closeImportModal()" data-i18n="cancel">Annuler</button>
+    <div class="stack">
+      <div class="field">
+        <div class="field-label"><span data-i18n="import_output_dir">Dossier de destination</span></div>
+        <input type="text" id="import-modal-output" value="./corpus/" class="mono-input" />
+      </div>
+      <div class="field">
+        <div class="field-label"><span data-i18n="import_max_samples">Nombre max de documents</span></div>
+        <input type="number" id="import-modal-max" value="100" min="1" max="10000" />
+      </div>
+      <div id="import-modal-status"></div>
+      <div class="row">
+        <button class="btn btn-primary" type="button" onclick="confirmImport()">
+          <span data-i18n="import_confirm">Importer</span>
+        </button>
+        <button class="btn btn-ghost" type="button" onclick="closeImportModal()">
+          <span data-i18n="cancel">Annuler</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

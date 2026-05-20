@@ -1,0 +1,34 @@
+{# Vue Compare — stub informatif. Le backend (compare 2 JSON) n'a
+ # pas encore d'endpoint HTTP dedie ; on guide vers la CLI.
+#}
+<section id="view-compare" class="view view-enter">
+
+  <div class="view-hero">
+    <div class="view-hero-title">
+      <div class="view-hero-eyebrow">VIEW · COMPARE</div>
+      <div class="view-hero-name" data-i18n="compare_hero_title">Comparer deux runs</div>
+      <div class="view-hero-desc" data-i18n="compare_hero_desc">Diff entre deux benchmarks JSON — régressions, améliorations, écart CER significatif.</div>
+    </div>
+  </div>
+
+  <div class="sec" data-tone="clay">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div class="sec-title" data-i18n="cli_only_title">Disponible via CLI</div>
+        <div class="sec-sub" data-i18n="cli_only_sub">La comparaison n'a pas encore d'endpoint HTTP — utilise la ligne de commande.</div>
+      </div>
+    </div>
+    <div class="sec-body">
+      <pre class="log" style="white-space:pre-wrap; padding:18px 20px;">picarones compare run_a.json run_b.json \
+  --output comparaison.html \
+  --threshold 0.005 \
+  --label-a "Tesseract 5" \
+  --label-b "Mistral OCR"</pre>
+      <div class="help" style="margin-top:14px;" data-i18n="compare_hint">
+        Le rapport HTML met en évidence les moteurs qui ont régressé ou amélioré au-delà du seuil (CER absolu, par défaut 0,5 pp).
+      </div>
+    </div>
+  </div>
+
+</section>
