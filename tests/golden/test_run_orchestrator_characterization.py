@@ -167,6 +167,16 @@ _VOLATILE_KEYS = {
     # ``run_id`` est horodaté (``charac_YYYYMMDDThhmmssZ``) — volatil,
     # pas une caractéristique de comportement.
     "run_id",
+    # Empreintes d'environnement : ``dependencies_lock`` capture la
+    # liste des paquets Python installés (varie par OS, par version
+    # CI, par dev local — ex. PyGObject/dbus-python sous Ubuntu absents
+    # sur macOS, PyYAML 6.0.1 vs 6.0.3, picarones 1.1.0.devN drift),
+    # ``system_binaries_lock`` capture les binaires détectés (tesseract
+    # présent sur macOS CI, absent sur dev Linux).  Ces empreintes
+    # sont *le but* du manifest en run réel (reproductibilité) mais
+    # purement parasites dans un snapshot de caractérisation de
+    # comportement de l'orchestrateur.
+    "dependencies_lock", "system_binaries_lock",
 }
 
 
