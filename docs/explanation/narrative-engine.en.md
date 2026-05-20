@@ -92,7 +92,7 @@ In `tests/measurements/`:
   output where every number is in the payload.
 
 Update `tests/integration/test_chantier5.py` and
-`tests/measurements/test_sprint29_detector_registry.py` to bump
+`tests/measurements/test_detector_registry.py` to bump
 the detector count.
 
 ## Editorial rules
@@ -110,8 +110,8 @@ the detector count.
 ## Testing the synthesis
 
 ```bash
-pytest tests/measurements/test_sprint19_narrative_engine.py
-pytest tests/measurements/test_sprint23_anti_hallucination.py
+pytest tests/measurements/test_narrative_engine.py
+pytest tests/measurements/test_anti_hallucination.py
 ```
 
 The anti-hallucination test parses the rendered synthesis and

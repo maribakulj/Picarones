@@ -1,6 +1,6 @@
 """Loader de payload filesystem + util signature kwargs.
 
-Audit prod P1.1 — sous-package cohésif (ex-module plat).
+sous-package cohésif (ex-module plat).
 """
 
 from __future__ import annotations

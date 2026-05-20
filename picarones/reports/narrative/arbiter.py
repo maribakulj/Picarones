@@ -32,7 +32,7 @@ from picarones.domain.facts import Fact, FactImportance, FactType
 # la même ``FactImportance``. Surchargeable via le paramètre ``type_order``
 # de ``select_facts`` sans patcher le code.
 #
-# Sprint 29 : la valeur n'est plus codée en dur ici — elle est dérivée du
+# la valeur n'est plus codée en dur ici — elle est dérivée du
 # registre déclaratif (``@register_detector(..., priority=N)``). Ajouter
 # un détecteur en bonne position se fait donc en éditant **un seul**
 # fichier (``detectors.py``) au lieu de quatre comme avant.
@@ -55,7 +55,7 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.STATISTICAL_TIE,
     FactType.SIGNIFICANT_GAP,
     FactType.STRATUM_WINNER,
-    # Sprint 46 — priority 45, juste après STRATUM_WINNER (40),
+    # priority 45, juste après STRATUM_WINNER (40),
     # avant STRATUM_COLLAPSE (50). La recommandation de stratification
     # nuance directement les autres faits par strate.
     FactType.STRATIFICATION_RECOMMENDED,
@@ -69,26 +69,26 @@ _FALLBACK_TYPE_ORDER: tuple[FactType, ...] = (
     FactType.CONFIDENCE_WARNING,
     FactType.ENSEMBLE_OPPORTUNITY,
     FactType.MEDIAN_MEAN_GAP_WARNING,
-    # Sprint 73 — priority 150, après MEDIAN_MEAN_GAP_WARNING (140).
+    # priority 150, après MEDIAN_MEAN_GAP_WARNING (140).
     # Le détecteur off-baseline donne le contexte historique, qui
     # vient en fin de synthèse comme « note ».
     FactType.ENGINE_OFF_BASELINE,
-    # Sprint 90 — priority 160, ferme la synthèse avec la mise en
+    # priority 160, ferme la synthèse avec la mise en
     # garde sur la reproductibilité.  Une instabilité multi-runs
     # discrédite toute autre conclusion sur ce moteur ; on la
     # remonte en dernier pour ne pas l'enterrer.
     FactType.ENGINE_UNSTABLE,
-    # Sprint 92 — priority 170, après ENGINE_UNSTABLE.  La
+    # priority 170, après ENGINE_UNSTABLE.  La
     # régression historique complète A.I.3 (off-baseline) en
     # caractérisant la tendance : l'écart courant est-il une
     # dégradation graduelle, une rupture brutale, ou un bruit ?
     FactType.REGRESSION_IN_HISTORY,
-    # Sprint A3 — priority 180, en queue.  Les incidents d'importer
+    # priority 180, en queue.  Les incidents d'importer
     # sont contextuels à l'acquisition de données (non au ranking) ;
     # ils viennent en toute fin de synthèse comme avertissement sur
     # la qualité du corpus.
     FactType.IMPORTER_FALLBACK_TRIGGERED,
-    # Sprint A8 — priority 200, dernier item (informationnel pur).
+    # priority 200, dernier item (informationnel pur).
     # Avertit que la table de pricing utilisée a dépassé sa date de
     # validité — la lecture coût/CO₂ doit être nuancée.
     FactType.PRICING_STALENESS_WARNING,
@@ -114,19 +114,19 @@ _COMPLEMENTARY_PAIRS: frozenset[frozenset[FactType]] = frozenset({
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.SPEED_WINNER}),
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.CONFIDENCE_WARNING}),
     frozenset({FactType.STATISTICAL_TIE, FactType.SPEED_WINNER}),
-    # Sprint 44 — l'avertissement d'asymétrie nuance le leader
+    # l'avertissement d'asymétrie nuance le leader
     # plutôt que de le doubler : on veut les deux phrases ensemble.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.MEDIAN_MEAN_GAP_WARNING}),
-    # Sprint 46 — la recommandation de stratification est un méta-conseil
+    # la recommandation de stratification est un méta-conseil
     # qui s'ajoute au leader sans le contredire ; les deux peuvent
     # cohabiter même quand ils concernent le même moteur.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.STRATIFICATION_RECOMMENDED}),
-    # Sprint 90 — l'instabilité multi-runs nuance les conclusions
+    # l'instabilité multi-runs nuance les conclusions
     # sur le moteur leader sans les contredire : un moteur peut être
     # leader **et** instable, et c'est précisément l'information
     # critique pour la reproductibilité scientifique.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.ENGINE_UNSTABLE}),
-    # Sprint 92 — la régression historique caractérise la tendance
+    # la régression historique caractérise la tendance
     # du leader : un leader peut être en régression progressive,
     # info critique pour décider quand re-tester.
     frozenset({FactType.GLOBAL_LEADER_CER, FactType.REGRESSION_IN_HISTORY}),
@@ -213,7 +213,7 @@ def select_facts(
     Liste ordonnée, prête à être rendue. Toujours ≤ ``max_facts``.
     """
     if type_order is None:
-        # Sprint 29 — recalcul à chaque appel pour absorber les détecteurs
+        # recalcul à chaque appel pour absorber les détecteurs
         # enregistrés après l'import d'arbiter (extensions tierces qui
         # font ``@register_detector`` dans un module utilisateur).
         from picarones.reports.narrative.registry import default_type_order

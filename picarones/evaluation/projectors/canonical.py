@@ -1,4 +1,4 @@
-"""Projecteur ``CANONICAL_DOCUMENT → RAW_TEXT`` — Sprint A14-S14.
+"""Projecteur ``CANONICAL_DOCUMENT → RAW_TEXT``
 
 Convertit un artefact ``CANONICAL_DOCUMENT`` (typiquement un
 markdown ou un JSON canonique produit par un VLM) vers du texte

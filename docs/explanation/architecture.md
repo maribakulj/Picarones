@@ -72,7 +72,7 @@ normalisé.  Dépend du domain ; aucune logique d'évaluation.
 Le parser XML interne (`_xml_utils.safe_parse_xml`) délègue à
 `defusedxml` avec `forbid_dtd=True`, bloquant XXE, Billion Laughs
 et déclarations `<!DOCTYPE>`.  Les défenses sont verrouillées par
-`tests/security/test_s1_xxe_attack.py` (Sprint S1.4).
+`tests/security/test_xxe_attack.py` (Sprint S1.4).
 
 ### `picarones/evaluation/` — moteurs d'évaluation
 
@@ -130,7 +130,7 @@ produit un artefact texte que `evaluation/` consommera).
 **Anti-SSRF** : `corpus/_http.py:validate_http_url` refuse
 loopback, lien-local, RFC 1918, métadonnées cloud (AWS
 `169.254.169.254`, GCP `metadata.google.internal`).  Verrouillé par
-`tests/security/test_s1_ssrf_attack.py` (Sprint S1.6).
+`tests/security/test_ssrf_attack.py` (Sprint S1.6).
 
 ### `picarones/app/` — services applicatifs
 
@@ -153,7 +153,7 @@ Orchestration entre adapters et evaluation.
 **Anti ZIP slip** : `corpus_service._extract_safely` rejette les
 chemins absolus, `..`, octets nuls, symlinks ZIP entries
 (mode UNIX 0xA000), avec garde-fou final `target.resolve().relative_to(extract_dir)`.
-Verrouillé par `tests/security/test_s1_zip_slip_attack.py`.
+Verrouillé par `tests/security/test_zip_slip_attack.py`.
 
 ### `picarones/reports/` — rendu déterministe
 
@@ -176,7 +176,7 @@ citer.
 helper `_safe_json_for_script_tag` qui encode `<>&` en
 `<>&` pour le JSON injecté dans
 `<script type="application/json">`.  Verrouillé par
-`tests/security/test_s1_xss_in_reports.py` (Sprint S1.1).
+`tests/security/test_xss_in_reports.py` (Sprint S1.1).
 
 ### `picarones/interfaces/` — points d'entrée user-facing
 
@@ -187,7 +187,7 @@ helper `_safe_json_for_script_tag` qui encode `<>&` en
 
 **Anti-CSRF** : middleware `csrf_middleware` actif si
 `PICARONES_CSRF_REQUIRED=1`.  Pattern double-submit cookie + HMAC
-signature.  Verrouillé par `tests/security/test_s1_csrf_required.py`.
+signature.  Verrouillé par `tests/security/test_csrf_required.py`.
 
 ## Principes architecturaux
 
@@ -229,11 +229,11 @@ de code humaine raterait :
 Sprint S1 a ajouté 63 tests d'attaque qui verrouillent les
 défenses revendiquées :
 
-- `tests/security/test_s1_xss_in_reports.py` (5) — autoescape Jinja2 + escape JSON.
-- `tests/security/test_s1_xxe_attack.py` (9) — XXE / Billion Laughs / DTD.
-- `tests/security/test_s1_zip_slip_attack.py` (9) — ZIP slip + symlinks.
-- `tests/security/test_s1_ssrf_attack.py` (26) — loopback, RFC 1918, métadonnées cloud.
-- `tests/security/test_s1_csrf_required.py` (14) — double-submit + HMAC.
+- `tests/security/test_xss_in_reports.py` (5) — autoescape Jinja2 + escape JSON.
+- `tests/security/test_xxe_attack.py` (9) — XXE / Billion Laughs / DTD.
+- `tests/security/test_zip_slip_attack.py` (9) — ZIP slip + symlinks.
+- `tests/security/test_ssrf_attack.py` (26) — loopback, RFC 1918, métadonnées cloud.
+- `tests/security/test_csrf_required.py` (14) — double-submit + HMAC.
 
 ### Reproductibilité bit-for-bit
 

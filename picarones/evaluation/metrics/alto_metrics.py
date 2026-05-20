@@ -7,7 +7,7 @@ output_type)`` pour chaque métrique.  ``builtin_metrics.py`` enregistre
 les quatre métriques scalaires sur ``(TEXT, TEXT)`` et un stub sur
 ``(TEXT, ALTO)``.  Aucune métrique n'était enregistrée sur la jonction
 ``(ALTO, ALTO)`` — pourtant indispensable dès qu'une pipeline produit
-un ALTO et qu'une GT ALTO est disponible (Sprint 32).
+un ALTO et qu'une GT ALTO est disponible
 
 Ce module comble cette lacune.  Il expose un helper
 :func:`extract_text_from_alto` qui parse l'ALTO XML et reconstruit le

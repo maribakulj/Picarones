@@ -145,7 +145,7 @@ app = FastAPI(
 )
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint S3.2 — Handler exception global
+# Handler exception global
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -198,7 +198,7 @@ def register_global_exception_handler(target_app: FastAPI) -> None:
 register_global_exception_handler(app)
 
 
-# Sprint S6.5 — logs JSON structurés si ``PICARONES_LOG_FORMAT=json``.
+# logs JSON structurés si ``PICARONES_LOG_FORMAT=json``.
 # Opt-in pour ne pas casser les déploiements existants qui parsent
 # le format texte humain.
 from picarones.interfaces.web.observability import (

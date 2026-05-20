@@ -1,4 +1,4 @@
-"""Front Pareto coût/qualité (Sprint 19).
+"""Front Pareto coût/qualité
 
 Construit trois fronts Pareto avec des axes alternatifs :
 

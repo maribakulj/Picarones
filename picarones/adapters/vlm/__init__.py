@@ -1,4 +1,4 @@
-"""Adapters VLM (Vision-Language Models) — Sprint A14-S45.
+"""Adapters VLM (Vision-Language Models)
 
 VLM = transcription directe par un modèle généraliste avec vision.
 Distinct des OCR dédiés (Tesseract, Pero, Mistral OCR, Google Vision,

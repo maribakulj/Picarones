@@ -1,6 +1,6 @@
-"""Précision par bloc Unicode — Sprint 55.
+"""Précision par bloc Unicode
 
-Sprint 55 — A.II.3.1 du plan d'évolution 2026 (métriques philologiques).
+A.II.3.1 du plan d'évolution 2026 (métriques philologiques).
 
 Pourquoi ce module
 ------------------
@@ -210,7 +210,7 @@ def unicode_block_global_accuracy(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

@@ -1,6 +1,6 @@
 """Métriques d'image prédictives — Sprint 93 (A.II.7).
 
-Sprint 93 — A.II.7 du plan d'évolution 2026.
+A.II.7 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

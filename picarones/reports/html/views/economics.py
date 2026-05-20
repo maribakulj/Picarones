@@ -1,4 +1,4 @@
-"""Vue économique du rapport — chantier 3 post-Sprint 97.
+"""Vue économique du rapport — chantier 3 post
 
 Regroupe les renderers orientés *décision budget* :
 

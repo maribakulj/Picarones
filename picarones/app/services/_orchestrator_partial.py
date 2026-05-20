@@ -109,7 +109,7 @@ def compute_pipeline_fingerprint(
             for step in pipeline_spec.steps
         ],
     }
-    # Phase B2.3 — on utilise les ``doc.id`` (stables cross-workspace)
+    # on utilise les ``doc.id`` (stables cross-workspace)
     # plutôt que les ``image_uri`` (qui changent à chaque extraction du
     # corpus_zip vers un workspace temporaire).  Sinon le fingerprint
     # divergerait entre runs successifs même avec le même corpus,

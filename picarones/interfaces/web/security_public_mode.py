@@ -1,6 +1,6 @@
 """Mode public : restrictions fonctionnelles (extrait de ``security.py``).
 
-Audit prod P1.2 — dégonflage du god-module ``security``.  Cluster
+dégonflage du god-module ``security``.  Cluster
 *sans état*, sans dépendance interne (os only).  Réimporté par
 ``security`` (API publique préservée).
 """

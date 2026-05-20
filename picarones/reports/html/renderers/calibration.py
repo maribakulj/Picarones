@@ -1,4 +1,4 @@
-"""Rendu HTML server-side de la section calibration (Sprint 43).
+"""Rendu HTML server-side de la section calibration
 
 Suite directe des Sprints 39+42 : la couche de calcul (ECE, MCE,
 reliability_diagram) et le câblage runner sont en place ; ce module

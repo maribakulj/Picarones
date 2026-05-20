@@ -93,7 +93,7 @@ class OCRLLMPipelineConfig:
                 "OCRLLMPipelineConfig : mode 'zero_shot' ne doit pas "
                 "avoir d'``ocr_adapter`` (le VLM lit l'image directement).",
             )
-        # Sprint S9 — garde-fou minimal contre l'oubli de chargement
+        # garde-fou minimal contre l'oubli de chargement
         # du contenu : un template non-vide sans aucune accolade ne
         # peut pas être un prompt LLM substituable.  Capture le cas
         # ``correction_*.txt`` passé tel quel comme template (cf.

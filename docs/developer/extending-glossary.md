@@ -70,7 +70,7 @@ Pour qu'un utilisateur puisse choisir cette langue :
 
 ## Tests
 
-Le fichier `tests/test_sprint21_glossary_customize.py` couvre
+Le fichier `tests/test_glossary_customize.py` couvre
 automatiquement :
 
 - Chargement et fallback (langue inconnue → FR).

@@ -1,4 +1,4 @@
-"""``EvaluationEngine`` — Sprint A14-S27.
+"""``EvaluationEngine``
 
 Pendant de ``ProjectionEngine`` (cf. ``projection_engine.py``).
 Le S13 fusionnait dans ``DefaultEvaluationViewExecutor`` projection

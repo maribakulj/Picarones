@@ -1,4 +1,4 @@
-"""``MetricRegistry`` — Sprint A14-S5.
+"""``MetricRegistry``
 
 Container mutable qui associe chaque ``MetricSpec`` à son callable
 de calcul.  **Instancié explicitement** par un service au démarrage

@@ -1,6 +1,6 @@
 """Comparaison incrémentale de pipelines composées — Sprint 96 (B.5).
 
-Sprint 96 — B.5 du plan d'évolution 2026.
+B.5 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

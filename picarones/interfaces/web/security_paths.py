@@ -1,6 +1,6 @@
 """Racines autorisées + ré-export validation de chemins.
 
-Audit prod P1.2 — dégonflage du god-module ``security``.  Regroupe
+dégonflage du god-module ``security``.  Regroupe
 ``compute_browse_roots`` / ``compute_workspace_roots`` et ré-exporte
 les helpers de ``app.services.path_security`` (foyer canonique,
 partagé CLI + web + jobs).  Réimporté par ``security`` (API
@@ -15,7 +15,7 @@ from pathlib import Path
 from picarones.interfaces.web.security_public_mode import is_public_mode
 
 # Ré-export depuis le foyer définitif ``app.services.path_security``
-# (Sprint A14-S19) — pas de duplication, le code vit en un seul endroit
+# pas de duplication, le code vit en un seul endroit
 # dans la couche app (accessible CLI + jobs background).
 from picarones.app.services.path_security import (
     PathValidationError as PathValidationError,
@@ -57,7 +57,7 @@ def compute_browse_roots(uploads_dir: Path) -> list[Path]:
 def compute_workspace_roots(uploads_dir: Path) -> list[Path]:
     """Retourne les racines autorisées pour les opérations de benchmark.
 
-    Sprint A14-S1 — A.I.0 P0 : utilisé par les endpoints
+    A.I.0 P0 : utilisé par les endpoints
     ``/api/benchmark/start`` et ``/api/benchmark/run`` pour valider
     ``corpus_path`` et ``output_dir`` via :func:`validated_path`.
 

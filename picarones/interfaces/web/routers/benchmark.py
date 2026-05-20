@@ -1,6 +1,6 @@
 """Router des endpoints de benchmark : status, cancel, stream, run.
 
-Le ``stream`` SSE supporte la reprise via ``Last-Event-ID`` (Sprint 26).
+Le ``stream`` SSE supporte la reprise via ``Last-Event-ID``
 ``run`` accepte des ``PipelineConfig`` composés (OCR + LLM, pipelines
 mutualisés).
 
@@ -99,7 +99,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    # Sprint A14-S1 — A.I.0 P0 : validation des chemins utilisateur.
+    # A.I.0 P0 : validation des chemins utilisateur.
     # Idempotent : refuse un corpus_path absolu hors workspaces, et
     # refuse un output_dir qui s'évaderait via ``..`` ou symlinks.
     workspace_roots = compute_workspace_roots(UPLOADS_DIR)
@@ -114,7 +114,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
             allowed_roots=workspace_roots,
             must_exist=False,
         )
-        # Sprint A14-S1 — restriction des prompts à la bibliothèque
+        # restriction des prompts à la bibliothèque
         # intégrée (``picarones/prompts/``).  Cf. validated_prompt_filename
         # pour le rationale (vecteur d'exfiltration via LLM).
         for comp in req.competitors:
@@ -123,7 +123,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
     except PathValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    # Sprint 24 — rate limit + sémaphore concurrents.
+    # rate limit + sémaphore concurrents.
     state.enforce_rate_limit(request)
     if not state.JOBS_SEMAPHORE.acquire(blocking=False):
         raise HTTPException(
@@ -136,7 +136,7 @@ async def api_benchmark_run(req: BenchmarkRunRequest, request: Request) -> dict:
 
     job_id = str(uuid.uuid4())
     job = state.BenchmarkJob(job_id=job_id, _store=state.JOB_STORE)
-    # Phase 4 — payload incluant le corpus actif pour la purge auto.
+    # payload incluant le corpus actif pour la purge auto.
     state.JOB_STORE.create_job(job_id, payload={"corpus": req.corpus_path})
     state.register_job(job)
 
@@ -154,7 +154,7 @@ async def api_benchmark_status(job_id: str) -> dict:
     job = state.get_job_in_memory(job_id)
     if job is not None:
         return job.as_dict()
-    # Sprint 26 — fallback DB : le job n'est pas (plus) en RAM dans ce
+    # fallback DB : le job n'est pas (plus) en RAM dans ce
     # worker mais peut exister en base (autre worker, ou redémarrage).
     db_job = state.JOB_STORE.get_job(job_id)
     if db_job is None:
@@ -199,7 +199,7 @@ async def api_benchmark_cancel(job_id: str) -> dict:
 async def api_benchmark_stream(job_id: str, request: Request) -> StreamingResponse:
     """SSE de progression d'un benchmark.
 
-    Sprint 26 — supporte la reprise via le header standard
+    supporte la reprise via le header standard
     ``Last-Event-ID`` (clamped à un ``int``) : le client envoie le
     dernier ``seq`` reçu, le serveur rejoue tous les événements
     ``> seq`` puis bascule sur le live. Si le job est terminé (ou
@@ -228,7 +228,7 @@ async def api_benchmark_stream(job_id: str, request: Request) -> StreamingRespon
         if job is not None:
             queue = job.subscribe()
         try:
-            # 1) Backlog depuis la base — l'autorité de vérité (Sprint 26).
+            # 1) Backlog depuis la base — l'autorité de vérité
             backlog = state.JOB_STORE.get_events_after(job_id, last_seq=last_seq)
             seen_seqs: set[int] = set()
             for ev in backlog:
@@ -250,7 +250,7 @@ async def api_benchmark_stream(job_id: str, request: Request) -> StreamingRespon
                 yield sse_format("done", {"status": current_status or "unknown"})
                 return
 
-            # Sprint S3.1 — narrowing mypy explicite : à ce point,
+            # narrowing mypy explicite : à ce point,
             # ``queue`` et ``job`` sont garantis non-``None`` (par
             # construction lignes 268-271).  Les ``assert`` ne sont
             # pas pour la défense (impossible) mais pour le type

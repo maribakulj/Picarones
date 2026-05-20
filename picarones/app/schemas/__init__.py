@@ -1,4 +1,4 @@
-"""DTO de transport pour API web et CLI — Sprint S19.
+"""DTO de transport pour API web et CLI
 
 Schemas Pydantic strictement orientés "request/response".  Ils ne
 remontent jamais à un service métier — ce sont les frontières

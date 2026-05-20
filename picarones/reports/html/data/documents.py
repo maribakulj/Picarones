@@ -6,7 +6,7 @@ les champs spécifiques aux pipelines OCR+LLM (intermédiaire, mode,
 sur-normalisation).
 
 :func:`annotate_documents_with_difficulty` enrichit ensuite chaque
-document avec son score de difficulté intrinsèque (Sprint 7).
+document avec son score de difficulté intrinsèque
 """
 
 from __future__ import annotations
@@ -112,7 +112,7 @@ def _build_engine_result_entry(engine_name: str, dr) -> dict:
         if on is not None:
             er_entry["over_normalization"] = on
         er_entry["pipeline_mode"] = dr.pipeline_metadata.get("pipeline_mode")
-    # Sprint 5 — métriques avancées par document
+    # métriques avancées par document
     if dr.char_scores is not None:
         er_entry["ligature_score"] = safe_round(dr.char_scores.get("ligature", {}).get("score"))
         er_entry["diacritic_score"] = safe_round(dr.char_scores.get("diacritic", {}).get("score"))
@@ -122,7 +122,6 @@ def _build_engine_result_entry(engine_name: str, dr) -> dict:
         er_entry["structure"] = dr.structure
     if dr.image_quality is not None:
         er_entry["image_quality"] = dr.image_quality
-    # Sprint 10
     if dr.line_metrics is not None:
         er_entry["line_metrics"] = dr.line_metrics
     if dr.hallucination_metrics is not None:
@@ -133,7 +132,7 @@ def _build_engine_result_entry(engine_name: str, dr) -> dict:
 def annotate_documents_with_difficulty(
     benchmark: "BenchmarkResult", documents: list[dict],
 ) -> None:
-    """Annote chaque document du dict avec son score de difficulté (Sprint 7).
+    """Annote chaque document du dict avec son score de difficulté
 
     Modifie ``documents`` en place. Les valeurs par défaut ``0.5`` /
     ``"Modéré"`` sont retournées si la difficulté n'a pas pu être

@@ -1,4 +1,4 @@
-"""Détection des hallucinations VLM/LLM — Sprint 10.
+"""Détection des hallucinations VLM/LLM
 
 Métriques calculées
 -------------------

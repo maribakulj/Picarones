@@ -2,7 +2,7 @@
 
 1 détecteur déplacé depuis ``narrative/detectors.py`` :
 
-- :func:`detect_ensemble_opportunity` (Sprint 36)
+func:`detect_ensemble_opportunity`
 """
 
 from __future__ import annotations

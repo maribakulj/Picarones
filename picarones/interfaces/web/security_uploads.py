@@ -1,6 +1,6 @@
 """Validation des fichiers/images uploadés (extrait de ``security.py``).
 
-Audit prod P1.2 — dégonflage du god-module ``security``.  Cluster
+dégonflage du god-module ``security``.  Cluster
 *stateless* : plafonds d'upload + validation Pillow (buffer ou
 fichier).  Réimporté par ``security`` pour préserver l'API
 (``from picarones.interfaces.web.security import validate_image_safe``

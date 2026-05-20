@@ -1,11 +1,13 @@
 """Helpers stateless du ``RunOrchestrator`` (sous-package cohésif).
 
-Audit prod P1.1 — l'ancien module plat ``run_orchestrator_helpers.py``
+l'ancien module plat ``run_orchestrator_helpers.py``
 était un signal de dette (« poubelle propre » fourre-tout).  Éclaté
 en sous-modules cohésifs :
 
 - :mod:`.factories`  — GT / inputs / RunContext (stateless)
 - :mod:`.loaders`    — payload filesystem + signature kwargs
+- :mod:`.builders`   — corpus / pipelines / vues / BenchmarkService
+  (ex-``@staticmethod`` du god-module, Phase A)
 - :mod:`.legacy`     — pont converter ``BenchmarkResult`` + résolution
   NER + persistance JSON legacy
 
@@ -25,6 +27,12 @@ from picarones.app.services.run_orchestrator_helpers.loaders import (
     _filesystem_payload_loader as _filesystem_payload_loader,
     _kwargs_signature as _kwargs_signature,
 )
+from picarones.app.services.run_orchestrator_helpers.builders import (
+    _build_benchmark_service as _build_benchmark_service,
+    _build_pipelines as _build_pipelines,
+    _build_views as _build_views,
+    _load_corpus as _load_corpus,
+)
 from picarones.app.services.run_orchestrator_helpers.legacy import (
     _PipelineEngineProxy as _PipelineEngineProxy,
     _persist_legacy_benchmark_json as _persist_legacy_benchmark_json,
@@ -33,10 +41,14 @@ from picarones.app.services.run_orchestrator_helpers.legacy import (
 
 __all__ = [
     "_PipelineEngineProxy",
+    "_build_benchmark_service",
+    "_build_pipelines",
+    "_build_views",
     "_default_gt_factory",
     "_default_inputs_factory",
     "_filesystem_payload_loader",
     "_kwargs_signature",
+    "_load_corpus",
     "_make_context_factory",
     "_persist_legacy_benchmark_json",
     "_resolve_entity_extractor",

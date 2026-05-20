@@ -1,4 +1,4 @@
-"""``JobStore`` — Sprint A14-S37.
+"""``JobStore``
 
 Persistance SQLite des jobs de benchmark.  Adapté du legacy
 ``picarones.interfaces.web.jobs`` mais réécrit nativement pour le nouveau monde :

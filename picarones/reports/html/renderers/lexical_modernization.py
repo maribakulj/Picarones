@@ -1,4 +1,4 @@
-"""Rendu HTML de la vue « Modernisation lexicale » — Sprint 80.
+"""Rendu HTML de la vue « Modernisation lexicale »
 
 A.I.7 du plan d'évolution 2026.
 

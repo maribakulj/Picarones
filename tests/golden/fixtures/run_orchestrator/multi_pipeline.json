@@ -1,0 +1,493 @@
+{
+  "artifacts_index": [
+    {
+      "content_hash": null,
+      "document_id": "doc01",
+      "id": "doc01:image",
+      "pipeline_name": "pero_only",
+      "produced_by_step": null,
+      "provenance": null,
+      "type": "image",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc01",
+      "id": "doc01:precomputed_pero:raw_text",
+      "pipeline_name": "pero_only",
+      "produced_by_step": "ocr",
+      "provenance": null,
+      "type": "raw_text",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc01",
+      "id": "doc01:image",
+      "pipeline_name": "tess_only",
+      "produced_by_step": null,
+      "provenance": null,
+      "type": "image",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc01",
+      "id": "doc01:precomputed_tess:raw_text",
+      "pipeline_name": "tess_only",
+      "produced_by_step": "ocr",
+      "provenance": null,
+      "type": "raw_text",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc02",
+      "id": "doc02:image",
+      "pipeline_name": "pero_only",
+      "produced_by_step": null,
+      "provenance": null,
+      "type": "image",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc02",
+      "id": "doc02:precomputed_pero:raw_text",
+      "pipeline_name": "pero_only",
+      "produced_by_step": "ocr",
+      "provenance": null,
+      "type": "raw_text",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc02",
+      "id": "doc02:image",
+      "pipeline_name": "tess_only",
+      "produced_by_step": null,
+      "provenance": null,
+      "type": "image",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc02",
+      "id": "doc02:precomputed_tess:raw_text",
+      "pipeline_name": "tess_only",
+      "produced_by_step": "ocr",
+      "provenance": null,
+      "type": "raw_text",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc03",
+      "id": "doc03:image",
+      "pipeline_name": "pero_only",
+      "produced_by_step": null,
+      "provenance": null,
+      "type": "image",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc03",
+      "id": "doc03:precomputed_pero:raw_text",
+      "pipeline_name": "pero_only",
+      "produced_by_step": "ocr",
+      "provenance": null,
+      "type": "raw_text",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc03",
+      "id": "doc03:image",
+      "pipeline_name": "tess_only",
+      "produced_by_step": null,
+      "provenance": null,
+      "type": "image",
+      "uri": "<PATH>"
+    },
+    {
+      "content_hash": null,
+      "document_id": "doc03",
+      "id": "doc03:precomputed_tess:raw_text",
+      "pipeline_name": "tess_only",
+      "produced_by_step": "ocr",
+      "provenance": null,
+      "type": "raw_text",
+      "uri": "<PATH>"
+    }
+  ],
+  "manifest": {
+    "adapter_kwargs": {
+      "ocr": {
+        "source_label": "tess"
+      },
+      "pero_only__ocr": {
+        "source_label": "pero"
+      }
+    },
+    "code_version": "charac-1.0",
+    "corpus_name": "charac",
+    "metadata": {
+      "orchestrator": "picarones.app.services.run_orchestrator"
+    },
+    "n_documents": 3,
+    "pipeline_names": [
+      "pero_only",
+      "tess_only"
+    ],
+    "pipeline_specs": [
+      {
+        "description": "",
+        "initial_inputs": [
+          "image"
+        ],
+        "name": "tess_only",
+        "steps": [
+          {
+            "adapter_name": "ocr",
+            "id": "ocr",
+            "input_types": [
+              "image"
+            ],
+            "inputs_from": {},
+            "kind": "step",
+            "output_types": [
+              "raw_text"
+            ],
+            "params": {}
+          }
+        ]
+      },
+      {
+        "description": "",
+        "initial_inputs": [
+          "image"
+        ],
+        "name": "pero_only",
+        "steps": [
+          {
+            "adapter_name": "pero_only__ocr",
+            "id": "ocr",
+            "input_types": [
+              "image"
+            ],
+            "inputs_from": {},
+            "kind": "step",
+            "output_types": [
+              "raw_text"
+            ],
+            "params": {}
+          }
+        ]
+      }
+    ],
+    "view_specs": [
+      {
+        "candidate_types": [
+          "alto_xml",
+          "canonical_document",
+          "corrected_text",
+          "page_xml",
+          "raw_text"
+        ],
+        "char_exclude": null,
+        "description": "Compare les sorties textuelles finales après projection éventuelle (ALTO/PAGE/markdown → texte plat).",
+        "ignored_dimensions": [
+          "block_structure",
+          "confidence",
+          "formatting",
+          "geometry",
+          "ids",
+          "reading_order"
+        ],
+        "metric_names": [
+          "cer",
+          "mer",
+          "wer",
+          "wil"
+        ],
+        "name": "text_final",
+        "normalization_profile": null,
+        "projection": null,
+        "projections_by_source_type": {
+          "alto_xml": {
+            "params": {},
+            "projector_name": "alto_to_text",
+            "source_type": "alto_xml",
+            "target_type": "raw_text"
+          },
+          "canonical_document": {
+            "params": {},
+            "projector_name": "canonical_to_text",
+            "source_type": "canonical_document",
+            "target_type": "raw_text"
+          },
+          "page_xml": {
+            "params": {},
+            "projector_name": "page_to_text",
+            "source_type": "page_xml",
+            "target_type": "raw_text"
+          }
+        },
+        "warnings": [
+          "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+        ]
+      }
+    ]
+  },
+  "pipeline_results": [
+    {
+      "document_id": "doc01",
+      "pipeline_name": "pero_only",
+      "step_results": [
+        {
+          "error": null,
+          "produced_artifacts": {
+            "raw_text": "doc01:precomputed_pero:raw_text"
+          },
+          "step_id": "ocr",
+          "succeeded": true
+        }
+      ],
+      "succeeded": true
+    },
+    {
+      "document_id": "doc01",
+      "pipeline_name": "tess_only",
+      "step_results": [
+        {
+          "error": null,
+          "produced_artifacts": {
+            "raw_text": "doc01:precomputed_tess:raw_text"
+          },
+          "step_id": "ocr",
+          "succeeded": true
+        }
+      ],
+      "succeeded": true
+    },
+    {
+      "document_id": "doc02",
+      "pipeline_name": "pero_only",
+      "step_results": [
+        {
+          "error": null,
+          "produced_artifacts": {
+            "raw_text": "doc02:precomputed_pero:raw_text"
+          },
+          "step_id": "ocr",
+          "succeeded": true
+        }
+      ],
+      "succeeded": true
+    },
+    {
+      "document_id": "doc02",
+      "pipeline_name": "tess_only",
+      "step_results": [
+        {
+          "error": null,
+          "produced_artifacts": {
+            "raw_text": "doc02:precomputed_tess:raw_text"
+          },
+          "step_id": "ocr",
+          "succeeded": true
+        }
+      ],
+      "succeeded": true
+    },
+    {
+      "document_id": "doc03",
+      "pipeline_name": "pero_only",
+      "step_results": [
+        {
+          "error": null,
+          "produced_artifacts": {
+            "raw_text": "doc03:precomputed_pero:raw_text"
+          },
+          "step_id": "ocr",
+          "succeeded": true
+        }
+      ],
+      "succeeded": true
+    },
+    {
+      "document_id": "doc03",
+      "pipeline_name": "tess_only",
+      "step_results": [
+        {
+          "error": null,
+          "produced_artifacts": {
+            "raw_text": "doc03:precomputed_tess:raw_text"
+          },
+          "step_id": "ocr",
+          "succeeded": true
+        }
+      ],
+      "succeeded": true
+    }
+  ],
+  "view_results": [
+    {
+      "candidate_artifact_id": "doc01:precomputed_tess:raw_text",
+      "document_id": "doc01",
+      "failed_metrics": {},
+      "ground_truth_artifact_id": "doc01:gt:raw_text",
+      "ignored_dimensions": [
+        "block_structure",
+        "confidence",
+        "formatting",
+        "geometry",
+        "ids",
+        "reading_order"
+      ],
+      "metric_values": {
+        "cer": 0.05,
+        "mer": 0.25,
+        "wer": 0.25,
+        "wil": 0.4375
+      },
+      "pipeline_name": "tess_only",
+      "projection_report": null,
+      "view_name": "text_final",
+      "warnings": [
+        "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+      ]
+    },
+    {
+      "candidate_artifact_id": "doc01:precomputed_pero:raw_text",
+      "document_id": "doc01",
+      "failed_metrics": {},
+      "ground_truth_artifact_id": "doc01:gt:raw_text",
+      "ignored_dimensions": [
+        "block_structure",
+        "confidence",
+        "formatting",
+        "geometry",
+        "ids",
+        "reading_order"
+      ],
+      "metric_values": {
+        "cer": 0.05,
+        "mer": 0.25,
+        "wer": 0.25,
+        "wil": 0.4375
+      },
+      "pipeline_name": "pero_only",
+      "projection_report": null,
+      "view_name": "text_final",
+      "warnings": [
+        "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+      ]
+    },
+    {
+      "candidate_artifact_id": "doc02:precomputed_tess:raw_text",
+      "document_id": "doc02",
+      "failed_metrics": {},
+      "ground_truth_artifact_id": "doc02:gt:raw_text",
+      "ignored_dimensions": [
+        "block_structure",
+        "confidence",
+        "formatting",
+        "geometry",
+        "ids",
+        "reading_order"
+      ],
+      "metric_values": {
+        "cer": 0.05,
+        "mer": 0.25,
+        "wer": 0.25,
+        "wil": 0.4375
+      },
+      "pipeline_name": "tess_only",
+      "projection_report": null,
+      "view_name": "text_final",
+      "warnings": [
+        "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+      ]
+    },
+    {
+      "candidate_artifact_id": "doc02:precomputed_pero:raw_text",
+      "document_id": "doc02",
+      "failed_metrics": {},
+      "ground_truth_artifact_id": "doc02:gt:raw_text",
+      "ignored_dimensions": [
+        "block_structure",
+        "confidence",
+        "formatting",
+        "geometry",
+        "ids",
+        "reading_order"
+      ],
+      "metric_values": {
+        "cer": 0.05,
+        "mer": 0.25,
+        "wer": 0.25,
+        "wil": 0.4375
+      },
+      "pipeline_name": "pero_only",
+      "projection_report": null,
+      "view_name": "text_final",
+      "warnings": [
+        "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+      ]
+    },
+    {
+      "candidate_artifact_id": "doc03:precomputed_tess:raw_text",
+      "document_id": "doc03",
+      "failed_metrics": {},
+      "ground_truth_artifact_id": "doc03:gt:raw_text",
+      "ignored_dimensions": [
+        "block_structure",
+        "confidence",
+        "formatting",
+        "geometry",
+        "ids",
+        "reading_order"
+      ],
+      "metric_values": {
+        "cer": 0.05,
+        "mer": 0.25,
+        "wer": 0.25,
+        "wil": 0.4375
+      },
+      "pipeline_name": "tess_only",
+      "projection_report": null,
+      "view_name": "text_final",
+      "warnings": [
+        "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+      ]
+    },
+    {
+      "candidate_artifact_id": "doc03:precomputed_pero:raw_text",
+      "document_id": "doc03",
+      "failed_metrics": {},
+      "ground_truth_artifact_id": "doc03:gt:raw_text",
+      "ignored_dimensions": [
+        "block_structure",
+        "confidence",
+        "formatting",
+        "geometry",
+        "ids",
+        "reading_order"
+      ],
+      "metric_values": {
+        "cer": 0.05,
+        "mer": 0.25,
+        "wer": 0.25,
+        "wil": 0.4375
+      },
+      "pipeline_name": "pero_only",
+      "projection_report": null,
+      "view_name": "text_final",
+      "warnings": [
+        "Cette vue compare les sorties textuelles finales après projection éventuelle.  Les pipelines qui produisent ALTO/PAGE/markdown sont projetés vers du texte plat — leurs structures spatiale et documentaire ne sont PAS évaluées ici.  Pour évaluer la qualité ALTO, voir AltoView (S15)."
+      ]
+    }
+  ]
+}

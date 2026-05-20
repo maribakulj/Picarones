@@ -1,4 +1,4 @@
-"""Distribution des erreurs CER par ligne — Sprint 10.
+"""Distribution des erreurs CER par ligne
 
 Métriques calculées
 -------------------

@@ -1,4 +1,4 @@
-"""``PipelinePlanner`` — Sprint A14-S28.
+"""``PipelinePlanner``
 
 Le S6 livrait ``validate_spec`` (validation statique : types
 cohérents, IDs uniques, ``inputs_from`` valides, adapters connus).

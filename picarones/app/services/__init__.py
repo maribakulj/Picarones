@@ -81,7 +81,7 @@ __all__ = [
     "OrchestrationResult",
     "PathValidationError",
     "PipelineInputsFactory",
-    # Phase B3-final — helpers pour callers Python
+    # helpers pour callers Python
     "PresetArgs",
     "prepare_preset_args",
     "run_result_to_benchmark_result",

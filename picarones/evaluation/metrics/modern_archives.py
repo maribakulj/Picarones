@@ -1,7 +1,7 @@
 """Marqueurs typographiques et abréviations des archives modernes
-(XIXᵉ-XXᵉ siècles) — Sprint 59.
+(XIXᵉ-XXᵉ siècles)
 
-Sprint 59 — Étape 3 / extension philologique du plan d'évolution
+Étape 3 / extension philologique du plan d'évolution
 2026.
 
 Pourquoi ce module
@@ -542,7 +542,7 @@ def modern_archives_expansion_score(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

@@ -1,6 +1,6 @@
 """Marqueurs typographiques de l'imprimé ancien (XVIᵉ-XVIIIᵉ).
 
-Sprint 58 — Étape 3 / extension philologique du plan d'évolution
+Étape 3 / extension philologique du plan d'évolution
 2026.
 
 Pourquoi ce module
@@ -86,7 +86,7 @@ AMPERSAND: frozenset[str] = frozenset({"&"})
 # Tildes nasaux : pré-composés (ñ ã ẽ ĩ õ ũ) ou séquences
 # lettre + U+0303 combinant.  En imprimé ancien, ã = an/am abrégé,
 # õ = on/om, etc.  Distinction avec les tildes scribaux médiévaux
-# (Sprint 56) : ici on cible les **pré-composés** ou séquences sur
+# ici on cible les **pré-composés** ou séquences sur
 # des voyelles (le scribal médiéval cible plutôt p̃ q̃).
 NASAL_TILDE_PRECOMPOSED: frozenset[str] = frozenset({
     "ã", "Ã",  # U+00E3 / U+00C3
@@ -312,7 +312,7 @@ def get_category(char: str) -> Optional[str]:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

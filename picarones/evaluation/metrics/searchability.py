@@ -1,6 +1,6 @@
 """Recherchabilité fuzzy — Sprint 84 (A.II.5).
 
-Sprint 84 — A.II.5 du plan d'évolution 2026.
+A.II.5 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -195,7 +195,7 @@ def compute_searchability(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement registre typé (Sprint 34)
+# Enregistrement registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

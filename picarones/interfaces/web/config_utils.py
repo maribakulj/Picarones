@@ -1,6 +1,6 @@
 """Utilitaires de validation et migration des configs utilisateur.
 
-Sprint 28 — supprime la friction *« reconfigurer chaque session »* :
+supprime la friction *« reconfigurer chaque session »* :
 le client peut télécharger sa config en JSON et la réimporter plus
 tard. Ce module définit le schéma versionné et les règles de filtrage
 qui empêchent qu'un payload trop riche n'embarque des secrets ou des

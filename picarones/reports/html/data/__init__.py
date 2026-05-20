@@ -97,7 +97,6 @@ def build_report_data(
         "ranking": benchmark.ranking(),
         "engines": engines_summary,
         "documents": documents,
-        # Sprint 7
         "statistics": {
             "pairwise_wilcoxon": build_pairwise_wilcoxon(benchmark),
             "bootstrap_cis": build_bootstrap_cis(benchmark),
@@ -107,15 +106,14 @@ def build_report_data(
         "venn_data": build_venn_data(benchmark),
         "error_clusters": build_error_clusters(benchmark),
         "correlation_per_engine": build_correlation_per_engine(benchmark),
-        # Sprint 10
         "gini_vs_cer": build_gini_vs_cer(benchmark),
         "ratio_vs_anchor": build_ratio_vs_anchor(benchmark),
-        # Sprint 19 — vue Pareto coût/qualité avec variantes d'axe
+        # vue Pareto coût/qualité avec variantes d'axe
         "pareto": pareto_data,
-        # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+        # analyse inter-moteurs (divergence taxonomique +
         # complémentarité / oracle).  ``None`` si moins de 2 moteurs.
         "inter_engine_analysis": benchmark.inter_engine_analysis,
-        # Sprint 45-46 — stratification par script_type
+        # stratification par script_type
         "available_strata": benchmark.available_strata(),
         "stratified_ranking": benchmark.stratified_ranking() or None,
         "corpus_homogeneity": benchmark.corpus_homogeneity(),

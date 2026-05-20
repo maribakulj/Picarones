@@ -86,14 +86,14 @@ class DocumentResult:
     # Champ Sprint 40 — métriques NER calculées si la GT a un EntitiesGT
     # ET qu'un EntityExtractor a été passé au runner.  ``None`` sinon.
     ner_metrics: Optional[dict] = None
-    """Précision/rappel/F1 sur entités nommées (Sprint 38-40).
+    """Précision/rappel/F1 sur entités nommées
 
     Format : retour de ``compute_ner_metrics`` (global, per_category,
     hallucinated_entities, missed_entities, etc.).  Présent uniquement si
     le document a un niveau de GT ``ENTITIES`` ET que le runner a reçu
     un ``EntityExtractor``.
     """
-    # Sprint 42 — calibration des confidences moteur (ECE, MCE, bins)
+    # calibration des confidences moteur (ECE, MCE, bins)
     calibration_metrics: Optional[dict] = None
     """Métriques de calibration (Sprint 39+42).
 
@@ -102,7 +102,7 @@ class DocumentResult:
     Présent uniquement si le moteur a fourni des ``token_confidences``
     sur l'``EngineResult``.
     """
-    # Sprint 61 — métriques philologiques (Sprints 55-60) calculées
+    # métriques philologiques (Sprints 55-60) calculées
     # automatiquement.  Présent uniquement si au moins un module a
     # détecté du signal dans la GT.
     philological_metrics: Optional[dict] = None
@@ -243,7 +243,7 @@ class DocumentResult:
     ) -> None:
         """Libère les champs lourds pour réduire l'empreinte mémoire.
 
-        Sprint A14-S1 — A.I.0 P0 : compaction désormais opt-in.
+        A.I.0 P0 : compaction désormais opt-in.
         Auparavant, le runner appelait ``compact()`` sans paramètres
         avant de sérialiser le JSON, ce qui amputait silencieusement
         toutes les analyses per-document (confusion, taxonomy,
@@ -327,23 +327,19 @@ class EngineReport:
     """Métriques structurelles agrégées."""
     aggregated_image_quality: Optional[dict] = None
     """Métriques de qualité image agrégées."""
-    # Sprint 10
     aggregated_line_metrics: Optional[dict] = None
     """Distribution CER par ligne agrégée (Gini moyen, percentiles, heatmap, taux catastrophiques)."""
     aggregated_hallucination: Optional[dict] = None
     """Métriques d'hallucination VLM agrégées (ancrage moyen, taux de docs hallucinés…)."""
-    # Sprint 40
     aggregated_ner: Optional[dict] = None
     """Métriques NER agrégées sur le corpus : F1 micro/macro globaux et
     par catégorie, total hallucinations/missed.  ``None`` si aucun
     document n'a porté de calcul NER."""
-    # Sprint 42
     aggregated_calibration: Optional[dict] = None
     """Calibration agrégée sur le corpus : ECE, MCE, reliability diagram
     micro recalculé à partir des sommes par bin.  ``None`` si aucun
     document n'avait de ``calibration_metrics`` (cas par défaut tant que
     les engines n'exposent pas ``token_confidences``)."""
-    # Sprint 61
     aggregated_philological: Optional[dict] = None
     """Métriques philologiques agrégées sur le corpus (Sprints 55-60).
 
@@ -353,7 +349,6 @@ class EngineReport:
     globaux ; les structures per_category/per_block/per_status sont
     également agrégées.  ``None`` si aucun document n'a porté de
     ``philological_metrics``."""
-    # Sprint 86
     aggregated_searchability: Optional[dict] = None
     """Recherchabilité fuzzy agrégée corpus-wide (Sprint 84+86).
 
@@ -368,7 +363,7 @@ class EngineReport:
     per_category{n_total, strict, value, strict_score,
     value_score, lost_items}. ``None`` si aucun document n'avait
     de séquence numérique exploitable."""
-    # Sprint 87 — A.II.2 (delta Flesch agrégé)
+    # A.II.2 (delta Flesch agrégé)
     aggregated_readability: Optional[dict] = None
     """Delta Flesch agrégé corpus-wide (Sprint 52+87).
 
@@ -423,7 +418,7 @@ class EngineReport:
     def median_cer(self) -> Optional[float]:
         """CER médian sur le corpus.
 
-        Sprint 44 — devient le critère de tri par défaut du ``ranking()``
+        devient le critère de tri par défaut du ``ranking()``
         car la moyenne est facilement tirée par quelques documents
         catastrophiques sur une distribution asymétrique (typique des
         corpus patrimoniaux).
@@ -557,12 +552,12 @@ class BenchmarkResult:
     # à l'export CSV, pour qu'un rapport de démonstration ne puisse
     # jamais être diffusé comme un résultat scientifique réel.
     is_demo: bool = False
-    # Sprint 36 — analyse inter-moteurs (divergence taxonomique +
+    # analyse inter-moteurs (divergence taxonomique +
     # complémentarité / oracle).  Calculée par le runner avant compact()
     # afin d'avoir accès aux hypothèses brutes.  ``None`` si moins de
     # 2 moteurs ou si le calcul a été désactivé.
     inter_engine_analysis: Optional[dict] = None
-    # Sprint 45 — A.III stratification : map ``{doc_id: script_type}``
+    # A.III stratification : map ``{doc_id: script_type}``
     # capturée avant ``compact()`` (qui efface ``image_quality``).
     # ``None`` si aucun document n'expose de ``script_type`` dans son
     # ``image_quality.script_type`` ou ``metadata.script_type``.

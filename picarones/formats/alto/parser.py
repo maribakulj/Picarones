@@ -1,4 +1,4 @@
-"""Parser ALTO XML tolérant aux namespaces — Sprint A14-S9.
+"""Parser ALTO XML tolérant aux namespaces
 
 Détection auto de la version ALTO (v2/v3/v4) via le namespace du
 root element.  Tolérant aux variantes : un ALTO sans namespace est

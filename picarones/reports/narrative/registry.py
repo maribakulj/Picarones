@@ -1,4 +1,4 @@
-"""Registre déclaratif des détecteurs narratifs (Sprint 29).
+"""Registre déclaratif des détecteurs narratifs
 
 Avant le Sprint 29, ajouter un nouveau type de fait imposait de toucher
 **quatre** fichiers :

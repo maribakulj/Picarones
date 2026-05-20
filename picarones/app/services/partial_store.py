@@ -18,7 +18,7 @@ partiel est supprimé.  Si un crash interrompt le run mid-engine,
 le fichier persiste : la prochaine exécution reprendra exactement
 où l'on s'est arrêté.
 
-Phase 2.3 — Fingerprint anti-collision
+Fingerprint anti-collision
 ---------------------------------------
 Auparavant, la clé partial était ``(corpus.name, engine.name)`` —
 insuffisant : deux runs successifs avec le même corpus et le même
@@ -98,7 +98,7 @@ def _partial_path(
     pas configurer un répertoire dédié mais bénéficient quand même
     de la reprise intra-process.
 
-    Phase 2.3 — Si ``fingerprint`` est fourni, il est suffixé au nom :
+    Si ``fingerprint`` est fourni, il est suffixé au nom :
     ``picarones_{corpus}_{engine}_{fingerprint}.partial.jsonl``.  Cela
     garantit que deux runs avec le même couple ``(corpus, engine)``
     mais des configs différentes ne partagent **jamais** leur fichier
@@ -229,7 +229,7 @@ def _load_partial(
             )
             continue
         try:
-            # Phase 2.2 — Utilise ``DocumentResult.from_dict`` au lieu
+            # Utilise ``DocumentResult.from_dict`` au lieu
             # de la reconstruction manuelle qui perdait
             # ``taxonomy``/``ner_metrics``/``calibration_metrics``/etc.
             # à la reprise — un partial chargé puis re-sérialisé

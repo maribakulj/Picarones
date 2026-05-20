@@ -1,4 +1,4 @@
-"""Re-export depuis ``picarones.formats.text.normalization`` — Sprint A14-S9.
+"""Re-export depuis ``picarones.formats.text.normalization``
 
 Le contenu canonique de ce module a été déplacé vers
 ``picarones/formats/text/normalization.py`` au Sprint S9 du

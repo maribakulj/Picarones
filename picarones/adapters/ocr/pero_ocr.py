@@ -1,4 +1,4 @@
-"""``PeroOCRAdapter`` natif — Sprint A14-S31.
+"""``PeroOCRAdapter`` natif
 implémente directement le contrat du nouveau monde, sans héritage du
 parité sera atteinte sur tous les adapters.
 

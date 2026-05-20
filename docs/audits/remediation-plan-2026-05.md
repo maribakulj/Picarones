@@ -282,7 +282,7 @@ sur le pattern *fix + test de non-régression* posé par A1.
 
 **B-1** (statistics.py:861 → core/), **B-2** (difficulty.py:195 →
 report/), **B-3** (3 importers `except Exception: pass`), **m-17**
-(`tests/measurements/test_sprint11_i18n_english.py` importe Cercle 3 →
+(`tests/measurements/test_i18n_english.py` importe Cercle 3 →
 déplacement en `tests/integration/`).
 
 **Livrables concrets**
@@ -301,9 +301,9 @@ déplacement en `tests/integration/`).
 - Émettre un `Fact` `IMPORTER_FALLBACK_TRIGGERED` (priorité MEDIUM,
   template factuel sans chiffres en dur) pour que la synthèse du
   rapport mentionne l'incident à l'utilisateur final.
-- Déplacement de `tests/measurements/test_sprint11_i18n_english.py`
-  vers `tests/integration/test_sprint11_i18n_english.py` (couvre **m-17**).
-- Déplacement de `tests/measurements/test_sprint94_error_absorption.py`
+- Déplacement de `tests/measurements/test_i18n_english.py`
+  vers `tests/integration/test_i18n_english.py` (couvre **m-17**).
+- Déplacement de `tests/measurements/test_error_absorption.py`
   vers `tests/integration/` (audit §2 MINOR 4).
 - Tests de non-régression :
   - `tests/core/test_diff_utils.py` : reproduire les tests de

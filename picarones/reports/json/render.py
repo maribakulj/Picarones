@@ -1,4 +1,4 @@
-"""``JsonReportRenderer`` — Sprint A14-S43.
+"""``JsonReportRenderer``
 
 Rendu JSON canonique d'un ``RunResult`` : représentation hiérarchique
 sérialisable, déterministe (clés triées, indent=2, ensure_ascii=False),

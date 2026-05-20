@@ -1,4 +1,4 @@
-"""Provenance d'un artefact — Sprint A14-S4.
+"""Provenance d'un artefact
 
 Empreinte minimale attachée à chaque ``Artifact`` produit par une
 étape de pipeline.  Permet la reproductibilité : même corpus + même

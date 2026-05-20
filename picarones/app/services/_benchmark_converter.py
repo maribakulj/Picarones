@@ -205,7 +205,7 @@ def run_result_to_benchmark_result(
     if fallbacks:
         metadata["importer_fallbacks"] = fallbacks
 
-    # Phase B6 — transpose les ViewResult du RunResult en
+    # transpose les ViewResult du RunResult en
     # ``view_results`` indexé : ``{view: {engine: {doc: {metric: value}}}}``.
     # Permet au rapport HTML de rendre des sections par vue
     # (TextView/AltoView/SearchView) avec le détail par pipeline.

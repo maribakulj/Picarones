@@ -1,6 +1,6 @@
 """Factories stateless du ``RunOrchestrator`` (GT / inputs / contexte).
 
-Audit prod P1.1 — éclatement du module plat ``run_orchestrator_
+éclatement du module plat ``run_orchestrator_
 helpers`` en sous-package cohésif.  Aucune dépendance vers
 ``RunOrchestrator`` ni vers l'état d'instance.
 """
@@ -77,7 +77,7 @@ def _make_context_factory(
     par pipeline — un benchmark à 2 pipelines × 5 docs émet 10
     notifications ``doc_idx ∈ {0..9}``.
 
-    Phase B4 — ``workspace_uri`` propagé au ``RunContext`` pour que les
+    ``workspace_uri`` propagé au ``RunContext`` pour que les
     adapters qui en ont besoin (PrecomputedTextAdapter,
     TesseractAdapter, etc.) puissent écrire leurs artefacts
     intermédiaires.  Cohérent avec ``_benchmark_execution.py:134-139``.

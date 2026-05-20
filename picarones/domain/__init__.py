@@ -110,7 +110,7 @@ __all__ = [
     # S17 — Run manifest (pure domain ; RunResult vit dans app/)
     "RunManifest",
     "utcnow",
-    # Phase 1 — Facts narratifs (canonique migré depuis core/facts.py)
+    # Facts narratifs (canonique migré depuis core/facts.py)
     "DetectorFn",
     "DetectorRegistry",
     "Fact",

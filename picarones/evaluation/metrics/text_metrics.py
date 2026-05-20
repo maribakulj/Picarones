@@ -104,7 +104,7 @@ def compute_metrics(
         Objet contenant toutes les métriques calculées.
     """
     if not _JIWER_AVAILABLE:
-        # Sprint A14-S1 — A.I.0 P0 : ne pas retourner 0.0 en erreur
+        # A.I.0 P0 : ne pas retourner 0.0 en erreur
         # (indistinguable d'un score parfait pour un lecteur qui ne
         # vérifie pas ``error``).  None = absence de mesure.
         return MetricsResult(
@@ -245,7 +245,7 @@ def compute_metrics(
 
     except Exception as exc:  # noqa: BLE001
         logger.warning("[metrics] calcul métriques échoué : %s", exc)
-        # Sprint A14-S1 — A.I.0 P0 : None plutôt que 0.0 (cf. cas
+        # A.I.0 P0 : None plutôt que 0.0 (cf. cas
         # ``not _JIWER_AVAILABLE`` plus haut pour le rationale).
         return MetricsResult(
             cer=None, cer_nfc=None, cer_caseless=None,

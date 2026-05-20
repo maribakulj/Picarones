@@ -1,6 +1,6 @@
 """Calcul des métriques de précision sur entités nommées (NER).
 
-Sprint 38 — A.II.1.a du plan d'évolution 2026 : couche de calcul pure.
+A.II.1.a du plan d'évolution 2026 : couche de calcul pure.
 
 Pourquoi ce module
 ------------------
@@ -279,7 +279,7 @@ def compute_ner_metrics(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

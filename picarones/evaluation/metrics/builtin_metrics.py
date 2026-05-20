@@ -1,4 +1,4 @@
-"""Métriques natives enregistrées dans le registre typé (Sprint 34).
+"""Métriques natives enregistrées dans le registre typé
 
 Ce module est un démonstrateur d'enregistrement : il expose les
 métriques scalaires existantes (CER, WER, MER, WIL) sous une forme

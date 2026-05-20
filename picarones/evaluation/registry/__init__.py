@@ -1,4 +1,4 @@
-"""Registre typé de métriques — Sprint S5.
+"""Registre typé de métriques
 
 Construit **explicitement** par un service au démarrage de
 l'application, pas par effet de bord d'import au top-level d'un

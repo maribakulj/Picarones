@@ -1,4 +1,4 @@
-"""``DocumentRef`` — Sprint A14-S4.
+"""``DocumentRef``
 
 Référence à un document du corpus, avec ses vérités terrain
 multi-niveaux.  Ne porte **pas** le contenu : juste les chemins/URIs

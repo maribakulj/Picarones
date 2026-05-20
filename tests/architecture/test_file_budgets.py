@@ -123,10 +123,13 @@ FILE_BUDGETS: dict[str, int] = {
     # --- Services applicatifs (couche 6).  Budgets ``current + 15 %``.
     "picarones/app/services/corpus_service.py": 625,      # actuel 541
     "picarones/app/services/path_security.py": 470,       # actuel 410
-    # Audit prod P1 — dégonflage du god-module : helpers extraits, puis
-    # (P1.1) ``run_orchestrator_helpers`` éclaté en sous-package cohésif
-    # (factories/loaders/legacy, chacun < 400 : pas d'entrée budget).
-    "picarones/app/services/run_orchestrator.py": 1050,   # actuel ~913
+    # Audit prod — dégonflage du god-module, terminé : helpers
+    # extraits → sous-package (P1.1), 4 builders @staticmethod →
+    # builders.py (Phase A), gros bloc stateful _execute_with_partial
+    # (~283 l) → run_orchestrator_execution.py (Phase B).  OBJECTIF
+    # AUDIT ATTEINT : 1316 → 496 lignes (<500).  Budget verrouillé
+    # serré (496 + ~5 %) — toute reprise au-dessus de 500 échoue.
+    "picarones/app/services/run_orchestrator.py": 520,   # actuel ~496
     "picarones/adapters/ocr/tesseract.py": 560,          # actuel 479 — Phase B5 migration Option B (+ ALTO_XML expose)
     "picarones/app/schemas/run_spec.py": 620,             # actuel 530 — Phase B1 migration Option B (+90 LOC : 7 nouveaux champs + 2 validators)
     "picarones/reports/html/render.py": 700,           # actuel 615

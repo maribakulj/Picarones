@@ -1,4 +1,4 @@
-"""Rendu HTML serveur-side de la section inter-moteurs (Sprint 37).
+"""Rendu HTML serveur-side de la section inter-moteurs
 
 Suite des Sprints 35-36 : la couche de calcul (`inter_engine.py`) et le
 câblage runner+narratif sont en place.  Ce module produit les blocs HTML
@@ -37,7 +37,7 @@ def build_divergence_matrix_html(
     Parameters
     ----------
     inter_engine_analysis:
-        Dict produit par ``compute_inter_engine_analysis`` (Sprint 36).
+        Dict produit par ``compute_inter_engine_analysis``
         ``None`` ou sans ``taxonomy_divergence`` → chaîne vide.
     labels:
         Dict d'étiquettes i18n.  Clés utilisées :

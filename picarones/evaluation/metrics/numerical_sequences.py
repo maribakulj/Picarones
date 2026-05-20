@@ -1,6 +1,6 @@
 """Précision sur séquences numériques — Sprint 85 (A.II.5b).
 
-Sprint 85 — A.II.5b du plan d'évolution 2026.
+A.II.5b du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -17,7 +17,7 @@ Catégories couvertes
    (le module détecte les **années** sur 4 chiffres dans la
    plage [1000-2099]).
 2. **Numéraux romains** : ``MDCLXVIII``, ``XIV``, ``Tome IV``.
-   Réutilise ``picarones.evaluation.metrics.roman_numerals`` (Sprint 60).
+   Réutilise ``picarones.evaluation.metrics.roman_numerals``
 3. **Foliotation** : ``f. 12``, ``f. 12r``, ``fol. 24v``,
    ``p. 5``, ``pp. 12-15``, ``n° 42``.
 4. **Montants** : ``12 livres``, ``5 sols``, ``8 deniers``,

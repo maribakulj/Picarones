@@ -22,7 +22,7 @@ Format
     pipelines:
       - name: ocr_then_correct
         initial_inputs: [image]
-        # Sprint S39 : output symbolique préféré pour le texte.
+        # output symbolique préféré pour le texte.
         # Référence un (step_id).(output_type) qui sera utilisé par
         # les vues TextView / SearchView quand plusieurs steps
         # produisent du RAW_TEXT.  Optionnel.
@@ -38,7 +38,7 @@ Format
             adapter_kwargs: {model: gpt-4o}
             input_types: [raw_text]
             output_types: [corrected_text]
-            # Sprint S39 : DAG branchant.  Si plusieurs steps
+            # DAG branchant.  Si plusieurs steps
             # produisent le même type, on désigne explicitement la
             # source.  Sans inputs_from : dernier producteur.
             inputs_from:
@@ -275,7 +275,7 @@ class RunSpec(BaseModel):
     code_version: str = Field(default="0.0.0-unset", max_length=128)
 
     # ──────────────────────────────────────────────────────────────────
-    # Phase B1 — migration Option B (run_benchmark_via_service →
+    # migration Option B (run_benchmark_via_service →
     # RunOrchestrator).  Les 7 champs ci-dessous portent les
     # paramètres legacy de ``run_benchmark_via_service`` dans la
     # spec déclarative.  À ce stade (B1) ils sont validés mais pas

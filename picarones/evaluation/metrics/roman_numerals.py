@@ -1,6 +1,6 @@
-"""Numéraux romains — Sprint 60.
+"""Numéraux romains
 
-Sprint 60 — Étape 3 / extension philologique transversale du plan
+Étape 3 / extension philologique transversale du plan
 d'évolution 2026.
 
 Pourquoi ce module
@@ -425,7 +425,7 @@ def roman_numeral_value_score(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

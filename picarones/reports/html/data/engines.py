@@ -61,14 +61,14 @@ def build_engines_summary(benchmark: "BenchmarkResult") -> list[dict]:
             # Champs pipeline OCR+LLM (vides pour les moteurs OCR seuls)
             "is_pipeline": report.is_pipeline,
             "pipeline_info": report.pipeline_info,
-            # Sprint 5 — métriques avancées patrimoniales
+            # métriques avancées patrimoniales
             "ligature_score": safe_round(report.ligature_score) if report.ligature_score is not None else None,
             "diacritic_score": safe_round(report.diacritic_score) if report.diacritic_score is not None else None,
             "aggregated_confusion": report.aggregated_confusion,
             "aggregated_taxonomy": report.aggregated_taxonomy,
             "aggregated_structure": report.aggregated_structure,
             "aggregated_image_quality": report.aggregated_image_quality,
-            # Sprint 10 — distribution des erreurs + hallucinations VLM
+            # distribution des erreurs + hallucinations VLM
             "gini": safe_round(line_metrics.get("gini_mean")) if line_metrics else None,
             "cer_p90": safe_round(line_metrics.get("percentiles", {}).get("p90")) if line_metrics else None,
             "cer_p99": safe_round(line_metrics.get("percentiles", {}).get("p99")) if line_metrics else None,
@@ -78,21 +78,21 @@ def build_engines_summary(benchmark: "BenchmarkResult") -> list[dict]:
             "length_ratio": safe_round(halluc.get("length_ratio_mean")) if halluc else None,
             "hallucinating_doc_rate": safe_round(halluc.get("hallucinating_doc_rate")) if halluc else None,
             "aggregated_hallucination": halluc,
-            # Sprint 41 — NER agrégé (None si aucun calcul effectué)
+            # NER agrégé (None si aucun calcul effectué)
             "aggregated_ner": report.aggregated_ner,
-            # Sprint 43 — calibration agrégée (None si aucune confidence
+            # calibration agrégée (None si aucune confidence
             # n'a été exposée par le moteur sur ce corpus)
             "aggregated_calibration": report.aggregated_calibration,
-            # Sprint 62 — profil philologique agrégé (None si aucun
+            # profil philologique agrégé (None si aucun
             # signal philologique sur le corpus pour ce moteur)
             "aggregated_philological": report.aggregated_philological,
-            # Sprint 86 — A.II.5 (recherchabilité fuzzy + séquences
+            # A.II.5 (recherchabilité fuzzy + séquences
             # numériques). None si aucun document n'a de signal.
             "aggregated_searchability": report.aggregated_searchability,
             "aggregated_numerical_sequences": (
                 report.aggregated_numerical_sequences
             ),
-            # Sprint 87 — A.II.2 (delta Flesch agrégé)
+            # A.II.2 (delta Flesch agrégé)
             "aggregated_readability": report.aggregated_readability,
             "is_vlm": report.pipeline_info.get("is_vlm", False) if report.pipeline_info else False,
         }

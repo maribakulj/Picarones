@@ -1,4 +1,4 @@
-"""Test de Friedman + post-hoc Nemenyi (Sprint 17).
+"""Test de Friedman + post-hoc Nemenyi
 
 Référence : Demšar, J. (2006), "Statistical Comparisons of Classifiers
 over Multiple Data Sets", Journal of Machine Learning Research 7:1-30.

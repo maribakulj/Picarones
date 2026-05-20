@@ -92,7 +92,7 @@ def register_default_detectors(registry) -> None:
     """Enregistre les détecteurs du registre déclaratif dans un
     ``DetectorRegistry`` historique.
 
-    Sprint 29 : la source de vérité est maintenant le décorateur
+    la source de vérité est maintenant le décorateur
     ``@register_detector`` ; cette fonction se contente de pousser
     le contenu du registre vers l'objet ``DetectorRegistry`` que les
     consommateurs externes (``DetectorRegistry.run``) instancient.

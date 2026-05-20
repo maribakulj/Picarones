@@ -1,4 +1,4 @@
-"""``ArtifactCache`` minimal in-memory — Sprint A14-S7.
+"""``ArtifactCache`` minimal in-memory
 
 Cache d'outputs d'étape indexé par ``(content_hashes des inputs +
 spec hash + code_version)``.  Permet de sauter une étape coûteuse

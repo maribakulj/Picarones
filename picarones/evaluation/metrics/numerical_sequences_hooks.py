@@ -1,8 +1,8 @@
-"""Câblage runner des séquences numériques (Sprint 86).
+"""Câblage runner des séquences numériques
 
-Sprint 86 — A.II.5b (vue HTML + câblage runner).
+A.II.5b (vue HTML + câblage runner).
 
-Le module ``picarones/core/numerical_sequences.py`` (Sprint 85)
+Le module ``picarones/core/numerical_sequences.py``
 a livré la couche de calcul.  Ce helper prépare la donnée
 adaptative pour le runner et agrège les compteurs par moteur.
 

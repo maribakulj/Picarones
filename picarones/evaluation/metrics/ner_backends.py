@@ -1,4 +1,4 @@
-"""Backends d'extraction d'entités nommées (Sprint 40).
+"""Backends d'extraction d'entités nommées
 
 Suite directe du Sprint 38 : la couche de calcul (`compute_ner_metrics`)
 prend deux listes d'entités, ce module fournit le moyen d'**obtenir** la
@@ -10,7 +10,7 @@ Architecture
 - ``EntityExtractor`` : Protocol Python qui décrit l'interface ; tout
   callable ``(text: str) -> list[dict]`` est un extracteur valide.  Le
   format de sortie est compatible ``EntitiesGT`` (Sprint 32) et
-  ``compute_ner_metrics`` (Sprint 38).
+  ``compute_ner_metrics``
 - ``SpacyEntityExtractor`` : implémentation par défaut, lazy-import de
   spaCy.  Si spaCy n'est pas installé OU si le modèle n'est pas
   téléchargé, retourne ``[]`` avec un ``logger.warning`` explicite
@@ -52,7 +52,7 @@ class EntityExtractor(Protocol):
     Format de sortie attendu : liste de dicts
     ``{"label": str, "start": int, "end": int, "text": str}``
     compatibles avec ``compute_ner_metrics`` (Sprint 38) et
-    ``EntitiesGT`` (Sprint 32).
+    ``EntitiesGT``
     """
 
     def __call__(self, text: str) -> list[dict[str, Any]]: ...

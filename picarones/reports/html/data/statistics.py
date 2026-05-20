@@ -139,7 +139,7 @@ def build_reliability_curves(benchmark: "BenchmarkResult") -> list[dict]:
 
 
 def build_venn_data(benchmark: "BenchmarkResult") -> dict:
-    """Venn des erreurs communes / exclusives (Sprint 7).
+    """Venn des erreurs communes / exclusives
 
     Construit les ensembles d'erreurs par moteur :
     ``{engine → set("doc_id:gt_tok:hyp_tok")}``.

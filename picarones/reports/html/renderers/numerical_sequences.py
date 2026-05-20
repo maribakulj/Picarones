@@ -1,4 +1,4 @@
-"""Rendu HTML « Précision sur séquences numériques » — Sprint 86.
+"""Rendu HTML « Précision sur séquences numériques »
 
 Suite directe ``picarones/core/numerical_sequences.py``
 (Sprint 85) + câblage runner Sprint 86.

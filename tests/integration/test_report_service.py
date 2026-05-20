@@ -94,7 +94,7 @@ def bnf_run_result(tmp_path: Path) -> RunResult:
     """Réutilise le scénario E2E S18 pour un RunResult réaliste."""
     import sys
     sys.path.insert(0, str(Path(__file__).parent))
-    from test_sprint_a14_s18_bnf_e2e import _run_full_benchmark
+    from test_bnf_e2e import _run_full_benchmark
     _, result = _run_full_benchmark(tmp_path)
     return result
 

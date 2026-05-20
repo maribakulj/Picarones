@@ -21,7 +21,7 @@ from typing import Optional
 class MetricsResult:
     """Ensemble des métriques calculées pour une paire (référence, hypothèse).
 
-    Sprint A14-S1 — A.I.0 P0 : les champs CER/WER/MER/WIL sont
+    A.I.0 P0 : les champs CER/WER/MER/WIL sont
     ``Optional[float]``.  Auparavant, en cas d'erreur de calcul (jiwer
     absent, exception levée), ces champs étaient remplis avec ``0.0``,
     ce qui était indistinguable d'un score parfait pour tout
@@ -162,7 +162,7 @@ def aggregate_metrics(results: list[MetricsResult]) -> dict:
     metric_names = ["cer", "cer_nfc", "cer_caseless", "wer", "wer_normalized", "mer", "wil"]
     aggregated: dict = {}
     for metric in metric_names:
-        # Sprint A14-S1 — défense en profondeur : double filtre.  Un
+        # défense en profondeur : double filtre.  Un
         # MetricsResult avec ``error`` doit avoir ses métriques à
         # ``None`` (cf. compute_metrics), mais on filtre aussi les
         # ``None`` directement au cas où un caller construirait un

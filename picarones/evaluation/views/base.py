@@ -1,4 +1,4 @@
-"""``EvaluationViewExecutor`` (Protocol) + ``ViewResult`` — Sprint A14-S5.
+"""``EvaluationViewExecutor`` (Protocol) + ``ViewResult``
 
 Le contrat d'exécution d'une vue d'évaluation.  Implémentation
 concrète au Sprint S13 dans

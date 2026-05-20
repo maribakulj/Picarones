@@ -96,7 +96,7 @@ def _build_jinja_env():
 def _safe_json_for_script_tag(data: object) -> str:
     """Sérialise data en JSON safe pour injection dans <script type="application/json">.
 
-    Sprint S1 — protection XSS : un fragment ``</script>`` dans une
+    protection XSS : un fragment ``</script>`` dans une
     chaîne JSON termine le tag <script> parent, même si la chaîne
     est syntaxiquement bien formée côté JSON.
 
@@ -177,7 +177,7 @@ class ReportGenerator:
         if not self.images_b64:
             self.images_b64 = benchmark.metadata.get("_images_b64", {})  # type: ignore[assignment]
 
-        # Sprint 27 — fallback : profil de normalisation depuis les metadata
+        # fallback : profil de normalisation depuis les metadata
         if self.normalization_profile is None:
             self.normalization_profile = benchmark.metadata.get("normalization_profile")
 
@@ -218,7 +218,7 @@ class ReportGenerator:
         labels = get_labels(self.lang)
         report_data = _build_report_data(self.benchmark, images_b64)
 
-        # Sprint 27 — snapshots de reproductibilité (pricing, glossaire,
+        # snapshots de reproductibilité (pricing, glossaire,
         # profil de normalisation, environnement). Embarqués dans le JSON
         # du rapport pour qu'un lecteur puisse régénérer la synthèse, le
         # Pareto et le glossaire sans accès au code source.
@@ -232,16 +232,16 @@ class ReportGenerator:
         i18n_json = _safe_json_for_script_tag(labels)
         chartjs_js = _load_vendor_js("chart.umd.min.js")
 
-        # Sprint 17 — rendu SVG du CDD côté serveur (statique, pas de JS)
+        # rendu SVG du CDD côté serveur (statique, pas de JS)
         cdd_svg = build_critical_difference_svg(
             report_data.get("statistics", {}).get("nemenyi", {}),
         )
 
-        # Sprint 18 — synthèse factuelle narrative (déterministe, sans LLM)
+        # synthèse factuelle narrative (déterministe, sans LLM)
         from picarones.reports.narrative import build_synthesis
         synthesis = build_synthesis(report_data, lang=self.lang)
 
-        # Sprint 20 — glossaire contextuel chargé depuis YAML
+        # glossaire contextuel chargé depuis YAML
         from picarones.reports.glossary import load_glossary
         glossary = load_glossary(self.lang)
         glossary_json = _safe_json_for_script_tag(glossary)
@@ -288,42 +288,42 @@ class ReportGenerator:
         """
         engines = report_data.get("engines", [])
 
-        # Sprint 37 — section inter-moteurs (matrice de divergence + oracle).
+        # section inter-moteurs (matrice de divergence + oracle).
         from picarones.reports.html.renderers.inter_engine import (
             build_divergence_matrix_html,
             build_oracle_gap_html,
         )
-        # Sprint 41 — section NER (résumé F1 par moteur + heatmap par catégorie).
+        # section NER (résumé F1 par moteur + heatmap par catégorie).
         from picarones.reports.html.renderers.ner import (
             build_ner_per_category_html,
             build_ner_summary_html,
         )
-        # Sprint 43 — section calibration (tableau ECE/MCE + grille de
+        # section calibration (tableau ECE/MCE + grille de
         # reliability diagrams par moteur).
         from picarones.reports.html.renderers.calibration import (
             build_calibration_summary_html,
             build_reliability_diagrams_grid_html,
         )
-        # Sprint 46 — section stratifiée (tableau par strate).
+        # section stratifiée (tableau par strate).
         from picarones.reports.html.renderers.stratification import (
             build_stratified_ranking_html,
         )
-        # Sprint 62 — profil philologique (6 sections adaptive).
+        # profil philologique (6 sections adaptive).
         from picarones.reports.html.renderers.philological import (
             build_philological_profile_html,
         )
-        # Sprint 86 — A.II.5 : recherchabilité fuzzy + séquences numériques.
+        # A.II.5 : recherchabilité fuzzy + séquences numériques.
         from picarones.reports.html.renderers.searchability import (
             build_searchability_summary_html,
         )
         from picarones.reports.html.renderers.numerical_sequences import (
             build_numerical_sequences_html,
         )
-        # Sprint 87 — A.II.2 : lisibilité (delta Flesch).
+        # A.II.2 : lisibilité (delta Flesch).
         from picarones.reports.html.renderers.readability import (
             build_readability_summary_html,
         )
-        # Sprint 89 — A.II.8b : spécialisation inter-moteurs.
+        # A.II.8b : spécialisation inter-moteurs.
         from picarones.reports.html.renderers.specialization import (
             build_specialization_html,
         )
@@ -370,46 +370,38 @@ class ReportGenerator:
                     }
 
         return {
-            # Sprint 37
             "divergence_matrix_html": build_divergence_matrix_html(
                 report_data.get("inter_engine_analysis"), labels=labels,
             ),
             "oracle_gap_html": build_oracle_gap_html(
                 report_data.get("inter_engine_analysis"), labels=labels,
             ),
-            # Sprint 41
             "ner_summary_html": build_ner_summary_html(engines, labels=labels),
             "ner_per_category_html": build_ner_per_category_html(engines, labels=labels),
-            # Sprint 43
             "calibration_summary_html": build_calibration_summary_html(
                 engines, labels=labels,
             ),
             "reliability_diagrams_html": build_reliability_diagrams_grid_html(
                 engines, labels=labels,
             ),
-            # Sprint 46
             "stratified_ranking_html": build_stratified_ranking_html(
                 report_data.get("stratified_ranking"),
                 report_data.get("available_strata"),
                 report_data.get("corpus_homogeneity"),
                 labels=labels,
             ),
-            # Sprint 62
             "philological_profile_html": build_philological_profile_html(
                 engines, labels=labels,
             ),
-            # Sprint 86
             "searchability_html": build_searchability_summary_html(
                 engines, labels=labels,
             ),
             "numerical_sequences_html": build_numerical_sequences_html(
                 engines, labels=labels,
             ),
-            # Sprint 87
             "readability_html": build_readability_summary_html(
                 engines, labels=labels,
             ),
-            # Sprint 89
             "specialization_html": build_specialization_html(taxos, labels=labels),
             # Chantier 3 — vues thématiques composées
             "economics_view_html": build_economics_view_html(

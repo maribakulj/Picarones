@@ -1,6 +1,6 @@
-"""Reading order F1 (ICDAR 2015, Antonacopoulos) — Sprint 53.
+"""Reading order F1 (ICDAR 2015, Antonacopoulos)
 
-Sprint 53 — A.II.2.1 du plan d'évolution 2026.
+A.II.2.1 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -27,7 +27,7 @@ Le F1 est la moyenne harmonique des deux.
 Stratégie de découpage
 ----------------------
 Cohérent avec NER (Sprint 38), calibration (Sprint 39), Flesch
-(Sprint 52) : couche de calcul pure d'abord.  L'utilisateur fournit
+couche de calcul pure d'abord.  L'utilisateur fournit
 deux listes ordonnées d'IDs de régions (typiquement extraites de
 ALTO/PAGE par un parser amont).  Le câblage runner et la vue HTML
 suivent dans des sprints dédiés.
@@ -184,7 +184,7 @@ def compute_reading_order_metrics(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Enregistrement dans le registre typé (Sprint 34)
+# Enregistrement dans le registre typé
 # ──────────────────────────────────────────────────────────────────────────
 
 

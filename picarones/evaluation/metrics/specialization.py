@@ -1,6 +1,6 @@
 """Score de spécialisation inter-moteurs — Sprint 89 (A.II.8b).
 
-Sprint 89 — A.II.8b du plan d'évolution 2026.
+A.II.8b du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------
@@ -64,7 +64,7 @@ def compute_specialization_score(
     """Score de spécialisation entre deux moteurs ∈ [0, 1].
 
     0 = mêmes erreurs, 1 = erreurs totalement disjointes.
-    Délègue à ``jensen_shannon_divergence`` (Sprint 35).
+    Délègue à ``jensen_shannon_divergence``
     """
     return jensen_shannon_divergence(taxonomy_a, taxonomy_b)
 

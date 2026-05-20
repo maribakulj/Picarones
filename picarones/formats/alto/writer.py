@@ -1,4 +1,4 @@
-"""Writer ALTO XML déterministe — Sprint A14-S9.
+"""Writer ALTO XML déterministe
 
 Sérialise un ``AltoDocument`` en bytes ALTO XML.  Sortie
 déterministe : même document → mêmes octets exacts (utile pour le

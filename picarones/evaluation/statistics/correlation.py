@@ -1,4 +1,4 @@
-"""Matrice de corrélation entre métriques (Sprint 7).
+"""Matrice de corrélation entre métriques
 
 Coefficient de Pearson entre toutes les métriques numériques d'un
 DocumentResult — montre les redondances (CER ↔ WER ≈ 1) et les

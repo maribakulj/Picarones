@@ -590,7 +590,7 @@ ouvrés pour un triage initial des issues.
 ### M-12 — Reproductibilité des snapshots sous-documentée
 
 **État** : `picarones/report/snapshot.py` (266 lignes) et
-`tests/report/test_sprint27_reproducibility_snapshots.py` existent.
+`tests/report/test_reproducibility_snapshots.py` existent.
 Mais ni le `README` ni `docs/user/reading-a-report.md` n'expliquent :
 - ce que contient un snapshot (versions OCR, modèles LLM, hash du code,
   hash du corpus, seeds…)
@@ -722,7 +722,7 @@ Laisser CHANGELOG et SPECS en français pour l'instant — moins critique.
 | m-14 | Pas de staleness check automatique sur `pricing.yaml` | générateur | 0,3 PJ |
 | m-15 | `picarones.spec` (PyInstaller) avec `hiddenimports` manuels | `picarones.spec:45-98` | 0,5 PJ |
 | m-16 | Aucun module `extras/historical/` ni `extras/importers/` séparé en package | `pyproject.toml:84-97` | 1 PJ (refactor planifié déjà documenté) |
-| m-17 | `tests/measurements/test_sprint11_i18n_english.py` importe `report.generator` | `tests/measurements/` | 0,2 PJ (déplacer en `tests/integration/`) |
+| m-17 | `tests/measurements/test_i18n_english.py` importe `report.generator` | `tests/measurements/` | 0,2 PJ (déplacer en `tests/integration/`) |
 
 ---
 

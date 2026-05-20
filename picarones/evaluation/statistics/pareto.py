@@ -1,4 +1,4 @@
-"""Frontière de Pareto multi-objectifs (Sprint 19).
+"""Frontière de Pareto multi-objectifs
 
 Algorithme générique sur N objectifs (CER, coût, vitesse, CO₂…).
 Renvoie les noms des points non-dominés.

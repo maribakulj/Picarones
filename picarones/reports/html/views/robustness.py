@@ -1,4 +1,4 @@
-"""Vue robustesse — chantier 3 post-Sprint 97.
+"""Vue robustesse — chantier 3 post
 
 Branche le renderer :func:`picarones.reports.html.renderers.robustness_projection`
 (Sprint 88) au workflow ``picarones robustness`` (CLI Sprint 8).

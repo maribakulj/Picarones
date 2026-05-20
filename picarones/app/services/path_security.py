@@ -1,4 +1,4 @@
-"""``WorkspaceManager`` + helpers de validation de chemin — Sprint A14-S19.
+"""``WorkspaceManager`` + helpers de validation de chemin
 
 Foyer définitif des helpers ``validated_path``, ``safe_report_name``,
 ``validated_prompt_filename`` créés au S1.  Les callers web

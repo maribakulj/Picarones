@@ -1,4 +1,4 @@
-"""Rendu HTML de la section « Leviers d'amélioration » — Sprint 82.
+"""Rendu HTML de la section « Leviers d'amélioration »
 
 A.I.9 du plan d'évolution 2026.
 

@@ -1,4 +1,4 @@
-"""Rendu HTML de la heatmap class × position — Sprint 76.
+"""Rendu HTML de la heatmap class × position
 
 A.I.4 chantier 2 du plan d'évolution 2026.
 

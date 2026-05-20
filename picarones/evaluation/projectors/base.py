@@ -10,7 +10,7 @@ ignore.  Sans ce report, comparer "Tesseract texte brut" et
 trompeur — l'utilisateur penserait juger les pipelines en bloc
 alors qu'il ne juge qu'une projection.
 
-Sprint S25 — payload retourné directement
+payload retourné directement
 -----------------------------------------
 ``project()`` retourne désormais ``(Artifact, payload, report)``
 au lieu de ``(Artifact, report)``.  Le projecteur a déjà calculé

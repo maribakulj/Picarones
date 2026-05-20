@@ -1,4 +1,4 @@
-"""Snapshots de reproductibilité pour le rapport HTML (Sprint 27).
+"""Snapshots de reproductibilité pour le rapport HTML
 
 Le rapport HTML auto-contenu doit pouvoir être *rejoué* sans avoir
 accès au code source du moment où il a été généré : un lecteur en

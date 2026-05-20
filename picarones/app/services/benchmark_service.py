@@ -235,7 +235,7 @@ class BenchmarkService:
             ``"manifest"``, ``"pipeline_results"``,
             ``"artifacts_index"``, ``"view_results"``.
 
-        Sprint S41 — séparation ``artifacts_index.jsonl``
+        séparation ``artifacts_index.jsonl``
         -------------------------------------------------
         L'index d'artefacts est désormais persisté **séparément** des
         ``pipeline_results.jsonl`` qui ne portait que les step_results.

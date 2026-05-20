@@ -1,6 +1,6 @@
 """Métriques de fiabilité — Sprint 83 (A.II.4).
 
-Sprint 83 — A.II.4 du plan d'évolution 2026 (Étape 4).
+A.II.4 du plan d'évolution 2026 (Étape 4).
 
 Pourquoi ce module
 ------------------

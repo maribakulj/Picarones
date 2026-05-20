@@ -1,4 +1,4 @@
-"""Rendu HTML server-side du profil philologique (Sprint 62).
+"""Rendu HTML server-side du profil philologique
 
 Suite directe Sprint 61 (câblage backend) — produit les blocs HTML
 qui exposent les six modules philologiques (Sprints 55-60) dans le
@@ -131,7 +131,7 @@ def _table_close() -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint 55 — Précision par bloc Unicode
+# Précision par bloc Unicode
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -199,7 +199,7 @@ def build_unicode_blocks_section(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint 56 — Abréviations Capelli médiévales
+# Abréviations Capelli médiévales
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -250,7 +250,7 @@ def build_abbreviations_section(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint 57 — Couverture MUFI
+# Couverture MUFI
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -298,7 +298,7 @@ def build_mufi_section(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint 58 — Marqueurs typographiques imprimé ancien (heatmap)
+# Marqueurs typographiques imprimé ancien (heatmap)
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -361,7 +361,7 @@ def build_early_modern_section(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint 59 — Archives modernes : strict + expansion par catégorie
+# Archives modernes : strict + expansion par catégorie
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -459,7 +459,7 @@ def build_modern_archives_section(
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Sprint 60 — Numéraux romains : breakdown 5 statuts
+# Numéraux romains : breakdown 5 statuts
 # ──────────────────────────────────────────────────────────────────────────
 
 

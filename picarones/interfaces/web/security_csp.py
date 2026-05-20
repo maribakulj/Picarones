@@ -1,6 +1,6 @@
 """Content-Security-Policy + en-têtes durcis (extrait de ``security.py``).
 
-Audit prod P1.2 — dégonflage du god-module ``security``.  Réimporté
+dégonflage du god-module ``security``.  Réimporté
 par ``security`` (API préservée).
 """
 

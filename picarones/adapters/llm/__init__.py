@@ -1,4 +1,4 @@
-"""Adaptateurs LLM — Sprint S11.
+"""Adaptateurs LLM
 
 Cible : déplacement de ``picarones.llm.{openai,anthropic,mistral,
 ollama}_adapter``.  Wrappers minces autour des SDK provider, qui

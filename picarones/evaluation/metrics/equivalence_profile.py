@@ -1,6 +1,6 @@
 """Équivalences diplomatiques granulaires — Sprint 78 (A.I.5).
 
-Sprint 78 — A.I.5 du plan d'évolution 2026.
+A.I.5 du plan d'évolution 2026.
 
 Pourquoi ce module
 ------------------

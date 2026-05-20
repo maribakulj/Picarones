@@ -1,6 +1,6 @@
 """Câblage runner du delta Flesch (Sprint 87 — A.II.2).
 
-Sprint 87 — A.II.2 (vue HTML + câblage runner du delta Flesch
+A.II.2 (vue HTML + câblage runner du delta Flesch
 livré par le Sprint 52).
 
 Pourquoi ce module

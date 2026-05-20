@@ -68,7 +68,7 @@ from picarones.domain.evaluation_spec import EvaluationView
 
 #: Métriques calculées par défaut.  7 métriques :
 #:
-#: - 3 structurelles ``(ALTO_XML, ALTO_XML)`` (Sprint A14-S15).
+# 3 structurelles ``(ALTO_XML, ALTO_XML)``
 #: - 4 textuelles ``(ALTO_XML, ALTO_XML)`` qui extraient le texte
 #:   plat de l'ALTO via ``extract_text_from_alto`` puis appliquent
 #:   les opérateurs jiwer (Phase B6 mai 2026).
@@ -77,7 +77,7 @@ from picarones.domain.evaluation_spec import EvaluationView
 #: ``register_metric`` (cf. ``evaluation/metrics/alto_metrics.py`` et
 #: ``evaluation/metrics/alto_structural.py``).
 DEFAULT_ALTO_METRICS: tuple[str, ...] = (
-    # Structurelles (Sprint A14-S15)
+    # Structurelles
     "alto_validity",
     "alto_line_count_ratio",
     "alto_word_box_coverage",

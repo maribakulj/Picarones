@@ -14,7 +14,7 @@ Chaque ``Distribution`` fournit ``name`` + ``version`` ; on en fait
 un dict ordonné par ``name`` minuscule pour le déterminisme du
 manifest.
 
-Sprint S8.5 — capture des binaires système
+capture des binaires système
 ------------------------------------------
 La couche Python (``pytesseract``) ne suffit pas pour reproduire un
 benchmark scientifique : c'est le binaire Tesseract sous-jacent qui
@@ -88,7 +88,7 @@ def capture_system_binaries_lock() -> dict[str, str]:
     """Retourne un dict ``{binary_name: version_string}`` pour les
     binaires système critiques à la reproductibilité scientifique.
 
-    Sprint S8.5 — closes the gap left by the pure-Python
+    closes the gap left by the pure-Python
     ``capture_dependencies_lock`` : la version du wheel
     ``pytesseract`` ne dit RIEN sur la version du binaire Tesseract
     qui exécute réellement l'OCR.  Sans capturer cette version,

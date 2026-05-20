@@ -1,4 +1,4 @@
-"""``MistralOCRAdapter`` natif — Sprint A14-S32.
+"""``MistralOCRAdapter`` natif
 implémente directement le contrat du nouveau monde.
 
 Cas d'usage BnF

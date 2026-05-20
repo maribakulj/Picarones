@@ -1,4 +1,4 @@
-"""Structures internes PAGE XML — Sprint A14-S9.
+"""Structures internes PAGE XML
 
 Représentation typée et immuable d'un document PAGE XML (PRIMA /
 Transkribus / eScriptorium).  Symétrique de ``formats.alto.types``

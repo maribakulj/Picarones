@@ -170,7 +170,7 @@ class DocumentMetricHook:
     requires_token_confidences:
         Si ``True``, le hook n'est appelé que quand
         ``ocr_result.token_confidences`` est non-vide. Réservé à la
-        calibration (Sprint 42).
+        calibration
     """
 
     name: str

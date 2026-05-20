@@ -1,4 +1,4 @@
-"""``MetricSpec``, ``EvaluationView``, ``EvaluationSpec`` — Sprint A14-S5.
+"""``MetricSpec``, ``EvaluationView``, ``EvaluationSpec``
 
 Cœur de la valeur ajoutée du rewrite : **comparer librement des
 pipelines hétérogènes en projetant leurs sorties vers une vue

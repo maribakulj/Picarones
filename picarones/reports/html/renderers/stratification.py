@@ -1,4 +1,4 @@
-"""Rendu HTML server-side de la vue stratifiée par script_type (Sprint 46).
+"""Rendu HTML server-side de la vue stratifiée par script_type
 
 Suite directe du Sprint 45 (couche backend). Affiche le classement
 moteur par strate sous forme de tableaux pliables (HTML ``<details>``,

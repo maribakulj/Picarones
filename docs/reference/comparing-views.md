@@ -26,7 +26,7 @@ masquerait des informations critiques.
 ### Pattern 1 : CER excellent, recherchabilité numérique catastrophique
 
 Démontré dans le test
-`tests/evaluation/test_sprint_a14_s16_views_consistency.py::TestDivergencePattern::test_year_corruption_invisible_to_cer_visible_to_search` :
+`tests/evaluation/test_views_consistency.py::TestDivergencePattern::test_year_corruption_invisible_to_cer_visible_to_search` :
 
 - **GT** : *"Charte signée à Paris le 14 juillet 1789 en présence du roi"*
 - **Hypothèse** : *"Charte signée à Paris le 14 juillet 1798 en présence du roi"*

@@ -1,4 +1,4 @@
-"""``GoogleVisionAdapter`` natif — Sprint A14-S33.
+"""``GoogleVisionAdapter`` natif
 
 Cas d'usage BnF
 ---------------

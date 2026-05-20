@@ -1,4 +1,4 @@
-"""Rendu HTML « Déficit projeté de robustesse » — Sprint 88
+"""Rendu HTML « Déficit projeté de robustesse »
 (A.I.8 vue HTML).
 
 Suite directe ``picarones/core/robustness_projection.py``
@@ -23,11 +23,11 @@ l'utilisateur compose :
         build_robustness_projection_html,
     )
 
-    rob = analyze_robustness(corpus, [engine])         # Sprint 8
+    rob = analyze_robustness(corpus, [engine])
     projection = project_robustness_on_corpus(
         rob.curves,
         [doc.image_quality.as_dict() for doc in benchmark.docs],
-    )                                                   # Sprint 81
+    )
     aggregated = aggregate_projection_per_engine(projection)
     html = build_robustness_projection_html(
         projection, aggregated, labels,

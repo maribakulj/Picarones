@@ -1,4 +1,4 @@
-"""Rendu HTML de la heatmap de co-occurrence taxonomique — Sprint 75.
+"""Rendu HTML de la heatmap de co-occurrence taxonomique
 
 A.I.4 chantier 1 du plan d'évolution 2026.
 

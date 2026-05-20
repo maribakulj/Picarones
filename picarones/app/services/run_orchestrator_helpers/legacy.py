@@ -1,6 +1,6 @@
 """Pont vers le converter ``BenchmarkResult`` legacy + résolution NER.
 
-Audit prod P1.1 — sous-package cohésif (ex-module plat).  Regroupe
+sous-package cohésif (ex-module plat).  Regroupe
 ce qui parle au format legacy : proxy ``PipelineSpec→engine``,
 résolution dotted-path d'extracteur NER, persistance JSON legacy.
 Auto-contenu (``_persist`` consomme proxy + resolver du même module).
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class _PipelineEngineProxy:
     """Proxy léger ``PipelineSpec → engine`` pour le converter legacy.
 
-    Phase B2.7 — quand on persiste un ``BenchmarkResult`` legacy via
+    quand on persiste un ``BenchmarkResult`` legacy via
     le converter ``run_result_to_benchmark_result``, ce dernier attend
     une liste d'``engines`` qui exposent ``.name`` et ``.config`` (le
     modèle mental legacy est OCR adapter / OCRLLMPipeline).
@@ -253,7 +253,7 @@ def _persist_legacy_benchmark_json(
     # l'absence de ``.version`` (cf. ``_safe_engine_version``).
     engines = [_PipelineEngineProxy(spec) for spec in pipeline_specs]
 
-    # Phase B2.5 — le converter legacy passe ``normalization_profile``
+    # le converter legacy passe ``normalization_profile``
     # à ``compute_metrics`` qui attend un objet ``NormalizationProfile``,
     # pas une string.  Résolution explicite ici pour aligner avec ce que
     # font les call sites legacy (CLI ``_workflows.py`` via
@@ -284,7 +284,7 @@ def _persist_legacy_benchmark_json(
         profile=profile,
     )
 
-    # Phase B2.4 — NER attach post-process si un entity_extractor
+    # NER attach post-process si un entity_extractor
     # est fourni.  Pattern identique à
     # ``run_benchmark_via_service:261-264`` :  on résout le dotted
     # path, on instancie la factory, on attache au BenchmarkResult.

@@ -1,4 +1,4 @@
-"""``CorpusRunner`` — Sprint A14-S8.
+"""``CorpusRunner``
 
 Orchestre l'exécution d'une ``PipelineSpec`` sur un corpus complet
 avec trois propriétés critiques que l'ancien

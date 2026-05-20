@@ -1,4 +1,4 @@
-"""Adaptateurs de stockage — Sprint S29.
+"""Adaptateurs de stockage
 
 Stocks d'artefacts indexés par hash multi-paramètres pour la
 reprise des runs longs.

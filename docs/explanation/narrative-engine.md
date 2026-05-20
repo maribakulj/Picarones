@@ -163,7 +163,7 @@ Dans `arbiter.py`, deux choses à considérer :
 
 Ajoutez au minimum :
 
-- Un test unitaire dans `tests/test_sprint19_narrative_engine.py` (ou
+- Un test unitaire dans `tests/test_narrative_engine.py` (ou
   un nouveau fichier) :
 
 ```python
@@ -297,7 +297,7 @@ comme tolérance numérique). Cette whitelist est désormais vide :
 **Si vous ajoutez un détecteur dont le template référence un nombre
 constant** (ex. *« seuil α = 0,05 »*), vous devez **systématiquement**
 le mettre dans le `payload`. Le test
-`test_sprint19_narrative_engine.py::test_every_number_in_synthesis_is_traceable`
+`test_narrative_engine.py::test_every_number_in_synthesis_is_traceable`
 plus le test
-`test_sprint23_anti_hallucination.py::TestTemplatesNoHardcodedLiterals`
+`test_anti_hallucination.py::TestTemplatesNoHardcodedLiterals`
 échoueront sinon.
