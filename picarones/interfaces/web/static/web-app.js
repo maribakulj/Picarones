@@ -1406,21 +1406,19 @@ async function loadLibraryLocalCorpora() {
       const missing = u.has_missing_gt
         ? `<span class="tag tag-butter">${_escapeHtml(t("upload_missing_gt"))}</span>` : "";
       const docs = (u.doc_count || 0).toLocaleString();
-      return `<div class="ds-card" style="padding:14px 18px;">
+      return `<div class="ds-card">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
-          <div class="ds-name" style="font-size:14px;">${_escapeHtml(u.corpus_id)}</div>
+          <div class="ds-name">${_escapeHtml(u.corpus_id)}</div>
           ${missing}
         </div>
         <div class="ds-meta">
           <span>PAIRES · <b class="num">${docs}</b></span>
           <span class="mono" style="font-size:11px; color:var(--g-400);">${_escapeHtml(u.corpus_path)}</span>
         </div>
-        <div class="row" style="margin-top:6px; justify-content:space-between;">
-          <div class="row" style="gap:6px;">
-            <button class="btn btn-sm btn-primary" type="button" onclick="useCorpusInBenchmark('${_escapeAttr(u.corpus_path)}', '${_escapeAttr(u.corpus_id)}')">
-              <span data-i18n="library_use_in_benchmark">Utiliser dans Benchmark</span>
-            </button>
-          </div>
+        <div class="row" style="margin-top:10px; justify-content:space-between;">
+          <button class="btn btn-sm btn-primary" type="button" onclick="useCorpusInBenchmark('${_escapeAttr(u.corpus_path)}', '${_escapeAttr(u.corpus_id)}')">
+            <span data-i18n="library_use_in_benchmark">Utiliser dans Benchmark</span>
+          </button>
           <button class="btn btn-ghost btn-sm" type="button" onclick="deleteLibraryCorpus('${_escapeAttr(u.corpus_id)}')" title="${_escapeAttr(t("upload_delete"))}">✕</button>
         </div>
       </div>`;
