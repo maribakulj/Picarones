@@ -161,23 +161,39 @@ _TOPOLOGIES: dict[str, tuple[tuple[str, ...], str]] = {
 # Normalisation snapshot (déterministe : retire timestamps/durées/paths)
 # ---------------------------------------------------------------------------
 
+#: Denylist *fermée* — clés horloge présentes un peu partout
+#: (manifest, pipeline_results, view_results, artifacts_index).
+#: Catégorie sémantique close : c'est de l'horodatage de run, pas
+#: du comportement.  Pour le manifest spécifiquement, voir l'allowlist
+#: :data:`_MANIFEST_BEHAVIORAL_KEYS` ci-dessous — politique inverse.
 _VOLATILE_KEYS = {
     "started_at", "completed_at", "duration_seconds", "run_date",
     "created_at", "elapsed_seconds", "wall_clock_seconds",
-    # ``run_id`` est horodaté (``charac_YYYYMMDDThhmmssZ``) — volatil,
-    # pas une caractéristique de comportement.
+    # ``run_id`` est horodaté (``charac_YYYYMMDDThhmmssZ``).
     "run_id",
-    # Empreintes d'environnement : ``dependencies_lock`` capture la
-    # liste des paquets Python installés (varie par OS, par version
-    # CI, par dev local — ex. PyGObject/dbus-python sous Ubuntu absents
-    # sur macOS, PyYAML 6.0.1 vs 6.0.3, picarones 1.1.0.devN drift),
-    # ``system_binaries_lock`` capture les binaires détectés (tesseract
-    # présent sur macOS CI, absent sur dev Linux).  Ces empreintes
-    # sont *le but* du manifest en run réel (reproductibilité) mais
-    # purement parasites dans un snapshot de caractérisation de
-    # comportement de l'orchestrateur.
-    "dependencies_lock", "system_binaries_lock",
 }
+
+
+#: Allowlist du manifest : seules ces clés sont snapshotées.  Politique
+#: **inverse** du denylist parce que le ``RunManifest`` a pour vocation
+#: de capturer l'environnement (reproductibilité d'un run réel) — y
+#: denylister les champs sensibles à l'env (``dependencies_lock``,
+#: ``system_binaries_lock``, futures empreintes…) est un combat perdu :
+#: chaque nouveau champ casserait la CI sur une nouvelle plateforme.
+#: Allowlist explicite ⇒ tout nouveau champ ajouté au manifest est
+#: *exclu par défaut* du snapshot.  Pour en inclure un nouveau, il
+#: faut l'ajouter ici consciemment (et vérifier qu'il est stable
+#: cross-OS / cross-version).
+_MANIFEST_BEHAVIORAL_KEYS = frozenset({
+    "adapter_kwargs",
+    "code_version",      # fixé par le test à ``charac-1.0``
+    "corpus_name",
+    "metadata",
+    "n_documents",
+    "pipeline_names",
+    "pipeline_specs",
+    "view_specs",
+})
 
 
 _PATH_PREFIX_RE = re.compile(r"^[A-Za-z]:[\\/]|^/")
@@ -259,8 +275,14 @@ def _normalized_snapshot(results_dir: Path) -> str:
             r.get("id", ""),
         ),
     )
+    # Manifest : allowlist explicite (politique inverse du denylist —
+    # cf. :data:`_MANIFEST_BEHAVIORAL_KEYS`).  Tout champ ajouté plus
+    # tard au manifest est exclu par défaut du snapshot.
+    manifest_behavioral = {
+        k: v for k, v in manifest.items() if k in _MANIFEST_BEHAVIORAL_KEYS
+    }
     snap = {
-        "manifest": _scrub(manifest),
+        "manifest": _scrub(manifest_behavioral),
         "pipeline_results": _scrub(pipe),
         "view_results": _scrub(views),
         "artifacts_index": _scrub(arts),
@@ -596,6 +618,30 @@ class TestGoldenMultiTopology:
         assert s1 == s2, (
             f"snapshot NON déterministe pour {topo} — un golden serait "
             "flaky ; corriger la normalisation AVANT de figer"
+        )
+
+    @pytest.mark.parametrize("topo", sorted(_TOPOLOGIES))
+    def test_manifest_in_golden_matches_allowlist(
+        self, tmp_path: Path, topo: str,
+    ) -> None:
+        """Verrouille l'allowlist manifest : si quelqu'un ajoute un
+        champ à :data:`_MANIFEST_BEHAVIORAL_KEYS` sans qu'il sorte
+        dans le snapshot (typo, manifest qui ne le produit pas), ou
+        si le manifest perd un champ comportemental sans qu'on l'ait
+        retiré de l'allowlist, ce test le dit.  Ferme la **forme**
+        d'erreur que l'ancien denylist masquait : on ne sait plus quel
+        champ est attendu vs juste « pas dans la liste »."""
+        _run(tmp_path, topo, n_docs=3)
+        snap_str = _normalized_snapshot(tmp_path / "out" / "results")
+        snap = json.loads(snap_str)
+        keys_in_snap = set(snap["manifest"].keys())
+        assert keys_in_snap == set(_MANIFEST_BEHAVIORAL_KEYS), (
+            f"Manifest snapshot keys != allowlist pour {topo}.  "
+            f"En trop dans l'allowlist (jamais produits) : "
+            f"{set(_MANIFEST_BEHAVIORAL_KEYS) - keys_in_snap}.  "
+            f"Produits mais pas allowés (à ajouter consciemment "
+            f"OU à laisser exclus si env-sensible) : "
+            f"{keys_in_snap - set(_MANIFEST_BEHAVIORAL_KEYS)}."
         )
 
 
