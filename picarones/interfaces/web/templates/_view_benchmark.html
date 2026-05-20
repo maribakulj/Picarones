@@ -255,26 +255,28 @@
         <div class="sec-title" data-i18n="bench_run_title">Exécuter</div>
         <div class="sec-sub" data-i18n="bench_run_desc">Lancer le benchmark sur la file de concurrents</div>
       </div>
-      <div class="sec-aside" style="display:flex; gap:6px;">
-        <button class="btn btn-ghost btn-sm" id="config-save-btn" type="button" onclick="saveConfigToFile()" title="Télécharger la configuration courante en JSON">
-          <span data-i18n="bench_config_save">Sauvegarder config</span>
-        </button>
-        <button class="btn btn-ghost btn-sm" id="config-load-btn" type="button" onclick="loadConfigFromFile()" title="Charger une configuration depuis un fichier JSON">
-          <span data-i18n="bench_config_load">Charger config</span>
-        </button>
-        <input type="file" id="config-file-input" accept=".json" style="display:none;" onchange="onConfigFileSelected(event)" />
-      </div>
     </div>
     <div class="sec-body">
 
-      <div class="row">
-        <button class="btn btn-primary" id="start-btn" type="button" onclick="startBenchmark()" style="padding:12px 24px; font-size:14px;">
-          <span data-i18n="bench_start">▶ Lancer le benchmark</span>
-        </button>
-        <button class="btn btn-danger" id="cancel-btn" type="button" style="display:none;" onclick="cancelBenchmark()">
-          <span data-i18n="bench_cancel">✕ Annuler</span>
-        </button>
-        <span id="bench-status-text" class="foot"></span>
+      <div class="row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div class="row">
+          <button class="btn btn-primary" id="start-btn" type="button" onclick="startBenchmark()" style="padding:12px 24px; font-size:14px;">
+            <span data-i18n="bench_start">▶ Lancer le benchmark</span>
+          </button>
+          <button class="btn btn-danger" id="cancel-btn" type="button" style="display:none;" onclick="cancelBenchmark()">
+            <span data-i18n="bench_cancel">✕ Annuler</span>
+          </button>
+          <span id="bench-status-text" class="foot"></span>
+        </div>
+        <div class="row" style="gap: 6px;">
+          <button class="btn btn-ghost btn-sm" id="config-save-btn" type="button" onclick="saveConfigToFile()" title="Télécharger la configuration courante en JSON">
+            <span data-i18n="bench_config_save">Sauvegarder config</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" id="config-load-btn" type="button" onclick="loadConfigFromFile()" title="Charger une configuration depuis un fichier JSON">
+            <span data-i18n="bench_config_load">Charger config</span>
+          </button>
+          <input type="file" id="config-file-input" accept=".json" style="display:none;" onchange="onConfigFileSelected(event)" />
+        </div>
       </div>
 
       <div id="bench-progress-section" style="display:none; margin-top:18px;">

@@ -73,6 +73,7 @@ const T = {
     sys_pipeline: "Pipeline",
     sys_engines_online: "Moteurs en ligne",
     sys_llms_online: "LLM en ligne",
+    sys_details: "Système · détails",
     loading: "Chargement…",
     search: "Rechercher",
     all: "Tous",
@@ -232,6 +233,7 @@ const T = {
     sys_pipeline: "Pipeline",
     sys_engines_online: "Engines online",
     sys_llms_online: "LLMs online",
+    sys_details: "System · details",
     loading: "Loading…",
     search: "Search",
     all: "All",
@@ -388,6 +390,13 @@ function setLang(next) {
   });
 }
 function toggleLang() { setLang(lang === "fr" ? "en" : "fr"); }
+
+// Bouton "Systeme · details" en bas de la sidebar — ouvre la vue
+// Engines comme proxy panneau Systeme (regroupera plus tard
+// engines + history + autres workflows secondaires).
+function openSystemPanel() {
+  showView("engines");
+}
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function showView(name) {

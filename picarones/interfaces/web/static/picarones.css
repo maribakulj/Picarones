@@ -316,6 +316,16 @@ a { color: inherit; }
   gap: 18px;
 }
 
+/* === SPA view visibility — critique : sans ces regles toutes les vues
+   s'empilent.  Le rendu serveur place les 10 sections dans le DOM ;
+   showView() ajoute .active sur la seule visible. === */
+.view { display: none; }
+.view.active {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 /* === The application window — one big rounded frame per view, no titlebar === */
 .window-frame {
   background: var(--raised);

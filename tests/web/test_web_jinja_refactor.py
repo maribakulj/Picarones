@@ -134,11 +134,12 @@ class TestStructuralElementsPresent:
         )
 
     def test_nav_buttons_present(self, html):
-        # Sidebar XerOCR : benchmark + library + reports + engines.
-        # La vue est toujours `view-import` côté DOM mais le label nav
-        # est `nav_library` (l'ancien import est fusionné dans la
-        # bibliothèque).
-        for label in ("nav_benchmark", "nav_library", "nav_reports", "nav_engines"):
+        # Sidebar XerOCR : 3 entrees seulement, calque sur la maquette
+        # demo (Bibliotheque, Benchmark, Rapports).  Engines est
+        # accessible via le bouton "Systeme · details" en bas du
+        # rail (openSystemPanel → showView('engines')), pas dans la
+        # nav principale.
+        for label in ("nav_benchmark", "nav_library", "nav_reports"):
             assert f'data-i18n="{label}"' in html
 
     def test_import_modal_present(self, html):
