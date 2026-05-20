@@ -1015,6 +1015,9 @@ table.data .num-cell {
   gap: 10px;
   padding: 10px 16px 10px 12px;
   background: var(--surface);
+  border: none;            /* sans ce reset, <button> herite du border outset natif */
+  appearance: none;        /* iOS Safari */
+  font-family: inherit;
   border-radius: var(--r-pill);
   cursor: pointer;
   font-size: 13px;
@@ -1228,6 +1231,10 @@ html[data-accent="slate"] .sec[data-tone="fern"]::before { background: var(--sla
   background: var(--surface);
   border-radius: 4px 14px 14px 14px;  /* asymmetric — left corner is "tab" */
   padding: 22px 20px 18px;
+  /* Compense le ::before (top:-7px) qui depasse 7px au-dessus : sans
+     cette marge, l'onglet folder chevauche l'element qui precede la
+     carte (bouton, autre card, sec-head…). */
+  margin-top: 9px;
 }
 .ds-card::before {
   /* the little tab on the top-left, like a folder */
