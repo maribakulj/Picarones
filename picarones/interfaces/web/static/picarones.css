@@ -1228,6 +1228,10 @@ html[data-accent="slate"] .sec[data-tone="fern"]::before { background: var(--sla
   background: var(--surface);
   border-radius: 4px 14px 14px 14px;  /* asymmetric — left corner is "tab" */
   padding: 22px 20px 18px;
+  /* Compense le ::before (top:-7px) qui depasse 7px au-dessus : sans
+     cette marge, l'onglet folder chevauche l'element qui precede la
+     carte (bouton, autre card, sec-head…). */
+  margin-top: 9px;
 }
 .ds-card::before {
   /* the little tab on the top-left, like a folder */
