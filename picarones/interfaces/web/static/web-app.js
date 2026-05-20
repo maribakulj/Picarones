@@ -55,9 +55,24 @@ const T = {
   fr: {
     app_title: "Picarones",
     nav_benchmark: "Benchmark",
+    nav_library: "Bibliothèque",
     nav_reports: "Rapports",
     nav_engines: "Moteurs",
     nav_import: "Import",
+    nav_history: "Historique",
+    nav_diagnose: "Diagnostic",
+    nav_economics: "Coûts",
+    nav_robustness: "Robustesse",
+    nav_edition: "Édition",
+    nav_compare: "Comparer",
+    sys_title: "Système",
+    sys_version: "Version",
+    sys_mode: "Mode",
+    sys_job: "Tâche",
+    sys_idle: "au repos",
+    sys_pipeline: "Pipeline",
+    sys_engines_online: "Moteurs en ligne",
+    sys_llms_online: "LLM en ligne",
     loading: "Chargement…",
     search: "Rechercher",
     all: "Tous",
@@ -147,9 +162,24 @@ const T = {
   en: {
     app_title: "Picarones",
     nav_benchmark: "Benchmark",
+    nav_library: "Library",
     nav_reports: "Reports",
     nav_engines: "Engines",
     nav_import: "Import",
+    nav_history: "History",
+    nav_diagnose: "Diagnose",
+    nav_economics: "Costs",
+    nav_robustness: "Robustness",
+    nav_edition: "Edition",
+    nav_compare: "Compare",
+    sys_title: "System",
+    sys_version: "Version",
+    sys_mode: "Mode",
+    sys_job: "Job",
+    sys_idle: "idle",
+    sys_pipeline: "Pipeline",
+    sys_engines_online: "Engines online",
+    sys_llms_online: "LLMs online",
     loading: "Loading…",
     search: "Search",
     all: "All",
@@ -239,28 +269,35 @@ const T = {
 };
 let lang = "fr";
 function t(key) { return (T[lang][key]) || key; }
-function toggleLang() {
-  lang = lang === "fr" ? "en" : "fr";
-  document.getElementById("lang-btn").textContent = lang === "fr" ? "EN" : "FR";
+function setLang(next) {
+  if (next !== "fr" && next !== "en") return;
+  lang = next;
+  const legacyBtn = document.getElementById("lang-btn");
+  if (legacyBtn) legacyBtn.textContent = lang === "fr" ? "EN" : "FR";
+  const frBtn = document.getElementById("lang-btn-fr");
+  const enBtn = document.getElementById("lang-btn-en");
+  if (frBtn) frBtn.classList.toggle("on", lang === "fr");
+  if (enBtn) enBtn.classList.toggle("on", lang === "en");
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const k = el.getAttribute("data-i18n");
     if (T[lang][k]) el.textContent = T[lang][k];
   });
 }
+function toggleLang() { setLang(lang === "fr" ? "en" : "fr"); }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn, .nav-item").forEach(b => b.classList.remove("active"));
   const view = document.getElementById("view-" + name);
   if (view) view.classList.add("active");
-  const btns = document.querySelectorAll(".nav-btn");
-  const idx = ["benchmark","reports","engines","import"].indexOf(name);
-  if (btns[idx]) btns[idx].classList.add("active");
+  const btn = document.querySelector('[data-view="' + name + '"]');
+  if (btn) btn.classList.add("active");
 
   if (name === "reports") loadReports();
   if (name === "engines") loadEngines();
-  if (name === "import") { searchHTRUnited(); searchHuggingFace(); }
+  if (name === "import" || name === "library") { searchHTRUnited(); searchHuggingFace(); }
+  if (name === "history") { if (typeof loadHistory === "function") loadHistory(); }
 }
 
 // ─── Status / version ────────────────────────────────────────────────────────

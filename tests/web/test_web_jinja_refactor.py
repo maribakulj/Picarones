@@ -54,8 +54,7 @@ APP_PY = WEB_DIR / "app.py"
 
 EXPECTED_TEMPLATES = [
     "base.html.j2",
-    "_ascii_banner.html",
-    "_header_nav.html",
+    "_rail.html",
     "_view_benchmark.html",
     "_view_reports.html",
     "_view_engines.html",
@@ -81,9 +80,9 @@ class TestTemplateFilesExist:
             "extraction incomplète ?"
         )
 
-    def test_retro_css_still_present(self):
-        # Sanity : on n'a pas accidentellement supprimé le CSS principal.
-        assert (STATIC_DIR / "retro.css").is_file()
+    def test_picarones_css_present(self):
+        # Sanity : la feuille de style XerOCR est en place.
+        assert (STATIC_DIR / "picarones.css").is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +134,11 @@ class TestStructuralElementsPresent:
         )
 
     def test_nav_buttons_present(self, html):
-        for label in ("nav_benchmark", "nav_reports", "nav_engines", "nav_import"):
+        # Sidebar XerOCR : benchmark + library + reports + engines.
+        # La vue est toujours `view-import` côté DOM mais le label nav
+        # est `nav_library` (l'ancien import est fusionné dans la
+        # bibliothèque).
+        for label in ("nav_benchmark", "nav_library", "nav_reports", "nav_engines"):
             assert f'data-i18n="{label}"' in html
 
     def test_import_modal_present(self, html):
@@ -147,8 +150,8 @@ class TestStructuralElementsPresent:
             "La balise <script src='/static/web-app.js'> doit être présente"
         )
 
-    def test_retro_css_referenced(self, html):
-        assert re.search(r'<link\s+rel="stylesheet"\s+href="/static/retro\.css', html)
+    def test_picarones_css_referenced(self, html):
+        assert re.search(r'<link\s+rel="stylesheet"\s+href="/static/picarones\.css', html)
 
 
 # ---------------------------------------------------------------------------

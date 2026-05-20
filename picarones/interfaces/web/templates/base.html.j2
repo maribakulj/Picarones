@@ -1,13 +1,14 @@
-{# Sprint 25 — base de la SPA Picarones.
+{# Picarones — base de la SPA (refonte XerOCR).
  #
- # Assemble les partials extraits de l'ancien `_HTML_TEMPLATE` monolithique
- # de `web/app.py`. Variables attendues (passées par `render_index`) :
+ # Shell de l'application : sidebar gauche (rail) + colonne principale.
+ # Variables attendues (passées par `render_index`) :
  #   - lang    : code langue ("fr" ou "en")
  #   - version : version Picarones (cache-busting des statics)
  #
- # Le contenu dynamique reste minimal — toute la logique vit dans
- # `picarones/web/static/web-app.js`. Cette séparation permet à la CSP
- # de durcir `script-src` à `'self'` sans casser la page.
+ # Tout le DOM dynamique est manipulé par `web-app.js` (vanilla).
+ # Les IDs et class historiques (#view-*, .view, .nav-btn, etc.) sont
+ # préservés en plus des nouvelles class XerOCR pour ne pas casser
+ # le binding JS existant.
 #}<!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -15,20 +16,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="picarones-lang" content="{{ lang }}">
 <title>Picarones — OCR Benchmark</title>
-<link rel="stylesheet" href="/static/retro.css?v={{ version }}">
+<link rel="stylesheet" href="/static/picarones.css?v={{ version }}">
 </head>
 <body>
 
-{% include '_ascii_banner.html' %}
+<div class="app">
 
-{% include '_header_nav.html' %}
+  {% include '_rail.html' %}
 
-<div id="main">
-{% include '_view_benchmark.html' %}
-{% include '_view_reports.html' %}
-{% include '_view_engines.html' %}
-{% include '_view_import.html' %}
-</div><!-- end #main -->
+  <main class="main" id="main">
+    {% include '_view_benchmark.html' %}
+    {% include '_view_reports.html' %}
+    {% include '_view_engines.html' %}
+    {% include '_view_import.html' %}
+  </main>
+
+</div>
 
 {% include '_modals.html' %}
 
