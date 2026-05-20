@@ -42,11 +42,11 @@
         <div class="sec-aside" id="library-local-aside"></div>
       </div>
       <div class="sec-body">
-        <div class="grid-2" style="gap:14px; align-items:stretch;">
+        <div class="grid-2" style="gap:18px; align-items:start;">
 
           {# Dropzone d'upload ZIP — uploads vont dans uploads/ via /api/corpus/upload #}
           <div id="library-dropzone" class="dropzone"
-               style="min-height:240px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
+               style="min-height:260px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
                onclick="document.getElementById('library-upload-input').click()"
                ondragover="event.preventDefault(); this.classList.add('active')"
                ondragleave="this.classList.remove('active')"
@@ -66,7 +66,7 @@
           </div>
 
           {# Liste des corpus locaux (alimentee par /api/corpus/uploads) #}
-          <div class="stack" id="library-local-list">
+          <div class="stack" id="library-local-list" style="gap:18px;">
             <div class="empty" data-i18n="library_local_empty">Aucun corpus local. Importez-en un.</div>
           </div>
         </div>
