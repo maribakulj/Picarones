@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import textwrap
 import threading
 import time
@@ -169,9 +170,35 @@ _VOLATILE_KEYS = {
 }
 
 
+_PATH_PREFIX_RE = re.compile(r"^[A-Za-z]:[\\/]|^/")
+
+
+def _looks_path(s: str) -> bool:
+    """Détecte un chemin filesystem absolu, POSIX ou Windows.
+
+    Couvre :
+    - POSIX absolu ``/...`` (Linux, macOS ``/var/folders/...``) ;
+    - Windows à lettre de lecteur ``C:\\...`` / ``C:/...`` ;
+    - tmp-dirs et fixtures pytest (``/tmp/``, ``\\Temp\\``,
+      ``pytest-of-...``).  Le snapshot golden doit être cross-OS :
+    le CI Windows utilise ``C:\\Users\\runneradmin\\AppData\\Local\\
+    Temp\\pytest-of-runneradmin\\...`` — précédemment non capturé
+    par l'heuristique POSIX-only.
+    """
+    if _PATH_PREFIX_RE.match(s):
+        return True
+    return (
+        "/tmp/" in s
+        or "\\Temp\\" in s
+        or "\\Users\\" in s
+        or "pytest-of-" in s
+    )
+
+
 def _scrub(obj: Any) -> Any:
     """Snapshot canonique : retire les clés volatiles, neutralise les
-    chemins absolus, et **trie les listes de scalaires**.
+    chemins absolus (POSIX ET Windows), et **trie les listes de
+    scalaires**.
 
     Le tri des listes de scalaires est essentiel : certaines sont
     dérivées de ``set`` (ex. ``ignored_dimensions``, types projetés)
@@ -189,8 +216,7 @@ def _scrub(obj: Any) -> Any:
             return sorted(scrubbed, key=lambda x: (x is None, str(x)))
         return scrubbed
     if isinstance(obj, str):
-        # Chemins absolus → placeholder (tmp_path varie par run/CI).
-        if "/" in obj and ("/tmp" in obj or "pytest" in obj or obj.startswith("/")):
+        if _looks_path(obj):
             return "<PATH>"
         return obj
     return obj
@@ -507,6 +533,35 @@ class TestCrashResumeConsistency:
 # ---------------------------------------------------------------------------
 # 4. Golden multi-topologie + garde déterminisme (Risques 3 & 4)
 # ---------------------------------------------------------------------------
+
+class TestScrubPathCrossPlatform:
+    """Verrouille la détection de chemin pour le snapshot cross-OS.
+    Régression CI : un chemin Windows ``C:\\Users\\runneradmin\\...``
+    n'était pas matché par l'ancienne heuristique POSIX-only (qui
+    exigeait ``"/" in obj``) → URI non scrubbée → garde déterminisme
+    cassait sur Windows entre run ``a`` et run ``b`` (UUIDs workspace
+    distincts)."""
+
+    @pytest.mark.parametrize("p", [
+        "/tmp/foo/bar",
+        "/var/folders/x/T/pytest-of-runner/test_x/y",   # macOS
+        "/tmp/pytest-of-root/pytest-0/test_x/out",      # Linux CI
+        "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\pytest-of-runneradmin\\pytest-0\\test_x\\out",
+        "C:/Users/runneradmin/AppData/Local/Temp/x",    # Windows fwd-slash
+        "pytest-of-runner/test_x",                       # marker sans préfixe
+    ])
+    def test_paths_are_scrubbed(self, p: str) -> None:
+        assert _looks_path(p), f"chemin non détecté : {p!r}"
+        assert _scrub(p) == "<PATH>"
+
+    @pytest.mark.parametrize("s", [
+        "doc01", "raw_text", "ALTO_XML",
+        "tess_only", "ocr_then_correct", "charac-1.0",
+    ])
+    def test_non_paths_unchanged(self, s: str) -> None:
+        assert not _looks_path(s), f"faux positif : {s!r}"
+        assert _scrub(s) == s
+
 
 class TestGoldenMultiTopology:
     @pytest.mark.parametrize("topo", sorted(_TOPOLOGIES))
