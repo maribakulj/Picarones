@@ -150,6 +150,17 @@ const T = {
     engines_llm_desc: "Providers texte / vision configurés via variables d'environnement.",
     library_hero_title: "Bibliothèque de corpus",
     library_hero_desc: "Catalogues distants HTR-United et HuggingFace, importables en un clic.",
+    history_hero_title: "Historique longitudinal",
+    history_hero_desc: "Régressions de CER détectées sur les benchmarks passés (BenchmarkHistory).",
+    history_filters: "Filtres",
+    history_filters_desc: "Moteur, seuil CER, base SQLite (validée contre les workspace roots)",
+    history_engine: "Moteur",
+    history_threshold: "Seuil CER (%)",
+    history_db: "Chemin SQLite",
+    history_load: "Charger",
+    history_regressions_title: "Régressions détectées",
+    history_regressions_desc: "Moteurs dont le CER courant a augmenté au-delà du seuil par rapport à la baseline.",
+    history_empty: "Aucune donnée chargée — clique sur « Charger » pour interroger la base.",
     import_modal_desc: "Sélectionnez la destination et le nombre maximum de documents à télécharger.",
     import_htr_title: "Import HTR-United",
     import_htr_desc: "Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.",
@@ -273,6 +284,17 @@ const T = {
     engines_llm_desc: "Text / vision providers configured via environment variables.",
     library_hero_title: "Corpus library",
     library_hero_desc: "Remote HTR-United and HuggingFace catalogues, one-click import.",
+    history_hero_title: "Longitudinal history",
+    history_hero_desc: "CER regressions detected across past benchmarks (BenchmarkHistory).",
+    history_filters: "Filters",
+    history_filters_desc: "Engine, CER threshold, SQLite path (validated against workspace roots)",
+    history_engine: "Engine",
+    history_threshold: "CER threshold (%)",
+    history_db: "SQLite path",
+    history_load: "Load",
+    history_regressions_title: "Detected regressions",
+    history_regressions_desc: "Engines whose current CER has risen above threshold vs the baseline.",
+    history_empty: "No data loaded — click \"Load\" to query the database.",
     import_modal_desc: "Pick the destination directory and the maximum number of documents to download.",
     import_htr_title: "Import from HTR-United",
     import_htr_desc: "Community catalogue of HTR/OCR datasets for heritage documents.",
@@ -1069,6 +1091,69 @@ async function loadReports() {
     html += "</tbody></table>";
     container.innerHTML = html;
   } catch(e) {
+    container.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ─── History (regressions) ───────────────────────────────────────────────────
+async function loadHistory() {
+  const engine = (document.getElementById("history-engine").value || "").trim();
+  // L'endpoint /api/history/regressions attend un threshold en valeur
+  // absolue de CER (0.01 = 1pp).  L'UI affiche en %, on convertit.
+  const thresholdPct = parseFloat(document.getElementById("history-threshold").value) || 1.0;
+  const threshold = thresholdPct / 100;
+  const dbPath = (document.getElementById("history-db").value || "").trim();
+  const container = document.getElementById("history-results");
+  if (!container) return;
+  container.innerHTML = `<div class="empty">${t("loading")}</div>`;
+  const setMeta = (n) => {
+    const a = document.getElementById("history-aside");
+    const c = document.getElementById("history-regressions-count");
+    const th = document.getElementById("history-threshold-show");
+    if (a) a.textContent = `${n} REGRESSION${n === 1 ? "" : "S"}`;
+    if (c) c.textContent = n;
+    if (th) th.textContent = thresholdPct.toFixed(1);
+  };
+  try {
+    const params = new URLSearchParams();
+    if (engine) params.set("engine", engine);
+    params.set("threshold", String(threshold));
+    if (dbPath) params.set("db_path", dbPath);
+    const r = await fetch(`/api/history/regressions?${params}`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const d = await r.json();
+    setMeta(d.count || 0);
+    if (!d.regressions || d.regressions.length === 0) {
+      container.innerHTML = `<div class="empty">${lang === "fr" ? "Aucune régression détectée au-dessus du seuil." : "No regressions above the threshold."}</div>`;
+      return;
+    }
+    let html = `<table class="data"><thead><tr>
+      <th>${lang === "fr" ? "Moteur" : "Engine"}</th>
+      <th class="num-cell">${lang === "fr" ? "CER baseline" : "Baseline CER"}</th>
+      <th class="num-cell">${lang === "fr" ? "CER courant" : "Current CER"}</th>
+      <th class="num-cell">Δ CER (pp)</th>
+      <th class="mono">${lang === "fr" ? "Runs" : "Runs"}</th>
+    </tr></thead><tbody>`;
+    d.regressions.forEach(reg => {
+      const base = reg.baseline_cer != null ? (reg.baseline_cer * 100).toFixed(2) : "—";
+      const cur = reg.current_cer != null ? (reg.current_cer * 100).toFixed(2) : "—";
+      const delta = reg.delta_cer != null ? (reg.delta_cer * 100).toFixed(2) : "—";
+      const runs = `${reg.baseline_run_id || "—"} → ${reg.current_run_id || "—"}`;
+      html += `<tr>
+        <td style="font-weight:500">${_escapeHtml(reg.engine)}</td>
+        <td class="num-cell">${base}</td>
+        <td class="num-cell">${cur}</td>
+        <td class="num-cell" style="color:var(--err); font-weight:500">+${delta}</td>
+        <td class="mono" style="font-size:11.5px; color:var(--g-500);">${_escapeHtml(runs)}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  } catch (e) {
+    setMeta(0);
     container.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
