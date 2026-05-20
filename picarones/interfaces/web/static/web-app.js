@@ -161,6 +161,31 @@ const T = {
     history_regressions_title: "Régressions détectées",
     history_regressions_desc: "Moteurs dont le CER courant a augmenté au-delà du seuil par rapport à la baseline.",
     history_empty: "Aucune donnée chargée — clique sur « Charger » pour interroger la base.",
+    diagnose_hero_title: "Diagnostic approfondi",
+    diagnose_hero_desc: "Benchmark + leviers d'amélioration + image_predictive — comprendre pourquoi un moteur réussit ou échoue sur ce corpus.",
+    diagnose_preset_desc: "profile=diagnostics → vue HTML « Diagnostic approfondi » avec leviers, profil d'image, baseline, longitudinal.",
+    diagnose_help: "Le diagnostic ouvrira la vue Benchmark pour suivre la progression. Le rapport HTML produit contiendra les sections diagnostic spécifiques au profil.",
+    economics_hero_title: "Coûts & économie",
+    economics_hero_desc: "Benchmark + throughput effectif + projection de coût (API LLM, tokens, latence).",
+    economics_preset_desc: "profile=economics → rapport HTML enrichi des sections coûts et throughput.",
+    economics_help: "Les coûts API LLM s'appuient sur picarones/data/pricing.yaml (table indicative). Les chiffres sont des projections, pas des factures réelles.",
+    edition_hero_title: "Édition critique",
+    edition_hero_desc: "Benchmark enrichi des métriques philologiques (MUFI, abréviations, ponctuation historique).",
+    edition_preset_desc: "profile=philological → rapport HTML avec métriques MUFI/diplomatic/punctuation.",
+    edition_help: "Profil pensé pour le médiéval / l'imprimé ancien. Pour la post-correction OCR → LLM avec prompt philologique, utilise la vue Benchmark en mode « OCR → LLM ».",
+    workflow_preset: "Preset",
+    workflow_engines: "Moteurs (CSV)",
+    workflow_run: "Lancer le diagnostic",
+    workflow_run_economics: "Lancer l'analyse coûts",
+    workflow_run_edition: "Lancer l'édition",
+    robustness_hero_title: "Robustesse aux dégradations",
+    robustness_hero_desc: "Test de tenue d'un moteur face aux dégradations d'image (bruit, flou, rotation, résolution, binarisation).",
+    robustness_demo_hint: "Pour un aperçu sans calcul réel, utilise picarones robustness --demo — génère un rapport HTML factice avec données synthétiques.",
+    compare_hero_title: "Comparer deux runs",
+    compare_hero_desc: "Diff entre deux benchmarks JSON — régressions, améliorations, écart CER significatif.",
+    compare_hint: "Le rapport HTML met en évidence les moteurs qui ont régressé ou amélioré au-delà du seuil (CER absolu, par défaut 0,5 pp).",
+    cli_only_title: "Disponible via CLI",
+    cli_only_sub: "Ce workflow n'a pas encore d'endpoint HTTP — utilise la ligne de commande.",
     import_modal_desc: "Sélectionnez la destination et le nombre maximum de documents à télécharger.",
     import_htr_title: "Import HTR-United",
     import_htr_desc: "Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.",
@@ -295,6 +320,31 @@ const T = {
     history_regressions_title: "Detected regressions",
     history_regressions_desc: "Engines whose current CER has risen above threshold vs the baseline.",
     history_empty: "No data loaded — click \"Load\" to query the database.",
+    diagnose_hero_title: "In-depth diagnosis",
+    diagnose_hero_desc: "Benchmark + improvement levers + image_predictive — understand why an engine succeeds or fails on this corpus.",
+    diagnose_preset_desc: "profile=diagnostics → HTML view \"In-depth diagnosis\" with levers, image profile, baseline, longitudinal.",
+    diagnose_help: "The diagnosis will open the Benchmark view to follow the progress. The HTML report will contain the diagnostic sections specific to the profile.",
+    economics_hero_title: "Cost & economics",
+    economics_hero_desc: "Benchmark + effective throughput + cost projection (LLM API, tokens, latency).",
+    economics_preset_desc: "profile=economics → HTML report enriched with cost and throughput sections.",
+    economics_help: "LLM API costs rely on picarones/data/pricing.yaml (indicative table). Numbers are projections, not actual bills.",
+    edition_hero_title: "Critical edition",
+    edition_hero_desc: "Benchmark enriched with philological metrics (MUFI, abbreviations, historical punctuation).",
+    edition_preset_desc: "profile=philological → HTML report with MUFI/diplomatic/punctuation metrics.",
+    edition_help: "Profile designed for medieval / early modern print. For OCR → LLM post-correction with philological prompt, use the Benchmark view in \"OCR → LLM\" mode.",
+    workflow_preset: "Preset",
+    workflow_engines: "Engines (CSV)",
+    workflow_run: "Run diagnosis",
+    workflow_run_economics: "Run cost analysis",
+    workflow_run_edition: "Run edition",
+    robustness_hero_title: "Robustness to degradations",
+    robustness_hero_desc: "How an engine holds up under image degradations (noise, blur, rotation, resolution, binarization).",
+    robustness_demo_hint: "For a preview without actual computation, use picarones robustness --demo — generates a synthetic HTML report.",
+    compare_hero_title: "Compare two runs",
+    compare_hero_desc: "Diff between two benchmark JSONs — regressions, improvements, significant CER gap.",
+    compare_hint: "The HTML report highlights engines that have regressed or improved beyond the threshold (absolute CER, default 0.5 pp).",
+    cli_only_title: "Available via CLI",
+    cli_only_sub: "This workflow has no HTTP endpoint yet — use the command line.",
     import_modal_desc: "Pick the destination directory and the maximum number of documents to download.",
     import_htr_title: "Import from HTR-United",
     import_htr_desc: "Community catalogue of HTR/OCR datasets for heritage documents.",
@@ -1092,6 +1142,88 @@ async function loadReports() {
     container.innerHTML = html;
   } catch(e) {
     container.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ─── Workflow presets (diagnose / economics / edition) ──────────────────────
+async function runWorkflowPreset(kind) {
+  /** Lance /api/benchmark/run avec un profile pre-cable.
+   *  Bascule ensuite vers la vue Benchmark pour afficher la
+   *  progression SSE (meme moteur que startBenchmark()).
+   *  kind ∈ {"diagnose", "economics", "edition"} → profile correspond
+   *  a {"diagnostics", "economics", "philological"}. */
+  const profileMap = {
+    diagnose: "diagnostics",
+    economics: "economics",
+    edition: "philological",
+  };
+  const profile = profileMap[kind];
+  if (!profile) return;
+  const corpus = (document.getElementById(`${kind}-corpus-path`).value || "").trim();
+  const enginesCsv = (document.getElementById(`${kind}-engines`).value || "").trim();
+  if (!corpus) {
+    alert(lang === "fr" ? "Indique un chemin corpus." : "Provide a corpus path.");
+    return;
+  }
+  if (!enginesCsv) {
+    alert(lang === "fr" ? "Indique au moins un moteur." : "Provide at least one engine.");
+    return;
+  }
+  const engineList = enginesCsv.split(",").map(s => s.trim()).filter(Boolean);
+  const competitors = engineList.map(name => ({
+    name,
+    engine_name: name,
+    ocr_model: "",
+    llm_provider: "",
+    llm_model: "",
+    pipeline_mode: "",
+    prompt_file: "",
+    max_image_dimension: 0,
+  }));
+  // Pre-fill le composer Benchmark pour coherence visuelle.
+  _competitors = competitors;
+  renderCompetitors();
+  document.getElementById("corpus-path").value = corpus;
+  showView("benchmark");
+  // Construit le payload et lance directement.
+  const payload = {
+    corpus_path: corpus,
+    competitors,
+    normalization_profile: document.getElementById("norm-profile").value || "nfc",
+    char_exclude: document.getElementById("char-exclude").value || "",
+    output_dir: document.getElementById("output-dir").value || "./rapports/",
+    report_name: document.getElementById("report-name").value || "",
+    report_lang: lang,
+    views: ["text_final"],
+    profile,
+  };
+  document.getElementById("start-btn").disabled = true;
+  document.getElementById("cancel-btn").style.display = "inline-flex";
+  document.getElementById("bench-progress-section").style.display = "block";
+  document.getElementById("bench-result-section").style.display = "none";
+  document.getElementById("bench-log").textContent = "";
+  document.getElementById("engine-progress-list").innerHTML = "";
+  document.getElementById("bench-status-text").textContent = lang === "fr" ? "Démarrage…" : "Starting…";
+  _setBenchState("RUN");
+  try {
+    const r = await fetch("/api/benchmark/run", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const d = await r.json();
+    _currentJobId = d.job_id;
+    _startSSE(_currentJobId);
+  } catch (e) {
+    appendLog(`Erreur : ${e.message}`, "error");
+    document.getElementById("start-btn").disabled = false;
+    document.getElementById("cancel-btn").style.display = "none";
+    document.getElementById("bench-status-text").textContent = "";
+    _setBenchState("READY");
   }
 }
 

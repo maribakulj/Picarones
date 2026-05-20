@@ -1,0 +1,35 @@
+{# Vue Robustness — stub informatif. Le backend (RobustnessAnalyzer)
+ # n'a pas encore d'endpoint HTTP dedie ; on guide vers la CLI.
+#}
+<section id="view-robustness" class="view view-enter">
+
+  <div class="view-hero">
+    <div class="view-hero-title">
+      <div class="view-hero-eyebrow">VIEW · ROBUSTNESS</div>
+      <div class="view-hero-name" data-i18n="robustness_hero_title">Robustesse aux dégradations</div>
+      <div class="view-hero-desc" data-i18n="robustness_hero_desc">Test de tenue d'un moteur face aux dégradations d'image (bruit, flou, rotation, résolution, binarisation).</div>
+    </div>
+  </div>
+
+  <div class="sec" data-tone="slate">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div class="sec-title" data-i18n="cli_only_title">Disponible via CLI</div>
+        <div class="sec-sub" data-i18n="cli_only_sub">L'analyse de robustesse n'a pas encore d'endpoint HTTP — utilise la ligne de commande.</div>
+      </div>
+    </div>
+    <div class="sec-body">
+      <pre class="log" style="white-space:pre-wrap; padding:18px 20px;">picarones robustness \
+  --corpus ./corpus/ \
+  --engine tesseract \
+  --degradations noise,blur,rotation,resolution \
+  --max-docs 50 \
+  --output-json robustness.json</pre>
+      <div class="help" style="margin-top:14px;" data-i18n="robustness_demo_hint">
+        Pour un aperçu sans calcul réel, utilise <code>picarones robustness --demo</code> — génère un rapport HTML factice avec données synthétiques.
+      </div>
+    </div>
+  </div>
+
+</section>

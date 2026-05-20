@@ -1,0 +1,42 @@
+{# Vue Economics — preset launcher pour profile=economics. #}
+<section id="view-economics" class="view view-enter">
+
+  <div class="view-hero">
+    <div class="view-hero-title">
+      <div class="view-hero-eyebrow">VIEW · ECONOMICS</div>
+      <div class="view-hero-name" data-i18n="economics_hero_title">Coûts &amp; économie</div>
+      <div class="view-hero-desc" data-i18n="economics_hero_desc">Benchmark + throughput effectif + projection de coût (API LLM, tokens, latence).</div>
+    </div>
+  </div>
+
+  <div class="sec" data-tone="butter">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div class="sec-title" data-i18n="workflow_preset">Preset</div>
+        <div class="sec-sub" data-i18n="economics_preset_desc">profile=economics → rapport HTML enrichi des sections coûts et throughput.</div>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="grid-4" style="gap:14px; align-items:flex-end;">
+        <div class="field" style="grid-column: span 2;">
+          <div class="field-label"><span data-i18n="bench_corpus_label">Chemin corpus</span></div>
+          <input type="text" id="economics-corpus-path" placeholder="./corpus/" class="mono-input" />
+        </div>
+        <div class="field">
+          <div class="field-label"><span data-i18n="workflow_engines">Moteurs (CSV)</span></div>
+          <input type="text" id="economics-engines" value="tesseract,mistral_ocr" class="mono-input" />
+        </div>
+        <div>
+          <button class="btn btn-primary btn-block" type="button" onclick="runWorkflowPreset('economics')">
+            <span data-i18n="workflow_run_economics">Lancer l'analyse coûts</span>
+          </button>
+        </div>
+      </div>
+      <div class="help" style="margin-top:14px;" data-i18n="economics_help">
+        Les coûts API LLM s'appuient sur ``picarones/data/pricing.yaml`` (table indicative). Les chiffres sont des projections, pas des factures réelles.
+      </div>
+    </div>
+  </div>
+
+</section>
