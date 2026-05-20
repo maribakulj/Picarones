@@ -1225,19 +1225,37 @@ html[data-accent="slate"] .sec[data-tone="fern"]::before { background: var(--sla
    v3 additions — Xerox-Star inspired textures + iconography
    ========================================================= */
 
-/* === Dataset card — rectangle simple, plus de folder-tab.
-   L'onglet ::before/::after creait des saillies visibles qui
-   se chevauchaient avec les elements adjacents (button "Rechercher",
-   autres cards en grid).  On garde le coin asymetrique subtil. === */
+/* === Folder-tab style for dataset cards (Star folder icons) === */
 .ds-card {
   position: relative;
   background: var(--surface);
-  border-radius: var(--r-md);
+  border-radius: 4px 14px 14px 14px;  /* asymmetric — left corner is "tab" */
   padding: 22px 20px 18px;
+  margin-top: 9px;  /* absorbe le ::before (top:-7px) qui depasse */
 }
-.ds-card::before,
-.ds-card::after { content: none; }
+.ds-card::before {
+  /* the little tab on the top-left, like a folder */
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 18px;
+  width: 56px;
+  height: 9px;
+  background: var(--surface);
+  border-radius: 5px 5px 0 0;
+}
+.ds-card::after {
+  /* hairline along the top of the tab */
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 18px;
+  width: 56px;
+  height: 9px;
+  border-radius: 5px 5px 0 0;
+}
 .ds-card:hover { background: var(--raised-2); }
+.ds-card:hover::before { background: var(--raised-2); }
 
 /* === fig.1 (large, clarified) === */
 .fig-large {
