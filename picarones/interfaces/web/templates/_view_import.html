@@ -1,7 +1,9 @@
-{# Vue Bibliotheque (anciennement Import) — corpus locaux + sources distantes.
- # L'ID DOM reste `view-import` pour preserver showView('import') et la
- # compat avec la vue legacy.  Le label sidebar et le hero affichent
- # "Bibliotheque" / "Library".
+{# Vue Bibliotheque — calque fidele de la maquette demo.
+ # Deux panes via tabs XerOCR : "Mes corpus" (locaux) et "Decouvrir"
+ # (sources distantes : HTR-United, HuggingFace, IIIF, eScriptorium).
+ # L'ID DOM reste `view-import` pour preserver showView('import') et
+ # la compat avec le router cote serveur (l'endpoint racine ne s'en
+ # soucie pas mais les tests existants attendent ce nom).
 #}
 <section id="view-import" class="view view-enter">
 
@@ -9,82 +11,170 @@
     <div class="view-hero-title">
       <div class="view-hero-eyebrow">VIEW · LIBRARY</div>
       <div class="view-hero-name" data-i18n="library_hero_title">Bibliothèque de corpus</div>
-      <div class="view-hero-desc" data-i18n="library_hero_desc">Catalogues distants HTR-United et HuggingFace, importables en un clic.</div>
+      <div class="view-hero-desc" data-i18n="library_hero_desc">Corpus locaux et catalogues distants — toute la matière en un seul endroit.</div>
+    </div>
+    <div class="view-hero-stats">
+      <div class="hero-stat"><span class="v num" id="hero-local-count">—</span><span class="k">LOCAUX</span></div>
+      <div class="hero-stat"><span class="v num" id="hero-htr-count">—</span><span class="k">HTR-UNITED</span></div>
+      <div class="hero-stat"><span class="v num" id="hero-hf-count">—</span><span class="k">HUGGINGFACE</span></div>
+      <div class="hero-stat"><span class="v num" id="hero-local-pages">—</span><span class="k">PAGES</span></div>
     </div>
   </div>
 
-  <div class="sec" data-tone="clay">
-    <div class="sec-head">
-      <span class="sec-num">01</span>
-      <div style="flex:1; display:flex; flex-direction:column;">
-        <div class="sec-title" data-i18n="import_htr_title">Import HTR-United</div>
-        <div class="sec-sub" data-i18n="import_htr_desc">Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.</div>
-      </div>
-    </div>
-    <div class="sec-body">
+  <div class="tabs" id="library-tabs" style="align-self: flex-start;">
+    <button class="on" id="ltab-local" type="button" onclick="switchLibraryPane('local')">
+      <span data-i18n="library_my_corpora">Mes corpus</span>
+    </button>
+    <button id="ltab-discover" type="button" onclick="switchLibraryPane('discover')">
+      <span data-i18n="library_discover">Découvrir</span>
+    </button>
+  </div>
 
-      <div id="htr-demo-banner" style="display:none; padding:10px 14px; margin-bottom:14px; background:var(--butter-soft); color:var(--butter-deep); border-radius:var(--r-md); font-size:12.5px;">
-        <strong data-i18n="htr_demo_badge">Mode démo</strong> :
-        <span data-i18n="htr_demo_note">le catalogue distant est inaccessible ; affichage d'un échantillon embarqué.</span>
+  {# ─── Pane "Mes corpus" — dropzone + liste locaux ─────────────── #}
+  <div id="library-pane-local">
+    <div class="sec" data-tone="clay">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <div style="flex:1; display:flex; flex-direction:column;">
+          <div class="sec-title" data-i18n="library_local_title">Corpus locaux</div>
+          <div class="sec-sub" data-i18n="library_local_desc">Téléversés, importés depuis HTR-United / HuggingFace, ou pointés depuis le filesystem.</div>
+        </div>
+        <div class="sec-aside" id="library-local-aside"></div>
       </div>
+      <div class="sec-body">
+        <div class="grid-2" style="gap:14px; align-items:stretch;">
 
-      <div class="grid-4" style="gap:14px; margin-bottom:14px; align-items:flex-end;">
-        <div class="field" style="grid-column: span 2;">
-          <div class="field-label"><span data-i18n="import_search_label">Recherche</span></div>
-          <input type="search" id="htr-search" placeholder="médiéval, latin, manuscrits…" />
-        </div>
-        <div class="field">
-          <div class="field-label"><span data-i18n="import_lang_filter">Langue</span></div>
-          <select id="htr-lang-filter">
-            <option value="" data-i18n="all">Toutes</option>
-          </select>
-        </div>
-        <div class="field">
-          <div class="field-label"><span data-i18n="import_script_filter">Type d'écriture</span></div>
-          <select id="htr-script-filter">
-            <option value="" data-i18n="all">Tous</option>
-          </select>
+          {# Dropzone d'upload ZIP — uploads vont dans uploads/ via /api/corpus/upload #}
+          <div id="library-dropzone" class="dropzone"
+               style="min-height:240px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
+               onclick="document.getElementById('library-upload-input').click()"
+               ondragover="event.preventDefault(); this.classList.add('active')"
+               ondragleave="this.classList.remove('active')"
+               ondrop="onLibraryDrop(event)">
+            <span class="dz-marker">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20V8M6 13l6-6 6 6M4 4h16"/>
+              </svg>
+            </span>
+            <div style="font-weight:500; font-size:14px; color:var(--ink);" data-i18n="library_drop_zip">Glissez un .zip ici ou cliquez pour sélectionner</div>
+            <div class="foot" style="margin-top:6px;">ZIP · max 500 MB · paires auto-détectées</div>
+            <input type="file" id="library-upload-input" style="display:none" accept=".zip" onchange="onLibraryUploadInput(event)"/>
+            <div id="library-upload-progress" style="display:none; width:80%; margin-top:14px;">
+              <div class="progress thick"><div class="progress-bar" id="library-upload-bar" style="width:0%"></div></div>
+              <div id="library-upload-text" class="foot" style="margin-top:6px; text-align:center;"></div>
+            </div>
+          </div>
+
+          {# Liste des corpus locaux (alimentee par /api/corpus/uploads) #}
+          <div class="stack" id="library-local-list">
+            <div class="empty" data-i18n="library_local_empty">Aucun corpus local. Importez-en un.</div>
+          </div>
         </div>
       </div>
-      <div class="row" style="margin-bottom:14px;">
-        <button class="btn btn-primary" type="button" onclick="searchHTRUnited()">
-          <span data-i18n="search">Rechercher</span>
-        </button>
-      </div>
-      <div id="htr-results" class="grid-2"></div>
     </div>
   </div>
 
-  <div class="sec" data-tone="slate">
-    <div class="sec-head">
-      <span class="sec-num">02</span>
-      <div style="flex:1; display:flex; flex-direction:column;">
-        <div class="sec-title" data-i18n="import_hf_title">Import HuggingFace Datasets</div>
-        <div class="sec-sub" data-i18n="import_hf_desc">Datasets OCR/HTR publics depuis HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).</div>
+  {# ─── Pane "Decouvrir" — sources distantes ───────────────────── #}
+  <div id="library-pane-discover" style="display:none;">
+
+    <div class="sec" data-tone="slate">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <div style="flex:1; display:flex; flex-direction:column;">
+          <div class="sec-title" data-i18n="library_remote_title">Sources distantes</div>
+          <div class="sec-sub" data-i18n="library_remote_desc">Catalogues, datasets, manifestes</div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div class="source-switch" id="library-source-switch">
+          <button class="source-chip on" type="button" data-source="htr-united" onclick="switchLibrarySource('htr-united')">
+            <span class="src-glyph">HU</span>
+            <span>HTR-United</span>
+            <span class="src-count">catalogue</span>
+          </button>
+          <button class="source-chip" type="button" data-source="huggingface" onclick="switchLibrarySource('huggingface')">
+            <span class="src-glyph">HF</span>
+            <span>HuggingFace</span>
+            <span class="src-count">datasets</span>
+          </button>
+        </div>
       </div>
     </div>
-    <div class="sec-body">
-      <div class="grid-4" style="gap:14px; margin-bottom:14px; align-items:flex-end;">
-        <div class="field" style="grid-column: span 2;">
-          <div class="field-label"><span data-i18n="import_search_label">Recherche</span></div>
-          <input type="search" id="hf-search" placeholder="medieval OCR, IAM, RIMES…" />
-        </div>
-        <div class="field">
-          <div class="field-label"><span data-i18n="import_lang_filter">Langue</span></div>
-          <input type="text" id="hf-lang-filter" placeholder="French, Latin…" />
-        </div>
-        <div class="field">
-          <div class="field-label"><span data-i18n="import_tag_filter">Tags</span></div>
-          <input type="text" id="hf-tags" placeholder="ocr, htr, historical…" />
+
+    {# HTR-United search #}
+    <div class="sec" id="library-source-htr-united" data-tone="clay">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <div style="flex:1; display:flex; flex-direction:column;">
+          <div class="sec-title" data-i18n="import_htr_title">Import HTR-United</div>
+          <div class="sec-sub" data-i18n="import_htr_desc">Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.</div>
         </div>
       </div>
-      <div class="row" style="margin-bottom:14px;">
-        <button class="btn btn-primary" type="button" onclick="searchHuggingFace()">
-          <span data-i18n="search">Rechercher</span>
-        </button>
+      <div class="sec-body">
+        <div id="htr-demo-banner" style="display:none; padding:10px 14px; margin-bottom:14px; background:var(--butter-soft); color:var(--butter-deep); border-radius:var(--r-md); font-size:12.5px;">
+          <strong data-i18n="htr_demo_badge">Mode démo</strong> :
+          <span data-i18n="htr_demo_note">le catalogue distant est inaccessible ; affichage d'un échantillon embarqué.</span>
+        </div>
+        <div class="grid-4" style="gap:14px; margin-bottom:14px; align-items:flex-end;">
+          <div class="field" style="grid-column: span 2;">
+            <div class="field-label"><span data-i18n="import_search_label">Recherche</span></div>
+            <input type="search" id="htr-search" placeholder="médiéval, latin, manuscrits…" />
+          </div>
+          <div class="field">
+            <div class="field-label"><span data-i18n="import_lang_filter">Langue</span></div>
+            <select id="htr-lang-filter">
+              <option value="" data-i18n="all">Toutes</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label"><span data-i18n="import_script_filter">Type d'écriture</span></div>
+            <select id="htr-script-filter">
+              <option value="" data-i18n="all">Tous</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:14px;">
+          <button class="btn btn-primary" type="button" onclick="searchHTRUnited()">
+            <span data-i18n="search">Rechercher</span>
+          </button>
+        </div>
+        <div id="htr-results" class="grid-2"></div>
       </div>
-      <div id="hf-results" class="grid-2"></div>
     </div>
+
+    {# HuggingFace search #}
+    <div class="sec" id="library-source-huggingface" data-tone="slate" style="display:none;">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <div style="flex:1; display:flex; flex-direction:column;">
+          <div class="sec-title" data-i18n="import_hf_title">Import HuggingFace Datasets</div>
+          <div class="sec-sub" data-i18n="import_hf_desc">Datasets OCR/HTR publics depuis HuggingFace Hub (IAM, RIMES, CATMuS, Gallica…).</div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div class="grid-4" style="gap:14px; margin-bottom:14px; align-items:flex-end;">
+          <div class="field" style="grid-column: span 2;">
+            <div class="field-label"><span data-i18n="import_search_label">Recherche</span></div>
+            <input type="search" id="hf-search" placeholder="medieval OCR, IAM, RIMES…" />
+          </div>
+          <div class="field">
+            <div class="field-label"><span data-i18n="import_lang_filter">Langue</span></div>
+            <input type="text" id="hf-lang-filter" placeholder="French, Latin…" />
+          </div>
+          <div class="field">
+            <div class="field-label"><span data-i18n="import_tag_filter">Tags</span></div>
+            <input type="text" id="hf-tags" placeholder="ocr, htr, historical…" />
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:14px;">
+          <button class="btn btn-primary" type="button" onclick="searchHuggingFace()">
+            <span data-i18n="search">Rechercher</span>
+          </button>
+        </div>
+        <div id="hf-results" class="grid-2"></div>
+      </div>
+    </div>
+
   </div>
 
 </section>

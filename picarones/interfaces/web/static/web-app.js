@@ -150,7 +150,24 @@ const T = {
     engines_llm_title: "LLMs disponibles",
     engines_llm_desc: "Providers texte / vision configurés via variables d'environnement.",
     library_hero_title: "Bibliothèque de corpus",
-    library_hero_desc: "Catalogues distants HTR-United et HuggingFace, importables en un clic.",
+    library_hero_desc: "Corpus locaux et catalogues distants — toute la matière en un seul endroit.",
+    library_my_corpora: "Mes corpus",
+    library_discover: "Découvrir",
+    library_local_title: "Corpus locaux",
+    library_local_desc: "Téléversés, importés depuis HTR-United / HuggingFace, ou pointés depuis le filesystem.",
+    library_remote_title: "Sources distantes",
+    library_remote_desc: "Catalogues, datasets, manifestes",
+    library_drop_zip: "Glissez un .zip ici ou cliquez pour sélectionner",
+    library_local_empty: "Aucun corpus local. Importez-en un.",
+    library_use_in_benchmark: "Utiliser dans Benchmark",
+    bench_corpus_sub: "Choisir un corpus chargé dans la Bibliothèque.",
+    bench_corpus_pick: "Corpus",
+    bench_corpus_pick_placeholder: "— Choisir un corpus —",
+    bench_corpus_open_library: "Ouvrir la Bibliothèque",
+    bench_corpus_advanced: "Mode expert",
+    bench_corpus_free_label: "Chemin libre (filesystem)",
+    bench_corpus_free_hint: "non recommandé hors usage local",
+    sys_lang: "Langue",
     bench_profile_label: "Profil de run",
     bench_profile_hint: "Métriques activées et sections du rapport HTML.",
     bench_profile_minimal: "minimal — CER/WER seulement",
@@ -282,7 +299,24 @@ const T = {
     engines_llm_title: "Available LLMs",
     engines_llm_desc: "Text / vision providers configured via environment variables.",
     library_hero_title: "Corpus library",
-    library_hero_desc: "Remote HTR-United and HuggingFace catalogues, one-click import.",
+    library_hero_desc: "Local corpora and remote catalogues — all the material in one place.",
+    library_my_corpora: "My corpora",
+    library_discover: "Discover",
+    library_local_title: "Local corpora",
+    library_local_desc: "Uploaded, imported from HTR-United / HuggingFace, or pointed at from the filesystem.",
+    library_remote_title: "Remote sources",
+    library_remote_desc: "Catalogues, datasets, manifests",
+    library_drop_zip: "Drop a .zip here or click to select",
+    library_local_empty: "No local corpus. Import one.",
+    library_use_in_benchmark: "Use in Benchmark",
+    bench_corpus_sub: "Pick a corpus loaded in the Library.",
+    bench_corpus_pick: "Corpus",
+    bench_corpus_pick_placeholder: "— Pick a corpus —",
+    bench_corpus_open_library: "Open the Library",
+    bench_corpus_advanced: "Expert mode",
+    bench_corpus_free_label: "Free path (filesystem)",
+    bench_corpus_free_hint: "not recommended outside local use",
+    sys_lang: "Language",
     bench_profile_label: "Run profile",
     bench_profile_hint: "Activated metrics and HTML report sections.",
     bench_profile_minimal: "minimal — CER/WER only",
@@ -353,7 +387,7 @@ function showView(name) {
 
   if (name === "reports") loadReports();
   if (name === "engines") loadEngines();
-  if (name === "import" || name === "library") { searchHTRUnited(); searchHuggingFace(); }
+  if (name === "import" || name === "library") loadLibraryLocalCorpora();
 }
 
 // ─── Status / version ────────────────────────────────────────────────────────
@@ -1314,129 +1348,229 @@ async function confirmImport() {
   }
 }
 
-// ─── Corpus upload ────────────────────────────────────────────────────────────
-let _uploadMode = "zip";  // "zip" | "files"
+// ─── Library (Mes corpus / Decouvrir) ────────────────────────────────────────
+// Etat partage Library : liste des corpus locaux (cachee + index pour
+// hydrater le dropdown du Benchmark).
+let _libraryLocalCorpora = [];
 
-function switchCorpusTab(tab) {
-  document.getElementById("corpus-tab-browse").style.display = tab === "browse" ? "block" : "none";
-  document.getElementById("corpus-tab-upload").style.display = tab === "upload" ? "block" : "none";
-  // XerOCR tabs : la class `on` est utilisee par picarones.css.
-  const b = document.getElementById("ctab-browse");
-  const u = document.getElementById("ctab-upload");
-  if (b) b.classList.toggle("on", tab === "browse");
-  if (u) u.classList.toggle("on", tab === "upload");
-  if (tab === "upload") loadUploadedCorpora();
+function switchLibraryPane(pane) {
+  const local = document.getElementById("library-pane-local");
+  const disc = document.getElementById("library-pane-discover");
+  if (local) local.style.display = pane === "local" ? "block" : "none";
+  if (disc) disc.style.display = pane === "discover" ? "block" : "none";
+  const lt = document.getElementById("ltab-local");
+  const dt = document.getElementById("ltab-discover");
+  if (lt) lt.classList.toggle("on", pane === "local");
+  if (dt) dt.classList.toggle("on", pane === "discover");
+  if (pane === "discover") {
+    // Lazy-load au premier affichage.
+    if (!_libraryDiscoverInited) {
+      _libraryDiscoverInited = true;
+      searchHTRUnited();
+    }
+  }
 }
+let _libraryDiscoverInited = false;
 
-function onUploadModeChange() {
-  _uploadMode = document.querySelector("input[name=upload-mode]:checked").value;
-  const input = document.getElementById("upload-file-input");
-  if (_uploadMode === "zip") {
-    input.accept = ".zip";
-    input.multiple = false;
-    document.getElementById("upload-dropzone-text").textContent = t("upload_drop_zip");
-  } else {
-    input.accept = ".jpg,.jpeg,.png,.tif,.tiff,.webp,.gt.txt,.txt";
-    input.multiple = true;
-    document.getElementById("upload-dropzone-text").textContent = t("upload_drop_files");
+function switchLibrarySource(source) {
+  document.querySelectorAll("#library-source-switch .source-chip").forEach(b => {
+    b.classList.toggle("on", b.dataset.source === source);
+  });
+  const htr = document.getElementById("library-source-htr-united");
+  const hf = document.getElementById("library-source-huggingface");
+  if (htr) htr.style.display = source === "htr-united" ? "block" : "none";
+  if (hf) hf.style.display = source === "huggingface" ? "block" : "none";
+  if (source === "huggingface" && !_libraryHfInited) {
+    _libraryHfInited = true;
+    searchHuggingFace();
+  }
+}
+let _libraryHfInited = false;
+
+async function loadLibraryLocalCorpora() {
+  /** GET /api/corpus/uploads → rend la grille des corpus locaux
+   *  (pane "Mes corpus") ET alimente le dropdown du Benchmark. */
+  const list = document.getElementById("library-local-list");
+  try {
+    const r = await fetch("/api/corpus/uploads");
+    const d = await r.json();
+    _libraryLocalCorpora = d.uploads || [];
+    _updateLibraryHeroStats();
+    loadCorpusOptions();
+    if (!list) return;
+    if (_libraryLocalCorpora.length === 0) {
+      list.innerHTML = `<div class="empty">${t("library_local_empty")}</div>`;
+      return;
+    }
+    list.innerHTML = _libraryLocalCorpora.map(u => {
+      const missing = u.has_missing_gt
+        ? `<span class="tag tag-butter">${_escapeHtml(t("upload_missing_gt"))}</span>` : "";
+      const docs = (u.doc_count || 0).toLocaleString();
+      return `<div class="ds-card" style="padding:14px 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+          <div class="ds-name" style="font-size:14px;">${_escapeHtml(u.corpus_id)}</div>
+          ${missing}
+        </div>
+        <div class="ds-meta">
+          <span>PAIRES · <b class="num">${docs}</b></span>
+          <span class="mono" style="font-size:11px; color:var(--g-400);">${_escapeHtml(u.corpus_path)}</span>
+        </div>
+        <div class="row" style="margin-top:6px; justify-content:space-between;">
+          <div class="row" style="gap:6px;">
+            <button class="btn btn-sm btn-primary" type="button" onclick="useCorpusInBenchmark('${_escapeAttr(u.corpus_path)}', '${_escapeAttr(u.corpus_id)}')">
+              <span data-i18n="library_use_in_benchmark">Utiliser dans Benchmark</span>
+            </button>
+          </div>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="deleteLibraryCorpus('${_escapeAttr(u.corpus_id)}')" title="${_escapeAttr(t("upload_delete"))}">✕</button>
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    if (list) list.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
-function onFileInputChange(event) {
-  const files = Array.from(event.target.files);
-  if (files.length > 0) uploadCorpus(files);
+function _updateLibraryHeroStats() {
+  const setHero = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setHero("hero-local-count", _libraryLocalCorpora.length);
+  const totalPages = _libraryLocalCorpora.reduce((s, c) => s + (c.doc_count || 0), 0);
+  setHero("hero-local-pages", totalPages.toLocaleString());
+  const aside = document.getElementById("library-local-aside");
+  if (aside) aside.textContent = `${_libraryLocalCorpora.length} CORPORA · ${totalPages.toLocaleString()} PAIRES`;
 }
 
-function onDropFiles(event) {
+function _escapeAttr(s) {
+  return String(s || "").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+}
+
+async function deleteLibraryCorpus(corpusId) {
+  if (!confirm(lang === "fr" ? `Supprimer le corpus « ${corpusId} » ?` : `Delete corpus "${corpusId}"?`)) return;
+  try {
+    await fetch(`/api/corpus/uploads/${encodeURIComponent(corpusId)}`, { method: "DELETE" });
+    loadLibraryLocalCorpora();
+    // Reset corpus benchmark si on vient de virer le selectionne.
+    const sel = document.getElementById("corpus-select");
+    if (sel && sel.value && sel.value.includes(corpusId)) {
+      sel.value = "";
+      onCorpusSelectChange();
+    }
+  } catch (e) { /* silent */ }
+}
+
+function onLibraryUploadInput(event) {
+  const files = Array.from(event.target.files || []);
+  if (files.length > 0) uploadCorpusToLibrary(files);
+}
+
+function onLibraryDrop(event) {
   event.preventDefault();
-  document.getElementById("upload-dropzone").classList.remove("active");
-  const files = Array.from(event.dataTransfer.files);
-  if (files.length > 0) uploadCorpus(files);
+  document.getElementById("library-dropzone").classList.remove("active");
+  const files = Array.from(event.dataTransfer.files || []);
+  if (files.length > 0) uploadCorpusToLibrary(files);
 }
 
-async function uploadCorpus(files) {
-  const progressContainer = document.getElementById("upload-progress-container");
-  const progressBar = document.getElementById("upload-progress-bar");
-  const progressText = document.getElementById("upload-progress-text");
-  const previewEl = document.getElementById("upload-preview");
-
-  progressContainer.style.display = "block";
-  progressBar.style.width = "10%";
-  progressText.textContent = t("upload_uploading");
-  previewEl.innerHTML = "";
+async function uploadCorpusToLibrary(files) {
+  const progressContainer = document.getElementById("library-upload-progress");
+  const progressBar = document.getElementById("library-upload-bar");
+  const progressText = document.getElementById("library-upload-text");
+  if (progressContainer) progressContainer.style.display = "block";
+  if (progressBar) { progressBar.style.width = "10%"; progressBar.style.background = ""; }
+  if (progressText) progressText.textContent = t("upload_uploading");
 
   const fd = new FormData();
   for (const f of files) fd.append("files", f);
 
   try {
-    // Simulate progress during upload
     let pct = 10;
     const timer = setInterval(() => {
       pct = Math.min(pct + 5, 85);
-      progressBar.style.width = pct + "%";
+      if (progressBar) progressBar.style.width = pct + "%";
     }, 200);
 
-    const r = await fetch("/api/corpus/upload", {method: "POST", body: fd});
+    const r = await fetch("/api/corpus/upload", { method: "POST", body: fd });
     clearInterval(timer);
-    progressBar.style.width = "100%";
+    if (progressBar) progressBar.style.width = "100%";
 
     if (!r.ok) {
-      const err = await r.json();
-      throw new Error(err.detail || "Erreur serveur");
+      const err = await r.json().catch(() => ({ detail: r.statusText }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
     }
     const d = await r.json();
-    progressText.textContent = `✓ ${t("upload_success")} — ${d.doc_count} ${t("upload_pairs")}`;
-    progressBar.style.background = "var(--ok)";
-
-    // Show preview
-    renderUploadPreview(d, previewEl);
-
-    // Show corpus OCR notice if triplet corpus
-    _updateCorpusOCRNotice(d);
-
-    // Set corpus path and auto-select
-    setCorpusPath(d.corpus_path, `upload:${d.corpus_id} (${d.doc_count} docs)`);
-
-    // Refresh list
-    loadUploadedCorpora();
-  } catch(e) {
-    progressBar.style.width = "100%";
-    progressBar.style.background = "var(--err)";
-    progressText.textContent = `✗ ${e.message}`;
+    if (progressText) progressText.textContent = `✓ ${t("upload_success")} — ${d.doc_count} ${t("upload_pairs")}`;
+    if (progressBar) progressBar.style.background = "var(--ok)";
+    // Recharge la liste (qui aussi refresh le dropdown Benchmark).
+    loadLibraryLocalCorpora();
+  } catch (e) {
+    if (progressBar) { progressBar.style.width = "100%"; progressBar.style.background = "var(--err)"; }
+    if (progressText) progressText.textContent = `✗ ${_escapeHtml(e.message)}`;
   }
 }
 
-function renderUploadPreview(data, container) {
-  const missingBadge = data.has_missing_gt
-    ? `<span class="tag tag-clay" style="margin-left:8px;">${data.missing_gt.length} ${t("upload_missing_gt")}</span>`
-    : "";
-  const ocrBadge = (data.has_ocr_text && data.ocr_text_count > 0)
-    ? `<span class="badge" style="margin-left:8px; background:#dcfce7; color:#16a34a;">📝 ${data.ocr_text_count} .ocr.txt</span>`
-    : "";
-  let html = `<div class="corpus-preview">
-    <div class="corpus-preview-header">
-      <span>📄 ${data.doc_count} ${t("upload_pairs")}</span>${ocrBadge}${missingBadge}
-    </div>`;
-  for (const p of data.pairs) {
-    html += `<div class="corpus-preview-pair">
-      <span style="color:var(--g-400);">🖼</span><span>${p.image}</span>
-      <span style="color:var(--g-400); margin-left:auto;">↔</span>
-      <span style="color:var(--ok);">${p.gt}</span>
-    </div>`;
+// ─── Corpus picker in Benchmark (dropdown alimente par Library) ──────────────
+function loadCorpusOptions() {
+  /** Hydrate #corpus-select avec les corpus locaux de Library. */
+  const sel = document.getElementById("corpus-select");
+  if (!sel) return;
+  const previous = sel.value;
+  sel.innerHTML = `<option value="">${t("bench_corpus_pick_placeholder")}</option>`;
+  for (const u of _libraryLocalCorpora) {
+    const opt = document.createElement("option");
+    opt.value = u.corpus_path;
+    const docs = (u.doc_count || 0).toLocaleString();
+    opt.textContent = `${u.corpus_id}  ·  ${docs} ${t("upload_pairs")}`;
+    sel.appendChild(opt);
   }
-  if (data.total_pairs > data.pairs.length) {
-    html += `<div class="corpus-preview-more">… et ${data.total_pairs - data.pairs.length} autres paires</div>`;
+  // Restaure la selection si toujours dispo.
+  if (previous && Array.from(sel.options).some(o => o.value === previous)) {
+    sel.value = previous;
   }
-  for (const w of (data.warnings || [])) {
-    html += `<div style="padding:5px 12px; font-size:11px; color:var(--warn);">⚠ ${w}</div>`;
-  }
-  html += `</div>`;
-  container.innerHTML = html;
+  const meta = document.getElementById("corpus-select-meta");
+  if (meta) meta.textContent = `${_libraryLocalCorpora.length} ${lang === "fr" ? "disponible(s)" : "available"}`;
 }
 
+function onCorpusSelectChange() {
+  const sel = document.getElementById("corpus-select");
+  const pathInput = document.getElementById("corpus-path");
+  const info = document.getElementById("corpus-info");
+  if (!sel) return;
+  const v = sel.value || "";
+  if (pathInput) pathInput.value = v;
+  if (v) {
+    const u = _libraryLocalCorpora.find(c => c.corpus_path === v);
+    if (info && u) info.textContent = `✓ ${u.corpus_id} (${(u.doc_count || 0).toLocaleString()} ${t("upload_pairs")})`;
+  } else if (info) {
+    info.textContent = "";
+  }
+}
+
+function toggleCorpusFreeInput() {
+  const free = document.getElementById("corpus-free-input");
+  if (!free) return;
+  free.style.display = free.style.display === "none" ? "block" : "none";
+}
+
+function useCorpusInBenchmark(corpusPath, corpusId) {
+  /** Appele depuis Library : bascule sur la vue Benchmark et selectionne
+   *  le corpus dans le dropdown. */
+  showView("benchmark");
+  // Garantit que le dropdown est synchronise avant de fixer la valeur.
+  loadCorpusOptions();
+  const sel = document.getElementById("corpus-select");
+  if (sel) {
+    sel.value = corpusPath;
+    onCorpusSelectChange();
+  }
+  const info = document.getElementById("corpus-info");
+  if (info) info.textContent = `✓ ${corpusId}`;
+}
+
+// Helper retro-compat : conserve par les anciens callers de setCorpusPath
+// (file browser, upload preview, etc.).  Met a jour l'input free + l'info.
 function setCorpusPath(path, label) {
-  document.getElementById("corpus-path").value = path;
-  document.getElementById("corpus-info").textContent = `✓ ${label}`;
+  const pathInput = document.getElementById("corpus-path");
+  const info = document.getElementById("corpus-info");
+  if (pathInput) pathInput.value = path;
+  if (info) info.textContent = `✓ ${label}`;
 }
 
 function _updateCorpusOCRNotice(corpusData) {
@@ -1448,48 +1582,6 @@ function _updateCorpusOCRNotice(corpusData) {
   } else {
     notice.style.display = "none";
   }
-}
-
-async function loadUploadedCorpora() {
-  const container = document.getElementById("uploads-list");
-  try {
-    const r = await fetch("/api/corpus/uploads");
-    const d = await r.json();
-    if (d.uploads.length === 0) {
-      container.innerHTML = `<div style="color:var(--g-400); font-size:12px;">${t("upload_no_corpus")}</div>`;
-      return;
-    }
-    const currentPath = document.getElementById("corpus-path").value;
-    container.innerHTML = d.uploads.map(u => {
-      const isSelected = u.corpus_path === currentPath;
-      const missing = u.has_missing_gt
-        ? `<span class="tag tag-butter" style="margin-left:6px;">${t("upload_missing_gt")}</span>` : "";
-      return `<div class="upload-corpus-item${isSelected ? " selected" : ""}"
-                   onclick="setCorpusPath('${u.corpus_path}', 'upload (${u.doc_count} docs)'); loadUploadedCorpora()">
-        <span class="upload-corpus-label">
-          <strong>${u.doc_count} ${t("upload_pairs")}</strong>${missing}
-          <span style="display:block; font-size:11px; color:var(--g-400); font-family:monospace;">${u.corpus_path}</span>
-        </span>
-        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteUploadedCorpus('${u.corpus_id}')"
-                title="${t("upload_delete")}">✕</button>
-      </div>`;
-    }).join("");
-  } catch(e) {
-    container.innerHTML = `<div style="color:var(--err); font-size:12px;">Erreur : ${e.message}</div>`;
-  }
-}
-
-async function deleteUploadedCorpus(corpusId) {
-  try {
-    await fetch(`/api/corpus/uploads/${corpusId}`, {method: "DELETE"});
-    loadUploadedCorpora();
-    // Clear corpus path if it was the deleted one
-    const p = document.getElementById("corpus-path").value;
-    if (p.includes(corpusId)) {
-      document.getElementById("corpus-path").value = "";
-      document.getElementById("corpus-info").textContent = "";
-    }
-  } catch(e) {}
 }
 
 // ─── Config save / load ──────────────────────────────────────────────────────
@@ -1636,6 +1728,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   onComposeOCRChange();      // Pre-populate Tesseract languages
   loadComposePrompts();       // Pre-load prompt files
   startAutoRefresh();         // Auto-detect new API keys every 10 s
+  loadLibraryLocalCorpora();  // Hydrate Library + Benchmark corpus dropdown
   _setBenchState("READY");
   _updateCompetitorCounts();
   // Hero norm sync on profile change
