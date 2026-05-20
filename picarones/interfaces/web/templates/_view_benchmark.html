@@ -221,13 +221,29 @@
       </div>
     </div>
     <div class="sec-body">
-      <div class="grid-4" style="gap:14px;">
+      <div class="grid-2" style="gap:14px;">
+        <div class="field">
+          <div class="field-label">
+            <span data-i18n="bench_profile_label">Profil de run</span>
+          </div>
+          <select id="run-profile">
+            <option value="standard" data-i18n="bench_profile_standard">standard — défaut</option>
+            <option value="minimal" data-i18n="bench_profile_minimal">minimal — CER/WER seulement</option>
+            <option value="philological" data-i18n="bench_profile_philological">philological — édition critique</option>
+            <option value="diagnostics" data-i18n="bench_profile_diagnostics">diagnostics — diagnostic approfondi</option>
+            <option value="economics" data-i18n="bench_profile_economics">economics — coûts API LLM</option>
+            <option value="full" data-i18n="bench_profile_full">full — tout activé</option>
+          </select>
+          <small class="help" style="margin-top:6px; padding-left:0; border-left:0;" data-i18n="bench_profile_hint">Métriques activées et sections du rapport HTML.</small>
+        </div>
         <div class="field">
           <div class="field-label"><span data-i18n="bench_norm_label">Profil normalisation</span></div>
           <select id="norm-profile">
             <option value="nfc">NFC (standard)</option>
           </select>
         </div>
+      </div>
+      <div class="grid-3" style="gap:14px; margin-top:14px;">
         <div class="field">
           <div class="field-label"><span data-i18n="bench_char_exclude_label">Caractères à ignorer</span></div>
           <input type="text" id="char-exclude" class="mono-input" placeholder="ex : ', -, –, ." />
