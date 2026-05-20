@@ -1246,15 +1246,23 @@ async function searchHTRUnited() {
       return;
     }
     container.innerHTML = d.entries.map(e => {
-      const tags = [...e.language, ...e.script]
+      // Defensif : certains champs peuvent etre des objets (license,
+      // script structures) qui sortent en "[object Object]" si on
+      // les passe directement a innerHTML.  On extrait juste le label.
+      const _str = v => typeof v === "string"
+        ? v
+        : (v && (v.name || v.id || v.label) ? (v.name || v.id || v.label) : "");
+      const tags = [...(e.language || []), ...(e.script || [])]
+        .map(_str).filter(Boolean)
         .map(s => `<span class="tag tag-slate">${_escapeHtml(s)}</span>`).join("");
-      const license = e.license ? `<span class="tag tag-mono">${_escapeHtml(e.license)}</span>` : "";
       const idAttr = _escapeAttr(e.id);
       const titleAttr = _escapeAttr(e.title);
       return `<div class="ds-card">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
           <div class="ds-name">${_escapeHtml(e.title)}</div>
-          ${license}
+          <button class="btn btn-primary btn-sm" type="button" onclick="openImportModal('htr', '${idAttr}', '${titleAttr}')">
+            ${lang === "fr" ? "Importer" : "Import"}
+          </button>
         </div>
         <div class="ds-desc">${_escapeHtml(e.description)}</div>
         <div class="ds-meta">
@@ -1263,12 +1271,6 @@ async function searchHTRUnited() {
           <span>${_escapeHtml(e.format)}</span>
         </div>
         <div class="ds-tags">${tags}</div>
-        <div class="row" style="margin-top:10px; gap:6px;">
-          <button class="btn btn-sm btn-primary" type="button" onclick="openImportModal('htr', '${idAttr}', '${titleAttr}')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M12 4v12M6 11l6 6 6-6M4 20h16"/></svg>
-            ${lang === "fr" ? "Importer" : "Import"}
-          </button>
-        </div>
       </div>`;
     }).join("");
   } catch(e) {
@@ -1291,29 +1293,26 @@ async function searchHuggingFace() {
       return;
     }
     container.innerHTML = d.datasets.map(ds => {
-      const tags2 = ds.tags.slice(0, 5)
+      const _str = v => typeof v === "string"
+        ? v
+        : (v && (v.name || v.id || v.label) ? (v.name || v.id || v.label) : "");
+      const tags2 = (ds.tags || []).slice(0, 5).map(_str).filter(Boolean)
         .map(s => `<span class="tag tag-slate">${_escapeHtml(s)}</span>`).join("");
       const idAttr = _escapeAttr(ds.dataset_id);
       const titleAttr = _escapeAttr(ds.title);
-      const stats = (ds.downloads || ds.likes != null)
-        ? `<span class="foot">${ds.downloads ? "⤓ " + ds.downloads.toLocaleString() : ""}${(ds.downloads && ds.likes != null) ? " · " : ""}${ds.likes != null ? "♥ " + ds.likes : ""}</span>`
-        : "";
       return `<div class="ds-card">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
           <div class="ds-name">${_escapeHtml(ds.title)}</div>
-          ${stats}
+          <button class="btn btn-primary btn-sm" type="button" onclick="openImportModal('hf', '${idAttr}', '${titleAttr}')">
+            ${lang === "fr" ? "Importer" : "Import"}
+          </button>
         </div>
         <div class="ds-desc">${_escapeHtml(ds.description)}</div>
         <div class="ds-meta">
           <span>${_escapeHtml(ds.institution || ds.dataset_id)}</span>
+          ${ds.downloads ? `<span><b class="num">${ds.downloads.toLocaleString()}</b> ${lang === "fr" ? "téléchargements" : "downloads"}</span>` : ""}
         </div>
         <div class="ds-tags">${tags2}</div>
-        <div class="row" style="margin-top:10px; gap:6px;">
-          <button class="btn btn-sm btn-primary" type="button" onclick="openImportModal('hf', '${idAttr}', '${titleAttr}')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M12 4v12M6 11l6 6 6-6M4 20h16"/></svg>
-            ${lang === "fr" ? "Importer" : "Import"}
-          </button>
-        </div>
       </div>`;
     }).join("");
   } catch(e) {
