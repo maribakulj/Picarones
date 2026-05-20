@@ -77,8 +77,16 @@ const T = {
     search: "Rechercher",
     all: "Tous",
     cancel: "Annuler",
-    bench_corpus_title: "1. Corpus",
+    bench_hero_title: "Banc d'essai",
+    bench_hero_desc: "Comparaison de pipelines OCR / HTR / VLM sur corpus patrimonial.",
+    bench_corpus_title: "Corpus",
     bench_corpus_label: "Chemin vers le dossier corpus (paires image / .gt.txt)",
+    bench_compose_desc: "Pipelines à comparer — OCR seul, OCR → LLM, ou VLM zero-shot",
+    bench_options_desc: "Normalisation, exclusions, destination du rapport",
+    bench_run_title: "Exécuter",
+    bench_run_desc: "Lancer le benchmark sur la file de concurrents",
+    queue_label: "QUEUE",
+    competitors_word: "concurrent(s)",
     bench_browse: "Parcourir",
     corpus_tab_browse: "📁 Parcourir",
     corpus_tab_upload: "⬆ Uploader",
@@ -184,8 +192,16 @@ const T = {
     search: "Search",
     all: "All",
     cancel: "Cancel",
-    bench_corpus_title: "1. Corpus",
+    bench_hero_title: "Benchmark",
+    bench_hero_desc: "Compare OCR / HTR / VLM pipelines on heritage corpora.",
+    bench_corpus_title: "Corpus",
     bench_corpus_label: "Path to corpus directory (image / .gt.txt pairs)",
+    bench_compose_desc: "Pipelines to compare — OCR only, OCR → LLM, or VLM zero-shot",
+    bench_options_desc: "Normalization, exclusions, report destination",
+    bench_run_title: "Execute",
+    bench_run_desc: "Run the benchmark on the queued competitors",
+    queue_label: "QUEUE",
+    competitors_word: "competitor(s)",
     bench_browse: "Browse",
     corpus_tab_browse: "📁 Browse",
     corpus_tab_upload: "⬆ Upload",
@@ -350,10 +366,25 @@ async function loadBenchmarkSections() {
     _enginesData = d;
     renderOCREnginesSection(d.engines);
     renderLLMSection(d.llms);
+    _refreshSysCounts(d);
   } catch(e) {
-    document.getElementById("ocr-engines-status-list").innerHTML =
-      `<div style="color:var(--danger);font-size:12px;">Erreur : ${e.message}</div>`;
+    const c = document.getElementById("ocr-engines-status-list");
+    if (c) c.innerHTML = `<div style="color:var(--danger);font-size:12px;">Erreur : ${e.message}</div>`;
   }
+}
+
+function _refreshSysCounts(d) {
+  if (!d) return;
+  const engOn = (d.engines || []).filter(e => e.available).length;
+  const engTot = (d.engines || []).length;
+  const llmOn = (d.llms || []).filter(l => l.available).length;
+  const llmTot = (d.llms || []).length;
+  const eEl = document.getElementById("sys-engines-online");
+  const lEl = document.getElementById("sys-llms-online");
+  const pcEl = document.getElementById("sys-pipeline-counts");
+  if (eEl) eEl.textContent = `${engOn} / ${engTot}`;
+  if (lEl) lEl.textContent = `${llmOn} / ${llmTot}`;
+  if (pcEl) pcEl.textContent = `${engOn}+${llmOn} · ${engTot + llmTot}`;
 }
 
 function _makeProviderRow(eng, msId) {
@@ -375,6 +406,7 @@ function _makeProviderRow(eng, msId) {
 
 async function renderOCREnginesSection(engines) {
   const container = document.getElementById("ocr-engines-status-list");
+  if (!container) return;
   container.innerHTML = "";
   for (const eng of engines) {
     const msId = `ms-ocr-${eng.id}`;
@@ -396,6 +428,7 @@ async function renderOCREnginesSection(engines) {
 
 async function renderLLMSection(llms) {
   const container = document.getElementById("llm-status-list");
+  if (!container) return;
   container.innerHTML = "";
   for (const llm of llms) {
     const msId = `ms-llm-${llm.id}`;
@@ -426,6 +459,7 @@ function startAutoRefresh() {
         _enginesData = d;
         renderOCREnginesSection(d.engines);
         renderLLMSection(d.llms);
+        _refreshSysCounts(d);
       }
     } catch(e) {}
   }, 10000);
@@ -460,9 +494,29 @@ async function onComposeOCRChange() {
   }
 }
 
+function _getComposeMode() {
+  // Nouveau segmented control XerOCR (boutons + data-mode).
+  const onBtn = document.querySelector("#compose-mode-tabs button.on");
+  if (onBtn && onBtn.dataset.mode) return onBtn.dataset.mode;
+  // Fallback legacy : input[name=compose-mode]:checked.
+  const r = document.querySelector("input[name=compose-mode]:checked");
+  return r ? r.value : "ocr";
+}
+
+function setComposeMode(mode) {
+  const tabs = document.getElementById("compose-mode-tabs");
+  if (tabs) {
+    tabs.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+  }
+  // Sync legacy radio si encore present.
+  const radio = document.querySelector(`input[name=compose-mode][value="${mode}"]`);
+  if (radio) radio.checked = true;
+  onComposeModeChange();
+}
+
 async function onComposeLLMChange() {
   const provider = document.getElementById("compose-llm-provider").value;
-  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  const composeMode = _getComposeMode();
   const pipelineMode = document.getElementById("compose-pipeline-mode").value;
   // Apply capability filter for modes requiring vision
   const needsVision = (pipelineMode === "text_and_image" || pipelineMode === "zero_shot");
@@ -471,28 +525,26 @@ async function onComposeLLMChange() {
 }
 
 function onComposeModeChange() {
-  const mode = document.querySelector("input[name=compose-mode]:checked").value;
+  const mode = _getComposeMode();
   const ocrSection = document.getElementById("compose-ocr-section");
   const pipelineSection = document.getElementById("compose-pipeline-section");
 
   if (mode === "ocr") {
-    ocrSection.style.display = "flex";
-    pipelineSection.style.display = "none";
+    if (ocrSection) ocrSection.style.display = "grid";
+    if (pipelineSection) pipelineSection.style.display = "none";
   } else if (mode === "pipeline") {
-    ocrSection.style.display = "flex";
-    pipelineSection.style.display = "block";
-    // Reload LLM models without capability filter
+    if (ocrSection) ocrSection.style.display = "grid";
+    if (pipelineSection) pipelineSection.style.display = "block";
     onComposeLLMChange();
   } else if (mode === "postcorrection") {
-    ocrSection.style.display = "none";
-    pipelineSection.style.display = "block";
-    // Reload LLM models with capability filter based on pipeline mode
+    if (ocrSection) ocrSection.style.display = "none";
+    if (pipelineSection) pipelineSection.style.display = "block";
     onComposePipelineModeChange();
   }
 }
 
 function onComposePipelineModeChange() {
-  const composeMode = document.querySelector("input[name=compose-mode]:checked").value;
+  const composeMode = _getComposeMode();
   if (composeMode !== "postcorrection" && composeMode !== "pipeline") return;
   const pipelineMode = document.getElementById("compose-pipeline-mode").value;
   // Filter by vision capability for modes that need images
@@ -527,7 +579,7 @@ async function loadComposePrompts() {
 }
 
 function addCompetitor() {
-  const mode = document.querySelector("input[name=compose-mode]:checked").value;
+  const mode = _getComposeMode();
   const errEl = document.getElementById("compose-error");
 
   const comp = { name: "", engine_name: "", ocr_model: "",
@@ -597,33 +649,50 @@ function removeCompetitor(idx) {
 
 function renderCompetitors() {
   const container = document.getElementById("competitors-list");
+  if (!container) return;
+  _updateCompetitorCounts();
   if (_competitors.length === 0) {
-    container.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">${t("compose_empty")}</div>`;
+    container.innerHTML = `<div class="empty">${t("compose_empty")}</div>`;
     return;
   }
+  const colors = ["ink", "fern", "slate", "clay", "butter"];
   container.innerHTML = _competitors.map((c, i) => {
     const isCorpusOCR = c.engine_name === "corpus" || (c.engine_name === "" && c.llm_provider);
     const isPipeline = !!c.llm_provider && !isCorpusOCR;
-    let badge, detail;
+    let kind, chain;
     if (isCorpusOCR) {
-      badge = "📝 Post-correction";
-      detail = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+      kind = t("compose_postcorrection");
+      chain = `corpus_ocr → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else if (isPipeline) {
-      badge = "⛓ Pipeline";
-      detail = `${c.engine_name}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
+      kind = "OCR → LLM";
+      chain = `${c.engine_name}:${c.ocr_model} → ${c.llm_provider}:${c.llm_model} [${c.pipeline_mode}]`;
     } else {
-      badge = "🔍 OCR";
-      detail = `${c.engine_name}:${c.ocr_model}`;
+      kind = "OCR";
+      chain = `${c.engine_name}:${c.ocr_model}`;
     }
-    return `<div class="competitor-card">
-      <div class="competitor-info">
-        <span class="competitor-badge">${badge}</span>
-        <span class="competitor-name">${c.name}</span>
-        <span class="competitor-detail">${detail}</span>
+    const cid = "C" + String(i + 1).padStart(2, "0");
+    const color = colors[i % colors.length];
+    return `<div class="competitor">
+      <span class="c-id ${color}">${cid}</span>
+      <div>
+        <div class="c-name">${_escapeHtml(c.name)}</div>
+        <div class="c-chain"><span class="tag tag-mono">${_escapeHtml(kind)}</span><span class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(chain)}</span></div>
       </div>
-      <button class="btn btn-danger btn-sm" onclick="removeCompetitor(${i})">✕</button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="removeCompetitor(${i})" title="${t("upload_delete")}">✕</button>
     </div>`;
   }).join("");
+}
+
+function _updateCompetitorCounts() {
+  const n = _competitors.length;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set("hero-competitors", n);
+  set("competitors-count", n);
+  set("competitors-count-inline", n);
+}
+
+function _escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
 // ─── Normalization profiles ──────────────────────────────────────────────────
@@ -647,7 +716,12 @@ async function loadNormProfiles() {
       if (p && p.exclude_chars && p.exclude_chars.length) {
         document.getElementById("char-exclude").value = p.exclude_chars.join(", ");
       }
+      const heroNorm = document.getElementById("hero-norm");
+      if (heroNorm) heroNorm.textContent = sel.value || "—";
     });
+    // Init hero-norm avec la valeur par défaut.
+    const heroNorm = document.getElementById("hero-norm");
+    if (heroNorm) heroNorm.textContent = sel.value || "—";
   } catch(e) {}
 }
 
@@ -730,6 +804,7 @@ async function startBenchmark() {
   document.getElementById("bench-log").textContent = "";
   document.getElementById("engine-progress-list").innerHTML = "";
   document.getElementById("bench-status-text").textContent = lang === "fr" ? "Démarrage…" : "Starting…";
+  _setBenchState("RUN");
 
   try {
     const r = await fetch("/api/benchmark/run", {
@@ -780,19 +855,29 @@ function _startSSE(jobId) {
     const d = JSON.parse(e.data);
     const pct = Math.round(d.progress * 100);
     const engId = d.engine.replace(/[^a-z0-9_-]/gi, "_");
+    const colors = ["fern", "slate", "clay", "butter", "ink"];
     if (!seenEngines[engId]) {
-      seenEngines[engId] = true;
+      const idx = Object.keys(seenEngines).length;
+      seenEngines[engId] = colors[idx % colors.length];
+      const color = seenEngines[engId];
       const div = document.createElement("div");
-      div.style = "margin-bottom: 8px;";
-      div.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
-        <span>${d.engine}</span><span id="eng-pct-${engId}">0%</span></div>
-        <div class="progress-bar-outer"><div class="progress-bar-inner" id="eng-bar-${engId}" style="width:0%"></div></div>`;
+      div.style = "display:grid; grid-template-columns:1fr 60px; gap:14px; align-items:center; margin-bottom:10px; font-size:12.5px;";
+      div.innerHTML = `<div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span>${_escapeHtml(d.engine)}</span>
+            <span class="mono" style="color:var(--g-500);" id="eng-status-${engId}">${d.processed}/${d.total}</span>
+          </div>
+          <div class="progress ${color}"><div class="progress-bar" id="eng-bar-${engId}" style="width:0%"></div></div>
+        </div>
+        <span class="num" style="text-align:right; color:var(--g-500);" id="eng-pct-${engId}">0%</span>`;
       pl.appendChild(div);
     }
     const bar = document.getElementById(`eng-bar-${engId}`);
     const pctEl = document.getElementById(`eng-pct-${engId}`);
+    const statusEl = document.getElementById(`eng-status-${engId}`);
     if (bar) bar.style.width = pct + "%";
     if (pctEl) pctEl.textContent = pct + "%";
+    if (statusEl) statusEl.textContent = `${d.processed}/${d.total}`;
     document.getElementById("bench-status-text").textContent =
       `${pct}% — ${d.engine} (${d.processed}/${d.total})`;
   });
@@ -801,22 +886,22 @@ function _startSSE(jobId) {
     const d = JSON.parse(e.data);
     appendLog(d.message, "success");
     _showResults(d);
-    _finishBenchmark();
+    _finishBenchmark(true);
   });
 
   _eventSource.addEventListener("error", e => {
     const d = JSON.parse(e.data);
     appendLog(d.message, "error");
-    _finishBenchmark();
+    _finishBenchmark(false);
   });
 
   _eventSource.addEventListener("cancelled", e => {
     appendLog(lang === "fr" ? "Benchmark annulé." : "Benchmark cancelled.", "warn");
-    _finishBenchmark();
+    _finishBenchmark(false);
   });
 
-  _eventSource.addEventListener("done", e => { _finishBenchmark(); });
-  _eventSource.onerror = () => { if (_currentJobId) _finishBenchmark(); };
+  _eventSource.addEventListener("done", e => { _finishBenchmark(true); });
+  _eventSource.onerror = () => { if (_currentJobId) _finishBenchmark(false); };
 }
 
 function _showResults(data) {
@@ -827,11 +912,24 @@ function _showResults(data) {
     link.href = `/reports/${data.output_html.split("/").pop()}`;
   }
   if (data.ranking) {
-    let html = `<table><thead><tr><th>#</th><th>${lang==="fr"?"Moteur":"Engine"}</th><th>CER</th><th>WER</th><th>${lang==="fr"?"Docs":"Docs"}</th></tr></thead><tbody>`;
+    let html = `<table class="data"><thead><tr>
+      <th style="width:60px">#</th>
+      <th>${lang==="fr"?"Moteur":"Engine"}</th>
+      <th class="num-cell">CER</th>
+      <th class="num-cell">WER</th>
+      <th class="num-cell">${lang==="fr"?"Docs":"Docs"}</th>
+    </tr></thead><tbody>`;
     data.ranking.forEach((row, i) => {
-      const cer = row.mean_cer != null ? (row.mean_cer*100).toFixed(2)+"%" : "N/A";
-      const wer = row.mean_wer != null ? (row.mean_wer*100).toFixed(2)+"%" : "N/A";
-      html += `<tr><td>${i+1}</td><td>${row.engine}</td><td>${cer}</td><td>${wer}</td><td>${row.total_docs || ""}</td></tr>`;
+      const cer = row.mean_cer != null ? (row.mean_cer*100).toFixed(2) : "—";
+      const wer = row.mean_wer != null ? (row.mean_wer*100).toFixed(2) : "—";
+      const pillCls = i === 0 ? "rank-pill first" : "rank-pill";
+      html += `<tr>
+        <td><span class="${pillCls}">#${i+1}</span></td>
+        <td style="font-weight:500">${_escapeHtml(row.engine)}</td>
+        <td class="num-cell">${cer}</td>
+        <td class="num-cell">${wer}</td>
+        <td class="num-cell">${row.total_docs || ""}</td>
+      </tr>`;
     });
     html += "</tbody></table>";
     document.getElementById("bench-ranking-table").innerHTML = html;
@@ -874,19 +972,28 @@ async function _loadSynthesisPreview(jobId) {
   }
 }
 
-function _escapeHtml(s) {
-  /** Helper local : on injecte les phrases dans innerHTML donc il
-   * faut neutraliser les balises HTML potentielles (les phrases
-   * narratives peuvent contenir des noms de moteurs avec ``<`` ou ``>``
-   * théoriquement). */
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function _setBenchState(state) {
+  // state ∈ {"READY","RUN","DONE"}
+  const heroEl = document.getElementById("hero-state");
+  const sysJob = document.getElementById("sys-job");
+  if (heroEl) heroEl.textContent = state;
+  if (sysJob) {
+    const label = state === "RUN" ? (lang === "fr" ? "en cours" : "running")
+                : state === "DONE" ? (lang === "fr" ? "terminé" : "done")
+                : (lang === "fr" ? "au repos" : "idle");
+    sysJob.textContent = label;
+  }
 }
 
-function _finishBenchmark() {
+function _finishBenchmark(success) {
   if (_eventSource) { _eventSource.close(); _eventSource = null; }
-  document.getElementById("start-btn").disabled = false;
-  document.getElementById("cancel-btn").style.display = "none";
-  document.getElementById("bench-status-text").textContent = "";
+  const startBtn = document.getElementById("start-btn");
+  const cancelBtn = document.getElementById("cancel-btn");
+  const status = document.getElementById("bench-status-text");
+  if (startBtn) startBtn.disabled = false;
+  if (cancelBtn) cancelBtn.style.display = "none";
+  if (status) status.textContent = "";
+  _setBenchState(success ? "DONE" : "READY");
 }
 
 async function cancelBenchmark() {
@@ -896,11 +1003,14 @@ async function cancelBenchmark() {
 
 function appendLog(msg, cls) {
   const box = document.getElementById("bench-log");
+  if (!box) return;
+  const ts = new Date().toISOString().slice(11, 19);
   const line = document.createElement("div");
-  if (cls === "error") line.className = "log-error";
-  else if (cls === "warn") line.className = "log-warn";
-  else if (cls === "success") line.className = "log-success";
-  line.textContent = msg;
+  // Mappage : success → ok, error → err, warn → warn, info → (default), blue/slate → slate.
+  // Les class CSS XerOCR sont `.ts`, `.ok`, `.warn`, `.err`, `.blue`, `.slate`.
+  const map = { success: "ok", error: "err", warn: "warn", blue: "blue", slate: "slate" };
+  const lvl = map[cls] || "";
+  line.innerHTML = `<span class="ts">${ts}</span><span${lvl ? ` class="${lvl}"` : ""}>${_escapeHtml(msg)}</span>`;
   box.appendChild(line);
   box.scrollTop = box.scrollHeight;
 }
@@ -1118,8 +1228,12 @@ let _uploadMode = "zip";  // "zip" | "files"
 function switchCorpusTab(tab) {
   document.getElementById("corpus-tab-browse").style.display = tab === "browse" ? "block" : "none";
   document.getElementById("corpus-tab-upload").style.display = tab === "upload" ? "block" : "none";
-  document.getElementById("ctab-browse").classList.toggle("active", tab === "browse");
-  document.getElementById("ctab-upload").classList.toggle("active", tab === "upload");
+  // XerOCR tabs : la class `on` est utilisee par picarones.css.
+  // On garde `active` en parallele pour compat retro.css.
+  const b = document.getElementById("ctab-browse");
+  const u = document.getElementById("ctab-upload");
+  if (b) { b.classList.toggle("on", tab === "browse"); b.classList.toggle("active", tab === "browse"); }
+  if (u) { u.classList.toggle("on", tab === "upload"); u.classList.toggle("active", tab === "upload"); }
   if (tab === "upload") loadUploadedCorpora();
 }
 
@@ -1426,8 +1540,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   onComposeOCRChange();      // Pre-populate Tesseract languages
   loadComposePrompts();       // Pre-load prompt files
   startAutoRefresh();         // Auto-detect new API keys every 10 s
+  _setBenchState("READY");
+  _updateCompetitorCounts();
+  // Hero norm sync on profile change
+  const normSel = document.getElementById("norm-profile");
+  if (normSel) {
+    normSel.addEventListener("change", () => {
+      const h = document.getElementById("hero-norm");
+      if (h) h.textContent = normSel.value || "—";
+    });
+  }
   // Close modal on backdrop click
-  document.getElementById("import-modal").addEventListener("click", e => {
-    if (e.target === document.getElementById("import-modal")) closeImportModal();
-  });
+  const importModal = document.getElementById("import-modal");
+  if (importModal) {
+    importModal.addEventListener("click", e => {
+      if (e.target === importModal) closeImportModal();
+    });
+  }
 });
