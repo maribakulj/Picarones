@@ -139,10 +139,18 @@ const T = {
     bench_synthesis_title: "Synthèse narrative",
     bench_open_report: "Ouvrir le rapport",
     reports_title: "Rapports générés",
+    reports_hero_desc: "Rapports HTML produits par les benchmarks — tri par date.",
     reports_dir_label: "Dossier de rapports",
     reports_refresh: "Rafraîchir",
+    engines_hero_title: "Moteurs",
+    engines_hero_desc: "État des adapters OCR/HTR et providers LLM disponibles dans l'environnement.",
     engines_ocr_title: "Moteurs OCR",
+    engines_ocr_desc: "Tesseract, Pero, Kraken, Calamari, Mistral OCR, Google Vision, Azure DI.",
     engines_llm_title: "LLMs disponibles",
+    engines_llm_desc: "Providers texte / vision configurés via variables d'environnement.",
+    library_hero_title: "Bibliothèque de corpus",
+    library_hero_desc: "Catalogues distants HTR-United et HuggingFace, importables en un clic.",
+    import_modal_desc: "Sélectionnez la destination et le nombre maximum de documents à télécharger.",
     import_htr_title: "Import HTR-United",
     import_htr_desc: "Catalogue communautaire de corpus HTR/OCR pour documents patrimoniaux.",
     htr_demo_badge: "Mode démo",
@@ -254,10 +262,18 @@ const T = {
     bench_synthesis_title: "Narrative synthesis",
     bench_open_report: "Open report",
     reports_title: "Generated reports",
+    reports_hero_desc: "HTML reports produced by benchmarks — sorted by date.",
     reports_dir_label: "Reports directory",
     reports_refresh: "Refresh",
+    engines_hero_title: "Engines",
+    engines_hero_desc: "Status of OCR/HTR adapters and available LLM providers.",
     engines_ocr_title: "OCR Engines",
+    engines_ocr_desc: "Tesseract, Pero, Kraken, Calamari, Mistral OCR, Google Vision, Azure DI.",
     engines_llm_title: "Available LLMs",
+    engines_llm_desc: "Text / vision providers configured via environment variables.",
+    library_hero_title: "Corpus library",
+    library_hero_desc: "Remote HTR-United and HuggingFace catalogues, one-click import.",
+    import_modal_desc: "Pick the destination directory and the maximum number of documents to download.",
     import_htr_title: "Import from HTR-United",
     import_htr_desc: "Community catalogue of HTR/OCR datasets for heritage documents.",
     htr_demo_badge: "Demo mode",
@@ -1019,24 +1035,41 @@ function appendLog(msg, cls) {
 async function loadReports() {
   const dir = document.getElementById("reports-dir").value || ".";
   const container = document.getElementById("reports-list");
-  container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("loading")}</div>`;
+  if (!container) return;
+  container.innerHTML = `<div class="empty">${t("loading")}</div>`;
   try {
     const r = await fetch(`/api/reports?reports_dir=${encodeURIComponent(dir)}`);
     const d = await r.json();
+    const setMeta = (n) => {
+      const a = document.getElementById("reports-aside");
+      const c = document.getElementById("reports-count");
+      if (a) a.textContent = `${n} REPORT${n === 1 ? "" : "S"}`;
+      if (c) c.textContent = n;
+    };
+    setMeta(d.reports.length);
     if (d.reports.length === 0) {
-      container.innerHTML = `<div style="color: var(--text-muted); font-size:12px;">${t("no_reports")}</div>`;
+      container.innerHTML = `<div class="empty">${t("no_reports")}</div>`;
       return;
     }
-    let html = `<table><thead><tr><th>${lang==="fr"?"Fichier":"File"}</th><th>${lang==="fr"?"Taille":"Size"}</th><th>${lang==="fr"?"Modifié":"Modified"}</th><th></th></tr></thead><tbody>`;
+    let html = `<table class="data"><thead><tr>
+      <th>${lang === "fr" ? "Fichier" : "File"}</th>
+      <th class="num-cell">${lang === "fr" ? "Taille" : "Size"}</th>
+      <th>${lang === "fr" ? "Modifié" : "Modified"}</th>
+      <th></th>
+    </tr></thead><tbody>`;
     d.reports.forEach(rep => {
       const date = new Date(rep.modified).toLocaleString(lang === "fr" ? "fr-FR" : "en-US");
-      html += `<tr><td>${rep.filename}</td><td>${rep.size_kb} Ko</td><td>${date}</td>
-        <td><a href="${rep.url}" target="_blank" class="btn btn-primary btn-sm">${lang==="fr"?"Ouvrir":"Open"}</a></td></tr>`;
+      html += `<tr>
+        <td class="mono" style="color:var(--g-700);">${_escapeHtml(rep.filename)}</td>
+        <td class="num-cell">${rep.size_kb} Ko</td>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(date)}</td>
+        <td style="text-align:right;"><a href="${rep.url}" target="_blank" class="btn btn-primary btn-sm">${lang === "fr" ? "Ouvrir" : "Open"}</a></td>
+      </tr>`;
     });
     html += "</tbody></table>";
     container.innerHTML = html;
   } catch(e) {
-    container.innerHTML = `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    container.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -1045,38 +1078,63 @@ async function loadEngines() {
   try {
     const r = await fetch("/api/engines");
     const d = await r.json();
+    _refreshSysCounts(d);
+
+    const setHero = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setHero("engines-count-total", `${d.engines.filter(e => e.available).length}/${d.engines.length}`);
+    setHero("llms-count-total", `${d.llms.filter(l => l.available).length}/${d.llms.length}`);
 
     // OCR
-    let html = `<table><thead><tr><th>ID</th><th>${lang==="fr"?"Nom":"Name"}</th><th>Version</th><th>Statut</th></tr></thead><tbody>`;
+    let html = `<table class="data"><thead><tr>
+      <th>ID</th>
+      <th>${lang === "fr" ? "Nom" : "Name"}</th>
+      <th>Version</th>
+      <th>Statut</th>
+    </tr></thead><tbody>`;
     d.engines.forEach(e => {
-      const cls = e.available ? "badge-ok" : "badge-err";
+      const tagCls = e.available ? "tag-fern" : "tag-clay";
       const lbl = e.available ? t("available") : t("not_installed");
-      html += `<tr><td><code>${e.id}</code></td><td>${e.label}</td><td>${e.version||"—"}</td>
-        <td><span class="badge ${cls}">${lbl}</span></td></tr>`;
+      html += `<tr>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(e.id)}</td>
+        <td style="font-weight:500">${_escapeHtml(e.label)}</td>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(e.version || "—")}</td>
+        <td><span class="tag ${tagCls}">${_escapeHtml(lbl)}</span></td>
+      </tr>`;
     });
     html += "</tbody></table>";
-    document.getElementById("engines-ocr-list").innerHTML = html;
+    const oList = document.getElementById("engines-ocr-list");
+    if (oList) oList.innerHTML = html;
 
     // LLMs
-    let llmHtml = `<table><thead><tr><th>ID</th><th>${lang==="fr"?"Nom":"Name"}</th><th>Statut</th><th>${lang==="fr"?"Détail":"Detail"}</th></tr></thead><tbody>`;
+    let llmHtml = `<table class="data"><thead><tr>
+      <th>ID</th>
+      <th>${lang === "fr" ? "Nom" : "Name"}</th>
+      <th>Statut</th>
+      <th>${lang === "fr" ? "Détail" : "Detail"}</th>
+    </tr></thead><tbody>`;
     d.llms.forEach(e => {
-      const cls = e.available ? "badge-ok" : "badge-warn";
+      const tagCls = e.available ? "tag-fern" : "tag-butter";
       const statusKey = e.status === "configured" ? "configured"
         : e.status === "running" ? "running"
         : e.status === "not_running" ? "not_running"
         : "missing_key";
       const lbl = t(statusKey);
-      let detail = "";
-      if (e.key_env) detail = `<code style="font-size:11px;">${e.key_env}</code>`;
-      if (e.models && e.models.length > 0) detail = e.models.slice(0, 3).join(", ");
-      llmHtml += `<tr><td><code>${e.id}</code></td><td>${e.label}</td>
-        <td><span class="badge ${cls}">${lbl}</span></td><td>${detail}</td></tr>`;
+      let detail = "—";
+      if (e.key_env) detail = `<code class="mono" style="font-size:11px; color:var(--clay-deep);">${_escapeHtml(e.key_env)}</code>`;
+      if (e.models && e.models.length > 0) detail = `<span class="mono" style="font-size:11.5px; color:var(--g-500);">${_escapeHtml(e.models.slice(0, 3).join(", "))}</span>`;
+      llmHtml += `<tr>
+        <td class="mono" style="color:var(--g-500); font-size:11.5px;">${_escapeHtml(e.id)}</td>
+        <td style="font-weight:500">${_escapeHtml(e.label)}</td>
+        <td><span class="tag ${tagCls}">${_escapeHtml(lbl)}</span></td>
+        <td>${detail}</td>
+      </tr>`;
     });
     llmHtml += "</tbody></table>";
-    document.getElementById("engines-llm-list").innerHTML = llmHtml;
+    const lList = document.getElementById("engines-llm-list");
+    if (lList) lList.innerHTML = llmHtml;
   } catch(e) {
-    document.getElementById("engines-ocr-list").innerHTML =
-      `<div style="color: var(--danger); font-size:12px;">Erreur : ${e.message}</div>`;
+    const oList = document.getElementById("engines-ocr-list");
+    if (oList) oList.innerHTML = `<div class="empty" style="color:var(--err);">Erreur : ${_escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -1129,17 +1187,22 @@ async function searchHTRUnited() {
       return;
     }
     container.innerHTML = d.entries.map(e => {
-      const tags = [...e.language, ...e.script].map(s => `<span class="ds-tag">${s}</span>`).join("");
+      const tags = [...e.language, ...e.script]
+        .map(s => `<span class="tag tag-slate">${_escapeHtml(s)}</span>`).join("");
       return `<div class="ds-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <h4>${e.title}</h4>
-          <button class="btn btn-primary btn-sm" onclick="openImportModal('htr', '${e.id}', '${e.title.replace(/'/g,"\\'")}')">
-            ${lang==="fr"?"Importer":"Import"}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div class="ds-name">${_escapeHtml(e.title)}</div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="openImportModal('htr', '${_escapeHtml(e.id)}', '${_escapeHtml(e.title).replace(/'/g, "&#39;")}')">
+            ${lang === "fr" ? "Importer" : "Import"}
           </button>
         </div>
-        <p>${e.description}</p>
-        <p style="color: var(--text-muted);">${e.institution} — ${e.lines.toLocaleString()} ${t("lines")} — ${e.format}</p>
-        <div class="ds-meta">${tags}</div>
+        <div class="ds-desc">${_escapeHtml(e.description)}</div>
+        <div class="ds-meta">
+          <span>${_escapeHtml(e.institution)}</span>
+          <span><b class="num">${e.lines.toLocaleString()}</b> ${t("lines")}</span>
+          <span>${_escapeHtml(e.format)}</span>
+        </div>
+        <div class="ds-tags">${tags}</div>
       </div>`;
     }).join("");
   } catch(e) {
@@ -1162,17 +1225,21 @@ async function searchHuggingFace() {
       return;
     }
     container.innerHTML = d.datasets.map(ds => {
-      const tags2 = ds.tags.slice(0,5).map(s => `<span class="ds-tag">${s}</span>`).join("");
+      const tags2 = ds.tags.slice(0, 5)
+        .map(s => `<span class="tag tag-slate">${_escapeHtml(s)}</span>`).join("");
       return `<div class="ds-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <h4>${ds.title}</h4>
-          <button class="btn btn-primary btn-sm" onclick="openImportModal('hf', '${ds.dataset_id.replace(/'/g,"\\'")}', '${ds.title.replace(/'/g,"\\'")}')">
-            ${lang==="fr"?"Importer":"Import"}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <div class="ds-name">${_escapeHtml(ds.title)}</div>
+          <button class="btn btn-primary btn-sm" type="button" onclick="openImportModal('hf', '${_escapeHtml(ds.dataset_id).replace(/'/g, "&#39;")}', '${_escapeHtml(ds.title).replace(/'/g, "&#39;")}')">
+            ${lang === "fr" ? "Importer" : "Import"}
           </button>
         </div>
-        <p>${ds.description}</p>
-        <p style="color: var(--text-muted);">${ds.institution||ds.dataset_id} ${ds.downloads ? "— " + ds.downloads.toLocaleString() + " téléchargements" : ""}</p>
-        <div class="ds-meta">${tags2}</div>
+        <div class="ds-desc">${_escapeHtml(ds.description)}</div>
+        <div class="ds-meta">
+          <span>${_escapeHtml(ds.institution || ds.dataset_id)}</span>
+          ${ds.downloads ? `<span><b class="num">${ds.downloads.toLocaleString()}</b> ${lang === "fr" ? "téléchargements" : "downloads"}</span>` : ""}
+        </div>
+        <div class="ds-tags">${tags2}</div>
       </div>`;
     }).join("");
   } catch(e) {
@@ -1197,7 +1264,7 @@ async function confirmImport() {
   const outputDir = document.getElementById("import-modal-output").value;
   const maxSamples = parseInt(document.getElementById("import-modal-max").value);
   const statusDiv = document.getElementById("import-modal-status");
-  statusDiv.innerHTML = `<div class="alert alert-info"><span class="spinner"></span> ${lang==="fr"?"Import en cours…":"Importing…"}</div>`;
+  statusDiv.innerHTML = `<div class="surface-flat" style="padding:10px 14px; font-size:12.5px;"><span class="dot busy"></span> ${lang === "fr" ? "Import en cours…" : "Importing…"}</div>`;
 
   try {
     let url, body;
