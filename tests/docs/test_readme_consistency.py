@@ -33,7 +33,6 @@ PR que le README), insérer un commentaire HTML
 from __future__ import annotations
 
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -50,10 +49,6 @@ ENGINES_DIR = REPO_ROOT / "picarones" / "adapters" / "ocr"
 #: Marqueur HTML qui désactive un check sur la ligne. Format :
 #: ``<!-- doc-check: skip-engine -->``, ``skip-cli``, ``skip-endpoint``.
 SKIP_PATTERN = re.compile(r"<!--\s*doc-check:\s*skip-([a-z]+)\s*-->")
-
-#: Tolérance sur le compteur de tests (les PR en cours peuvent ajouter
-#: ou retirer 5 % avant que le README soit mis à jour).
-TEST_COUNT_TOLERANCE_RATIO = 0.05
 
 #: Préfixes de "moteurs" du tableau qui ne sont *pas* des moteurs OCR
 #: (ce sont des LLMs/VLMs utilisés via les pipelines). Ils sont
@@ -328,62 +323,41 @@ def test_listed_endpoints_exist() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. Compteur de tests (M-19, §9.3)
+# 4. Compteur de tests — le README ne pin plus un nombre exact
 # ---------------------------------------------------------------------------
+#
+# Historique : ce test lançait ``subprocess.run([..., "pytest",
+# "--collect-only", ...])`` pour comparer le compteur cité au nombre
+# réel.  Pytest-dans-pytest avec ``--cov`` cause un deadlock sur le
+# lock ``.coverage`` (le commentaire ``-p no:cacheprovider`` + ``--no-cov``
+# documente déjà ce risque).  La stratégie actuelle élimine la classe
+# d'erreur : le README dit ``5000+ tests``, sans nombre figé, et le
+# chiffre exact vit dans le badge CI.
+#
+# Ce test ne fait plus que vérifier qu'aucun compteur exact n'a été
+# réintroduit en prose.
 
 
-def _collected_test_count() -> int:
-    """Retourne le nombre exact de tests collectés par pytest."""
-    # Sprint A5 : ``-p no:cacheprovider`` + ``--no-cov`` évitent les
-    # deadlocks de récursion quand le test parent tourne lui-même sous
-    # ``pytest --cov`` (lock du fichier .coverage).
-    result = subprocess.run(
-        [
-            "python", "-m", "pytest",
-            "--collect-only", "-q",
-            "-p", "no:cacheprovider",
-            "--no-cov",
-            "tests/",
-        ],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        timeout=60,
-    )
-    # La dernière ligne non vide ressemble à "3419 tests collected in 3.32s"
-    for line in reversed(result.stdout.strip().split("\n")):
-        m = re.search(r"(\d+)\s+tests?\s+collected", line)
-        if m:
-            return int(m.group(1))
-    raise RuntimeError(
-        f"Impossible d'extraire le compteur depuis pytest --collect-only.\n"
-        f"stdout: {result.stdout[-500:]}"
-    )
-
-
-def test_readme_test_count_matches_baseline() -> None:
-    """Les phrases « N tests » ou « N passed » dans le README doivent
-    correspondre au compteur réel de pytest, à ``TEST_COUNT_TOLERANCE_RATIO``
-    près (5 % par défaut)."""
+def test_readme_does_not_pin_exact_test_count() -> None:
+    """Le README ne doit plus citer un nombre exact (``5150 tests``,
+    ``5159 passed``, etc.).  La formulation canonique est ``N+ tests``
+    (ex. ``5000+ tests``) pour absorber la dérive OS-dépendante du
+    compteur (4509 vs 4510 selon que tesseract est installé)."""
     text = _read_readme()
-    real = _collected_test_count()
 
-    # Cherche les motifs comme "1242 tests" ou "1242 passed"
-    cited_counts: list[int] = []
-    for m in re.finditer(r"(\d{3,5})\s+(?:tests|passed)\b", text, re.IGNORECASE):
-        cited_counts.append(int(m.group(1)))
-
-    if not cited_counts:
-        pytest.skip("Aucun compteur de tests cité dans le README")
-
-    tolerance = max(1, int(real * TEST_COUNT_TOLERANCE_RATIO))
-    out_of_tolerance = [
-        c for c in cited_counts if abs(c - real) > tolerance
-    ]
-    assert not out_of_tolerance, (
-        f"Le README cite des compteurs de tests divergents du baseline "
-        f"réel ({real}, tolérance ±{tolerance}) : {out_of_tolerance}. "
-        f"Mettre à jour le README ou tolérer via skip-marker."
+    # On accepte ``5000+ tests``, ``5000+ passed`` (avec ou sans
+    # caractères de mise en forme markdown autour).  On refuse
+    # ``5150 tests``, ``~5150 tests``, ``5150 passed``.
+    forbidden_pattern = re.compile(
+        r"(?<!\+)\b(\d{4,5})\s+(?:tests|passed)\b",
+        re.IGNORECASE,
+    )
+    offenders = forbidden_pattern.findall(text)
+    assert not offenders, (
+        f"README cite des compteurs de tests exacts : {offenders}. "
+        "Reformuler en ``N+ tests`` (ex. ``5000+ tests``) — le chiffre "
+        "exact dérive selon l'OS / les binaires installés et vit dans "
+        "le badge CI."
     )
 
 

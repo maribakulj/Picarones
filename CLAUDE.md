@@ -116,15 +116,13 @@ picarones/
 
 ## État des tests et bugs historiques
 
-`pytest tests/` → **5150 passed, 16 skipped, 8 deselected, 2 xfailed, 0 failed**
-(post-audit code-quality, mai 2026).  Les deselected sont les markers
-`live` (5 tests d'intégration contre vraie API/binaire) + `network`
-(3 tests qui hit le réseau réel), opt-in en local via `pytest -m live`
-ou `pytest -m network`.  Le compteur ``passed`` est synchronisé
-automatiquement par `scripts/gen_readme_tables.py` (CI : job
-``sync-counters`` ; local : `make sync-counters-check`).  Le détail
-``skipped``/``xfailed`` peut dériver de ±2 entre éditions et n'est
-pas verrouillé en CI.
+`pytest tests/` → **5000+ tests collectés, 0 failed** (mai 2026).
+Les markers `live` (tests d'intégration contre vraie API/binaire) et
+`network` (tests qui hit le réseau réel) sont opt-in en local via
+`pytest -m live` ou `pytest -m network`.  Le compteur exact dérive
+de ±10 entre OS selon les binaires optionnels installés (tesseract,
+pero-ocr) — c'est le badge CI qui porte le chiffre canonique, pas
+la prose de ce fichier.
 
 NB : utiliser ``python -m pytest tests/`` plutôt que ``pytest tests/``
 directement — l'installation via ``uv tool install pytest`` masque

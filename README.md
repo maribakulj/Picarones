@@ -401,12 +401,14 @@ python -m mypy picarones/domain/    # strict mode (Layer 1)
 python -m mypy picarones/           # lax mode (full tree)
 ```
 
-**Test suite**: ~5150 tests, ~3 min on a modern laptop. Coverage
-floor at 85% (currently ~87%). The `network` marker excludes tests
-requiring live HTTP. A handful of tests depend on optional engines
-(`pero-ocr`, `pytesseract`) and are skipped/fail gracefully when
-those binaries are not installed in the local environment — the CI
-matrix runs them in a fully provisioned image.
+**Test suite**: 5000+ tests, ~3 min on a modern laptop (the exact
+count is published by the CI badge — it drifts ±1 depending on which
+optional engines are installed on the runner). Coverage floor at 85%
+(currently ~87%). The `network` marker excludes tests requiring live
+HTTP. A handful of tests depend on optional engines (`pero-ocr`,
+`pytesseract`) and are skipped/fail gracefully when those binaries
+are not installed in the local environment — the CI matrix runs them
+in a fully provisioned image.
 
 For end-to-end developer guides, see
 [`docs/developer/index.md`](docs/developer/index.md) (FR) /

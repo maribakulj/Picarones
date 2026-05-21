@@ -16,16 +16,27 @@ Ces tests valident :
 
 from __future__ import annotations
 
+import importlib.util
 import re
-import subprocess
-import sys
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "README.md"
 GEN_SCRIPT = REPO_ROOT / "scripts" / "gen_readme_tables.py"
+
+
+def _import_gen_script():
+    """Importe ``scripts/gen_readme_tables.py`` en tant que module,
+    sans subprocess.  Le script lui-même ne lance plus rien (le
+    compteur de tests n'est plus injecté en prose), donc l'appel
+    direct à ``render_readme(check_only=True)`` est sûr et rapide."""
+    spec = importlib.util.spec_from_file_location(
+        "_gen_readme_tables", GEN_SCRIPT,
+    )
+    assert spec and spec.loader, f"Impossible de charger {GEN_SCRIPT}"
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _read_readme() -> str:
@@ -130,30 +141,20 @@ def test_gen_readme_tables_script_exists() -> None:
     )
 
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"),
-    reason=(
-        "gen_readme_tables.py compare le compte de tests collectés ; "
-        "le compte diverge entre OS (tests skip différemment selon "
-        "Windows / Linux / macOS).  Le README est généré et committé "
-        "depuis Linux ; ce test n'est pertinent que sur le même OS."
-    ),
-)
 def test_readme_tables_consistent_with_code() -> None:
-    """``python scripts/gen_readme_tables.py --check`` doit retourner 0
-    (le README est synchronisé avec le code)."""
-    result = subprocess.run(
-        [sys.executable, str(GEN_SCRIPT), "--check"],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        timeout=120,
-    )
-    assert result.returncode == 0, (
-        "Le README diverge du contenu généré par scripts/gen_readme_tables.py.\n"
-        f"stdout: {result.stdout[-500:]}\n"
-        f"stderr: {result.stderr[-500:]}\n"
-        "Lancer ``python scripts/gen_readme_tables.py`` puis committer."
+    """Le README doit être synchronisé avec le contenu généré par
+    ``scripts/gen_readme_tables.py``.
+
+    Appel programmatique direct (pas de ``subprocess.run``) : le script
+    n'invoque plus ``pytest --collect-only`` depuis le retrait du
+    compteur de tests en prose, l'appel direct est donc sûr et n'a
+    plus aucun risque de récursion pytest-dans-pytest."""
+    mod = _import_gen_script()
+    rc = mod.render_readme(check_only=True)
+    assert rc == 0, (
+        "Le README diverge du contenu généré par "
+        "scripts/gen_readme_tables.py.  Lancer le script sans "
+        "``--check`` puis committer."
     )
 
 

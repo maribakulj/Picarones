@@ -22,8 +22,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARCHITECTURE_MD = REPO_ROOT / "docs" / "explanation" / "architecture.md"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
@@ -135,90 +133,48 @@ class TestArchitectureManifestoTruthful:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# 2. Compteurs de tests synchronisés
+# 2. Compteurs de tests — pas de chiffre exact en prose
 # ──────────────────────────────────────────────────────────────────────
+#
+# Historique : ce module comparait ``N tests passed`` cité dans
+# CLAUDE.md / README.md au compte réel via
+# ``subprocess.run([..., "pytest", "--collect-only", ...])``.  Trois
+# problèmes : (a) pytest-dans-pytest avec ``--cov`` deadlocke sur
+# ``.coverage`` ; (b) le compteur réel dérive de ±1 entre OS selon
+# les binaires optionnels installés ; (c) un test qui rate à cause
+# d'un compteur en prose est purement narratif.
+#
+# Stratégie actuelle : la prose dit ``5000+ tests`` (sans nombre
+# exact), le chiffre canonique vit dans le badge CI.  Ces tests
+# verrouillent l'absence de réintroduction d'un compteur exact.
+
+import re
 
 
-class TestTestCountSynced:
-    """Le compteur ``N tests passed`` cité dans CLAUDE.md / README.md
-    doit rester proche du compte réel.
+class TestTestCountInProseRemainsApproximate:
+    """README et CLAUDE.md ne doivent plus citer de compteur de tests
+    exact.  La formulation canonique est ``N+ tests`` / ``N+ passed``
+    (avec le ``+`` qui marque l'approximation)."""
 
-    Le script ``scripts/gen_readme_tables.py`` est censé maintenir la
-    cohérence ; ce test attrape les cas où il n'a pas tourné.
+    _FORBIDDEN = re.compile(
+        r"(?<!\+)\b(\d{4,5})\s+(?:tests|passed)\b",
+        re.IGNORECASE,
+    )
 
-    Tolérance : ``±5`` tests autour du compte réel (un commit peut
-    introduire 1-3 nouveaux tests sans qu'on regenère immédiatement
-    la doc — au-delà, c'est de la dérive).
-    """
-
-    @pytest.fixture
-    def real_test_count(self) -> int:
-        """Count réel des tests collectés par pytest (hors deselected)."""
-        import subprocess
-        import sys
-
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "pytest",
-                "--collect-only", "-q", "--no-cov",
-                "-p", "no:cacheprovider",
-                str(REPO_ROOT / "tests"),
-            ],
-            capture_output=True, text=True, cwd=REPO_ROOT, timeout=60,
-        )
-        # La dernière ligne pertinente : « X tests collected »
-        import re
-        for line in reversed(result.stdout.strip().split("\n")):
-            m = re.search(r"(\d+)\s+tests?\s+collected", line)
-            if m:
-                return int(m.group(1))
-        pytest.fail(
-            f"Impossible d'extraire le compte de pytest --collect-only.\n"
-            f"stdout: {result.stdout[-500:]}\nstderr: {result.stderr[-200:]}"
-        )
-
-    def _extract_count(self, text: str) -> int | None:
-        """Cherche un nombre près du mot ``passed`` dans ``text``."""
-        import re
-        # Matche « 4189 passed » ou « ~4150 tests » ou « 4150 tests passed ».
-        for pattern in (
-            r"\*\*(\d{3,5})\s+passed",
-            r"(\d{3,5})\s+passed",
-            r"~?(\d{3,5})\s+tests",
-        ):
-            m = re.search(pattern, text)
-            if m:
-                return int(m.group(1))
-        return None
-
-    def test_claude_md_count_close_to_reality(
-        self, real_test_count: int,
-    ) -> None:
-        text = CLAUDE_MD.read_text(encoding="utf-8")
-        claimed = self._extract_count(text)
-        assert claimed is not None, (
-            "CLAUDE.md ne contient aucun compteur de tests (``N passed``)."
-        )
-        delta = abs(claimed - real_test_count)
-        assert delta <= 50, (
-            f"CLAUDE.md annonce {claimed} tests, réalité = "
-            f"{real_test_count} (écart = {delta}).  Tolérance ±50.\n"
-            f"Lancer ``python scripts/gen_readme_tables.py`` puis "
-            f"committer."
-        )
-
-    def test_readme_md_count_close_to_reality(
-        self, real_test_count: int,
-    ) -> None:
+    def test_readme_uses_approximate_formulation(self) -> None:
         text = README_MD.read_text(encoding="utf-8")
-        claimed = self._extract_count(text)
-        assert claimed is not None, (
-            "README.md ne contient aucun compteur de tests."
+        offenders = self._FORBIDDEN.findall(text)
+        assert not offenders, (
+            f"README.md cite des compteurs exacts : {offenders}. "
+            "Utiliser ``N+ tests`` (ex. ``5000+ tests``)."
         )
-        delta = abs(claimed - real_test_count)
-        assert delta <= 50, (
-            f"README.md annonce {claimed} tests, réalité = "
-            f"{real_test_count} (écart = {delta})."
+
+    def test_claude_md_uses_approximate_formulation(self) -> None:
+        text = CLAUDE_MD.read_text(encoding="utf-8")
+        offenders = self._FORBIDDEN.findall(text)
+        assert not offenders, (
+            f"CLAUDE.md cite des compteurs exacts : {offenders}. "
+            "Utiliser ``N+ tests`` (ex. ``5000+ tests``)."
         )
 
 

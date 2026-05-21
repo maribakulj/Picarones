@@ -80,9 +80,9 @@ pip install -e ".[dev,web]"
 pytest tests/ -q --tb=short
 ```
 
-À la date du Sprint 21 : **1244 tests passent, 2 sont skip** (dépendance
-scipy optionnelle). Toute contribution doit conserver le statut "0
-failed".
+La suite contient **5000+ tests** (le compteur exact dérive selon les
+binaires optionnels installés ; le badge CI fait foi). Toute
+contribution doit conserver le statut "0 failed".
 
 ## Démo rapide
 

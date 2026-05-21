@@ -19,7 +19,7 @@
 
 ### BDFL / Maintainer principal
 
-À ce stade du projet (mai 2026, ~3 600 tests, 1.x), **Picarones
+À ce stade du projet (mai 2026, 5000+ tests, 1.x), **Picarones
 est maintenu en BDFL** par
 [@maribakulj](https://github.com/maribakulj). Toute décision finale
 sur les contrats d'API publique, les choix éditoriaux (palette,

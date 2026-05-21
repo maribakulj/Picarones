@@ -1,15 +1,13 @@
 """Génère les tableaux Markdown du README depuis le code réel.
 
-Sprint A13 (item M-22 / M-23 / M-25 / M-26 du plan de remédiation).
-
-Ce script remplace les listes manuelles qui dérivaient silencieusement
+Le script remplace les listes manuelles qui dérivaient silencieusement
 (le bug typique : un nouvel engine ajouté → README pas mis à jour →
 ``test_readme_consistency`` casse au prochain CI).
 
 Trois tableaux sont produits :
 
-1. **Engines** : un par fichier ``picarones/engines/*.py`` (hors base /
-   factory / __init__).
+1. **Engines** : un par adapter sous ``picarones/adapters/ocr/`` (hors
+   base / factory / __init__).
 2. **CLI commands** : depuis ``picarones --help``.
 3. **API endpoints** : depuis ``app.openapi()["paths"]``.
 
@@ -17,6 +15,12 @@ Le script écrit chaque tableau dans le README entre des balises HTML
 ``<!-- generated:engines -->`` … ``<!-- /generated:engines -->`` (idem
 ``cli`` et ``endpoints``). En CI, un job re-exécute ce script et
 échoue si le diff Git est non vide — garantissant l'absence de dérive.
+
+Le compteur de tests n'est PAS géré ici : il dérivait selon l'OS et
+les binaires système installés (4509 vs 4510 selon que tesseract est
+présent ou non), donc on l'a sorti de la prose.  La règle actuelle :
+le README dit ``5000+ tests`` (formulation non quantifiée) et le
+chiffre exact vit dans le badge CI / Codecov.
 
 Usage :
 
@@ -30,25 +34,11 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 README = REPO_ROOT / "README.md"
-
-#: Fichiers où ``N tests`` / ``N passed`` est mentionné en prose et
-#: doit converger vers le compte réel.  L'audit doc S60 avait
-#: identifié 5 chiffres divergents dans 5 docs (1072 / 1244 / 3354 /
-#: ~3600 / ~5030).  Liste explicite plutôt qu'un glob — un mainteneur
-#: qui ajoute un nouveau doc doit l'inscrire ici consciemment.
-TEST_COUNT_FILES: tuple[Path, ...] = (
-    README,
-    REPO_ROOT / "CLAUDE.md",
-    REPO_ROOT / "GOVERNANCE.md",
-    REPO_ROOT / "docs" / "developer" / "index.md",
-    REPO_ROOT / "docs" / "developer" / "index.en.md",
-)
 
 # Permet l'invocation du script en subprocess sans avoir besoin
 # d'un ``pip install -e .`` préalable (cas CI / test pytest).
@@ -175,40 +165,6 @@ def build_endpoints_table() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Test count
-# ---------------------------------------------------------------------------
-
-
-def collect_test_count() -> int | None:
-    """Lance ``pytest --collect-only`` et extrait le compteur."""
-    try:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pytest",
-                "--collect-only",
-                "-q",
-                "--no-cov",
-                "-p",
-                "no:cacheprovider",
-                "tests/",
-            ],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            timeout=60,
-        )
-    except subprocess.TimeoutExpired:
-        return None
-    for line in reversed(result.stdout.strip().split("\n")):
-        m = re.search(r"(\d+)\s+tests?\s+collected", line)
-        if m:
-            return int(m.group(1))
-    return None
-
-
-# ---------------------------------------------------------------------------
 # Insertion dans le README
 # ---------------------------------------------------------------------------
 
@@ -234,44 +190,14 @@ def _replace_section(text: str, marker: str, content: str) -> str:
     return new_text
 
 
-def _replace_test_count(text: str, count: int) -> str:
-    """Remplace les mentions ``N tests`` ou ``N passed`` qui citent un
-    nombre dans la fenêtre [count*0.5, count*2]. Garde la formulation
-    exacte (espace, ponctuation) intacte.
-
-    Le count est **arrondi à la cinquantaine inférieure** pour rendre
-    le résultat OS-déterministe : selon les binaires système (tesseract,
-    pero-ocr) installés sur le runner, certains modules de test sont
-    skipés au niveau ``pytest.skip(allow_module_level=True)`` — ce qui
-    soustrait le fichier entier de la collection.  Exemple observé en
-    S8.7 : Linux CI (avec tesseract) collecte 4510 tests, dev local
-    (sans tesseract) en collecte 4509.  Avec un floor à 10 ces deux
-    valeurs divergent (4510 vs 4500) ; avec un floor à 50, elles
-    convergent toutes deux vers 4500.
-
-    Note : utilise ``(count // 50) * 50`` plutôt que
-    ``round(count, -1)``.  Le ``round()`` Python applique le
-    "banker's rounding" (round half to even) qui n'est pas
-    monotone.  Le floor à 50 garde la propriété de monotonie (un
-    ajout de tests ne fait jamais reculer le compteur) tout en
-    absorbant les écarts de ±49 tests entre environnements.
-    """
-    rounded_count = (count // 50) * 50
-
-    def _sub(match: re.Match) -> str:
-        cited = int(match.group(1))
-        # Ne touche pas si le nombre cité est complètement hors plage —
-        # c'est probablement une autre référence (un chiffre dans une
-        # phrase qui parle d'autre chose).
-        if cited < count * 0.5 or cited > count * 2:
-            return match.group(0)
-        return match.group(0).replace(str(cited), str(rounded_count))
-
-    return re.sub(r"(\d{3,5})\s+(?:tests|passed)\b", _sub, text)
-
-
 def render_readme(check_only: bool = False) -> int:
-    """Met à jour les sections générées du README. Retourne 0 ou 1."""
+    """Met à jour les sections générées du README. Retourne 0 ou 1.
+
+    Le compteur de tests n'est plus injecté en prose : il dérivait
+    selon l'OS et les binaires système installés, et la stratégie
+    actuelle est ``5000+ tests`` (formulation non quantifiée) avec le
+    chiffre exact porté par le badge CI.
+    """
     if not README.exists():
         sys.stderr.write(f"README absent : {README}\n")
         return 1
@@ -281,10 +207,6 @@ def render_readme(check_only: bool = False) -> int:
     text = _replace_section(text, "engines", build_engines_table())
     text = _replace_section(text, "cli", build_cli_table())
     text = _replace_section(text, "endpoints", build_endpoints_table())
-
-    count = collect_test_count()
-    if count is not None:
-        text = _replace_test_count(text, count)
 
     if check_only:
         if text != original:
@@ -304,55 +226,6 @@ def render_readme(check_only: bool = False) -> int:
     return 0
 
 
-def render_test_counts(check_only: bool = False) -> int:
-    """Synchronise le compte de tests dans tous les ``TEST_COUNT_FILES``.
-
-    Audit doc S60 : 5 chiffres divergents (1072 / 1244 / 3354 /
-    ~3600 / ~5030) selon les docs.  Cette fonction lit le compte
-    réel via ``pytest --collect-only`` et l'injecte dans chaque
-    fichier de la liste.
-
-    Returns
-    -------
-    int
-        0 si tout est synchronisé, 1 si divergence (en mode check)
-        ou erreur d'écriture.
-    """
-    count = collect_test_count()
-    if count is None:
-        # ``pytest --collect-only`` indisponible (env CI minimal,
-        # virtualenv dégradé).  On ne casse pas le build pour ça.
-        sys.stderr.write(
-            "[gen_readme_tables] collect_test_count indisponible — "
-            "skip mise à jour des compteurs de tests.\n",
-        )
-        return 0
-
-    divergent = False
-    for path in TEST_COUNT_FILES:
-        if not path.exists():
-            continue
-        original = path.read_text(encoding="utf-8")
-        updated = _replace_test_count(original, count)
-        if updated == original:
-            continue
-        divergent = True
-        if check_only:
-            sys.stderr.write(
-                f"[gen_readme_tables] {path.relative_to(REPO_ROOT)} "
-                "diverge du compteur de tests réel.\n",
-            )
-        else:
-            path.write_text(updated, encoding="utf-8")
-            print(
-                f"[gen_readme_tables] {path.relative_to(REPO_ROOT)} "
-                "test count mis à jour.",
-            )
-    if check_only and divergent:
-        return 1
-    return 0
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -361,9 +234,7 @@ def main() -> int:
         help="N'écrit rien ; sort 1 si le README diverge du code généré.",
     )
     args = parser.parse_args()
-    rc_readme = render_readme(check_only=args.check)
-    rc_counts = render_test_counts(check_only=args.check)
-    return rc_readme or rc_counts
+    return render_readme(check_only=args.check)
 
 
 if __name__ == "__main__":
