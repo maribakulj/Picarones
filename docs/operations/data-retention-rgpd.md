@@ -1,7 +1,5 @@
 # Rétention des données et conformité RGPD
 
-> Sprint A11 du plan de remédiation institutionnelle (item M-8).
->
 > Ce document décrit **quelles données Picarones collecte**, **où
 > elles sont stockées**, **combien de temps**, et **comment un
 > usager peut demander leur suppression**.
@@ -52,7 +50,7 @@ export PICARONES_REPORTS_RETENTION_DAYS=180
 
 ## Mécanismes de purge automatique
 
-### Uploads anciens (Sprint A11)
+### Uploads anciens
 
 Le module `picarones.interfaces.web.maintenance` exécute une tâche
 asyncio en arrière-plan qui scanne `uploads/` toutes les 6 heures
@@ -71,7 +69,7 @@ upload <id> (last access: <date>)`.
 
 ### IP du rate-limiter
 
-Le `RateLimiter` (Sprint 24) garde les compteurs en mémoire, fenêtre
+Le `RateLimiter` garde les compteurs en mémoire, fenêtre
 glissante. Aucune persistance disque — les IP disparaissent au
 redémarrage et au-delà de la fenêtre de rate limit.
 
@@ -156,7 +154,7 @@ traitement.
 - Mettre à jour votre registre de traitements en mentionnant
   explicitement le sous-traitant.
 
-Le **mode public** (`PICARONES_PUBLIC_MODE=1`, Sprint 24) refuse
+Le **mode public** (`PICARONES_PUBLIC_MODE=1`) refuse
 automatiquement les engines cloud — utile pour un déploiement
 public où les uploads ne sont pas filtrés.
 
@@ -206,7 +204,7 @@ En cas de difficulté ou de désaccord :
 
 ## Tests automatisés
 
-Le test `tests/web/test_upload_retention.py` (Sprint A11) valide
+Le test `tests/web/test_upload_retention.py` valide
 que :
 
 - la purge auto efface les uploads > N jours ;
@@ -215,4 +213,4 @@ que :
 
 ---
 
-*Dernière mise à jour : 2 mai 2026 (Sprint A11).*
+*Dernière mise à jour : 2 mai 2026.*

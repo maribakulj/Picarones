@@ -1,12 +1,12 @@
 # Déclaration d'accessibilité — Picarones
 
-> Sprint A7 du plan de remédiation institutionnelle
-> ([`docs/archive/2026-audits/remediation-plan.md`](docs/archive/2026-audits/remediation-plan.md)).
+> Déclaration d'engagement Picarones vis-à-vis du standard WCAG 2.1
+> AA et de la norme française RGAA 4.1.  Contexte historique :
+> [`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md).
 >
-> **Statut au 2 mai 2026** : audit interne Sprints A6 + A7 validé,
-> audit externe RGAA / WCAG **en cours** (planifié au Sprint A15).
-> Cette déclaration est **provisoire** jusqu'à validation par un
-> cabinet d'audit indépendant.
+> **Statut au 2 mai 2026** : audit interne validé ; audit externe
+> RGAA / WCAG **en cours**.  Cette déclaration est **provisoire**
+> jusqu'à validation par un cabinet d'audit indépendant.
 
 ## Engagement
 
@@ -28,7 +28,7 @@ qu'elle génère accessibles conformément à :
 
 ## État de conformité
 
-### Critères WCAG 2.1 niveau A — **conforme** (Sprint A6)
+### Critères WCAG 2.1 niveau A — **conforme**
 
 | Critère | Statut | Mécanisme |
 |---|---|---|
@@ -39,7 +39,7 @@ qu'elle génère accessibles conformément à :
 | 3.1.1 Language of Page | ✓ | `<html lang="fr|en">` dynamique selon le rendu. |
 | 4.1.2 Name, Role, Value | ✓ | Contrôles natifs, labels ARIA appropriés. |
 
-### Critères WCAG 2.1 niveau AA — **conforme** (Sprint A7)
+### Critères WCAG 2.1 niveau AA — **conforme**
 
 | Critère | Statut | Mécanisme |
 |---|---|---|
@@ -65,7 +65,7 @@ légale. Sont actuellement non conformes par décision éditoriale :
 
 ### Palette daltonien-friendly (par défaut)
 
-Depuis Sprint A7, la palette par défaut est **Okabe-Ito 2008**
+La palette par défaut est **Okabe-Ito 2008**
 (palette qualitative recommandée pour la déficience de la vision
 des couleurs : deutéranopie, protanopie, tritanopie). L'ancienne
 palette rouge/vert/jaune reste accessible via :
@@ -97,9 +97,9 @@ captions de tableaux jumeaux) sont localisés dans les deux langues.
 
 | Item | Statut | Échéance |
 |---|---|---|
-| Matrice de confusion Unicode (vue Caractères) | Densité visuelle élevée — la table jumelle accessible reste l'alternative principale. | Refonte UX prévue Sprint post-A14. |
+| Matrice de confusion Unicode (vue Caractères) | Densité visuelle élevée — la table jumelle accessible reste l'alternative principale. | Refonte UX planifiée (cf. backlog). |
 | Génération PDF du rapport | Non livrée (cf. [`../reference/specification.md`](../reference/specification.md) « Promesses non tenues »). | Pas de plan d'ajout, le HTML couvre les usages observés. |
-| Audit RGAA externe | En cours, prestataire à contractualiser. | Sprint A15 (~sem. 11–12). |
+| Audit RGAA externe | En cours, prestataire à contractualiser. | Prochain trimestre. |
 
 ## Tests automatisés
 
@@ -131,7 +131,7 @@ pouvez :
 1. ouvrir une issue GitHub étiquetée ``a11y`` :
    <https://github.com/maribakulj/Picarones/issues/new?labels=a11y>,
 2. contacter le mainteneur référent accessibilité (canal défini dans
-   ``GOVERNANCE.md`` après Sprint A10).
+   ``GOVERNANCE.md``).
 
 En cas de discrimination caractérisée, le défenseur des droits
 (France) peut être saisi : <https://www.defenseurdesdroits.fr/>.
@@ -140,8 +140,8 @@ En cas de discrimination caractérisée, le défenseur des droits
 
 - Audit interne automatisé : à chaque PR via la CI.
 - Audit interne manuel (NVDA / VoiceOver) : à chaque release majeure.
-- **Audit externe RGAA / WCAG complet** : annuel, premier audit prévu
-  Sprint A15 (mai 2026).
+- **Audit externe RGAA / WCAG complet** : annuel, premier audit
+  prévu mi-2026.
 
 ## Remerciements
 
@@ -151,4 +151,4 @@ permission de diffusion ouverte.
 
 ---
 
-*Dernière mise à jour : 2 mai 2026 (Sprint A7).*
+*Dernière mise à jour : 2 mai 2026.*

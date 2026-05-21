@@ -1,7 +1,7 @@
 # Procédure de rollback
 
-> Sprint S6.11 — guide opérationnel pour rétrograder une version
-> Picarones en production institutionnelle.
+> Guide opérationnel pour rétrograder une version Picarones en
+> production institutionnelle.
 
 Audience : équipe ops BnF / autres institutions.
 

@@ -1,7 +1,5 @@
 # Déploiement institutionnel — Picarones
 
-> Sprint A11 du plan de remédiation institutionnelle (item M-7).
->
 > Ce guide cible les **DSI de bibliothèques nationales et services
 > d'archives** qui souhaitent héberger Picarones sur leur propre
 > infrastructure (intranet, derrière SSO, avec stockage centralisé)
@@ -16,7 +14,7 @@
 
 - **Linux x86_64 ou ARM64** (Debian 12+, RHEL 9+, Ubuntu 22.04+
   LTS, Rocky 9+).
-- **Python 3.11 ou 3.12** (3.13 informationnel — Sprint A1).
+- **Python 3.11 ou 3.12** (3.13 informationnel).
 - **Tesseract OCR ≥ 5.3** (avec packs `fra`, `lat`, `eng` au
   minimum).
 - **3 GB RAM par worker** (le ProcessPool spawne un sous-processus
@@ -65,7 +63,7 @@ HuggingFace Space. Le reverse proxy ajoute l'authentification
 ```
 
 Notes :
-- **PostgreSQL** : `JobStore` (Sprint 25) utilise SQLite par défaut.
+- **PostgreSQL** : `JobStore` utilise SQLite par défaut.
   Pour PostgreSQL, dériver une classe `PostgresJobStore` qui
   implémente la même API (`create_job`, `update_progress`,
   `get_job`, etc.). À défaut, partager la BD SQLite via NFS ne
@@ -96,7 +94,7 @@ PICARONES_RATE_LIMIT_PER_HOUR=0   # 0 = illimité (le SSO gère l'identité)
 # Persistance
 PICARONES_JOBS_DB=/var/lib/picarones/jobs.sqlite
 
-# RGPD (Sprint A11)
+# RGPD
 PICARONES_UPLOAD_RETENTION_DAYS=7
 PICARONES_LOG_IP_RETENTION_HOURS=24
 ```
@@ -189,7 +187,7 @@ curl http://localhost:7860/api/status
 ```
 
 Les jobs `running` au moment du snapshot sont automatiquement
-marqués `interrupted` au redémarrage (Sprint 26). Le tableau de
+marqués `interrupted` au redémarrage. Le tableau de
 bord sera donc cohérent.
 
 ## Migration de schéma BD
@@ -239,11 +237,11 @@ qui expose :
 - `picarones_uploads_size_bytes_total`
 - `picarones_engine_invocations_total{engine="..."}`
 
-Voir `docs/operations/observability.md` (à venir Sprint A11+).
+Voir `docs/operations/observability.md`.
 
 ### Healthcheck
 
-Un endpoint `/health` minimal (Sprint A4 / M-3) répond en < 50 ms
+Un endpoint `/health` minimal répond en < 50 ms
 sans toucher à la BD ni aux engines. Configurer le LB pour le
 cibler avec un timeout court (5 s).
 
@@ -305,4 +303,4 @@ uniquement** (jamais sur le filesystem en clair). Voir [`SECURITY.md`](../../SEC
 
 ---
 
-*Dernière mise à jour : 2 mai 2026 (Sprint A11).*
+*Dernière mise à jour : 2 mai 2026.*

@@ -1,10 +1,10 @@
 # Procédure de release
 
-> Sprint A9 du plan de remédiation institutionnelle
-> ([`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md)).
-> Étendu au Sprint S6 (déploiement institutionnel BnF).
+> Procédure pour publier une release Picarones (PyPI + Docker + GitHub
+> Release).  Contexte historique :
+> [`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md).
 
-## Pré-requis avant tout tag (Sprint S6)
+## Pré-requis avant tout tag
 
 | Vérif | Commande | Cible |
 |---|---|---|
@@ -20,7 +20,7 @@
 
 Pour un déploiement BnF (mode institutionnel), s'assurer que les
 variables d'environnement de production sont prêtes **avant** de
-tagger.  L'app refuse de démarrer sans (Sprint S6.9).
+tagger.  L'app refuse de démarrer sans.
 
 | Variable | Public (HF Space) | Institutionnel |
 |---|---|---|
@@ -163,7 +163,7 @@ Checklist 30 min après la fin du workflow :
       sans erreur et expose `/health`.
 - [ ] La GitHub Release affiche bien les release notes attendues.
 - [ ] `cffconvert --validate` confirme que `CITATION.cff` cite la
-      bonne version (Sprint A12+).
+      bonne version.
 
 ## Annexe : rollback complet
 
