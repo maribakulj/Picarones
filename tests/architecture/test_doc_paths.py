@@ -148,7 +148,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Sprint H.4 du CHANGELOG qui mentionne le chemin de
 # ``benchmark_runner.py`` (module supprimé).  La mention documente
 # l'historique du module et n'est pas corrigée volontairement.
-BROKEN_PATHS_BASELINE = 164
+#: Phase 1 D3 (juin 2026) : 164 → 41.  L'archivage du CHANGELOG
+#: pré-v2.0 vers ``docs/archive/changelog-pre-v2.md`` retire 123
+#: chemins cassés historiques du périmètre actif.  Les 41 restants
+#: sont presque tous dans ``docs/audits/*.md`` (à archiver en D4) et
+#: ``CHANGELOG.md`` actif (refs Sprint H.4/H.6, intouchables sans
+#: réécrire l'historique 2.0).
+BROKEN_PATHS_BASELINE = 41
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (
@@ -157,6 +163,18 @@ DOC_GLOBS: tuple[str, ...] = (
     "CHANGELOG.md",
     "SPECS.md",
     "docs/**/*.md",
+)
+
+#: Sous-dossiers exclus du scan : les archives historiques peuvent
+#: contenir des chemins vers du code supprimé (c'est précisément ce
+#: pour quoi elles sont archivées).  Compter ces chemins dans le
+#: ratchet empêcherait la décroissance — toute migration ne ferait
+#: que déplacer la dette, pas la résorber.  L'exclusion est explicite
+#: pour qu'un mainteneur futur sache que les archives ne sont PAS un
+#: échappatoire silencieux pour la doc active.
+EXCLUDED_PATH_PREFIXES: tuple[str, ...] = (
+    "docs/archive/",     # nouveau (Phase 1 D3 / D4)
+    "docs/archives/",    # ancien nom (sera consolidé en D4)
 )
 
 #: Pattern minimal d'un chemin Python dans le repo.
@@ -179,7 +197,14 @@ def _doc_files() -> list[Path]:
     files: list[Path] = []
     for glob in DOC_GLOBS:
         files.extend(REPO_ROOT.glob(glob))
-    return sorted({f for f in files if f.is_file()})
+    return sorted({
+        f for f in files
+        if f.is_file()
+        and not any(
+            f.relative_to(REPO_ROOT).as_posix().startswith(prefix)
+            for prefix in EXCLUDED_PATH_PREFIXES
+        )
+    })
 
 
 def _broken_paths() -> list[tuple[str, str]]:
