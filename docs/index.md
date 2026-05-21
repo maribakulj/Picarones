@@ -50,8 +50,8 @@ Vous ajoutez un adapter, une vue, une métrique, un détecteur narratif.
 4. Étendre un sous-système :
    [glossaire](developer/extending-glossary.md) ([EN](developer/extending-glossary.en.md)) ·
    [i18n](developer/extending-i18n.md) ([EN](developer/extending-i18n.en.md)) ·
-   [moteur narratif](developer/narrative-engine.md) ([EN](developer/narrative-engine.en.md))
-5. Écrire un module pour le banc d'essai : [`user/writing-a-pipeline-module.md`](user/writing-a-pipeline-module.md)
+   [moteur narratif](explanation/narrative-engine.md) ([EN](explanation/narrative-engine.en.md))
+5. Écrire un module pour le banc d'essai : [`tutorials/writing-a-pipeline-module.md`](tutorials/writing-a-pipeline-module.md)
 
 ### …un mainteneur ou auditeur de sécurité
 
@@ -63,7 +63,7 @@ Vous évaluez Picarones avant un déploiement, un audit, une revue.
 3. Threat model STRIDE : [`security/threat-model.md`](security/threat-model.md)
 4. API publique stable et politique de versioning : [`reference/api-stable.md`](reference/api-stable.md)
 5. Audits historiques : [`audits/`](audits/)
-6. État du rewrite et migration : [`migration/rewrite-status-s46.md`](migration/rewrite-status-s46.md)
+6. État du rewrite et migration : [`archives/migration/rewrite-status-s46.md`](archives/migration/rewrite-status-s46.md)
 7. Reproductibilité bit-for-bit : [`reference/reproducibility-snapshots.md`](reference/reproducibility-snapshots.md)
 
 ### …un Délégué à la Protection des Données (DPO)
@@ -146,15 +146,18 @@ Vous évaluez les implications RGPD avant signature.
 
 ## Conventions
 
-- **Une seule arborescence canonique post-rewrite** :
-  `domain → formats → evaluation → pipeline → adapters → app → reports_v2 → interfaces`.
-  L'arbo legacy `picarones/{cli,web,engines,llm,pipelines,report}/`
-  reste exécutable mais n'accepte plus de nouveau code.
+- **Une seule arborescence canonique (v2.0)** :
+  `domain → formats → evaluation → pipeline → adapters → app → reports → interfaces`.
+  Les paquets legacy ont été supprimés en mai 2026.
 - **Tout chemin `picarones/.../X.py` cité dans la doc doit exister**.
-  Vérifié par `tests/architecture/test_doc_paths.py` (baseline 73,
-  doit décroître).
-- **Les chiffres en prose qui dépendent de l'état du code** (compte
-  de tests, nombre d'adapters) sont régénérés par
-  `scripts/gen_readme_tables.py` — modifier le code, pas la doc.
-- **Cohérence FR/EN** : un fichier `xxx.md` en FR + un fichier
-  `xxx.en.md` en EN miroir.  Pas de fragments mêlés.
+  Vérifié par `tests/architecture/test_doc_paths.py` (ratchet
+  strictement décroissant).
+- **Les tableaux générés** (engines, CLI, endpoints) sont régénérés
+  par `scripts/gen_readme_tables.py` — modifier le code, pas la doc.
+  Les compteurs en prose (nombre de tests, etc.) utilisent la
+  formulation approximative `N+ tests` pour absorber la dérive
+  OS-dépendante ; le chiffre exact vit dans le badge CI.
+- **Cohérence FR/EN** : la langue canonique est le français.  Une
+  surface EN réduite est listée dans
+  `tests/docs/test_translation_parity.py::TRANSLATION_PAIRS` —
+  toute paire FR/EN doit y figurer.
