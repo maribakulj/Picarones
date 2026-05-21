@@ -1,7 +1,7 @@
 # Déclaration d'accessibilité — Picarones
 
 > Sprint A7 du plan de remédiation institutionnelle
-> ([`docs/audits/remediation-plan-2026-05.md`](docs/audits/remediation-plan-2026-05.md)).
+> ([`docs/archive/2026-audits/remediation-plan.md`](docs/archive/2026-audits/remediation-plan.md)).
 >
 > **Statut au 2 mai 2026** : audit interne Sprints A6 + A7 validé,
 > audit externe RGAA / WCAG **en cours** (planifié au Sprint A15).

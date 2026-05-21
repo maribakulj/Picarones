@@ -142,7 +142,7 @@ l'AST de chaque fichier et bloque toute violation au merge.
 > (``picarones/{core,measurements,engines,llm,pipelines,
 > report,modules}``) cohabite encore et est en train de
 > disparaître phase par phase.  Cf.
-> [`docs/migration/legacy-retirement-plan.md`](docs/migration/legacy-retirement-plan.md)
+> [`docs/archive/2026-migration/legacy-retirement-plan.md`](docs/archive/2026-migration/legacy-retirement-plan.md)
 > pour le statut et le calendrier.  Tout nouveau code va
 > dans l'arborescence canonique ; les chemins legacy
 > existants sont des shims minimaux destinés à être
@@ -820,11 +820,11 @@ Trois documents complémentaires pilotent l'évolution :
 
 - [`CHANGELOG.md`](CHANGELOG.md) — historique sprint par sprint,
   format Keep a Changelog.
-- [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md) —
-  roadmap technique 2026+ (axes A et B : nouvelles métriques et
-  pipelines composables).
-- [`docs/audits/`](docs/audits/) — audits institutionnels et
-  plans de remédiation (sprints A1 à A15 du plan en cours).
+- [`docs/roadmap/backlog.md`](docs/roadmap/backlog.md) — backlog
+  vivant des chantiers post-v2.0.
+- [`docs/archive/`](docs/archive/) — audits institutionnels,
+  plans de remédiation pré-v2.0, roadmap historique
+  (`2026-roadmap/evolution.md`), changelog pré-v2.0.
 
 L'**état du plan institutionnel** au 2 mai 2026 :
 

@@ -1,7 +1,7 @@
 # Gouvernance — Picarones
 
 > Sprint A10 du plan de remédiation institutionnelle
-> ([`docs/audits/remediation-plan-2026-05.md`](docs/audits/remediation-plan-2026-05.md)).
+> ([`docs/archive/2026-audits/remediation-plan.md`](docs/archive/2026-audits/remediation-plan.md)).
 >
 > Ce document explicite **comment Picarones est maintenu et fait
 > évoluer** : qui décide, à quelle cadence, avec quels engagements de

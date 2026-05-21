@@ -140,7 +140,7 @@ est enfin accessible aux utilisateurs.
 
 ### Migration utilisateur
 
-Cf. `docs/migration/option_b_user_guide.md` pour le mapping complet
+Cf. `docs/archive/2026-migration/option-b-user-guide.md` pour le mapping complet
 des paramètres legacy → `RunSpec`, 4 cas concrets (corpus mémoire,
 partial_dir resume, NER attach, cancellation), et calendrier de
 retrait phasé.

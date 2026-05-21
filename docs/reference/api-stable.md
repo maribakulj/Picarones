@@ -163,7 +163,7 @@ canonique pour lancer un benchmark.  Deux modes :
 
 Le module legacy ``benchmark_runner.py`` (entry point
 ``run_benchmark_via_service``) a été supprimé.  Voir
-``docs/migration/option_b_user_guide.md`` pour le mapping.
+``docs/archive/2026-migration/option-b-user-guide.md`` pour le mapping.
 
 ### `picarones.evaluation.metric_registry`
 

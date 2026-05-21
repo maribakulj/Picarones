@@ -1,7 +1,7 @@
 # Procédure de release
 
 > Sprint A9 du plan de remédiation institutionnelle
-> ([`docs/audits/remediation-plan-2026-05.md`](../audits/remediation-plan-2026-05.md)).
+> ([`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md)).
 > Étendu au Sprint S6 (déploiement institutionnel BnF).
 
 ## Pré-requis avant tout tag (Sprint S6)

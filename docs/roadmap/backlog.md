@@ -1,6 +1,6 @@
 # Backlog post-livraison
 
-> **Garde-fou de discipline du rewrite ciblé** (cf. `docs/roadmap/rewrite-2026.md`).
+> **Garde-fou de discipline du rewrite ciblé** (cf. `docs/archive/2026-roadmap/rewrite.md`).
 >
 > Tout ce qui apparaît ici est **explicitement hors scope** des sprints
 > S1–S26. Ces items pourront revenir dans le scope après la livraison à
@@ -221,7 +221,7 @@ courante). Pas un sprint dédié.
   doit attendre.
 - **Ne pas retirer** un item juste parce qu'on a envie de le faire ;
   attendre que le rewrite l'absorbe officiellement (auquel cas il
-  apparaîtra dans `docs/roadmap/rewrite-2026.md`).
+  apparaîtra dans `docs/archive/2026-roadmap/rewrite.md`).
 - **Référencer** ce fichier dans les PRs qui retirent du scope du
   README ou de la documentation utilisateur.
 

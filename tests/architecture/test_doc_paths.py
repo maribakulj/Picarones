@@ -150,11 +150,20 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # l'historique du module et n'est pas corrigée volontairement.
 #: Phase 1 D3 (juin 2026) : 164 → 41.  L'archivage du CHANGELOG
 #: pré-v2.0 vers ``docs/archive/changelog-pre-v2.md`` retire 123
-#: chemins cassés historiques du périmètre actif.  Les 41 restants
-#: sont presque tous dans ``docs/audits/*.md`` (à archiver en D4) et
-#: ``CHANGELOG.md`` actif (refs Sprint H.4/H.6, intouchables sans
-#: réécrire l'historique 2.0).
-BROKEN_PATHS_BASELINE = 41
+#: chemins cassés historiques du périmètre actif.
+#: Phase 1 D4 (juin 2026) : 41 → 6.  Les dossiers ``docs/audits/``,
+#: ``docs/migration/``, ``docs/archives/migration/``, et la roadmap
+#: pré-v2.0 ont été consolidés sous ``docs/archive/``.  Les 35
+#: chemins cassés qu'ils portaient sortent du périmètre actif (cf.
+#: ``EXCLUDED_PATH_PREFIXES`` ci-dessous).
+#:
+#: Les 6 chemins restants sont dans la doc active :
+#: - CHANGELOG.md (4) : refs Sprint H.4/H.6 dans la section
+#:   migration v2.0 (intouchables sans réécrire l'historique 2.0) ;
+#: - SPECS.md (1) : exemple YAML legacy à corriger en Phase 2 ou v2.1 ;
+#: - docs/explanation/architecture.md (1) : ref historique au shim
+#:   ``picarones/pipeline/spec.py`` supprimé en Sprint S7.
+BROKEN_PATHS_BASELINE = 6
 
 #: Patrons de fichiers de documentation à scanner.
 DOC_GLOBS: tuple[str, ...] = (

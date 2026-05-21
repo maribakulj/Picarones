@@ -17,7 +17,7 @@ pinned: false
 consolidation.  The core (corpus, runner, metrics, HTML report) is
 usable to compare transcription pipelines on a ground-truth corpus.
 A targeted rewrite (see
-[`docs/roadmap/rewrite-2026.md`](docs/roadmap/rewrite-2026.md))
+[`docs/archive/2026-roadmap/rewrite.md`](docs/archive/2026-roadmap/rewrite.md))
 rebuilds the orchestration layer and evaluation views for a stable
 2.0 release by the end of 2026.
 
@@ -341,7 +341,7 @@ sub-packages (`adapters/legacy_engines/`, `adapters/legacy_pipelines/`,
 `interfaces/{cli,web}/_legacy/`). See
 [`docs/explanation/architecture.md`](docs/explanation/architecture.md)
 for the full manifesto and migration history under
-`docs/archives/migration/`.
+`docs/archive/2026-migration/`.
 
 ---
 
@@ -436,12 +436,12 @@ Detailed history and current direction live in:
 
 - [`CHANGELOG.md`](CHANGELOG.md) — Keep a Changelog format,
   one entry per sprint up to the latest release.
-- [`docs/roadmap/evolution-2026.md`](docs/roadmap/evolution-2026.md) —
-  technical evolution roadmap (axes A and B for 2026+).
-- [`docs/roadmap/rewrite-2026.md`](docs/roadmap/rewrite-2026.md) —
-  targeted rewrite plan (S1–S26) restructuring orchestration around
-  `Pipeline → Artifacts → Projection → EvaluationView`. Target: end of 2026.
-- [`docs/audits/`](docs/audits/) — internal audit notes ; [`BACKLOG_POST_LIVRAISON.md`](BACKLOG_POST_LIVRAISON.md) — promises **not** in scope.
+- [`docs/roadmap/backlog.md`](docs/roadmap/backlog.md) — live backlog
+  for current work.
+- [`docs/archive/`](docs/archive/) — historical artefacts:
+  pre-v2.0 roadmap (`2026-roadmap/`), institutional audits
+  (`2026-audits/`), rewrite/migration plans (`2026-migration/`),
+  pre-v2.0 changelog (`changelog-pre-v2.md`).
 
 **Honest status (May 2026).** Several items historically presented as
 "institutional readiness complete" are not at the level the README

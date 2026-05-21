@@ -62,8 +62,8 @@ Vous évaluez Picarones avant un déploiement, un audit, une revue.
    ([EN](../SECURITY.en.md))
 3. Threat model STRIDE : [`security/threat-model.md`](security/threat-model.md)
 4. API publique stable et politique de versioning : [`reference/api-stable.md`](reference/api-stable.md)
-5. Audits historiques : [`audits/`](audits/)
-6. État du rewrite et migration : [`archives/migration/rewrite-status-s46.md`](archives/migration/rewrite-status-s46.md)
+5. Audits historiques : [`archive/2026-audits/`](archive/2026-audits/)
+6. État du rewrite et migration : [`archive/2026-migration/rewrite-status-s46.md`](archive/2026-migration/rewrite-status-s46.md)
 7. Reproductibilité bit-for-bit : [`reference/reproducibility-snapshots.md`](reference/reproducibility-snapshots.md)
 
 ### …un Délégué à la Protection des Données (DPO)
@@ -137,10 +137,9 @@ Vous évaluez les implications RGPD avant signature.
 
 | Document | Sujet |
 |----------|-------|
-| [`/CHANGELOG.md`](../CHANGELOG.md) | Journal des versions (Keep-a-Changelog) |
-| [`audits/`](audits/) | Audits historiques figés |
-| [`migration/`](migration/) | Notes de migration entre versions majeures |
-| [`roadmap/`](roadmap/) | Plans stratégiques |
+| [`/CHANGELOG.md`](../CHANGELOG.md) | Journal des versions actives (post-v2.0) |
+| [`archive/`](archive/) | Documents archivés (audits, migration, roadmap pré-v2.0, changelog historique) |
+| [`roadmap/backlog.md`](roadmap/backlog.md) | Backlog vivant |
 
 ---
 

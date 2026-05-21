@@ -186,14 +186,18 @@ def test_readme_under_500_lines() -> None:
     )
 
 
-def test_readme_links_to_audits() -> None:
-    """Le README doit pointer vers ``docs/audits/`` pour la traçabilité
-    des plans de remédiation (M-21 : suppression de Known Issues
-    obsolète + redirection vers audits)."""
+def test_readme_links_to_archive() -> None:
+    """Le README doit pointer vers ``docs/archive/`` pour la
+    traçabilité des plans de remédiation et des audits historiques.
+
+    Depuis Phase 1 D4, l'ancien chemin ``docs/audits/`` a été
+    consolidé vers ``docs/archive/2026-audits/``.  La règle de
+    traçabilité subsiste : le README doit toujours pointer vers les
+    artefacts archivés."""
     text = _read_readme()
-    assert "docs/audits" in text, (
-        "README doit linker vers docs/audits/ pour les rapports "
-        "d'audit institutionnels."
+    assert "docs/archive" in text, (
+        "README doit linker vers docs/archive/ pour les rapports "
+        "d'audit historiques et les plans de migration."
     )
 
 

@@ -1,7 +1,7 @@
 # Cohérence documentation — contrat d'écriture
 
 > Sprint A2 du plan de remédiation institutionnelle
-> ([`docs/audits/remediation-plan-2026-05.md`](../audits/remediation-plan-2026-05.md)).
+> ([`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md)).
 
 Picarones expose plusieurs documents de premier contact (README.md,
 SPECS.md, CHANGELOG.md, CITATION.cff, …). Pour qu'un primo-lecteur

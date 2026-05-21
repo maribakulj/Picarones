@@ -11,7 +11,7 @@
 les paquets pré-rewrite ainsi que leurs sous-paquets transitoires
 ont été supprimés au cours des sprints A-H.  Pour le détail
 historique, voir le [CHANGELOG section 2.0.0](../../CHANGELOG.md)
-et [`docs/archives/migration/`](../archives/migration/).
+et [`docs/archive/2026-migration/`](../archive/2026-migration/).
 
 Toute documentation, tout commentaire qui mentionne « deux
 arborescences » ou « legacy en cours de retrait » est obsolète.
@@ -248,8 +248,10 @@ publication scientifique.
 
 L'évolution de l'architecture est documentée :
 
-- Plans : [`docs/roadmap/evolution-2026.md`](../roadmap/evolution-2026.md)
+- Backlog vivant : [`docs/roadmap/backlog.md`](../roadmap/backlog.md)
 - Plans archivés (migration legacy → rewrite, terminée à v2.0) :
-  [`docs/archives/migration/`](../archives/migration/)
-- Audits institutionnels : [`docs/audits/`](../audits/)
+  [`docs/archive/2026-migration/`](../archive/2026-migration/)
+- Roadmap historique pré-v2.0 :
+  [`docs/archive/2026-roadmap/`](../archive/2026-roadmap/)
+- Audits institutionnels : [`docs/archive/2026-audits/`](../archive/2026-audits/)
 - Politique d'API publique : [`docs/reference/api-stable.md`](../reference/api-stable.md)

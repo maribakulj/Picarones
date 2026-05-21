@@ -96,15 +96,9 @@ nav:
       - developer/extending-i18n.md
       - developer/doc-consistency.md
   - Roadmap:
-      - roadmap/evolution-2026.md
-      - roadmap/rewrite-2026.md
       - roadmap/backlog.md
-  - Audits:
-      - audits/institutional-readiness-2026-05.md
-      - audits/remediation-plan-2026-05.md
-  - Migration:
-      - migration/rewrite-status-s46.md
-      - migration/executor-equivalence.md
+  - Archive:
+      - archive/README.md
   - Case studies:
       - case-studies/README.md
       - case-studies/01-registres-paroissiaux.md
