@@ -57,9 +57,8 @@ exercé en pratique.
 - Tests automatisés axe-core sur la SPA.
 - Navigation complète clavier validée par utilisateur empêché.
 
-**État actuel** : `docs/operations/accessibility.md` documente l'intention. Les
-améliorations Sprint 25 (extraction du JS inline vers
-`web-app.js`) sont un pas dans la bonne direction mais ne suffisent
+**État actuel** : `docs/operations/accessibility.md` documente l'intention. L'extraction
+récente du JS inline vers `web-app.js` est un pas dans la bonne direction mais ne suffit
 pas à revendiquer la conformité.
 
 ### 1.5 Sécurité — pentest externe
@@ -70,8 +69,8 @@ pas à revendiquer la conformité.
 - Validation de la sandbox `validated_path` / `compute_workspace_roots`
   par un attaquant compétent.
 
-**État actuel** : Sprint A14-S1 a comblé les 6 P0 connus mais
-l'absence d'audit externe nous interdit d'affirmer l'absence d'autres
+**État actuel** : les 6 P0 connus ont été comblés mais l'absence
+d'audit externe nous interdit d'affirmer l'absence d'autres
 vecteurs.
 
 ---
@@ -114,7 +113,7 @@ exister à la livraison BnF.
   dossier isolé par session/run.
 - Schemas DTO (Pydantic) séparés des modèles de domaine.
 
-→ Sprint S19 du rewrite.
+→ Chantier post-v2.0.
 
 ### 2.4 Suppression de la dette d'imports magiques
 
@@ -124,11 +123,11 @@ exister à la livraison BnF.
 - Entry points Python pour les modules tiers (`picarones.metrics`,
   `picarones.adapters`).
 
-→ Sprint S5 + S20 du rewrite.
+→ Chantier post-v2.0.
 
 ### 2.5b Migration des adapters restants
 
-Le Sprint S11 a migré 5 LLM (base + openai/mistral/anthropic/ollama)
+5 LLM (base + openai/mistral/anthropic/ollama) ont été migrés
 + 2 corpus importers (htr_united, huggingface) + 1 helper privé
 (_fallback_log).  L'ancien emplacement est un re-export.
 
@@ -145,7 +144,7 @@ déplacement de `core.corpus` vers `domain/` (sprint dédié).
 
 ### 2.5c Migration des fichiers `measurements/*.py` restants vers `evaluation/metrics/`
 
-Le Sprint S10 a migré 23 fichiers de calcul autonomes.  17 fichiers
+23 fichiers de calcul autonomes ont été migrés.  17 fichiers
 restent dans `picarones/evaluation/metrics/` à migrer.
 
 **Catégorie B — utilisent `@register_metric`** (singleton global
@@ -206,7 +205,7 @@ courante). Pas un sprint dédié.
 - Cache d'artefacts intermédiaires côté pipeline executor.
 - Parallélisation inter-étapes au sein d'une même pipeline.
 - Vue HTML drag-and-drop pour composer un pipeline (le DAG render
-  Sprint 95 est de l'inspection, pas de la construction).
+  actuel est de l'inspection, pas de la construction).
 - Score composite personnel persisté côté serveur (pour l'instant
   uniquement URL state côté client).
 - Plugin system PyPI pour modules contribués (`picarones-module-X`).
@@ -225,4 +224,4 @@ courante). Pas un sprint dédié.
 - **Référencer** ce fichier dans les PRs qui retirent du scope du
   README ou de la documentation utilisateur.
 
-Dernière revue : Sprint A14-S2 (rewrite ciblé, étape 0).
+Dernière revue : mai 2026.

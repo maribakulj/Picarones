@@ -1,6 +1,7 @@
 # Politique de modules contribués
 
-> Sprint 97 — B.6 du plan d'évolution 2026.
+> Cadre de qualité applicable aux modules contribués sur le banc
+> d'essai Picarones (axe B du plan d'évolution).
 
 Ce document décrit le **cadre de qualité** applicable à tout module
 qu'un utilisateur tiers veut faire évaluer dans une pipeline composée
@@ -14,7 +15,7 @@ qu'un module soit acceptable.
 
 Pour qu'un module soit acceptable :
 
-1. Il **hérite** de `picarones.domain.module_protocol.BaseModule` (Sprint 33).
+1. Il **hérite** de `picarones.domain.module_protocol.BaseModule`.
 2. Il déclare ses `input_types` et `output_types` (parmi
    `ArtifactType.{IMAGE, TEXT, ALTO, PAGE, ENTITIES, READING_ORDER}`).
 3. Il fournit un `ModuleManifest` avec **5 champs obligatoires** :
@@ -80,7 +81,7 @@ manifest = ModuleManifest(
 ## Contrat `BaseModule`
 
 Tout module exécutable hérite de
-`picarones.domain.module_protocol.BaseModule` (Sprint 33). Le contrat minimal
+`picarones.domain.module_protocol.BaseModule`. Le contrat minimal
 est :
 
 ```python

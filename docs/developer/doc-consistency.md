@@ -1,7 +1,8 @@
 # Cohérence documentation — contrat d'écriture
 
-> Sprint A2 du plan de remédiation institutionnelle
-> ([`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md)).
+> Contrat d'écriture pour maintenir la cohérence entre la doc et le
+> code.  Contexte historique :
+> [`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md).
 
 Picarones expose plusieurs documents de premier contact (README.md,
 docs/reference/specification.md, CHANGELOG.md, CITATION.cff, …). Pour qu'un primo-lecteur
@@ -38,7 +39,7 @@ Vérifie que :
 
 **Direction unidirectionnelle** : on vérifie que ce qui est *annoncé*
 existe — pas que tout ce qui existe est annoncé. La direction réciproque
-est posée en Sprint A13 (refonte intégrale du README).
+sera posée lors d'une refonte intégrale du README ultérieure.
 
 ### `test_specs_consistency.py`
 
@@ -112,7 +113,7 @@ de la mention :
 
 ```markdown
 La recommandation automatique (§7.1) est **abandonnée** au profit du
-moteur narratif factuel (Sprint 19) ; cf. la note de neutralité
+moteur narratif factuel ; cf. la note de neutralité
 éditoriale dans CLAUDE.md.
 ```
 
@@ -137,9 +138,9 @@ automatiquement en CI à chaque PR. Un échec bloque le merge.
 
 ---
 
-## À venir (Sprint A13)
+## À venir
 
-La refonte du README en Sprint A13 ajoutera de la **génération
+Une future refonte intégrale du README ajoutera de la **génération
 automatique** : les tableaux d'engines / CLI / endpoints / structure
 projet seront générés depuis le code via `scripts/gen_readme_tables.py`,
 insérés dans le README via des balises HTML

@@ -72,7 +72,7 @@ normalisé.  Dépend du domain ; aucune logique d'évaluation.
 Le parser XML interne (`_xml_utils.safe_parse_xml`) délègue à
 `defusedxml` avec `forbid_dtd=True`, bloquant XXE, Billion Laughs
 et déclarations `<!DOCTYPE>`.  Les défenses sont verrouillées par
-`tests/security/test_xxe_attack.py` (Sprint S1.4).
+`tests/security/test_xxe_attack.py`.
 
 ### `picarones/evaluation/` — moteurs d'évaluation
 
@@ -130,7 +130,7 @@ produit un artefact texte que `evaluation/` consommera).
 **Anti-SSRF** : `corpus/_http.py:validate_http_url` refuse
 loopback, lien-local, RFC 1918, métadonnées cloud (AWS
 `169.254.169.254`, GCP `metadata.google.internal`).  Verrouillé par
-`tests/security/test_ssrf_attack.py` (Sprint S1.6).
+`tests/security/test_ssrf_attack.py`.
 
 ### `picarones/app/` — services applicatifs
 
@@ -176,7 +176,7 @@ citer.
 helper `_safe_json_for_script_tag` qui encode `<>&` en
 `<>&` pour le JSON injecté dans
 `<script type="application/json">`.  Verrouillé par
-`tests/security/test_xss_in_reports.py` (Sprint S1.1).
+`tests/security/test_xss_in_reports.py`.
 
 ### `picarones/interfaces/` — points d'entrée user-facing
 
@@ -226,7 +226,7 @@ de code humaine raterait :
 
 ### Tests de sécurité comme verrous de défense
 
-Sprint S1 a ajouté 63 tests d'attaque qui verrouillent les
+63 tests d'attaque verrouillent les
 défenses revendiquées :
 
 - `tests/security/test_xss_in_reports.py` (5) — autoescape Jinja2 + escape JSON.

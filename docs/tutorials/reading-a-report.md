@@ -139,8 +139,6 @@ LibreOffice.
 
 ## Mode `--lazy-images` pour les corpus volumineux
 
-Sprint A5 (item M-16 de l'audit institutionnel).
-
 Par défaut, le rapport HTML est un **fichier unique** transportable :
 toutes les images sont embarquées en base64 dans le HTML lui-même.
 C'est pratique pour partager un rapport par e-mail ou pour archivage,

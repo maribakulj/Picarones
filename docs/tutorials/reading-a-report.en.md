@@ -27,15 +27,15 @@ A report is structured as **5 main views** (tabs in the navigation):
 
 Above the tabs, you'll find:
 
-- The **factual narrative synthesis** (Sprint 19): 3–5 sentences
+- The **factual narrative synthesis**: 3–5 sentences
   summarizing the salient facts (global leader, statistical ties,
   outliers, regression flags). Every number cited in the synthesis
   is traceable to the underlying JSON data — no LLM, no
   hallucination risk.
-- The **Critical Difference Diagram** (Sprint 18, Demšar 2006):
+- The **Critical Difference Diagram** (Demšar 2006):
   visual representation of which engines are statistically
   indistinguishable.
-- The **Pareto front** (Sprint 20): cost vs CER trade-off analysis.
+- The **Pareto front**: cost vs CER trade-off analysis.
 
 ## Suggested reading order
 
@@ -44,8 +44,8 @@ Above the tabs, you'll find:
 2. **Look at the CDD**: if all engines are connected by a single
    horizontal bar, your corpus does not discriminate them
    sufficiently — increase the corpus or refine its homogeneity.
-3. **Open the ranking** sorted by CER median (default since
-   Sprint 44). Identify the leader and the gap to second place.
+3. **Open the ranking** sorted by CER median (default).
+   Identify the leader and the gap to second place.
 4. **Switch to Gallery** and click on the "Worst cases" filter to
    see what specifically goes wrong.
 5. **For an OCR+LLM pipeline**: open Document view and toggle the
@@ -72,9 +72,9 @@ on `picarones run` and `picarones report`.
 
 ## `--lazy-images` mode for large corpora
 
-Sprint A5 (item M-16). By default, the HTML report is a **single
-file** transportable: all images are embedded as base64 within the
-HTML. Convenient for sharing by email, but the file becomes heavy
+By default, the HTML report is a **single file** transportable: all
+images are embedded as base64 within the HTML. Convenient for
+sharing by email, but the file becomes heavy
 beyond ~50 documents:
 
 | Corpus size | Inline HTML | Lazy HTML |

@@ -19,9 +19,9 @@ picarones/domain/narrative/
 
 ## Ajouter un détecteur
 
-> **Sprint 29** : un nouveau détecteur ne demande plus que **deux**
-> fichiers à toucher (au lieu de quatre avant le sprint). Le décorateur
-> `@register_detector` se charge de l'enregistrement, du tri par
+> Un nouveau détecteur ne demande que **deux** fichiers à toucher.
+> Le décorateur `@register_detector` se charge de l'enregistrement,
+> du tri par
 > priorité, et de l'alimentation de `arbiter.DEFAULT_TYPE_ORDER`.
 
 ### 1. Déclarer le type de fait
@@ -217,7 +217,7 @@ Si la synthèse ne contient pas votre fait, vérifiez :
 
 ---
 
-## Politique éditoriale (Sprint 23)
+## Politique éditoriale
 
 L'arbitre départage les faits d'**égale importance** par un ordre canonique
 des types : c'est un choix éditorial qui répond à la question *« quand A et
@@ -251,7 +251,7 @@ inverse — vitesse et coût d'abord, qualité ensuite.
 
 ### Surcharger l'ordre sans patcher le code
 
-Depuis le Sprint 23, `select_facts` accepte un argument optionnel
+`select_facts` accepte un argument optionnel
 `type_order` :
 
 ```python
@@ -283,9 +283,9 @@ Cas d'usage typiques :
 - **Évaluation budgétaire** : promouvoir `COST_OUTLIER` et
   `PARETO_ALTERNATIVE` en tête.
 
-### Règle anti-hallucination renforcée (Sprint 23)
+### Règle anti-hallucination renforcée
 
-Avant le Sprint 23, le test de traçabilité des nombres tolérait deux
+Le test de traçabilité des nombres tolérait initialement deux
 littéraux non-traçables au payload (`95` pour le seuil de l'IC, `100`
 comme tolérance numérique). Cette whitelist est désormais vide :
 

@@ -324,22 +324,18 @@ def test_mkdocs_nav_excludes_archive_subdirs() -> None:
 # ─────────────────────────────────────────────────────────────────────
 
 
-#: Nombre de mentions narratives sprint dans la doc active au
-#: moment de la mise en place du garde-fou (Phase 1 D7, juin 2026).
-#: Le test verrouille que ce compteur ne PEUT plus augmenter ; toute
-#: PR de nettoyage qui en retire doit baisser ce baseline du même
-#: montant (ratchet strictement décroissant).
+#: Cible atteinte (Phase 2 — convergence narrative, juin 2026).
+#: La doc active ne contient plus aucune mention narrative
+#: « Sprint XX » : passage de 88 (baseline initial) → 0 par
+#: reformulation par intention dans 24 fichiers, sans perte de
+#: contenu technique.
 #:
-#: Ces 88 mentions sont concentrées dans :
-#: - docs/reference/views.md (15) : narration historique des sprints
-#:   de définition des vues — à reformuler en contrat actuel ;
-#: - docs/reference/{alto,text,comparing}-view.md (5 chacun) ;
-#: - docs/operations/{deployment,accessibility,release-process}.md ;
-#: - docs/explanation/architecture.md (4 refs « Sprint S1.x ») ;
-#: - quelques fichiers à la racine (README, GOVERNANCE, SECURITY).
-#:
-#: Cible : 0 (Phase 2 — convergence narrative, lot D9 à prévoir).
-ACTIVE_NARRATIVE_BASELINE = 23
+#: Ratchet maintenu = 0.  Toute PR qui réintroduirait de la
+#: narration sprint en prose dans la doc active fait échouer
+#: ``test_no_active_doc_contains_sprint_narrative``.  La double
+#: assertion (≥ et ≤ 0) impose qu'on garde le compteur à 0 — pas
+#: de tolérance.
+ACTIVE_NARRATIVE_BASELINE = 0
 
 
 def test_no_active_doc_contains_sprint_narrative() -> None:

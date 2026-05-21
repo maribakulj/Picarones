@@ -127,7 +127,7 @@ progression SSE, et l'export du rapport HTML.
 picarones history --engine tesseract --corpus mon_corpus_xviii
 ```
 
-Consulte l'historique SQLite des runs (Sprint 8). Affiche l'évolution
+Consulte l'historique SQLite des runs. Affiche l'évolution
 longitudinale du CER pour un moteur sur un corpus donné.
 
 ### `picarones robustness`
