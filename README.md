@@ -411,8 +411,10 @@ are not installed in the local environment — the CI matrix runs them
 in a fully provisioned image.
 
 For end-to-end developer guides, see
-[`docs/developer/index.md`](docs/developer/index.md) (FR) /
-[`docs/developer/index.en.md`](docs/developer/index.en.md) (EN).
+[`docs/developer/index.md`](docs/developer/index.md) (canonical
+documentation is in French; English surface is limited to README,
+CONTRIBUTING, SECURITY, ACCESSIBILITY, and the
+`reading-a-report` tutorial).
 
 ### Conventions
 
@@ -464,7 +466,7 @@ experimental demonstrator and the CLI as the supported interface.
 | Audience | Entry point |
 |----------|-------------|
 | **End user** | [`docs/tutorials/reading-a-report.md`](docs/tutorials/reading-a-report.md) ([EN](docs/tutorials/reading-a-report.en.md)) |
-| **Developer** | [`docs/developer/index.md`](docs/developer/index.md) ([EN](docs/developer/index.en.md)) |
+| **Developer** | [`docs/developer/index.md`](docs/developer/index.md) |
 | **Operations / DSI** | [`docs/operations/deployment-institutional.md`](docs/operations/deployment-institutional.md), [`docs/operations/data-retention-rgpd.md`](docs/operations/data-retention-rgpd.md), [`docs/operations/release-process.md`](docs/operations/release-process.md) |
 | **Architect** | [`docs/explanation/architecture.md`](docs/explanation/architecture.md), [`docs/reference/api-stable.md`](docs/reference/api-stable.md) |
 | **Researcher** | [`docs/case-studies/`](docs/case-studies/), [`docs/reference/reproducibility-snapshots.md`](docs/reference/reproducibility-snapshots.md) |

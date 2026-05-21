@@ -98,6 +98,8 @@ relative path and loaded by the browser on-demand
 ## Further reading
 
 - [Glossary] (embedded in report, accessible via `?` icons)
-- [docs/explanation/narrative-engine.en.md](../developer/narrative-engine.en.md) — adding a detector
-- [docs/developer/extending-glossary.en.md](../developer/extending-glossary.en.md) — enriching the glossary
+- [docs/explanation/narrative-engine.md](../explanation/narrative-engine.md)
+  — adding a detector (French canonical)
+- [docs/developer/extending-glossary.md](../developer/extending-glossary.md)
+  — enriching the glossary (French canonical)
 - [SPECS.md](../../SPECS.md) — full project specifications

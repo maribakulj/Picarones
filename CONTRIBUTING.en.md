@@ -58,7 +58,7 @@ accessibility audits.
 - **Bare `except Exception: pass`** — replace by
   `logger.warning("[module] degraded feature: %s", e)`.
 - **Hardcoded UI strings** — use the i18n mechanism (see
-  `docs/developer/extending-i18n.en.md`).
+  `docs/developer/extending-i18n.md` — French canonical).
 - **Commits with `--no-verify`** — bypassing pre-commit hooks is
   detected by the CI `precommit.yml` workflow (Sprint A1).
 

@@ -48,9 +48,9 @@ Vous ajoutez un adapter, une vue, une métrique, un détecteur narratif.
 2. Architecture en cercles : [`explanation/architecture.md`](explanation/architecture.md)
 3. Politique modules contribués : [`developer/module-policy.md`](developer/module-policy.md)
 4. Étendre un sous-système :
-   [glossaire](developer/extending-glossary.md) ([EN](developer/extending-glossary.en.md)) ·
-   [i18n](developer/extending-i18n.md) ([EN](developer/extending-i18n.en.md)) ·
-   [moteur narratif](explanation/narrative-engine.md) ([EN](explanation/narrative-engine.en.md))
+   [glossaire](developer/extending-glossary.md) ·
+   [i18n](developer/extending-i18n.md) ·
+   [moteur narratif](explanation/narrative-engine.md)
 5. Écrire un module pour le banc d'essai : [`tutorials/writing-a-pipeline-module.md`](tutorials/writing-a-pipeline-module.md)
 
 ### …un mainteneur ou auditeur de sécurité

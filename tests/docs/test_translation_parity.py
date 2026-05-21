@@ -15,15 +15,16 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-# Couples (FR, EN) à valider. Sprint A11 livre les 5 prioritaires ;
-# d'autres viendront dans des sprints ultérieurs.
+# Surface EN canonique du projet.  La politique éditoriale (cf.
+# ``docs/index.md``) est : langue canonique = français, surface EN
+# réduite à l'entrée du projet (README), aux fichiers institutionnels
+# (CONTRIBUTING, SECURITY) et au tutoriel le plus exposé
+# (reading-a-report).  Tout autre fichier ``X.en.md`` créé sans
+# être inscrit ici est considéré comme orpheline et le test
+# ``test_no_orphan_en_md`` ci-dessous le rejette.
 TRANSLATION_PAIRS: list[tuple[str, str]] = [
     ("docs/tutorials/reading-a-report.md", "docs/tutorials/reading-a-report.en.md"),
-    ("docs/developer/index.md", "docs/developer/index.en.md"),
-    ("docs/explanation/narrative-engine.md", "docs/explanation/narrative-engine.en.md"),
     ("SECURITY.md", "SECURITY.en.md"),
-    ("docs/developer/extending-glossary.md", "docs/developer/extending-glossary.en.md"),
-    ("docs/developer/extending-i18n.md", "docs/developer/extending-i18n.en.md"),
     ("CONTRIBUTING.md", "CONTRIBUTING.en.md"),
 ]
 
@@ -137,4 +138,44 @@ def test_translation_pairs_listed_actually_exist() -> None:
     assert not missing, (
         f"Fichiers FR listés mais absents : {missing}. "
         f"Mettre à jour TRANSLATION_PAIRS si la doc canonique a bougé."
+    )
+
+
+def test_no_en_md_outside_translation_pairs() -> None:
+    """Tout fichier ``X.en.md`` présent dans le repo doit être listé
+    dans ``TRANSLATION_PAIRS``.
+
+    Sans ce test, on peut créer une traduction EN « libre » sans
+    contrat éditorial (pas de marqueur ``translation:``, pas de
+    parité de structure vérifiée).  C'est exactement la classe de
+    fuite qui avait laissé survivre ``extending-glossary.en.md``,
+    ``extending-i18n.en.md``, ``developer/index.en.md`` et
+    ``narrative-engine.en.md`` en dehors de la politique annoncée.
+
+    Effet : ajouter un ``.en.md`` exige d'ajouter sa paire dans
+    ``TRANSLATION_PAIRS``, ce qui force le marqueur et la parité.
+    """
+    listed_en = {en for _, en in TRANSLATION_PAIRS}
+
+    en_files: list[str] = []
+    for en in REPO_ROOT.glob("**/*.en.md"):
+        if any(part.startswith(".") or part == "__pycache__"
+               for part in en.parts):
+            continue
+        # Exclure les archives — elles peuvent contenir des EN
+        # historiques sans engagement éditorial.
+        rel = en.relative_to(REPO_ROOT).as_posix()
+        if "docs/archive/" in rel or "docs/archives/" in rel:
+            continue
+        en_files.append(rel)
+
+    extra = sorted(set(en_files) - listed_en)
+    assert not extra, (
+        "Fichiers ``.en.md`` présents mais NON listés dans "
+        "``TRANSLATION_PAIRS`` :\n  "
+        + "\n  ".join(extra)
+        + "\n\n→ Soit les inscrire dans TRANSLATION_PAIRS (et leur "
+        "ajouter un marqueur ``<!-- translation: ... -->``), soit "
+        "les supprimer.  La politique éditoriale n'autorise pas de "
+        "traduction EN « libre »."
     )
