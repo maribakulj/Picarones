@@ -1,4 +1,4 @@
-# Profils de calcul — chantier 2 post-Sprint 97
+# Profils de calcul
 
 Picarones expose **7 profils de calcul** qui modulent les métriques
 calculées par le runner selon le use case. Chaque profil active un
@@ -55,10 +55,10 @@ Active les 12 hooks document-level historiques :
 | `line_metrics` | 10 | `line_metrics` | Distribution CER + Gini |
 | `hallucination` | 10 | `hallucination_metrics` | Détection VLM |
 | `calibration` | 42 | `calibration_metrics` | ECE/MCE (si confidences) |
-| `philological` | 61 | `philological_metrics` | 6 modules (Sprints 55-60) |
-| `searchability` | 86 | `searchability_metrics` | Fuzzy recall (Sprint 84) |
-| `numerical_sequences` | 86 | `numerical_sequence_metrics` | Sprint 85 |
-| `readability` | 87 | `readability_metrics` | Δ Flesch (Sprint 52) |
+| `philological` | 61 | `philological_metrics` | 6 modules philologiques |
+| `searchability` | 86 | `searchability_metrics` | Fuzzy recall |
+| `numerical_sequences` | 86 | `numerical_sequence_metrics` | Repérage et alignement de séquences numériques |
+| `readability` | 87 | `readability_metrics` | Δ Flesch |
 
 12 agrégateurs corpus-level correspondants remplissent les attributs
 `aggregated_*` de chaque `EngineReport`.

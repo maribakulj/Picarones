@@ -1,9 +1,8 @@
 # Lire les 3 vues canoniques ensemble
 
-Sprint A14-S16 livre la troisième vue canonique du rewrite ciblé :
-`SearchView`.  Avec `TextView` (S14) et `AltoView` (S15), on a
-maintenant **trois lentilles complémentaires** pour évaluer un
-même pipeline.
+`TextView`, `AltoView` et `SearchView` forment **trois lentilles
+complémentaires** pour évaluer un même pipeline OCR sur un corpus
+patrimonial.
 
 ## Le tableau des 3 vues
 
@@ -110,8 +109,8 @@ cette grille de lecture :
 
 ## Statut
 
-- ✅ Sprint S14 — `TextView`
-- ✅ Sprint S15 — `AltoView`
-- ✅ Sprint S16 — `SearchView` + cohérence inter-vues
-- ⏳ Sprint S17 — intégration runner + RunManifest
-- ⏳ Sprint S18 — tests E2E sur le cas BnF central
+- ✅ `TextView`
+- ✅ `AltoView`
+- ✅ `SearchView` + cohérence inter-vues
+- ⏳ Intégration runner + RunManifest
+- ⏳ Tests E2E sur le cas BnF central

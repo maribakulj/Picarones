@@ -1,7 +1,5 @@
 # Snapshots de reproductibilité
 
-> Sprint A8 (item M-12 du plan de remédiation).
-
 ## Pourquoi des snapshots ?
 
 Pour qu'un benchmark Picarones soit **citable scientifiquement**, un
@@ -116,7 +114,7 @@ git checkout 17cc5474abc
 
 ### Étape 2 — Récréer l'environnement Python
 
-Sprint A8 livre les lock files :
+Picarones livre des lock files :
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -167,7 +165,7 @@ Différences possibles légitimes :
   plus tard peut donner d'autres résultats. Le snapshot des prompts
   reste utile mais ne reproduit pas le LLM lui-même.
 
-## Snapshot et publication scientifique (préparation Sprint A12)
+## Snapshot et publication scientifique
 
 Pour un papier scientifique, citer Picarones doit indiquer :
 
@@ -208,13 +206,13 @@ reproductible (cf. Stodden et al., *Computational reproducibility*).
 
 ## Tests
 
-`tests/report/test_reproducibility_snapshots.py` (Sprint 27)
+`tests/report/test_reproducibility_snapshots.py`
 valide que `snapshot_all()` est :
 
 - déterministe (même input → même bytes en sortie),
 - complet (toutes les clés top-level présentes),
 - robuste (ne crashe pas si git absent, si pricing.yaml manquant…).
 
-`tests/test_reproducibility_ops.py` (Sprint A8) ajoute la validation
+`tests/test_reproducibility_ops.py` ajoute la validation
 de la chaîne **lock file + Docker digest + snapshot** comme contrat
 opérationnel.

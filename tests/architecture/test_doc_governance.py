@@ -339,7 +339,7 @@ def test_mkdocs_nav_excludes_archive_subdirs() -> None:
 #: - quelques fichiers à la racine (README, GOVERNANCE, SECURITY).
 #:
 #: Cible : 0 (Phase 2 — convergence narrative, lot D9 à prévoir).
-ACTIVE_NARRATIVE_BASELINE = 59
+ACTIVE_NARRATIVE_BASELINE = 23
 
 
 def test_no_active_doc_contains_sprint_narrative() -> None:

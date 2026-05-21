@@ -1,9 +1,8 @@
 # TextView — première vue canonique
 
-Sprint A14-S14 du rewrite ciblé livre `TextView`, la première vue
-d'évaluation canonique.  Elle répond à la question patrimoniale la
-plus fréquente : **"quel pipeline produit le meilleur texte
-final ?"**
+`TextView` est la première vue d'évaluation canonique.  Elle répond
+à la question patrimoniale la plus fréquente : **"quel pipeline
+produit le meilleur texte final ?"**
 
 ## Cas d'usage central BnF
 
@@ -137,8 +136,8 @@ ViewResult(
 
 ## Statut
 
-- ✅ Sprint S14 — `TextView` livré (codé + testé)
-- ⏳ Sprint S15 — `AltoView` (fidélité documentaire)
-- ⏳ Sprint S16 — `SearchView` (recherchabilité fuzzy)
-- ⏳ Sprint S17 — intégration runner + RunManifest
-- ⏳ Sprint S18 — tests E2E sur le cas BnF central avec 3 pipelines
+- ✅ `TextView` (codé + testé)
+- ✅ `AltoView` (fidélité documentaire)
+- ✅ `SearchView` (recherchabilité fuzzy)
+- ⏳ Intégration runner + RunManifest
+- ⏳ Tests E2E sur le cas BnF central avec 3 pipelines

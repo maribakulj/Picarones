@@ -1,12 +1,12 @@
 # AltoView — fidélité documentaire ALTO
 
-Sprint A14-S15 du rewrite ciblé livre `AltoView`, la deuxième vue
-canonique.  Elle répond à la question : **"quel pipeline produit
-le meilleur ALTO exploitable ?"**
+`AltoView` est la deuxième vue canonique.  Elle répond à la
+question : **"quel pipeline produit le meilleur ALTO
+exploitable ?"**
 
 ## Distinct de TextView
 
-| Aspect | TextView (S14) | AltoView (S15) |
+| Aspect | TextView | AltoView |
 |---|---|---|
 | Question | "meilleur texte final ?" | "meilleur ALTO exploitable ?" |
 | Types acceptés | RAW_TEXT, CORRECTED_TEXT, ALTO, PAGE, CANONICAL | ALTO_XML uniquement |
@@ -107,7 +107,7 @@ Reportées à des sprints suivants :
 
 ## Statut
 
-- ✅ Sprint S15 — `AltoView` livré (3 métriques + pattern d'omission)
-- ⏳ Sprint S16 — `SearchView` (recherchabilité fuzzy)
-- ⏳ Sprint S17 — intégration runner + RunManifest
-- ⏳ Sprint S18 — tests E2E sur le cas BnF central
+- ✅ `AltoView` (3 métriques + pattern d'omission)
+- ✅ `SearchView` (recherchabilité fuzzy)
+- ⏳ Intégration runner + RunManifest
+- ⏳ Tests E2E sur le cas BnF central

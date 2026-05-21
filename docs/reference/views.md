@@ -1,8 +1,8 @@
-# Vues HTML du rapport — chantier 3 post-Sprint 97
+# Vues HTML du rapport
 
-Le rapport HTML Picarones est composé de **5 vues principales** historiques
-(navigables via la nav top) et de **3 nouvelles vues thématiques** (chantier 3)
-qui s'affichent comme cartes dans la vue `analyses`.
+Le rapport HTML Picarones est composé de **5 vues principales** (navigables
+via la nav top) et de **3 vues thématiques** qui s'affichent comme cartes
+dans la vue `analyses`.
 
 Toutes les vues sont **adaptive** : une vue/section ne s'affiche que si elle
 a du signal à montrer (au moins une sous-section avec données exploitables).
@@ -33,32 +33,31 @@ pleine largeur, avec un patron commun :
 Si `some_html` est `""` (adaptive masking parce qu'aucune donnée), la
 carte n'apparaît pas.
 
-### Sous-sections historiques (Sprints 5+10+39+42+55-60+86+87+89)
+### Sous-sections principales
 
-| Bloc | Origine | Données nécessaires |
-|---|---|---|
-| Distribution CER | Sprint 2 | toujours |
-| Radar profil moteur | Sprint 2 | ≥ 1 moteur |
-| CER par document | Sprint 2 | toujours |
-| Temps d'exécution | Sprint 2 | durations propagées |
-| Qualité image ↔ CER | Sprint 5 | `aggregated_image_quality` |
-| Taxonomie | Sprint 5 | `aggregated_taxonomy` |
-| Courbes de fiabilité | Sprint 7 | `aggregated_calibration` |
-| NER (P/R/F1) | Sprint 41 | `aggregated_ner` (opt-in spaCy) |
-| Calibration ECE/MCE | Sprint 43 | `aggregated_calibration` |
-| Stratification | Sprint 46 | `script_type` par doc |
-| Profil philologique | Sprint 62 | `aggregated_philological` |
-| Recherchabilité fuzzy | Sprint 86 | `aggregated_searchability` |
-| Séquences numériques | Sprint 86 | `aggregated_numerical_sequences` |
-| Lisibilité (Δ Flesch) | Sprint 87 | `aggregated_readability` |
-| Spécialisation inter-moteurs | Sprint 89 | ≥ 2 moteurs avec taxonomie |
-| Analyse inter-moteurs | Sprint 37 | ≥ 2 moteurs |
-| Matrice de corrélation | Sprint 7 | toujours |
+| Bloc | Données nécessaires |
+|---|---|
+| Distribution CER | toujours |
+| Radar profil moteur | ≥ 1 moteur |
+| CER par document | toujours |
+| Temps d'exécution | durations propagées |
+| Qualité image ↔ CER | `aggregated_image_quality` |
+| Taxonomie | `aggregated_taxonomy` |
+| Courbes de fiabilité | `aggregated_calibration` |
+| NER (P/R/F1) | `aggregated_ner` (opt-in spaCy) |
+| Calibration ECE/MCE | `aggregated_calibration` |
+| Stratification | `script_type` par doc |
+| Profil philologique | `aggregated_philological` |
+| Recherchabilité fuzzy | `aggregated_searchability` |
+| Séquences numériques | `aggregated_numerical_sequences` |
+| Lisibilité (Δ Flesch) | `aggregated_readability` |
+| Spécialisation inter-moteurs | ≥ 2 moteurs avec taxonomie |
+| Analyse inter-moteurs | ≥ 2 moteurs |
+| Matrice de corrélation | toujours |
 
-### Sous-sections du chantier 3 (post-Sprint 97)
+### Vues thématiques composables
 
-3 nouvelles vues thématiques composables qui regroupent les **16 renderers
-orphelins** identifiés dans l'audit initial :
+3 vues thématiques composables qui regroupent les renderers spécialisés :
 
 #### Vue « Coût et performance » (`build_economics_view_html`)
 
@@ -101,8 +100,8 @@ Sous-sections :
 
 ## Vues spécifiques (rapport autonome)
 
-Deux vues du chantier 3 ne s'intègrent pas au rapport classique mais
-servent à composer des **rapports autonomes** :
+Deux vues ne s'intègrent pas au rapport classique mais servent à
+composer des **rapports autonomes** :
 
 ### Vue « Pipeline composée » (`build_pipeline_view_html`)
 
@@ -112,13 +111,12 @@ Utilisée par `picarones pipeline run` (ou par tout outil qui consomme un
 `PipelineBenchmarkResult`). Sous-sections :
 
 - **Résumé pipeline** (`build_pipeline_summary_html` + `build_pipeline_steps_table_html`).
-- **DAG visuel** (`pipeline_dag_render.py` Sprint 95) — opt-in.
-- **Absorption d'erreur** par jonction (`error_absorption_render.py`
-  Sprint 94) — opt-in.
-- **Comparaison incrémentale** par slot (`incremental_comparison_render.py`
-  Sprint 96) — opt-in.
-- **Audit des modules** contribués (`module_audit_render.py`
-  Sprint 97) — opt-in.
+- **DAG visuel** (`pipeline_dag_render.py`) — opt-in.
+- **Absorption d'erreur** par jonction
+  (`error_absorption_render.py`) — opt-in.
+- **Comparaison incrémentale** par slot
+  (`incremental_comparison_render.py`) — opt-in.
+- **Audit des modules** contribués (`module_audit_render.py`) — opt-in.
 
 ### Vue « Robustesse projetée » (`build_robustness_view_html`)
 
@@ -126,8 +124,8 @@ Module : [`picarones/reports/html/views/robustness.py`](../picarones/reports/htm
 
 Utilisée par le workflow `picarones robustness`. Sous-sections :
 
-- **Déficit projeté de robustesse** (`robustness_projection_render.py`
-  Sprint 88).
+- **Déficit projeté de robustesse**
+  (`robustness_projection_render.py`).
 
 ## Convention de rendu partagée
 
