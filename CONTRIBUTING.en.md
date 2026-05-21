@@ -12,7 +12,7 @@ accessibility audits.
 
 ## Pre-requisites
 
-- Python 3.11 or 3.12 (3.13 informational, Sprint A1).
+- Python 3.11 or 3.12 (3.13 informational).
 - Git, GitHub account.
 - A working Picarones dev install:
   ```bash
@@ -60,7 +60,7 @@ accessibility audits.
 - **Hardcoded UI strings** — use the i18n mechanism (see
   `docs/developer/extending-i18n.md` — French canonical).
 - **Commits with `--no-verify`** — bypassing pre-commit hooks is
-  detected by the CI `precommit.yml` workflow (Sprint A1).
+  detected by the CI `precommit.yml` workflow.
 
 ## Reviewing
 

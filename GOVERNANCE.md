@@ -1,7 +1,7 @@
 # Gouvernance — Picarones
 
-> Sprint A10 du plan de remédiation institutionnelle
-> ([`docs/archive/2026-audits/remediation-plan.md`](docs/archive/2026-audits/remediation-plan.md)).
+> Politique de gouvernance institutionnelle.  Contexte historique :
+> [`docs/archive/2026-audits/remediation-plan.md`](docs/archive/2026-audits/remediation-plan.md).
 >
 > Ce document explicite **comment Picarones est maintenu et fait
 > évoluer** : qui décide, à quelle cadence, avec quels engagements de
@@ -135,7 +135,7 @@ Si aucun successeur n'est trouvé en 6 mois, le projet entre en
 sécurité, README enrichi d'un encart « projet en cherche d'un
 nouveau mainteneur — fork bienvenu ».
 
-## Conflicts of interest (Sprint A10, M-10)
+## Conflicts of interest
 
 Picarones benchmarke des fournisseurs cloud commerciaux (OpenAI,
 Anthropic, Mistral, Google, Microsoft Azure). Pour qu'un papier ou
@@ -159,8 +159,7 @@ Les valeurs dans `picarones/data/pricing.yaml` :
 
 - proviennent **exclusivement** des tarifs publics affichés sur les
   sites des fournisseurs (sans NDA, sans accord commercial) ;
-- sont datées explicitement (`meta.last_updated`, `meta.valid_until`
-  depuis Sprint A8) ;
+- sont datées explicitement (`meta.last_updated`, `meta.valid_until`) ;
 - peuvent être surchargées par l'utilisateur via
   `ReportGenerator(..., pricing=...)` pour refléter ses propres
   tarifs négociés.
@@ -171,7 +170,7 @@ doit ouvrir une PR publique avec source vérifiable.
 
 ### Indépendance éditoriale du moteur narratif
 
-Le moteur narratif (Sprint 19+) émet des `Fact` traçables au JSON
+Le moteur narratif émet des `Fact` traçables au JSON
 d'entrée. Aucune logique privilégie un fournisseur sur un autre :
 
 - les seuils des détecteurs sont éditoriaux (publics dans
@@ -202,4 +201,4 @@ sera publiquement refusée et déclenchera l'annulation du sponsoring.
 
 ---
 
-*Dernière mise à jour : 2 mai 2026 (Sprint A10).*
+*Dernière mise à jour : 2 mai 2026.*

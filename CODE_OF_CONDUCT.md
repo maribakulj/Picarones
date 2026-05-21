@@ -1,6 +1,6 @@
 # Code de conduite — Picarones
 
-> Sprint A10 du plan de remédiation institutionnelle. Adoption du
+> Adoption du
 > [Contributor Covenant version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
 
 ## Notre engagement

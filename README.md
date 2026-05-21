@@ -112,7 +112,7 @@ Composable chains: `tesseract -> gpt-4o`, `pero_ocr -> claude-sonnet`,
 zero-shot VLM, etc. Three pipeline modes: text-only post-correction,
 image+text post-correction, and zero-shot. **Over-normalisation
 detection** flags LLMs that silently modernise historical spellings.
-A composed-pipeline benchmarking layer (Sprint 63+) runs N candidate
+A composed-pipeline benchmarking layer runs N candidate
 pipelines on the same corpus and ranks them by a chosen metric.
 
 ### Corpus import
@@ -160,10 +160,10 @@ French/English UI. Deployable on HuggingFace Spaces (Docker, port
 
 Optional SQLite database recording benchmark history across runs.
 CER evolution curves per engine, automatic regression detection
-between consecutive runs (Pettitt change-point analysis, Sprint 92).
+between consecutive runs (Pettitt change-point analysis).
 **Robustness analysis** measures engine resilience to noise, blur,
 rotation, resolution and binarization, projected on the real corpus
-quality profile (Sprint 81).
+quality profile.
 
 ---
 
@@ -227,7 +227,7 @@ or fail.
 
 | Command | Description |
 |---------|-------------|
-| `picarones compare` | Compare two benchmark JSON runs and flag regressions (Sprint 28) |
+| `picarones compare` | Compare two benchmark JSON runs and flag regressions |
 | `picarones demo` | Generate a demo report with synthetic data (no engine required) |
 | `picarones diagnose` | Pre-wired workflow: bench + improvement levers + factual recommendations |
 | `picarones economics` | Pre-wired workflow: bench + effective throughput + cost projection |
@@ -314,7 +314,7 @@ diplomatic tables and `exclude_chars` sets. See
 [`docs/reference/normalization-profiles.md`](docs/reference/normalization-profiles.md).
 
 A traceability table mapping each profile to its source standard
-(MUFI v4.0, TEI P5, DEAF) will ship in Sprint A12 (B-6).
+(MUFI v4.0, TEI P5, DEAF) is planned (see backlog item B-6).
 
 ---
 
@@ -364,7 +364,7 @@ GOOGLE_APPLICATION_CREDENTIALS=
 AZURE_DOC_INTEL_ENDPOINT=
 AZURE_DOC_INTEL_KEY=
 
-# RGPD retention (Sprint A11)
+# RGPD retention
 PICARONES_UPLOAD_RETENTION_DAYS=7
 ```
 

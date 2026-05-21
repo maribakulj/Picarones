@@ -11,8 +11,8 @@ Picarones est conçu pour être déployé dans trois contextes très différents
    visiteur peut atteindre l'API ; les clefs serveur (OpenAI, Anthropic,
    Mistral, Azure…) ne doivent **pas** être exposées au DoS-financier.
 
-Ce document décrit les contrôles disponibles depuis le **Sprint 24** et la
-configuration recommandée pour chaque cas.
+Ce document décrit les contrôles disponibles et la configuration
+recommandée pour chaque cas.
 
 ---
 
@@ -31,7 +31,7 @@ configuration recommandée pour chaque cas.
 
 ---
 
-## CSRF — déploiement institutionnel (Sprint A4)
+## CSRF — déploiement institutionnel
 
 L'application embarque un middleware CSRF **désactivé par défaut**
 (rétrocompat HuggingFace Space où il n'y a pas de session
@@ -83,8 +83,8 @@ picarones serve --port 8000
 - Tous les moteurs OCR sont disponibles.
 - `/api/corpus/browse` voit `cwd`, `./uploads/`, `/workspaces`, `tempdir`.
 - Pas de rate limit.
-- CSP appliquée mais permissive (`unsafe-inline` toléré tant que les
-  templates web ne sont pas Jinja2 — voir Sprint 25).
+- CSP appliquée mais permissive (`unsafe-inline` toléré tant que
+  des handlers inline subsistent dans les templates).
 
 ### 🏛 Serveur d'institution
 
