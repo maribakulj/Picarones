@@ -22,8 +22,12 @@ on:
       # Une PR qui touche le runner de benchmark, la normalisation ou
       # les adapters OCR déclenche aussi le check (cas où on veut
       # prouver qu'un refactor ne dégrade rien).
-      - 'picarones/app/services/benchmark_runner.py'
+      - 'picarones/app/services/run_orchestrator.py'
+      - 'picarones/app/services/run_orchestrator_execution.py'
+      - 'picarones/app/services/run_orchestrator_helpers/**'
       - 'picarones/app/services/benchmark_service.py'
+      - 'picarones/pipeline/executor.py'
+      - 'picarones/pipeline/runner.py'
       - 'picarones/formats/text/normalization.py'
       - 'picarones/adapters/ocr/**'
       - '.github/workflows/perf_regression.yml'
