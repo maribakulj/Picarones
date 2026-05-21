@@ -166,11 +166,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BROKEN_PATHS_BASELINE = 6
 
 #: Patrons de fichiers de documentation à scanner.
+#: Phase 1 D5 : SPECS.md déplacé vers docs/reference/specification.md
+#: — couvert par le glob ``docs/**/*.md``.
 DOC_GLOBS: tuple[str, ...] = (
     "CLAUDE.md",
     "README.md",
     "CHANGELOG.md",
-    "SPECS.md",
     "docs/**/*.md",
 )
 

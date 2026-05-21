@@ -140,21 +140,26 @@ class TestPreCommitInfra:
 
 class TestChangelogAndSpecsUpdated:
     def test_changelog_mentions_recent_sprints(self):
-        text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        # Phase 1 D3 : l'historique pré-v2.0 (Sprints 1-30) a été
+        # archivé vers docs/archive/changelog-pre-v2.md.  Le test
+        # vérifie désormais la présence des sprints dans l'archive.
+        text = (ROOT / "docs" / "archive" / "changelog-pre-v2.md").read_text(encoding="utf-8")
         # Backport Sprints 10-22 et 23-30 doivent être mentionnés
         for sprint in ("Sprint 11", "Sprint 17", "Sprint 19", "Sprint 22",
                        "Sprint 24", "Sprint 27", "Sprint 30"):
             assert sprint in text, (
-                f"CHANGELOG.md doit mentionner {sprint} (Sprint 30 backport)"
+                f"changelog-pre-v2.md doit mentionner {sprint} "
+                "(Sprint 30 backport)"
             )
 
     def test_specs_addendum_present(self):
-        text = (ROOT / "SPECS.md").read_text(encoding="utf-8")
+        # Phase 1 D5 : SPECS.md → docs/reference/specification.md
+        text = (ROOT / "docs" / "reference" / "specification.md").read_text(encoding="utf-8")
         assert "Addendum" in text
         # Au moins quatre des nouvelles fonctionnalités annexées
         for keyword in ("narrative", "Pareto", "glossaire", "snapshots"):
             assert keyword in text.lower() or keyword in text, (
-                f"SPECS.md addendum doit couvrir {keyword!r}"
+                f"specification.md addendum doit couvrir {keyword!r}"
             )
 
 

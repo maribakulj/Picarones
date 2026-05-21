@@ -291,7 +291,7 @@ uniquement** (jamais sur le filesystem en clair). Voir [`SECURITY.md`](../../SEC
 - [ ] Rétention RGPD configurée
       (cf. [`data-retention-rgpd.md`](data-retention-rgpd.md)).
 - [ ] Audit RGAA externe planifié si prestation publique
-      (cf. [`ACCESSIBILITY.md`](../../ACCESSIBILITY.md)).
+      (cf. [`accessibility.md`](accessibility.md)).
 - [ ] Issue tracking institutionnel (Mantis, JIRA, Redmine)
       synchronisé avec les issues GitHub si pertinent.
 

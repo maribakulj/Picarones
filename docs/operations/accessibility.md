@@ -98,7 +98,7 @@ captions de tableaux jumeaux) sont localisés dans les deux langues.
 | Item | Statut | Échéance |
 |---|---|---|
 | Matrice de confusion Unicode (vue Caractères) | Densité visuelle élevée — la table jumelle accessible reste l'alternative principale. | Refonte UX prévue Sprint post-A14. |
-| Génération PDF du rapport | Non livrée (cf. SPECS.md « Promesses non tenues »). | Pas de plan d'ajout, le HTML couvre les usages observés. |
+| Génération PDF du rapport | Non livrée (cf. [`../reference/specification.md`](../reference/specification.md) « Promesses non tenues »). | Pas de plan d'ajout, le HTML couvre les usages observés. |
 | Audit RGAA externe | En cours, prestataire à contractualiser. | Sprint A15 (~sem. 11–12). |
 
 ## Tests automatisés

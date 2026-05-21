@@ -18,15 +18,21 @@ GOVERNANCE_FILES = [
     "CODEOWNERS",          # cherché à la racine ET dans .github/
     "GOVERNANCE.md",
     "CODE_OF_CONDUCT.md",
-    "SECURITY.md",         # pré-existant (Sprint 24)
-    "ACCESSIBILITY.md",    # Sprint A7
-    "LICENSE",             # pré-existant
-    "CONTRIBUTING.md",     # pré-existant (Sprint 30)
+    "SECURITY.md",
+    "LICENSE",
+    "CONTRIBUTING.md",
+    # Phase 1 D5 : ACCESSIBILITY.md a quitté la racine pour
+    # docs/operations/accessibility.md.  Le fichier reste obligatoire
+    # mais résolu via le path ``docs/operations/`` (cf. _resolve).
+    "accessibility.md",
 ]
 
 
 def _resolve(name: str) -> Path | None:
-    """Cherche un fichier à la racine, dans ``.github/`` ou ``docs/``."""
+    """Cherche un fichier à la racine, dans ``.github/`` ou
+    ``docs/`` (récursif).  La recherche récursive sous ``docs/``
+    couvre les fichiers de gouvernance déplacés dans des
+    sous-dossiers (operations/, legal/, etc.)."""
     candidates = [
         REPO_ROOT / name,
         REPO_ROOT / ".github" / name,
@@ -35,6 +41,10 @@ def _resolve(name: str) -> Path | None:
     for c in candidates:
         if c.exists():
             return c
+    # Recherche récursive sous docs/ pour les fichiers déplacés
+    for match in (REPO_ROOT / "docs").rglob(name):
+        if match.is_file():
+            return match
     return None
 
 
@@ -143,7 +153,7 @@ def test_governance_links_other_docs() -> None:
         "CONTRIBUTING.md",
         "CODE_OF_CONDUCT.md",
         "SECURITY.md",
-        "ACCESSIBILITY.md",
+        "accessibility.md",  # déplacé en D5 dans docs/operations/
     ]
     missing = [link for link in expected_links if link not in text]
     assert not missing, (

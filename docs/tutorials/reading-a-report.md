@@ -135,7 +135,7 @@ LibreOffice.
 - [Glossaire complet] (intégré dans le rapport, accessible via les `?`)
 - [docs/explanation/narrative-engine.md] — comment ajouter un détecteur
 - [docs/developer/extending-glossary.md] — comment enrichir le glossaire
-- [SPECS.md] — spécifications complètes du projet
+- [docs/reference/specification.md](../reference/specification.md) — spécifications complètes du projet
 
 ## Mode `--lazy-images` pour les corpus volumineux
 

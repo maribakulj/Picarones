@@ -13,7 +13,7 @@
 > les adapters Kraken/AWS Textract), voir la section §10.
 >
 > Pour la cartographie technique du code et les règles de
-> contribution interne, voir [`CLAUDE.md`](CLAUDE.md). SPECS.md
+> contribution interne, voir [`CLAUDE.md`](../../CLAUDE.md). Ce document
 > reste tourné « public » (vocabulaire bibliothécaire, exemples
 > patrimoniaux). Les deux documents sont complémentaires, pas
 > redondants.
@@ -602,7 +602,7 @@ bloc Unicode (Sprint 55), analyse des ligatures.
 ### 7.4 Accessibilité
 
 Conformité WCAG 2.1 niveau AA (cf.
-[`ACCESSIBILITY.md`](ACCESSIBILITY.md)) :
+[`docs/operations/accessibility.md`](../operations/accessibility.md)) :
 
 - Skip-to-content link (WCAG 2.4.1).
 - `role="img"` + `aria-label` + table de données jumelle

@@ -196,7 +196,7 @@ sera publiquement refusée et déclenchera l'annulation du sponsoring.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — guide technique pour PR
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
 - [`SECURITY.md`](SECURITY.md) — signalement de vulnérabilités
-- [`ACCESSIBILITY.md`](ACCESSIBILITY.md) — engagement WCAG 2.1 AA
+- [`docs/operations/accessibility.md`](docs/operations/accessibility.md) — engagement WCAG 2.1 AA
 - [`docs/operations/release-process.md`](docs/operations/release-process.md)
   — cycle de release
 

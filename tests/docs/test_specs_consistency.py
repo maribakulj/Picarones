@@ -26,12 +26,12 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SPECS_PATH = REPO_ROOT / "SPECS.md"
+SPECS_PATH = REPO_ROOT / "docs" / "reference" / "specification.md"
 
 
 def _read_specs() -> str:
     if not SPECS_PATH.exists():
-        pytest.skip("SPECS.md absent")
+        pytest.skip("specification.md absent")
     return SPECS_PATH.read_text(encoding="utf-8")
 
 
@@ -41,10 +41,11 @@ def _read_specs() -> str:
 
 
 def test_specs_exists() -> None:
-    """Pré-requis : SPECS.md doit exister."""
+    """Pré-requis : la spec doit exister (Phase 1 D5 : déplacée de
+    SPECS.md (racine) vers docs/reference/specification.md)."""
     assert SPECS_PATH.exists(), (
-        "SPECS.md absent à la racine. Si retiré volontairement, "
-        "supprimer aussi ce test."
+        f"{SPECS_PATH.relative_to(REPO_ROOT)} absent. Si retiré "
+        "volontairement, supprimer aussi ce test."
     )
 
 

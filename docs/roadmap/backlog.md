@@ -57,7 +57,7 @@ exercé en pratique.
 - Tests automatisés axe-core sur la SPA.
 - Navigation complète clavier validée par utilisateur empêché.
 
-**État actuel** : `ACCESSIBILITY.md` documente l'intention. Les
+**État actuel** : `docs/operations/accessibility.md` documente l'intention. Les
 améliorations Sprint 25 (extraction du JS inline vers
 `web-app.js`) sont un pas dans la bonne direction mais ne suffisent
 pas à revendiquer la conformité.

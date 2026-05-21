@@ -129,7 +129,7 @@ Vous évaluez les implications RGPD avant signature.
 | [`/GOVERNANCE.md`](../GOVERNANCE.md) | Gouvernance |
 | [`/SECURITY.md`](../SECURITY.md) | Sécurité (FR + EN) |
 | [`/CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Code de conduite |
-| [`/ACCESSIBILITY.md`](../ACCESSIBILITY.md) | Accessibilité |
+| [`operations/accessibility.md`](operations/accessibility.md) | Accessibilité |
 | [`security/threat-model.md`](security/threat-model.md) | Threat model STRIDE |
 | [`legal/dpa-template.md`](legal/dpa-template.md) | DPA RGPD §28 |
 

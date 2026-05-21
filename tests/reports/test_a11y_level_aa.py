@@ -146,13 +146,16 @@ def test_fmtnum_helper_present(demo_html: str) -> None:
 
 
 def test_accessibility_md_exists() -> None:
-    """``ACCESSIBILITY.md`` doit exister à la racine du repo."""
+    """``docs/operations/accessibility.md`` doit exister (Phase 1 D5 :
+    déplacé de ACCESSIBILITY.md (racine) vers la section operations
+    pour assainir la racine)."""
     from pathlib import Path
 
     repo_root = Path(__file__).resolve().parents[2]
-    a11y_md = repo_root / "ACCESSIBILITY.md"
+    a11y_md = repo_root / "docs" / "operations" / "accessibility.md"
     assert a11y_md.exists(), (
-        "ACCESSIBILITY.md absent — pré-requis M-9 non satisfait."
+        "docs/operations/accessibility.md absent — pré-requis M-9 "
+        "non satisfait."
     )
 
 
@@ -161,7 +164,7 @@ def test_accessibility_md_mentions_wcag_aa() -> None:
     from pathlib import Path
 
     repo_root = Path(__file__).resolve().parents[2]
-    text = (repo_root / "ACCESSIBILITY.md").read_text(encoding="utf-8")
+    text = (repo_root / "docs" / "operations" / "accessibility.md").read_text(encoding="utf-8")
     assert "WCAG 2.1" in text
     assert "AA" in text
     assert "RGAA" in text
@@ -172,7 +175,7 @@ def test_accessibility_md_lists_remediation_items() -> None:
     from pathlib import Path
 
     repo_root = Path(__file__).resolve().parents[2]
-    text = (repo_root / "ACCESSIBILITY.md").read_text(encoding="utf-8")
+    text = (repo_root / "docs" / "operations" / "accessibility.md").read_text(encoding="utf-8")
     # Doit mentionner l'audit externe (Sprint A15)
     assert "A15" in text or "audit externe" in text.lower()
     # Doit mentionner Okabe-Ito (palette validée)

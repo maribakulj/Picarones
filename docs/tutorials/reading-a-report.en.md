@@ -102,4 +102,4 @@ relative path and loaded by the browser on-demand
   — adding a detector (French canonical)
 - [docs/developer/extending-glossary.md](../developer/extending-glossary.md)
   — enriching the glossary (French canonical)
-- [SPECS.md](../../SPECS.md) — full project specifications
+- [docs/reference/specification.md](../reference/specification.md) — full project specifications

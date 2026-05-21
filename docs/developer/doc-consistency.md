@@ -4,7 +4,7 @@
 > ([`docs/archive/2026-audits/remediation-plan.md`](../archive/2026-audits/remediation-plan.md)).
 
 Picarones expose plusieurs documents de premier contact (README.md,
-SPECS.md, CHANGELOG.md, CITATION.cff, …). Pour qu'un primo-lecteur
+docs/reference/specification.md, CHANGELOG.md, CITATION.cff, …). Pour qu'un primo-lecteur
 ne soit jamais induit en erreur, **la documentation publiée doit
 refléter le code réel**. Le suite de tests `tests/docs/` matérialise
 ce contrat.
@@ -44,7 +44,7 @@ est posée en Sprint A13 (refonte intégrale du README).
 
 Vérifie que :
 
-- SPECS.md existe et déclare une version + une date.
+- docs/reference/specification.md existe et déclare une version + une date.
 - Toute promesse explicitement *abandonnée* depuis SPECS v1 (AWS Textract,
   Calamari, OCRopus, Recommandation automatique, Export PDF, k-means
   clustering, Annotations inline, Badge SVG) doit être marquée par un

@@ -472,10 +472,10 @@ experimental demonstrator and the CLI as the supported interface.
 | **Researcher** | [`docs/case-studies/`](docs/case-studies/), [`docs/reference/reproducibility-snapshots.md`](docs/reference/reproducibility-snapshots.md) |
 | **Contributor** | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`GOVERNANCE.md`](GOVERNANCE.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
 | **Security** | [`SECURITY.md`](SECURITY.md) |
-| **Accessibility** | [`ACCESSIBILITY.md`](ACCESSIBILITY.md) |
+| **Accessibility** | [`docs/operations/accessibility.md`](docs/operations/accessibility.md) |
 
 The complete functional specification is in
-[`SPECS.md`](SPECS.md) (full refresh planned in Sprint A14).
+[`docs/reference/specification.md`](docs/reference/specification.md).
 
 ---
 
