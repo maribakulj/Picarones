@@ -22,4 +22,9 @@ services:
       - PICARONES_PUBLIC_MODE=${PICARONES_PUBLIC_MODE:-1}
       - PICARONES_CSRF_REQUIRED=1
       - PICARONES_SECURE_COOKIES=1
-      - PICARONES_CSRF_SECRET=${PICARONES_CSRF_SECRET:?PICARONES_CSRF_SECRET requis en prod — générer avec: openssl rand -hex 32}
+      # ATTENTION : la valeur doit être quotée — le message d'erreur
+      # contient ``avec:`` (deux-points + espace) que YAML interprète
+      # comme un map dans le contexte d'une liste, ce qui fait échouer
+      # ``docker compose config`` avec un message obscur.  La quote
+      # force le scalaire.
+      - "PICARONES_CSRF_SECRET=${PICARONES_CSRF_SECRET:?PICARONES_CSRF_SECRET requis en prod — générer avec openssl rand -hex 32}"

@@ -275,6 +275,41 @@ jobs:
         run: ruff check picarones/ tests/
 
   # ──────────────────────────────────────────────────────────────────
+  # Job 4-ter : Validation Docker compose
+  #
+  # Sans ce check, une incohérence entre ``docker-compose.yml`` et
+  # ``docker-compose.prod.yml`` (variable non héritée, override de
+  # port mal formé, conflit de services) ne se voit qu'au
+  # déploiement.  ``docker compose config`` résout les merges,
+  # substitue les variables d'env et échoue si la composition est
+  # invalide — c'est exactement le linter manquant.
+  #
+  # Le secret CSRF est forcé sur une valeur factice : ``prod.yml``
+  # exige ``${PICARONES_CSRF_SECRET:?...}`` qui ferait échouer
+  # ``config`` sans valeur.  La valeur n'est jamais utilisée — on ne
+  # démarre aucun container, on valide uniquement le YAML.
+  # ──────────────────────────────────────────────────────────────────
+  compose-check:
+    name: Docker compose validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate local compose
+        run: docker compose -f docker-compose.yml config > /dev/null
+
+      - name: Validate local + prod merge
+        env:
+          PICARONES_CSRF_SECRET: compose-check-not-a-real-secret
+        run: |
+          docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.prod.yml \
+            config > /dev/null
+
+  # ──────────────────────────────────────────────────────────────────
   # Job 4-bis : Sync compteurs README/CLAUDE.md — Phase 2.1 audit
   # code-quality (2026-05).  Le script gen_readme_tables.py reflète
   # le code réel dans la prose des docs (tableaux Engines/CLI/API +

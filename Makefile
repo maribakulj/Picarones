@@ -233,6 +233,18 @@ docker-compose-down:  ## Arrête les services Docker Compose
 docker-compose-logs:  ## Affiche les logs Docker Compose
 	docker compose logs -f picarones
 
+compose-check:  ## Valide que docker-compose.yml seul + le merge avec prod.yml sont syntaxiquement corrects
+	@# Sans cette validation, une incohérence dans le merge (variable
+	@# non héritée, port surchargé mal, conflit de services) ne se
+	@# voit qu'au déploiement.  Le secret CSRF est forcé sur une
+	@# valeur factice pour permettre l'évaluation YAML (prod.yml
+	@# exige ``${PICARONES_CSRF_SECRET:?...}``) — la valeur n'est
+	@# jamais utilisée.
+	@docker compose -f docker-compose.yml config > /dev/null
+	@PICARONES_CSRF_SECRET=compose-check-not-a-real-secret \
+	  docker compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null
+	@echo "$(GREEN)✓ compose merge (local + prod) syntaxiquement valide$(RESET)"
+
 # ──────────────────────────────────────────────────────────────────
 # Nettoyage
 # ──────────────────────────────────────────────────────────────────
